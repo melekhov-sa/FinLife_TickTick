@@ -1,0 +1,21 @@
+﻿services:
+  db:
+    image: postgres:16
+    container_name: finlife_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finlife
+      POSTGRES_USER: finlife
+      POSTGRES_PASSWORD: finlife_password_change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - finlife_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finlife -d finlife"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  finlife_pgdata:

@@ -2,6 +2,8 @@
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
+from app.db import check_db
+
 app = FastAPI(title="FinLife")
 
 templates = Jinja2Templates(directory="templates")
@@ -12,4 +14,9 @@ def index(request: Request):
 
 @app.get("/health", response_class=PlainTextResponse)
 def health():
+    return "ok"
+
+@app.get("/ready", response_class=PlainTextResponse)
+def ready():
+    check_db()
     return "ok"
