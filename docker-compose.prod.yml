@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16
+    container_name: centricore_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finlife
+      POSTGRES_USER: finlife
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - centricore_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finlife -d finlife"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    container_name: centricore_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: >
+      sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+     - shared
+     - default    
+
+  
+  caddy:
+    image: caddy:2
+    container_name: centricore_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - centricore_caddy_data:/data
+      - centricore_caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - shared
+      - default 
+
+volumes:
+  centricore_pgdata:
+  centricore_caddy_data:
+  centricore_caddy_config:
+
+networks:
+  shared:
+    external: true
+    name: centricore_shared

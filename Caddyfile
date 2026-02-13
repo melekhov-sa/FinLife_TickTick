@@ -1,0 +1,4 @@
+centricore.ru, www.centricore.ru {
+  encode gzip
+  reverse_proxy centricore_app:8000
+}

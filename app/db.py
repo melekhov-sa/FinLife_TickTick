@@ -3,7 +3,10 @@ import psycopg
 
 def get_db_dsn() -> str:
     # Example: postgresql://user:pass@localhost:5432/dbname
-    return os.getenv("DATABASE_URL", "postgresql://finlife:finlife_password_change_me@localhost:5432/finlife")
+    raw = os.getenv("DATABASE_URL", "postgresql://finlife:finlife_password_change_me@centricore_db:5432/finlife")
+    if raw.startswith("postgresql+psycopg://"):
+        raw = raw.replace("postgresql+psycopg://", "postgresql://", 1)
+    return raw
 
 def check_db() -> None:
     dsn = get_db_dsn()

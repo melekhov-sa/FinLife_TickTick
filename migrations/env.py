@@ -10,6 +10,19 @@ from alembic import context
 config = context.config
 import os
 
+from alembic import context
+
+def get_url() -> str:
+    url = os.getenv("DATABASE_URL", "")
+    if not url:
+        raise RuntimeError("DATABASE_URL is not set")
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+config = context.config
+config.set_main_option("sqlalchemy.url", get_url())
+
 def _get_sqlalchemy_url() -> str:
     raw = os.getenv("DATABASE_URL", "")
     if not raw:
