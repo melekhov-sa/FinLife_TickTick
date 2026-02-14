@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Создать привычку - FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+  <a href="/habits" style="text-decoration: none; font-size: 20px; color: #666;">&larr;</a>
+  <h1 style="margin: 0;">Создать привычку</h1>
+</div>
+
+<div class="card">
+  {% if error %}
+    <div class="error-card">{{ error }}</div>
+  {% endif %}
+  <form method="POST" action="/habits/create">
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" placeholder="Например: Зарядка" required>
+    </div>
+
+    <div class="form-row">
+      <label>Частота</label>
+      <select name="freq" id="habitFreq" required>
+        <option value="DAILY" selected>Ежедневно</option>
+        <option value="WEEKLY">Еженедельно</option>
+        <option value="MONTHLY">Ежемесячно</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Интервал</label>
+      <input name="interval" type="number" value="1" min="1" style="max-width: 80px;">
+    </div>
+
+    <!-- WEEKLY: weekday checkboxes -->
+    <div id="blockWeekdays" style="display: none;">
+      <div class="form-row">
+        <label>Дни недели</label>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          {% set days = [('MO','Пн'),('TU','Вт'),('WE','Ср'),('TH','Чт'),('FR','Пт'),('SA','Сб'),('SU','Вс')] %}
+          {% for code, label in days %}
+          <label style="display:flex; align-items:center; gap:3px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" name="weekday_{{ code }}" value="1"> {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- MONTHLY: day of month -->
+    <div id="blockMonthday" style="display: none;">
+      <div class="form-row">
+        <label>День месяца</label>
+        <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31" style="max-width: 80px;">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Начать с</label>
+      <input name="start_date" type="date" value="{{ today.isoformat() }}" required>
+    </div>
+
+    <div class="form-row">
+      <label>Уровень сложности</label>
+      <select name="level">
+        <option value="1">Простая</option>
+        <option value="2">Средняя</option>
+        <option value="3">Сложная</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Категория</label>
+      <select name="category_id">
+        <option value="">— Без категории —</option>
+        {% for cat in work_categories %}
+          <option value="{{ cat.category_id }}">{{ cat.emoji or '' }} {{ cat.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <details style="margin-bottom: 12px;">
+      <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
+      <div class="form-row" style="margin-top: 8px;">
+        <input name="note" placeholder="Опционально">
+      </div>
+    </details>
+
+    <button type="submit">Создать</button>
+  </form>
+</div>
+
+<script>
+(function() {
+  var freq = document.getElementById('habitFreq');
+  var blockWeekdays = document.getElementById('blockWeekdays');
+  var blockMonthday = document.getElementById('blockMonthday');
+
+  function toggle() {
+    blockWeekdays.style.display = freq.value === 'WEEKLY' ? '' : 'none';
+    blockMonthday.style.display = freq.value === 'MONTHLY' ? '' : 'none';
+  }
+  freq.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
+{% endblock %}

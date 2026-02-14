@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Операции — FinLife{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+
+{% block content %}
+<h1>Операции</h1>
+
+<!-- KPI -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">ДОХОДЫ</div>
+    <div class="stat-value positive">{{ fmt(kpi_income) }}</div>
+    <div class="stat-sublabel">на странице</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">РАСХОДЫ</div>
+    <div class="stat-value negative">{{ fmt(kpi_expense) }}</div>
+    <div class="stat-sublabel">на странице</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">РАЗНИЦА</div>
+    <div class="stat-value {% if kpi_income - kpi_expense >= 0 %}positive{% else %}negative{% endif %}">
+      {% if kpi_income - kpi_expense > 0 %}+{% endif %}{{ fmt(kpi_income - kpi_expense) }}
+    </div>
+    <div class="stat-sublabel">доход &minus; расход</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">ВСЕГО</div>
+    <div class="stat-value">{{ total_count }}</div>
+    <div class="stat-sublabel">операций</div>
+  </div>
+</div>
+
+<!-- Добавить операцию (collapsible) -->
+<details class="card">
+  <summary style="cursor: pointer; font-weight: 600; font-size: 16px;">Добавить операцию</summary>
+  <form method="POST" action="/transactions/create" style="margin-top: 12px;">
+    <div class="form-row">
+      <label>Тип операции</label>
+      <select name="operation_type" id="operationType" required onchange="updateFormFields()">
+        <option value="INCOME">Доход</option>
+        <option value="EXPENSE" selected>Расход</option>
+        <option value="TRANSFER">Перевод</option>
+      </select>
+    </div>
+
+    <div class="form-row" id="walletField">
+      <label>Кошелёк</label>
+      <select name="wallet_id">
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row" id="fromWalletField" style="display:none;">
+      <label>Из кошелька</label>
+      <select name="from_wallet_id" disabled>
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row" id="toWalletField" style="display:none;">
+      <label>В кошелёк</label>
+      <select name="to_wallet_id" disabled>
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Сумма</label>
+      <input name="amount" type="number" step="0.01" placeholder="100.00" required>
+    </div>
+
+    <div class="form-row" id="categoryField">
+      <label>Категория</label>
+      <select name="category_id">
+        <option value="">Без категории</option>
+        {% for c in categories %}
+        <option value="{{ c.category_id }}">{{ c.title }} ({{ c.category_type }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Описание</label>
+      <input name="description" placeholder="Описание операции" required>
+    </div>
+
+    <div class="form-row">
+      <label>Дата и время</label>
+      <input name="occurred_at" type="datetime-local">
+      <small class="muted">Если не указано — текущее время</small>
+    </div>
+
+    <button type="submit">Добавить</button>
+  </form>
+</details>
+
+<!-- Фильтры -->
+<div class="card">
+  <form class="tx-filters" method="GET" action="/transactions">
+    <select name="operation_type">
+      <option value="">Все типы</option>
+      <option value="INCOME" {% if operation_type == 'INCOME' %}selected{% endif %}>Доходы</option>
+      <option value="EXPENSE" {% if operation_type == 'EXPENSE' %}selected{% endif %}>Расходы</option>
+      <option value="TRANSFER" {% if operation_type == 'TRANSFER' %}selected{% endif %}>Переводы</option>
+    </select>
+
+    <select name="wallet_id">
+      <option value="">Все кошельки</option>
+      {% for w in all_wallets %}
+      <option value="{{ w.wallet_id }}" {% if wallet_id == w.wallet_id|string %}selected{% endif %}>
+        {{ w.title }}{% if w.is_archived %} (арх.){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+
+    <select name="category_id">
+      <option value="">Все категории</option>
+      {% for c in categories %}
+      <option value="{{ c.category_id }}" {% if category_id == c.category_id|string %}selected{% endif %}>
+        {{ c.title }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <input name="date_from" type="date" value="{{ date_from }}" title="С даты">
+    <span class="muted">—</span>
+    <input name="date_to" type="date" value="{{ date_to }}" title="По дату">
+
+    <input name="search" type="text" value="{{ search }}" placeholder="Поиск...">
+
+    <button type="submit">Применить</button>
+    {% if operation_type or wallet_id or category_id or date_from or date_to or search %}
+    <a href="/transactions" style="color: #666; text-decoration: none; font-size: 13px;">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Таблица операций -->
+<div class="card">
+  {% if transactions %}
+  <div class="matrix-scroll-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Тип</th>
+          <th>Кошелёк</th>
+          <th>Категория</th>
+          <th style="text-align: right;">Сумма</th>
+          <th>Описание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td style="white-space: nowrap;">{{ tx.occurred_at.strftime('%d.%m.%Y %H:%M') }}</td>
+          <td>
+            {% if tx.operation_type == 'INCOME' %}
+            <span class="badge badge-income">Доход</span>
+            {% elif tx.operation_type == 'EXPENSE' %}
+            <span class="badge badge-expense">Расход</span>
+            {% else %}
+            <span class="badge badge-transfer">Перевод</span>
+            {% endif %}
+          </td>
+          <td style="white-space: nowrap;">
+            {% if tx.operation_type == 'TRANSFER' %}
+              {% set fw = wallet_map.get(tx.from_wallet_id) %}
+              {% set tw = wallet_map.get(tx.to_wallet_id) %}
+              {{ fw.title if fw else '?' }} &rarr; {{ tw.title if tw else '?' }}
+            {% else %}
+              {% set w = wallet_map.get(tx.wallet_id) %}
+              {{ w.title if w else '—' }}
+            {% endif %}
+          </td>
+          <td>
+            {% if tx.category_id %}
+              {% set cat = category_map.get(tx.category_id) %}
+              {{ cat.title if cat else '—' }}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right; white-space: nowrap;" class="{% if tx.operation_type == 'INCOME' %}positive{% elif tx.operation_type == 'EXPENSE' %}negative{% endif %}">
+            {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ fmt(tx.amount) }} {{ tx.currency }}
+          </td>
+          <td>{{ tx.description }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Пагинация -->
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a href="/transactions?page={{ page - 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">&laquo; Пред</a>
+    {% endif %}
+    <span>Стр {{ page }} из {{ total_pages }} ({{ total_count }} операций)</span>
+    {% if page < total_pages %}
+    <a href="/transactions?page={{ page + 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">След &raquo;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Нет операций</p>
+  {% endif %}
+</div>
+
+{% if error %}
+<div class="card" style="border-color: #dc3545; background: #f8d7da;">
+  <p style="color: #721c24; margin: 0;">{{ error }}</p>
+</div>
+{% endif %}
+
+<script>
+function updateFormFields() {
+  var type = document.getElementById('operationType').value;
+  var walletField = document.getElementById('walletField');
+  var fromWalletField = document.getElementById('fromWalletField');
+  var toWalletField = document.getElementById('toWalletField');
+  var categoryField = document.getElementById('categoryField');
+
+  if (type === 'TRANSFER') {
+    walletField.style.display = 'none';
+    walletField.querySelector('select').disabled = true;
+    fromWalletField.style.display = 'block';
+    fromWalletField.querySelector('select').disabled = false;
+    toWalletField.style.display = 'block';
+    toWalletField.querySelector('select').disabled = false;
+    categoryField.style.display = 'none';
+  } else {
+    walletField.style.display = 'block';
+    walletField.querySelector('select').disabled = false;
+    fromWalletField.style.display = 'none';
+    fromWalletField.querySelector('select').disabled = true;
+    toWalletField.style.display = 'none';
+    toWalletField.querySelector('select').disabled = true;
+    categoryField.style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

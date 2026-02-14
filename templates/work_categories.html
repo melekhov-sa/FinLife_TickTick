@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Категории дел - FinLife{% endblock %}
+
+{% block content %}
+<h1>Категории дел</h1>
+
+{% if error %}
+  <div class="error-card">{{ error }}</div>
+{% endif %}
+
+{% set active_cats = categories | rejectattr('is_archived') | list %}
+{% set archived_cats = categories | selectattr('is_archived') | list %}
+
+<div class="card">
+  <h2>Активные категории</h2>
+  {% if active_cats %}
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 40px;"></th>
+          <th>Название</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat in active_cats %}
+        <tr id="wc-row-{{ cat.category_id }}">
+          <td style="font-size: 20px; text-align: center;">{{ cat.emoji or '' }}</td>
+          <td>{{ cat.title }}</td>
+          <td style="white-space: nowrap;">
+            <button type="button" class="secondary" onclick="toggleEdit({{ cat.category_id }})" style="font-size: 12px; padding: 4px 10px;">Изменить</button>
+            <form method="POST" action="/work-categories/{{ cat.category_id }}/archive" style="display:inline;">
+              <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;" onclick="return confirm('Архивировать категорию?')">Архив</button>
+            </form>
+          </td>
+        </tr>
+        <tr id="wc-edit-{{ cat.category_id }}" style="display: none;">
+          <td colspan="3">
+            <form method="POST" action="/work-categories/{{ cat.category_id }}/update" style="display: flex; gap: 8px; align-items: center;">
+              <input name="emoji" value="{{ cat.emoji or '' }}" placeholder="Эмодзи" style="max-width: 60px;">
+              <input name="title" value="{{ cat.title }}" style="max-width: 200px;" required>
+              <button type="submit" style="font-size: 12px; padding: 4px 10px;">Сохранить</button>
+              <button type="button" class="secondary" onclick="toggleEdit({{ cat.category_id }})" style="font-size: 12px; padding: 4px 10px;">Отмена</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Нет категорий дел</p>
+  {% endif %}
+</div>
+
+{% if archived_cats %}
+<div class="card">
+  <h2>Архив</h2>
+  <table>
+    <thead><tr><th></th><th>Название</th></tr></thead>
+    <tbody>
+      {% for cat in archived_cats %}
+      <tr style="opacity: 0.6;">
+        <td style="font-size: 20px; text-align: center;">{{ cat.emoji or '' }}</td>
+        <td>{{ cat.title }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Создать категорию</h2>
+  <form method="POST" action="/work-categories/create">
+    <div class="form-row">
+      <label>Эмодзи</label>
+      <input name="emoji" placeholder="Например: &#128188;" style="max-width: 80px;">
+    </div>
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" placeholder="Например: Работа" required>
+    </div>
+    <button type="submit">Создать</button>
+  </form>
+</div>
+
+<script>
+function toggleEdit(id) {
+  var row = document.getElementById('wc-row-' + id);
+  var edit = document.getElementById('wc-edit-' + id);
+  if (edit.style.display === 'none') {
+    edit.style.display = '';
+    row.style.display = 'none';
+  } else {
+    edit.style.display = 'none';
+    row.style.display = '';
+  }
+}
+</script>
+{% endblock %}

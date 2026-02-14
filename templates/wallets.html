@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Кошельки - FinLife{% endblock %}
+
+{% block content %}
+<h1>Кошельки</h1>
+
+{% if error %}
+  <div class="error-card">{{ error }}</div>
+{% endif %}
+
+{% set active_wallets = wallets | rejectattr('is_archived') | list %}
+{% set archived_wallets = wallets | selectattr('is_archived') | list %}
+
+<div class="card">
+  <h2>Мои кошельки</h2>
+  {% if active_wallets %}
+    <table>
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Тип</th>
+          <th>Валюта</th>
+          <th>Баланс</th>
+          <th style="width: 40px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wallet in active_wallets %}
+        <tr>
+          <td>{{ wallet.title }}</td>
+          <td>
+            {% if wallet.wallet_type == 'REGULAR' %}Обычный
+            {% elif wallet.wallet_type == 'CREDIT' %}Кредит
+            {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
+            {% else %}{{ wallet.wallet_type }}{% endif %}
+          </td>
+          <td>{{ wallet.currency }}</td>
+          <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
+            {{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}
+          </td>
+          <td>
+            <button type="button" class="btn-gear" onclick="toggleSettings({{ wallet.wallet_id }})" title="Настройки">&#9881;</button>
+          </td>
+        </tr>
+        <tr id="wallet-settings-{{ wallet.wallet_id }}" style="display: none;">
+          <td colspan="5" style="padding: 0;">
+            <div class="wallet-settings">
+              <div class="wallet-settings-row">
+                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/rename" style="display: flex; gap: 8px; align-items: center; flex: 1;">
+                  <input name="title" value="{{ wallet.title }}" style="max-width: 250px;" required>
+                  <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переименовать</button>
+                </form>
+              </div>
+              <div class="wallet-settings-row">
+                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/archive" onsubmit="return confirm('Вы уверены, что хотите архивировать кошелёк «{{ wallet.title }}»?')">
+                  <button type="submit" class="danger" style="font-size: 12px; padding: 4px 12px;">Архивировать</button>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Нет активных кошельков</p>
+  {% endif %}
+</div>
+
+{% if archived_wallets %}
+<div class="card">
+  <h2>Архив</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Тип</th>
+        <th>Валюта</th>
+        <th>Баланс</th>
+        <th style="width: 120px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wallet in archived_wallets %}
+      <tr style="opacity: 0.6;">
+        <td>{{ wallet.title }}</td>
+        <td>
+          {% if wallet.wallet_type == 'REGULAR' %}Обычный
+          {% elif wallet.wallet_type == 'CREDIT' %}Кредит
+          {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
+          {% else %}{{ wallet.wallet_type }}{% endif %}
+        </td>
+        <td>{{ wallet.currency }}</td>
+        <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
+          {{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}
+        </td>
+        <td>
+          <form method="POST" action="/wallets/{{ wallet.wallet_id }}/unarchive" style="display:inline;">
+            <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">Восстановить</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Создать кошелёк</h2>
+  <form method="POST" action="/wallets/create">
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" placeholder="Например: Наличные" required>
+    </div>
+    <div class="form-row">
+      <label>Тип кошелька</label>
+      <select name="wallet_type" required>
+        <option value="REGULAR" selected>Обычный</option>
+        <option value="CREDIT">Кредит</option>
+        <option value="SAVINGS">Накопления</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Валюта</label>
+      <select name="currency" required>
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+        <option value="RUB" selected>RUB</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Начальный баланс</label>
+      <input name="initial_balance" type="number" step="0.01" value="0" required>
+    </div>
+    <button type="submit">Создать</button>
+  </form>
+</div>
+
+<script>
+function toggleSettings(walletId) {
+  var el = document.getElementById('wallet-settings-' + walletId);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+</script>
+{% endblock %}

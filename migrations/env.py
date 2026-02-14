@@ -39,10 +39,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from app.db_sa import Base
-import app.models  # noqa: F401
+from app.infrastructure.db.session import Base
+import app.infrastructure.db.models  # noqa: F401 - импорт для autogenerate
 
 target_metadata = Base.metadata
 

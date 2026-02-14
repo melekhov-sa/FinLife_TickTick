@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Плановые операции - FinLife{% endblock %}
+
+{% block content %}
+<h1>Плановые операции</h1>
+
+<!-- Upcoming occurrences -->
+<div class="card">
+  <h2>Предстоящие операции</h2>
+  {% set active_occs = op_occurrences | selectattr('status', 'equalto', 'ACTIVE') | list %}
+  {% if active_occs %}
+    <table>
+      <thead>
+        <tr><th>Дата</th><th>Шаблон</th><th>Сумма</th><th>Действия</th></tr>
+      </thead>
+      <tbody>
+        {% for occ in active_occs %}
+          {% set tmpl = None %}
+          {% for t in op_templates if t.template_id == occ.template_id %}
+            {% set tmpl = t %}
+          {% endfor %}
+        <tr>
+          <td class="{% if occ.scheduled_date == today %}positive{% elif occ.scheduled_date < today %}negative{% endif %}">
+            {{ occ.scheduled_date.strftime('%d.%m.%Y') }}
+            {% if occ.scheduled_date == today %}<small>(сегодня)</small>{% endif %}
+          </td>
+          <td>
+            {% if tmpl %}
+              {{ tmpl.title }}
+              <br><small class="muted">
+                {% if tmpl.kind == 'INCOME' %}Доход{% elif tmpl.kind == 'EXPENSE' %}Расход{% else %}Перевод{% endif %}
+              </small>
+            {% else %}
+              <span class="muted">Шаблон #{{ occ.template_id }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tmpl %}
+              {{ "{:,.2f}".format(tmpl.amount).replace(",", " ") }}
+            {% endif %}
+          </td>
+          <td style="white-space: nowrap;">
+            <form method="POST" action="/planned-operations/occurrences/{{ occ.id }}/confirm" style="display:inline;">
+              <button type="submit" style="font-size: 12px; padding: 4px 10px;"
+                      onclick="return confirm('Подтвердить операцию? Будет создана реальная транзакция.')">Подтвердить</button>
+            </form>
+            <form method="POST" action="/planned-operations/occurrences/{{ occ.id }}/skip" style="display:inline;">
+              <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">Пропустить</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Нет предстоящих операций</p>
+  {% endif %}
+</div>
+
+<!-- Completed/skipped occurrences -->
+{% set done_occs = op_occurrences | rejectattr('status', 'equalto', 'ACTIVE') | list %}
+{% if done_occs %}
+<div class="card">
+  <details>
+    <summary class="muted" style="cursor: pointer;">Обработанные ({{ done_occs | length }})</summary>
+    <table>
+      <thead><tr><th>Дата</th><th>Шаблон</th><th>Статус</th></tr></thead>
+      <tbody>
+        {% for occ in done_occs %}
+          {% set tmpl = None %}
+          {% for t in op_templates if t.template_id == occ.template_id %}{% set tmpl = t %}{% endfor %}
+        <tr style="opacity: 0.6;">
+          <td>{{ occ.scheduled_date.strftime('%d.%m.%Y') }}</td>
+          <td>{{ tmpl.title if tmpl else 'Шаблон #' ~ occ.template_id }}</td>
+          <td>
+            {% if occ.status == 'DONE' %}<span class="positive">Подтверждено</span>
+            {% else %}<span class="muted">Пропущено</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</div>
+{% endif %}
+
+<!-- Active templates -->
+<div class="card">
+  <h2>Шаблоны</h2>
+  {% if op_templates %}
+    <table>
+      <thead><tr><th>Название</th><th>Тип</th><th>Сумма</th><th>Частота</th></tr></thead>
+      <tbody>
+        {% for tmpl in op_templates %}
+        <tr>
+          <td>{{ tmpl.title }}</td>
+          <td>
+            {% if tmpl.kind == 'INCOME' %}Доход
+            {% elif tmpl.kind == 'EXPENSE' %}Расход
+            {% else %}Перевод{% endif %}
+          </td>
+          <td>{{ "{:,.2f}".format(tmpl.amount).replace(",", " ") }}</td>
+          <td class="muted">rule #{{ tmpl.rule_id }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Нет шаблонов</p>
+  {% endif %}
+</div>
+
+<!-- Create operation template -->
+<div class="card">
+  <h2>Создать плановую операцию</h2>
+  {% if error %}
+    <div class="error-card">{{ error }}</div>
+  {% endif %}
+  <form method="POST" action="/planned-operations/create" id="opForm">
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" placeholder="Например: Зарплата" required>
+    </div>
+    <div class="form-row">
+      <label>Тип</label>
+      <select name="kind" id="opKind" required>
+        <option value="INCOME">Доход</option>
+        <option value="EXPENSE" selected>Расход</option>
+        <option value="TRANSFER">Перевод</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Сумма</label>
+      <input name="amount" type="number" step="0.01" min="0.01" required>
+    </div>
+
+    <!-- Блок доход/расход -->
+    <div id="blockIncomeExpense">
+      <div class="form-row">
+        <label>Кошелёк</label>
+        <select name="wallet_id" id="selWallet">
+          <option value="">— Выбрать —</option>
+          {% for w in wallets if w.wallet_type != 'CREDIT' %}
+            <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Категория</label>
+        <select name="category_id" id="selCategory">
+          <option value="">— Выбрать —</option>
+          {% for c in fin_categories %}
+            <option value="{{ c.category_id }}">{{ c.title }} ({{ c.category_type }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Блок перевод -->
+    <div id="blockTransfer" style="display: none;">
+      <div class="form-row">
+        <label>Из кошелька</label>
+        <select name="from_wallet_id" id="selFrom" disabled>
+          <option value="">— Выбрать —</option>
+          {% for w in wallets if w.wallet_type != 'CREDIT' %}
+            <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>В кошелёк</label>
+        <select name="to_wallet_id" id="selTo" disabled>
+          <option value="">— Выбрать —</option>
+          {% for w in wallets if w.wallet_type != 'CREDIT' %}
+            <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Частота</label>
+      <select name="freq" required>
+        <option value="MONTHLY" selected>Ежемесячно</option>
+        <option value="WEEKLY">Еженедельно</option>
+        <option value="DAILY">Ежедневно</option>
+        <option value="YEARLY">Ежегодно</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Интервал</label>
+      <input name="interval" type="number" value="1" min="1" style="max-width: 80px;">
+    </div>
+    <div class="form-row">
+      <label>День месяца (для MONTHLY)</label>
+      <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31">
+    </div>
+    <div class="form-row">
+      <label>Начать с</label>
+      <input name="start_date" type="date" value="{{ today.isoformat() }}" required>
+    </div>
+    <div class="form-row">
+      <label>Заметка</label>
+      <input name="note" placeholder="Опционально">
+    </div>
+    <button type="submit">Создать</button>
+  </form>
+</div>
+
+<script>
+(function() {
+  var kind = document.getElementById('opKind');
+  var blockIE = document.getElementById('blockIncomeExpense');
+  var blockTR = document.getElementById('blockTransfer');
+  var selWallet = document.getElementById('selWallet');
+  var selCategory = document.getElementById('selCategory');
+  var selFrom = document.getElementById('selFrom');
+  var selTo = document.getElementById('selTo');
+
+  function toggle() {
+    var isTransfer = kind.value === 'TRANSFER';
+    blockIE.style.display = isTransfer ? 'none' : '';
+    blockTR.style.display = isTransfer ? '' : 'none';
+    // disable hidden fields so they don't submit
+    selWallet.disabled = isTransfer;
+    selCategory.disabled = isTransfer;
+    selFrom.disabled = !isTransfer;
+    selTo.disabled = !isTransfer;
+    // clear hidden fields
+    if (isTransfer) {
+      selWallet.value = '';
+      selCategory.value = '';
+    } else {
+      selFrom.value = '';
+      selTo.value = '';
+    }
+  }
+
+  kind.addEventListener('change', toggle);
+  toggle(); // init
+})();
+</script>
+{% endblock %}

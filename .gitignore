@@ -206,5 +206,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Windows reserved device names
+nul
+NUL
+**/nul
+**/NUL
+
 .env
 

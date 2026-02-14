@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Архив привычек - FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+  <a href="/habits" style="text-decoration: none; font-size: 20px; color: #666;">&larr;</a>
+  <h1 style="margin: 0;">Архив привычек</h1>
+</div>
+
+{% if habits %}
+<div class="card">
+  <table>
+    <thead><tr><th>Название</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for h in habits %}
+      <tr>
+        <td>
+          {{ h.title }}
+          {% if h.note %}<br><small class="muted">{{ h.note }}</small>{% endif %}
+        </td>
+        <td>
+          <form method="POST" action="/habits/{{ h.habit_id }}/unarchive" style="display:inline;">
+            <button type="submit" style="font-size: 12px; padding: 4px 10px;">Восстановить</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">Архив пуст</p>
+</div>
+{% endif %}
+{% endblock %}

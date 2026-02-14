@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Бюджет{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+
+{% block content %}
+<h1>Бюджет</h1>
+
+<!-- Grain selector -->
+<div class="grain-selector">
+  {% for g in grains %}
+  <a href="{{ g.url }}" class="{% if grain == g.value %}active{% endif %}">{{ g.label }}</a>
+  {% endfor %}
+</div>
+
+<!-- Controls: range_count + anchor -->
+<form class="matrix-controls" method="GET" action="/budget">
+  <input type="hidden" name="grain" value="{{ grain }}">
+  {% if category_ids_str %}
+  <input type="hidden" name="category_ids" value="{{ category_ids_str }}">
+  {% endif %}
+  <label>Периодов:</label>
+  <input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" style="width:60px">
+  {% if grain == "month" %}
+  <select name="month">
+    {% for m in range(1, 13) %}
+    <option value="{{ m }}" {% if anchor_month == m %}selected{% endif %}>
+      {{ ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"][m-1] }}
+    </option>
+    {% endfor %}
+  </select>
+  <input name="year" type="number" value="{{ anchor_year }}" style="width:70px">
+  {% elif grain == "year" %}
+  <label>С года:</label>
+  <input name="year" type="number" value="{{ anchor_year }}" style="width:70px">
+  {% else %}
+  <label>Дата:</label>
+  <input name="date" type="date" value="{{ anchor_date }}">
+  {% endif %}
+  <button type="submit">Применить</button>
+</form>
+
+<!-- Period navigation -->
+<div class="budget-nav">
+  <a href="{{ prev_url }}">&larr; Пред</a>
+  <span class="budget-month-title">
+    {{ view.periods[0].label }}{% if view.periods|length > 1 %} — {{ view.periods[-1].label }}{% endif %}
+  </span>
+  <a href="{{ next_url }}">След &rarr;</a>
+</div>
+
+<!-- Category filter -->
+<details class="filter-panel">
+  <summary>Фильтр категорий{% if selected_category_ids %} ({{ selected_category_ids|length }}){% endif %}</summary>
+  <div class="filter-body">
+    <div class="filter-actions">
+      <button type="button" onclick="selectAllCategories()">Выбрать все</button>
+      <button type="button" onclick="resetCategories()">Сбросить</button>
+    </div>
+    <div class="category-checkboxes" id="cat-filter-checkboxes">
+      {% for cat in view.all_categories %}
+      <label>
+        <input type="checkbox" name="cat" value="{{ cat.category_id }}"
+               {% if cat.category_id in selected_category_ids %}checked{% endif %}>
+        {{ cat.title }}
+        <span class="badge">{% if cat.category_type == 'INCOME' %}доход{% else %}расход{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="button" onclick="applyFilter()">Применить</button>
+  </div>
+</details>
+
+<!-- ============ INCOME MATRIX ============ -->
+<div class="card">
+  <div class="budget-section-title">Доходы</div>
+  <div class="matrix-scroll-wrapper">
+    <table class="budget-table matrix-table">
+      <thead>
+        <tr>
+          <th class="sticky-col">Категория</th>
+          {% for p in view.periods %}
+          <th colspan="2" class="period-header">{{ p.short_label }}</th>
+          {% endfor %}
+          <th colspan="2" class="period-header total-header">Итого</th>
+        </tr>
+        <tr>
+          <th class="sticky-col"></th>
+          {% for p in view.periods %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+          {% endfor %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.income_rows %}
+        <tr>
+          <td class="sticky-col">{{ row.title }}</td>
+          {% for cell in row.cells %}
+          <td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>
+          <td class="text-right total-cell {% if row.total.deviation > 0 %}positive{% elif row.total.deviation < 0 %}negative{% endif %}">{{ fmt(row.total.fact) }}</td>
+        </tr>
+        {% endfor %}
+        <!-- Прочие доходы -->
+        {% set oi = view.other_income %}
+        {% set oi_has_data = oi.total.fact != 0 or oi.total.plan != 0 %}
+        {% if oi_has_data %}
+        <tr class="muted">
+          <td class="sticky-col">Прочие доходы</td>
+          {% for cell in oi.cells %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(oi.total.plan) }}</td>
+          <td class="text-right total-cell">{{ fmt(oi.total.fact) }}</td>
+        </tr>
+        {% endif %}
+        <!-- ИТОГО доходы -->
+        <tr class="budget-total-row">
+          <td class="sticky-col">ИТОГО доходы</td>
+          {% for cell in view.income_totals.cells %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(view.income_totals.total.plan) }}</td>
+          <td class="text-right total-cell">{{ fmt(view.income_totals.total.fact) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ EXPENSE MATRIX ============ -->
+<div class="card">
+  <div class="budget-section-title">Расходы</div>
+  <div class="matrix-scroll-wrapper">
+    <table class="budget-table matrix-table">
+      <thead>
+        <tr>
+          <th class="sticky-col">Категория</th>
+          {% for p in view.periods %}
+          <th colspan="2" class="period-header">{{ p.short_label }}</th>
+          {% endfor %}
+          <th colspan="2" class="period-header total-header">Итого</th>
+        </tr>
+        <tr>
+          <th class="sticky-col"></th>
+          {% for p in view.periods %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+          {% endfor %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.expense_rows %}
+        <tr>
+          <td class="sticky-col">{{ row.title }}</td>
+          {% for cell in row.cells %}
+          <td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>
+          <td class="text-right total-cell {% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}">{{ fmt(row.total.fact) }}</td>
+        </tr>
+        {% endfor %}
+        <!-- Прочие расходы -->
+        {% set oe = view.other_expense %}
+        {% set oe_has_data = oe.total.fact != 0 or oe.total.plan != 0 %}
+        {% if oe_has_data %}
+        <tr class="muted">
+          <td class="sticky-col">Прочие расходы</td>
+          {% for cell in oe.cells %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(oe.total.plan) }}</td>
+          <td class="text-right total-cell">{{ fmt(oe.total.fact) }}</td>
+        </tr>
+        {% endif %}
+        <!-- ИТОГО расходы -->
+        <tr class="budget-total-row">
+          <td class="sticky-col">ИТОГО расходы</td>
+          {% for cell in view.expense_totals.cells %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(view.expense_totals.total.plan) }}</td>
+          <td class="text-right total-cell">{{ fmt(view.expense_totals.total.fact) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ RESULT ============ -->
+<div class="card">
+  <div class="budget-section-title">Результат (доходы &minus; расходы)</div>
+  <div class="matrix-scroll-wrapper">
+    <table class="budget-table matrix-table">
+      <thead>
+        <tr>
+          <th class="sticky-col"></th>
+          {% for p in view.periods %}
+          <th class="period-header">{{ p.short_label }}</th>
+          {% endfor %}
+          <th class="period-header total-header">Итого</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="sticky-col">План</td>
+          {% for cell in view.result.cells %}
+          <td class="text-right compact-cell period-border {% if cell.plan >= 0 %}positive{% else %}negative{% endif %}">
+            {% if cell.plan > 0 %}+{% endif %}{{ fmt(cell.plan) }}
+          </td>
+          {% endfor %}
+          <td class="text-right total-cell period-border {% if view.result.total.plan >= 0 %}positive{% else %}negative{% endif %}">
+            {% if view.result.total.plan > 0 %}+{% endif %}{{ fmt(view.result.total.plan) }}
+          </td>
+        </tr>
+        <tr>
+          <td class="sticky-col">Факт</td>
+          {% for cell in view.result.cells %}
+          <td class="text-right compact-cell period-border {% if cell.fact >= 0 %}positive{% else %}negative{% endif %}">
+            {% if cell.fact > 0 %}+{% endif %}{{ fmt(cell.fact) }}
+          </td>
+          {% endfor %}
+          <td class="text-right total-cell period-border {% if view.result.total.fact >= 0 %}positive{% else %}negative{% endif %}">
+            {% if view.result.total.fact > 0 %}+{% endif %}{{ fmt(view.result.total.fact) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function selectAllCategories() {
+  document.querySelectorAll('#cat-filter-checkboxes input[type="checkbox"]').forEach(function(cb) { cb.checked = true; });
+}
+function resetCategories() {
+  document.querySelectorAll('#cat-filter-checkboxes input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+}
+function applyFilter() {
+  var checked = [];
+  document.querySelectorAll('#cat-filter-checkboxes input[type="checkbox"]:checked').forEach(function(cb) {
+    checked.push(cb.value);
+  });
+  var url = new URL(window.location.href);
+  if (checked.length > 0) {
+    url.searchParams.set('category_ids', checked.join(','));
+  } else {
+    url.searchParams.delete('category_ids');
+  }
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

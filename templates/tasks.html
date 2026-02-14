@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Задачи - FinLife{% endblock %}
+
+{% block content %}
+<h1>Задачи</h1>
+
+<!-- One-off tasks -->
+<div class="card">
+  <h2>Разовые задачи</h2>
+  {% set active_tasks = tasks | selectattr('status', 'equalto', 'ACTIVE') | list %}
+  {% set done_tasks = tasks | selectattr('status', 'equalto', 'DONE') | list %}
+
+  {% if active_tasks %}
+    <table>
+      <thead>
+        <tr><th>Задача</th><th>Срок</th><th>Действия</th></tr>
+      </thead>
+      <tbody>
+        {% for task in active_tasks %}
+        <tr>
+          <td>
+            {{ task.title }}
+            {% if task.note %}<br><small class="muted">{{ task.note }}</small>{% endif %}
+          </td>
+          <td class="{% if task.due_date and task.due_date < today %}negative{% endif %}">
+            {{ task.due_date.strftime('%d.%m.%Y') if task.due_date else '—' }}
+          </td>
+          <td style="white-space: nowrap;">
+            <form method="POST" action="/tasks/{{ task.task_id }}/complete" style="display:inline;">
+              <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
+            </form>
+            <form method="POST" action="/tasks/{{ task.task_id }}/archive" style="display:inline;">
+              <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;">Убрать</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">Нет активных задач</p>
+  {% endif %}
+
+  {% if done_tasks %}
+    <details style="margin-top: 12px;">
+      <summary class="muted" style="cursor: pointer;">Выполненные ({{ done_tasks | length }})</summary>
+      <table>
+        <tbody>
+          {% for task in done_tasks %}
+          <tr style="opacity: 0.5;">
+            <td><s>{{ task.title }}</s></td>
+            <td class="muted">{{ task.completed_at.strftime('%d.%m %H:%M') if task.completed_at else '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
+</div>
+
+<!-- Recurring task occurrences -->
+{% if task_templates %}
+<div class="card">
+  <h2>Повторяющиеся задачи</h2>
+  {% for tmpl in task_templates %}
+    <h3 style="margin-bottom: 4px;">{{ tmpl.title }}</h3>
+    {% set tmpl_occs = task_occurrences | selectattr('template_id', 'equalto', tmpl.template_id) | list %}
+    {% if tmpl_occs %}
+    <table>
+      <thead><tr><th>Дата</th><th>Статус</th><th>Действия</th></tr></thead>
+      <tbody>
+        {% for occ in tmpl_occs %}
+        <tr>
+          <td class="{% if occ.scheduled_date == today %}positive{% elif occ.scheduled_date < today and occ.status == 'ACTIVE' %}negative{% endif %}">
+            {{ occ.scheduled_date.strftime('%d.%m.%Y') }}
+            {% if occ.scheduled_date == today %}<small>(сегодня)</small>{% endif %}
+          </td>
+          <td>
+            {% if occ.status == 'DONE' %}<span class="positive">Выполнено</span>
+            {% elif occ.status == 'SKIPPED' %}<span class="muted">Пропущено</span>
+            {% else %}Активно{% endif %}
+          </td>
+          <td style="white-space: nowrap;">
+            {% if occ.status == 'ACTIVE' %}
+              <form method="POST" action="/tasks/occurrences/{{ occ.id }}/complete" style="display:inline;">
+                <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
+              </form>
+              <form method="POST" action="/tasks/occurrences/{{ occ.id }}/skip" style="display:inline;">
+                <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">Пропустить</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="muted">Нет предстоящих</p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Create task (unified form) -->
+<div class="card">
+  <h2>Создать задачу</h2>
+  {% if error %}
+    <div class="error-card">{{ error }}</div>
+  {% endif %}
+  <form method="POST" action="/tasks/create" id="taskForm">
+
+    <!-- Mode toggle -->
+    <div class="form-row" style="display: flex; gap: 0; margin-bottom: 16px;">
+      <button type="button" id="btnOnce" onclick="setMode('once')"
+              style="flex:1; border-radius: 6px 0 0 6px; font-size: 13px; padding: 6px 0;">Один раз</button>
+      <button type="button" id="btnRecurring" onclick="setMode('recurring')" class="secondary"
+              style="flex:1; border-radius: 0 6px 6px 0; font-size: 13px; padding: 6px 0;">Повторяется</button>
+    </div>
+    <input type="hidden" name="mode" id="taskMode" value="once">
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" placeholder="Что нужно сделать?" required>
+    </div>
+
+    <!-- One-off fields -->
+    <div id="blockOnce">
+      <div class="form-row">
+        <label>Срок</label>
+        <input name="due_date" type="date">
+      </div>
+    </div>
+
+    <!-- Recurring fields -->
+    <div id="blockRecurring" style="display: none;">
+      <div class="form-row">
+        <label>Частота</label>
+        <select name="freq" id="taskFreq">
+          <option value="DAILY">Ежедневно</option>
+          <option value="WEEKLY">Еженедельно</option>
+          <option value="MONTHLY" selected>Ежемесячно</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Интервал</label>
+        <input name="interval" type="number" value="1" min="1" style="max-width: 80px;">
+      </div>
+
+      <!-- WEEKLY: weekday checkboxes -->
+      <div id="blockWeekdays" style="display: none;">
+        <div class="form-row">
+          <label>Дни недели</label>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            {% set days = [('MO','Пн'),('TU','Вт'),('WE','Ср'),('TH','Чт'),('FR','Пт'),('SA','Сб'),('SU','Вс')] %}
+            {% for code, label in days %}
+            <label style="display:flex; align-items:center; gap:3px; font-size:13px; cursor:pointer;">
+              <input type="checkbox" name="weekday_{{ code }}" value="1"> {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- MONTHLY: day of month -->
+      <div id="blockMonthday" style="display: none;">
+        <div class="form-row">
+          <label>День месяца</label>
+          <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31" style="max-width: 80px;">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Начать с</label>
+        <input name="start_date" type="date" value="{{ today.isoformat() }}">
+      </div>
+    </div>
+
+    <!-- Shared fields -->
+    <div class="form-row">
+      <label>Категория</label>
+      <select name="category_id">
+        <option value="">— Без категории —</option>
+        {% for cat in work_categories %}
+          <option value="{{ cat.category_id }}">{{ cat.emoji or '' }} {{ cat.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <details style="margin-bottom: 12px;">
+      <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
+      <div class="form-row" style="margin-top: 8px;">
+        <input name="note" placeholder="Опционально">
+      </div>
+    </details>
+
+    <button type="submit">Создать</button>
+  </form>
+</div>
+
+<script>
+(function() {
+  var mode = 'once';
+  var btnOnce = document.getElementById('btnOnce');
+  var btnRecurring = document.getElementById('btnRecurring');
+  var blockOnce = document.getElementById('blockOnce');
+  var blockRecurring = document.getElementById('blockRecurring');
+  var taskMode = document.getElementById('taskMode');
+  var taskFreq = document.getElementById('taskFreq');
+  var blockWeekdays = document.getElementById('blockWeekdays');
+  var blockMonthday = document.getElementById('blockMonthday');
+
+  window.setMode = function(m) {
+    mode = m;
+    taskMode.value = m;
+    if (m === 'once') {
+      btnOnce.className = '';
+      btnRecurring.className = 'secondary';
+      blockOnce.style.display = '';
+      blockRecurring.style.display = 'none';
+    } else {
+      btnOnce.className = 'secondary';
+      btnRecurring.className = '';
+      blockOnce.style.display = 'none';
+      blockRecurring.style.display = '';
+      toggleFreqFields();
+    }
+  };
+
+  function toggleFreqFields() {
+    var freq = taskFreq.value;
+    blockWeekdays.style.display = freq === 'WEEKLY' ? '' : 'none';
+    blockMonthday.style.display = freq === 'MONTHLY' ? '' : 'none';
+  }
+
+  taskFreq.addEventListener('change', toggleFreqFields);
+  toggleFreqFields();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Привычки - FinLife{% endblock %}
+
+{% block content %}
+{% set level_labels = {1: 'Простая', 2: 'Средняя', 3: 'Сложная'} %}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Привычки</h1>
+  <div style="display: flex; gap: 8px;">
+    <a href="/habits/new" class="btn" style="font-size: 13px;">+ Создать привычку</a>
+    <a href="/habits/archive" class="btn secondary" style="font-size: 13px;">Архив</a>
+  </div>
+</div>
+
+<!-- 1. Сегодня -->
+<div class="card">
+  <h2>Сегодня</h2>
+  {% if today_data %}
+    {% for item in today_data %}
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0;
+                {% if not loop.last %}border-bottom: 1px solid #eee;{% endif %}
+                {% if item.occ.status == 'DONE' %}opacity: 0.6;{% endif %}">
+      <div style="flex: 1;">
+        <div style="font-weight: 600;">
+          {{ item.habit.title }}
+          <span class="badge-level badge-level-{{ item.habit.level }}">{{ level_labels[item.habit.level] }}</span>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-top: 2px;">
+          <span title="Текущий стрик">{{ item.habit.current_streak }} streak</span>
+          &middot;
+          <span title="Лучший стрик">best {{ item.habit.best_streak }}</span>
+          &middot;
+          <span title="% за 30 дней">{{ item.pct_30 }}% / 30д</span>
+        </div>
+      </div>
+      <div>
+        {% if item.occ.status == 'DONE' %}
+          <span style="font-size: 28px; color: #28a745;">&#10003;</span>
+        {% else %}
+          <form method="POST" action="/habits/occurrences/{{ item.occ.id }}/toggle" style="display:inline;">
+            <button type="submit" style="font-size: 20px; padding: 8px 20px; background: #28a745;">&#10003;</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Сегодня нет запланированных привычек</p>
+  {% endif %}
+</div>
+
+<!-- 2. Heatmap (90 дней) -->
+{% if heatmap %}
+<div class="card">
+  <h2>Активность (90 дней)</h2>
+  <div class="heatmap">
+    {% for cell in heatmap %}
+    <div class="heatmap-cell heat-{{ cell.level }}" title="{{ cell.date.strftime('%d.%m.%Y') }}: {{ cell.done }}/{{ cell.total }}"></div>
+    {% endfor %}
+  </div>
+  <div style="display: flex; gap: 4px; align-items: center; margin-top: 8px; font-size: 11px; color: #999;">
+    <span>Меньше</span>
+    <div class="heatmap-cell heat-0"></div>
+    <div class="heatmap-cell heat-1"></div>
+    <div class="heatmap-cell heat-2"></div>
+    <div class="heatmap-cell heat-3"></div>
+    <div class="heatmap-cell heat-4"></div>
+    <span>Больше</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- 3. Milestones -->
+{% if milestones %}
+<div class="card">
+  <h2>Достижения</h2>
+  {% for m in milestones %}
+  <div style="padding: 6px 0; {% if not loop.last %}border-bottom: 1px solid #eee;{% endif %}">
+    <span class="badge-milestone">{{ m.threshold }} дней</span>
+    <span style="margin-left: 4px;">{{ m.habit_title }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- 4. Аналитика -->
+{% if analytics.today_total > 0 or analytics.best_streak > 0 %}
+<div class="card">
+  <h2>Аналитика</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Сегодня</div>
+      <div class="stat-value">{{ analytics.today_done }} / {{ analytics.today_total }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">7 дней</div>
+      <div class="stat-value">{{ analytics.week_pct }}%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">30 дней</div>
+      <div class="stat-value">{{ analytics.month_pct }}%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Лучший стрик</div>
+      <div class="stat-value">{{ analytics.best_streak }}</div>
+    </div>
+  </div>
+
+  {% if analytics.daily_stats %}
+  <div style="margin-top: 12px;">
+    <div class="muted" style="font-size: 12px; margin-bottom: 8px;">Выполнение за 14 дней</div>
+    <div style="display: flex; gap: 3px; align-items: flex-end; height: 80px;">
+      {% for ds in analytics.daily_stats %}
+        {% set pct = (ds.done / ds.total * 100) if ds.total > 0 else 0 %}
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;" title="{{ ds.date.strftime('%d.%m') }}: {{ ds.done }}/{{ ds.total }}">
+          <div style="width: 100%; background: {% if pct == 100 %}#28a745{% elif pct > 0 %}#ffc107{% else %}#eee{% endif %};
+                      height: {{ [pct * 0.7, 4] | max }}px; border-radius: 2px; min-height: 4px;"></div>
+          <div style="font-size: 9px; color: #999; margin-top: 2px;">{{ ds.date.strftime('%d') }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- 5. Все привычки (14-дневная лента) -->
+{% if grid_data %}
+<div class="card">
+  <h2>Все привычки</h2>
+  {% for item in grid_data %}
+  <div style="padding: 12px 0; {% if not loop.last %}border-bottom: 1px solid #eee;{% endif %}">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div>
+        <span style="font-weight: 600;">{{ item.habit.title }}</span>
+        <span class="badge-level badge-level-{{ item.habit.level }}">{{ level_labels[item.habit.level] }}</span>
+        <span class="muted" style="font-size: 12px; margin-left: 8px;">
+          streak {{ item.habit.current_streak }} &middot; best {{ item.habit.best_streak }} &middot; {{ item.pct_30 }}%
+        </span>
+      </div>
+      <form method="POST" action="/habits/{{ item.habit.habit_id }}/archive" style="display:inline;">
+        <button type="submit" class="danger" style="font-size: 11px; padding: 3px 8px;"
+                onclick="return confirm('Архивировать «{{ item.habit.title }}»?')">Архив</button>
+      </form>
+    </div>
+
+    <!-- 14-day grid -->
+    <div style="display: flex; gap: 3px;">
+      {% for day in item.days %}
+      <div style="flex: 1; text-align: center; min-width: 0;">
+        <div style="font-size: 9px; color: #999;">{{ day.date.strftime('%d') }}</div>
+        {% if day.occ_id %}
+          <form method="POST" action="/habits/occurrences/{{ day.occ_id }}/toggle" style="margin: 0;">
+            <button type="submit" style="width: 100%; padding: 4px 0; font-size: 14px; border-radius: 4px; border: none; cursor: pointer;
+              {% if day.status == 'DONE' %}background: #28a745; color: white;
+              {% elif day.status == 'SKIPPED' %}background: #e9ecef; color: #999;
+              {% else %}background: #f0f0f0; color: #ccc;{% endif %}
+              {% if day.date == today %}box-shadow: 0 0 0 2px #007AFF;{% endif %}"
+              title="{{ day.date.strftime('%d.%m.%Y') }}">{% if day.status == 'DONE' %}&#10003;{% elif day.status == 'SKIPPED' %}&#8212;{% else %}&middot;{% endif %}</button>
+          </form>
+        {% else %}
+          <div style="padding: 4px 0; font-size: 14px; color: #eee;
+            {% if day.date == today %}box-shadow: 0 0 0 2px #007AFF; border-radius: 4px;{% endif %}">&middot;</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">Нет активных привычек. <a href="/habits/new">Создайте первую!</a></p>
+</div>
+{% endif %}
+{% endblock %}

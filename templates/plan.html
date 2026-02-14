@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}План — FinLife{% endblock %}
+
+{% block content %}
+<h1>План</h1>
+
+<!-- KPI cards (active tab only) -->
+{% if tab == "active" %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">СЕГОДНЯ</div>
+    <div class="stat-value">{{ summary.today_count }}</div>
+    <div class="stat-sublabel">дел</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">7 ДНЕЙ</div>
+    <div class="stat-value">{{ summary.week_count }}</div>
+    <div class="stat-sublabel">дела</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">ПРОСРОЧЕНО</div>
+    <div class="stat-value {% if summary.overdue_count > 0 %}negative{% endif %}">{{ summary.overdue_count }}</div>
+    <div class="stat-sublabel">дел</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">СДЕЛАНО СЕГОДНЯ</div>
+    <div class="stat-value positive">{{ summary.done_today_count }}</div>
+    <div class="stat-sublabel">дела</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Tabs: Активные / Сделано / Архив -->
+<div class="plan-tabs">
+  <a href="/plan?tab=active&range={{ range_days }}" {% if tab == "active" %}class="active"{% endif %}>Активные</a>
+  <a href="/plan?tab=done&range={{ range_days }}" {% if tab == "done" %}class="active"{% endif %}>Сделано</a>
+  <a href="/plan?tab=archive&range={{ range_days }}" {% if tab == "archive" %}class="active"{% endif %}>Архив</a>
+</div>
+
+<!-- Range filter -->
+<div class="plan-ranges">
+  <a href="/plan?tab={{ tab }}&range=1" {% if range_days == 1 %}class="active"{% endif %}>Сегодня</a>
+  <a href="/plan?tab={{ tab }}&range=7" {% if range_days == 7 %}class="active"{% endif %}>7 дней</a>
+  <a href="/plan?tab={{ tab }}&range=30" {% if range_days == 30 %}class="active"{% endif %}>30 дней</a>
+  <a href="/plan?tab={{ tab }}&range=90" {% if range_days == 90 %}class="active"{% endif %}>90 дней</a>
+</div>
+
+<!-- Today progress bar (active tab, if there are items) -->
+{% if tab == "active" and today_progress.total > 0 %}
+<div class="card" style="padding: 16px 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <div>
+      <span style="font-weight: 600;">Сегодня</span>
+      <span class="muted" style="margin-left: 8px;">{{ today.strftime('%d.%m.%Y') }}</span>
+    </div>
+    {% if today_progress.done > 0 %}
+    <span class="badge" style="background: #d4edda; color: #155724;">&#10003; Прогресс есть</span>
+    {% endif %}
+  </div>
+  <div class="muted" style="margin-bottom: 8px; font-size: 13px;">
+    Всего: {{ today_progress.total }} &middot; Сделано: {{ today_progress.done }} &middot; Осталось: {{ today_progress.left }}
+  </div>
+  {% set pct = (today_progress.done / today_progress.total * 100) | int if today_progress.total > 0 else 0 %}
+  <div class="plan-progress">
+    <div class="plan-progress-fill" style="width: {{ pct }}%;"></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Timeline groups -->
+{% for group in day_groups %}
+<div class="card">
+  <div class="plan-group-title" style="{% if group.is_overdue_group %}color: #dc3545;{% elif group.is_today %}color: #007AFF;{% endif %}">
+    {{ group.date_label }}
+    {% if group.date %}
+    <span class="muted" style="font-weight: 400; text-transform: none; letter-spacing: 0;">{{ group.date.strftime('%d.%m.%Y') }}</span>
+    {% endif %}
+  </div>
+
+  {% for item in group.entries %}
+  <div class="plan-item {% if item.is_done %}done{% endif %}">
+    <div style="flex: 1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+      <!-- Type icon -->
+      <span class="plan-item-icon">
+        {% if item.kind == "event" %}&#128198;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% elif item.kind == "habit" %}&#128170;{% endif %}
+      </span>
+
+      <!-- Category emoji -->
+      {% if item.category_emoji %}{{ item.category_emoji }}{% endif %}
+
+      <!-- Title -->
+      {% if item.is_done %}<s class="muted">{{ item.title }}</s>{% else %}<span>{{ item.title }}</span>{% endif %}
+
+      <!-- Badges -->
+      {% if item.is_overdue %}
+      <span class="badge" style="background: #f8d7da; color: #721c24;">просрочено</span>
+      {% endif %}
+
+      {% if item.kind == "planned_op" %}
+      <span class="badge">{{ item.meta.op_kind_label }} {{ item.meta.amount_formatted }}</span>
+      {% endif %}
+
+      {% if item.kind == "habit" %}
+      <span class="badge-level badge-level-{{ item.meta.level }}">
+        {% if item.meta.level == 1 %}Простая{% elif item.meta.level == 2 %}Средняя{% else %}Сложная{% endif %}
+      </span>
+      {% if item.meta.current_streak > 0 %}
+      <small class="muted">&#128293; {{ item.meta.current_streak }} дн.</small>
+      {% endif %}
+      {% endif %}
+
+      {% if item.kind == "event" and item.meta.importance > 0 %}
+      <span class="badge">&#9733; {{ item.meta.importance }}</span>
+      {% endif %}
+
+      <!-- Time -->
+      {% if item.time %}
+      <small class="muted">{{ item.time.strftime('%H:%M') }}</small>
+      {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div style="white-space: nowrap; display: flex; gap: 4px;">
+      {% if not item.is_done %}
+
+        {% if item.kind == "task" %}
+        <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
+        </form>
+        {% endif %}
+
+        {% if item.kind == "task_occ" %}
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
+        </form>
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
+        </form>
+        {% endif %}
+
+        {% if item.kind == "planned_op" %}
+        <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2Fplan%3Ftab%3D{{ tab }}%26range%3D{{ range_days }}"
+           style="font-size: 12px; padding: 4px 10px; display: inline-block; text-decoration: none; border: 1px solid #007AFF; border-radius: 4px; color: #007AFF; background: #fff;">&#10003;</a>
+        <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
+        </form>
+        {% endif %}
+
+        {% if item.kind == "habit" %}
+        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px; background: #28a745;">&#10003;</button>
+        </form>
+        {% endif %}
+
+        {% if item.kind == "event" %}
+        <form method="POST" action="/plan/event-occurrences/{{ item.meta.occurrence_id }}/cancel" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;">&#10005;</button>
+        </form>
+        {% endif %}
+
+      {% else %}
+        {% if item.kind == "habit" %}
+        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
+          <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8634;</button>
+        </form>
+        {% endif %}
+        <span class="positive" style="font-size: 18px;">&#10003;</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+{% if not day_groups %}
+<div class="card">
+  <p class="muted" style="text-align: center; padding: 24px 0;">Нет элементов для отображения</p>
+</div>
+{% endif %}
+
+{% endblock %}

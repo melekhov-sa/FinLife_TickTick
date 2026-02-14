@@ -1,7 +1,7 @@
-﻿from passlib.context import CryptContext
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.models import User
+from app.infrastructure.db.models import User
 
 # Stable, no native deps (works great on Windows)
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
