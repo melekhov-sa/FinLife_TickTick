@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{{ "Создать" if mode == "new" else "Настройки" }} подписки — FinLife{% endblock %}
+
+{% block content %}
+<h1>{{ "Создать подписку" if mode == "new" else "Настройки подписки" }}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  <form method="POST" action="{{ '/subscriptions/new' if mode == 'new' else '/subscriptions/' ~ sub.id ~ '/edit' }}">
+    <div class="form-row">
+      <label>Название</label>
+      <input name="name" type="text" required placeholder="YouTube Premium"
+             value="{{ sub.name if sub else '' }}">
+    </div>
+
+    <div class="form-row">
+      <label>Статья расхода (моя оплата)</label>
+      <select name="expense_category_id" required>
+        <option value="">— Выберите —</option>
+        {% for c in expense_cats %}
+        <option value="{{ c.category_id }}"
+          {% if sub and sub.expense_category_id == c.category_id %}selected{% endif %}>
+          {{ c.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Статья дохода (компенсации)</label>
+      <select name="income_category_id" required>
+        <option value="">— Выберите —</option>
+        {% for c in income_cats %}
+        <option value="{{ c.category_id }}"
+          {% if sub and sub.income_category_id == c.category_id %}selected{% endif %}>
+          {{ c.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if mode == "edit" %}
+    <div style="margin-top: 16px;">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived"
+               {% if sub.is_archived %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Архивная подписка не будет предлагать блок периода в форме операций
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 20px; display: flex; gap: 12px;">
+      <button type="submit">{{ "Создать" if mode == "new" else "Сохранить" }}</button>
+      <a href="/subscriptions{% if mode == 'edit' and sub.is_archived %}?view=archived{% endif %}"
+         style="padding: 8px 16px; color: #666; text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+
+{% if mode == "edit" %}
+<!-- Members section -->
+<div class="card" style="margin-top: 24px;">
+  <h2 style="margin-top: 0; font-size: 18px;">Участники</h2>
+
+  {% if members %}
+    {% for m in members %}
+    {% set c = contact_map.get(m.contact_id) if contact_map else None %}
+    <div style="padding: 8px 0;{% if not loop.last %} border-bottom: 1px solid #f0f0f0;{% endif %}">
+      <div class="dash-item" style="padding: 0;">
+        <div class="dash-item-left">
+          <span {% if m.is_archived %}class="muted"{% endif %}>
+            {% if c %}<a href="/contacts/{{ c.id }}" style="text-decoration: none; color: inherit;">{{ c.name }}</a>{% else %}?{% endif %}
+          </span>
+          {% if c and c.note %}
+          <span class="muted" style="font-size: 13px;">{{ c.note }}</span>
+          {% endif %}
+          {% if m.is_archived %}
+          <span class="badge badge-archive">архив</span>
+          {% endif %}
+        </div>
+        <div class="dash-item-actions">
+          {% if m.is_archived %}
+          <form method="POST" action="/subscriptions/{{ sub.id }}/members/{{ m.id }}/unarchive" style="display:inline;">
+            <button type="submit" style="font-size: 12px; padding: 4px 10px;">Восстановить</button>
+          </form>
+          {% else %}
+          <form method="POST" action="/subscriptions/{{ sub.id }}/members/{{ m.id }}/archive" style="display:inline;">
+            <button type="submit" style="font-size: 12px; padding: 4px 10px; background: #dc3545; color: white; border: none; border-radius: 4px;">Архив</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      <!-- Payment fields -->
+      <form method="POST" action="/subscriptions/{{ sub.id }}/members/{{ m.id }}/payment"
+            style="display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+        <input name="payment_per_year" type="number" step="0.01" placeholder="в год"
+               value="{{ m.payment_per_year if m.payment_per_year is not none else '' }}"
+               style="width: 110px; font-size: 13px; padding: 4px 8px;">
+        <input name="payment_per_month" type="number" step="0.01" placeholder="в мес."
+               value="{{ m.payment_per_month if m.payment_per_month is not none else '' }}"
+               style="width: 110px; font-size: 13px; padding: 4px 8px;">
+        <button type="submit" style="font-size: 12px; padding: 4px 10px;">Сохранить</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Участников пока нет</p>
+  {% endif %}
+
+  <!-- Add member from contacts -->
+  {% if all_contacts %}
+  <form method="POST" action="/subscriptions/{{ sub.id }}/members"
+        style="display: flex; gap: 8px; align-items: flex-end; margin-top: 12px; flex-wrap: wrap;">
+    <div>
+      <label style="font-size: 13px;">Контакт</label>
+      <select name="contact_id" required style="max-width: 200px;">
+        <option value="">-- Выберите --</option>
+        {% for c in all_contacts %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <input name="payment_per_year" type="number" step="0.01" placeholder="в год"
+           style="width: 110px; font-size: 13px; padding: 4px 8px;">
+    <input name="payment_per_month" type="number" step="0.01" placeholder="в мес."
+           style="width: 110px; font-size: 13px; padding: 4px 8px;">
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Добавить</button>
+  </form>
+  {% else %}
+  <p class="muted" style="margin-top: 12px; font-size: 13px;">
+    <a href="/contacts/new">Создайте контакт</a>, чтобы добавить участника.
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

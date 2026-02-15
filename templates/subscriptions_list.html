@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Подписки — FinLife{% endblock %}
+
+{% macro fmt_date(d) %}{{ d.strftime('%d.%m.%Y') }}{% endmacro %}
+{% macro progress_color(days_left) %}{% if days_left < 0 %}#dc3545{% elif days_left < 7 %}#dc3545{% elif days_left < 30 %}#ffc107{% else %}#28a745{% endif %}{% endmacro %}
+
+{% block content %}
+<h1>Подписки</h1>
+
+<div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+  <a href="/subscriptions/new" class="btn" style="font-size: 14px;">+ Создать подписку</a>
+</div>
+
+<!-- Tabs -->
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/subscriptions?view=active{% if q %}&q={{ q }}{% endif %}"
+     {% if view != "archived" %}class="active"{% endif %}>Активные</a>
+  <a href="/subscriptions?view=archived{% if q %}&q={{ q }}{% endif %}"
+     {% if view == "archived" %}class="active"{% endif %}>Архивные</a>
+</div>
+
+<!-- Search -->
+<div class="card" style="padding: 12px 24px;">
+  <form method="GET" action="/subscriptions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <input type="hidden" name="view" value="{{ view }}">
+    <input name="q" type="text" value="{{ q }}" placeholder="Поиск по названию..."
+           style="flex: 1; max-width: 260px;">
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+    {% if q %}
+    <a href="/subscriptions?view={{ view }}" style="color: #666; text-decoration: none; font-size: 13px;">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- List -->
+<div class="card">
+  {% if subs %}
+    {% for s in subs %}
+    {% set ov = overview_map.get(s.id, {}) %}
+    <div style="padding: 10px 0;{% if not loop.last %} border-bottom: 1px solid #f0f0f0;{% endif %}">
+      <!-- Name row -->
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 15px;">
+          <a href="/subscriptions/{{ s.id }}" style="font-weight: 500; text-decoration: none; color: inherit;">
+            {{ s.name }}
+          </a>
+          {% set exp_cat = cat_map.get(s.expense_category_id) %}
+          {% set inc_cat = cat_map.get(s.income_category_id) %}
+          {% if exp_cat %}
+          <span class="badge badge-expense">{{ exp_cat.title }}</span>
+          {% endif %}
+          {% if inc_cat %}
+          <span class="badge badge-income">{{ inc_cat.title }}</span>
+          {% endif %}
+          {% if s.is_archived %}
+          <span class="badge badge-archive">архив</span>
+          {% endif %}
+        </div>
+        <a href="/subscriptions/{{ s.id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+      </div>
+
+      <!-- SELF progress -->
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px;">
+        <span style="min-width: 60px; color: #666;">Ты</span>
+        {% if ov.self %}
+        <div class="dash-progress-bar" style="flex: 1; max-width: 200px;">
+          <div class="dash-progress-fill" style="width: {{ ov.self.pct }}%; background: {{ progress_color(ov.self.days_left) }};"></div>
+        </div>
+        {% if ov.self.expired %}
+        <span style="color: #dc3545; font-weight: 500;">Истекла</span>
+        {% else %}
+        <span>до {{ fmt_date(ov.self.paid_until) }}</span>
+        <span class="muted">({{ ov.self.days_left }} дн.)</span>
+        {% endif %}
+        {% else %}
+        <span class="muted">нет данных</span>
+        {% endif %}
+      </div>
+
+      <!-- Members progress -->
+      {% for mi in ov.get('members', []) %}
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px;">
+        <span style="min-width: 60px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ mi.contact_name }}</span>
+        {% if mi.has_data %}
+        <div class="dash-progress-bar" style="flex: 1; max-width: 200px;">
+          <div class="dash-progress-fill" style="width: {{ mi.pct }}%; background: {{ progress_color(mi.days_left) }};"></div>
+        </div>
+        {% if mi.expired %}
+        <span style="color: #dc3545; font-weight: 500;">Истекла</span>
+        {% else %}
+        <span>до {{ fmt_date(mi.paid_until) }}</span>
+        <span class="muted">({{ mi.days_left }} дн.)</span>
+        {% endif %}
+        {% else %}
+        <span class="muted">нет данных</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted" style="text-align: center; padding: 24px 0;">
+      {% if view == "archived" %}Архивных подписок нет{% else %}Подписок нет{% endif %}
+    </p>
+    {% if view != "archived" %}
+    <div style="text-align: center; padding-bottom: 16px;">
+      <a href="/subscriptions/new" class="btn">Создать подписку</a>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

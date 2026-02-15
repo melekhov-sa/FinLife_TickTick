@@ -25,3 +25,7 @@ class WorkCategory:
     @staticmethod
     def archive(category_id: int) -> Dict[str, Any]:
         return {"category_id": category_id, "archived_at": datetime.utcnow().isoformat()}
+
+    @staticmethod
+    def unarchive(category_id: int) -> Dict[str, Any]:
+        return {"category_id": category_id, "unarchived_at": datetime.utcnow().isoformat()}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.name }} — FinLife{% endblock %}
+
+{% macro fmt_date(d) %}{{ d.strftime('%d.%m.%Y') }}{% endmacro %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <h1 style="margin: 0;">{{ contact.name }}</h1>
+  <a href="/contacts/{{ contact.id }}/edit" class="btn secondary" style="font-size: 13px;">&#9881; Настройки</a>
+  <a href="/contacts" style="color: #666; text-decoration: none; font-size: 13px;">&larr; К списку</a>
+</div>
+
+{% if contact.note %}
+<div class="card" style="padding: 12px 24px;">
+  <span class="muted">{{ contact.note }}</span>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="margin-top: 0; font-size: 16px;">Подписки</h2>
+
+  {% if subscriptions_info %}
+  {% for info in subscriptions_info %}
+  <div class="dash-item" style="padding: 8px 0;">
+    <div class="dash-item-left">
+      <a href="/subscriptions/{{ info.subscription.id }}" style="text-decoration: none; font-weight: 500; color: #333;">
+        {{ info.subscription.name }}
+      </a>
+      {% if info.subscription.is_archived %}
+      <span class="badge badge-archive">архив</span>
+      {% endif %}
+      {% if info.member_link.is_archived %}
+      <span class="badge badge-archive">участие архив</span>
+      {% endif %}
+    </div>
+    <div>
+      {% if info.paid_until %}
+        <span style="font-weight: 500;">до {{ fmt_date(info.paid_until) }}</span>
+      {% else %}
+        <span class="muted">нет данных</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 16px 0;">
+    Этот контакт пока не участвует ни в одной подписке.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

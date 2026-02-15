@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Создать плановую операцию{% else %}Настройки плановой операции{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Создать плановую операцию{% else %}Настройки плановой операции{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/planned-ops/new">
+  {% else %}
+  <form method="POST" action="/planned-ops/{{ tmpl.template_id }}/edit">
+  {% endif %}
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" required
+             value="{% if mode == 'new' %}{{ form_title or '' }}{% else %}{{ tmpl.title }}{% endif %}"
+             placeholder="Например: Зарплата">
+    </div>
+
+    <div class="form-row">
+      <label>Тип</label>
+      {% set current_kind = form_kind if mode == 'new' and form_kind is defined else (tmpl.kind if mode == 'edit' else 'EXPENSE') %}
+      <select name="kind">
+        <option value="EXPENSE" {% if current_kind == "EXPENSE" %}selected{% endif %}>Расход</option>
+        <option value="INCOME" {% if current_kind == "INCOME" %}selected{% endif %}>Доход</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Сумма</label>
+      <input name="amount" type="number" step="0.01" min="0.01" required
+             value="{% if mode == 'new' %}{{ form_amount or '' }}{% else %}{{ tmpl.amount }}{% endif %}"
+             style="max-width: 200px;">
+    </div>
+
+    <div class="form-row">
+      <label>Кошелёк</label>
+      <select name="wallet_id" required>
+        <option value="">— Выбрать —</option>
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}"
+          {% if mode == "new" and form_wallet_id is defined and form_wallet_id == w.wallet_id %}selected
+          {% elif mode == "edit" and tmpl.wallet_id == w.wallet_id %}selected
+          {% endif %}>
+          {{ w.title }} ({{ w.currency }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Категория</label>
+      <select name="category_id" required>
+        <option value="">— Выбрать —</option>
+        {% for c in fin_categories %}
+        <option value="{{ c.category_id }}"
+          {% if mode == "new" and form_category_id is defined and form_category_id == c.category_id %}selected
+          {% elif mode == "edit" and tmpl.category_id == c.category_id %}selected
+          {% endif %}>
+          {{ c.title }} ({{ c.category_type }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Заметка</label>
+      <input name="note"
+             value="{% if mode == 'new' %}{{ form_note or '' }}{% else %}{{ tmpl.note or '' }}{% endif %}"
+             placeholder="Необязательно">
+    </div>
+
+    {% if mode == "new" %}
+    <!-- Recurrence settings (only for new) -->
+    <div class="form-row">
+      <label>Частота</label>
+      <select name="freq" required>
+        <option value="MONTHLY" {% if form_freq is defined and form_freq == "MONTHLY" %}selected{% endif %}>Ежемесячно</option>
+        <option value="WEEKLY" {% if form_freq is defined and form_freq == "WEEKLY" %}selected{% endif %}>Еженедельно</option>
+        <option value="DAILY" {% if form_freq is defined and form_freq == "DAILY" %}selected{% endif %}>Ежедневно</option>
+        <option value="YEARLY" {% if form_freq is defined and form_freq == "YEARLY" %}selected{% endif %}>Ежегодно</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <div class="form-row" style="flex: 1; min-width: 100px;">
+        <label>Интервал</label>
+        <input name="interval" type="number" value="{{ form_interval if form_interval is defined else 1 }}" min="1" style="max-width: 80px;">
+      </div>
+      <div class="form-row" style="flex: 1; min-width: 100px;">
+        <label>День месяца</label>
+        <input name="by_monthday" type="number" min="1" max="31"
+               value="{{ form_by_monthday if form_by_monthday is defined and form_by_monthday else '' }}"
+               placeholder="1-31" style="max-width: 80px;">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Начать с</label>
+      <input name="start_date" type="date"
+             value="{{ form_start_date if form_start_date is defined and form_start_date else today.isoformat() }}"
+             required>
+    </div>
+    {% endif %}
+
+    {% if mode == "edit" %}
+    <!-- Recurrence info (read-only for edit) -->
+    {% if rule %}
+    <div class="form-row">
+      <label>Частота</label>
+      <input type="text" disabled value="{% if rule.freq == 'MONTHLY' %}Ежемесячно{% elif rule.freq == 'WEEKLY' %}Еженедельно{% elif rule.freq == 'DAILY' %}Ежедневно{% elif rule.freq == 'YEARLY' %}Ежегодно{% else %}{{ rule.freq }}{% endif %}{% if rule.interval > 1 %} (каждые {{ rule.interval }}){% endif %}{% if rule.by_monthday %}, день {{ rule.by_monthday }}{% endif %}">
+    </div>
+    {% endif %}
+
+    {% if has_confirmed %}
+    <div style="background: #e8f0fe; border: 1px solid #c4d8f5; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+      <strong>Версионирование:</strong> У этого правила есть подтверждённые или пропущенные вхождения.
+      Изменение суммы, кошелька, категории или типа создаст новую версию правила с указанной даты.
+    </div>
+    <div class="form-row">
+      <label>Новая версия с даты</label>
+      <input name="version_from_date" type="date" value="{{ today.isoformat() }}">
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Текущее правило будет закрыто за день до этой даты
+      </small>
+    </div>
+    {% endif %}
+
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived" {% if tmpl.is_archived %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Архивные шаблоны не генерируют новые вхождения
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      <a href="/planned-ops" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      <a href="/planned-ops?view={% if tmpl.is_archived %}archived{% else %}active{% endif %}" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

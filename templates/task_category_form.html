@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Создать категорию{% else %}Редактировать категорию{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Создать категорию{% else %}Настройки категории{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/task-categories/new">
+  {% else %}
+  <form method="POST" action="/task-categories/{{ cat.category_id }}/edit">
+  {% endif %}
+
+    <div class="form-row">
+      <label>Эмодзи</label>
+      <input name="emoji" style="max-width: 80px;"
+             value="{% if mode == 'new' %}{{ form_emoji or '' }}{% else %}{{ cat.emoji or '' }}{% endif %}"
+             placeholder="&#128188;">
+    </div>
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" required
+             value="{% if mode == 'new' %}{{ form_title or '' }}{% else %}{{ cat.title }}{% endif %}"
+             placeholder="Например: Работа">
+    </div>
+
+    {% if mode == "edit" %}
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived" {% if cat.is_archived %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Архивные категории не отображаются в формах создания задач и привычек
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      <a href="/task-categories" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      <a href="/task-categories?view={% if cat.is_archived %}archived{% else %}active{% endif %}" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

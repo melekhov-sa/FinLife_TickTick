@@ -16,6 +16,10 @@ class OperationTemplatesProjector(BaseProjector):
             self._handle_updated(event)
         elif event.event_type == "operation_template_archived":
             self._handle_archived(event)
+        elif event.event_type == "operation_template_unarchived":
+            self._handle_unarchived(event)
+        elif event.event_type == "operation_template_closed":
+            self._handle_closed(event)
         elif event.event_type in ("operation_occurrence_confirmed", "operation_occurrence_skipped"):
             self._handle_occurrence_status(event)
 
@@ -40,8 +44,6 @@ class OperationTemplatesProjector(BaseProjector):
             note=payload.get("note"),
             wallet_id=payload.get("wallet_id"),
             category_id=payload.get("category_id"),
-            from_wallet_id=payload.get("from_wallet_id"),
-            to_wallet_id=payload.get("to_wallet_id"),
             work_category_id=payload.get("work_category_id"),
         )
         self.db.add(tmpl)
@@ -55,7 +57,7 @@ class OperationTemplatesProjector(BaseProjector):
         if not tmpl:
             return
         for key in ("title", "note", "kind", "wallet_id", "category_id",
-                     "from_wallet_id", "to_wallet_id", "work_category_id", "is_archived"):
+                     "work_category_id", "is_archived"):
             if key in payload:
                 setattr(tmpl, key, payload[key])
         if "amount" in payload:
@@ -70,6 +72,22 @@ class OperationTemplatesProjector(BaseProjector):
         ).first()
         if tmpl:
             tmpl.is_archived = True
+
+    def _handle_unarchived(self, event: EventLog) -> None:
+        payload = event.payload_json
+        tmpl = self.db.query(OperationTemplateModel).filter(
+            OperationTemplateModel.template_id == payload["template_id"]
+        ).first()
+        if tmpl:
+            tmpl.is_archived = False
+
+    def _handle_closed(self, event: EventLog) -> None:
+        payload = event.payload_json
+        tmpl = self.db.query(OperationTemplateModel).filter(
+            OperationTemplateModel.template_id == payload["template_id"]
+        ).first()
+        if tmpl:
+            tmpl.active_until = date.fromisoformat(payload["active_until"]) if payload.get("active_until") else None
 
     def _handle_occurrence_status(self, event: EventLog) -> None:
         payload = event.payload_json

@@ -18,6 +18,7 @@ class EventsProjector(BaseProjector):
             "calendar_event_created": self._handle_event_created,
             "calendar_event_updated": self._handle_event_updated,
             "calendar_event_deactivated": self._handle_event_deactivated,
+            "calendar_event_reactivated": self._handle_event_reactivated,
             "event_occurrence_created": self._handle_occurrence_created,
             "event_occurrence_updated": self._handle_occurrence_updated,
             "event_occurrence_cancelled": self._handle_occurrence_cancelled,
@@ -51,7 +52,6 @@ class EventsProjector(BaseProjector):
             title=p["title"],
             description=p.get("description"),
             category_id=p["category_id"],
-            importance=p.get("importance", 0),
             repeat_rule_id=p.get("repeat_rule_id"),
             is_active=True,
         ))
@@ -64,7 +64,7 @@ class EventsProjector(BaseProjector):
         ).first()
         if not ev:
             return
-        for field in ("title", "description", "category_id", "importance", "is_active", "repeat_rule_id"):
+        for field in ("title", "description", "category_id", "is_active", "repeat_rule_id"):
             if field in p:
                 setattr(ev, field, p[field])
 
@@ -75,6 +75,14 @@ class EventsProjector(BaseProjector):
         ).first()
         if ev:
             ev.is_active = False
+
+    def _handle_event_reactivated(self, event: EventLog) -> None:
+        p = event.payload_json
+        ev = self.db.query(CalendarEventModel).filter(
+            CalendarEventModel.event_id == p["event_id"]
+        ).first()
+        if ev:
+            ev.is_active = True
 
     # --- Occurrence handlers ---
 

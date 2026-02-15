@@ -1,303 +1,215 @@
 {% extends "base.html" %}
-{% block title %}Главная - FinLife{% endblock %}
+{% block title %}Главная — FinLife{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
 
 {% block content %}
 <h1>Главная</h1>
 
-<!-- Верхние карточки статистики -->
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-label">СЧЕТА</div>
-    <div class="stat-value">{{ "{:,.2f}".format(regular_balance).replace(",", " ") }}</div>
-    {% if change_regular != 0 %}
-      <div class="stat-change {% if change_regular > 0 %}positive{% else %}negative{% endif %}">
-        {% if change_regular > 0 %}+{% endif %}{{ "{:,.2f}".format(change_regular).replace(",", " ") }} за 30д
-      </div>
-    {% endif %}
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">НАКОПЛЕНИЯ</div>
-    <div class="stat-value">{{ "{:,.2f}".format(savings_balance).replace(",", " ") }}</div>
-    {% if change_savings != 0 %}
-      <div class="stat-change {% if change_savings > 0 %}positive{% else %}negative{% endif %}">
-        {% if change_savings > 0 %}+{% endif %}{{ "{:,.2f}".format(change_savings).replace(",", " ") }} за 30д
-      </div>
-    {% endif %}
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">КРЕДИТЫ</div>
-    <div class="stat-value {% if credit_balance < 0 %}negative{% endif %}">{{ "{:,.2f}".format(credit_balance).replace(",", " ") }}</div>
-    {% if change_credit != 0 %}
-      <div class="stat-change {% if change_credit > 0 %}positive{% else %}negative{% endif %}">
-        {% if change_credit > 0 %}+{% endif %}{{ "{:,.2f}".format(change_credit).replace(",", " ") }} за 30д
-      </div>
-    {% endif %}
-  </div>
-
-  <div class="stat-card stat-card-total">
-    <div class="stat-label">ФИНАНСОВЫЙ РЕЗУЛЬТАТ</div>
-    <div class="stat-value">{{ "{:,.2f}".format(financial_result_total).replace(",", " ") }}</div>
-    {% if change_total != 0 %}
-      <div class="stat-change {% if change_total > 0 %}stat-change-positive{% else %}stat-change-negative{% endif %}">
-        {% if change_total > 0 %}+{% endif %}{{ "{:,.2f}".format(change_total).replace(",", " ") }} за 30д
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Доходы / Расходы за месяц -->
+<!-- ============ СЕГОДНЯ ============ -->
 <div class="card">
-  <h2>{{ current_month }}</h2>
-  <div class="financial-result">
-    <div class="fr-item">
-      <span class="fr-label">Доходы</span>
-      <span class="fr-value positive">+{{ "{:,.2f}".format(income_this_month).replace(",", " ") }}</span>
-    </div>
-    <div class="fr-item">
-      <span class="fr-label">Расходы</span>
-      <span class="fr-value negative">-{{ "{:,.2f}".format(expense_this_month).replace(",", " ") }}</span>
-    </div>
-    <div class="fr-item fr-total">
-      <span class="fr-label">Разница</span>
-      <span class="fr-value {% if month_result >= 0 %}positive{% else %}negative{% endif %}">
-        {% if month_result > 0 %}+{% endif %}{{ "{:,.2f}".format(month_result).replace(",", " ") }}
-      </span>
-    </div>
+  <div class="dash-section-title">
+    Сегодня
+    <span class="muted" style="font-weight: 400; font-size: 14px; margin-left: 8px;">{{ today.strftime('%d.%m.%Y') }}</span>
   </div>
-</div>
 
-<!-- Задачи на сегодня -->
-{% set active_today_tasks = today_tasks | selectattr('due_date') | list %}
-{% set overdue_tasks = [] %}
-{% set due_today_tasks = [] %}
-{% for t in active_today_tasks %}
-  {% if t.due_date < today %}
-    {% set _ = overdue_tasks.append(t) %}
-  {% elif t.due_date == today %}
-    {% set _ = due_today_tasks.append(t) %}
+  <!-- Progress bar -->
+  {% if progress.total > 0 %}
+  <div class="dash-progress-row">
+    <span>{{ progress.done }} из {{ progress.total }}</span>
+    {% set pct = (progress.done / progress.total * 100) | int if progress.total > 0 else 0 %}
+    <div class="dash-progress-bar">
+      <div class="dash-progress-fill" style="width: {{ pct }}%;"></div>
+    </div>
+    <span class="muted">{{ pct }}%</span>
+  </div>
   {% endif %}
-{% endfor %}
-{% set active_task_occs = today_task_occs | selectattr('status', 'equalto', 'ACTIVE') | list %}
-{% if overdue_tasks or due_today_tasks or active_task_occs %}
-<div class="card">
-  <h2>&#9745; Задачи</h2>
-  {% for task in overdue_tasks %}
-  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-    <div>
-      <span>{{ task.title }}</span>
-      <small class="negative">(просрочено {{ task.due_date.strftime('%d.%m') }})</small>
-    </div>
-    <form method="POST" action="/tasks/{{ task.task_id }}/complete" style="margin: 0;">
-      <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
-    </form>
-  </div>
-  {% endfor %}
-  {% for task in due_today_tasks %}
-  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-    <div>
-      <span>{{ task.title }}</span>
-      <small class="muted">(сегодня)</small>
-    </div>
-    <form method="POST" action="/tasks/{{ task.task_id }}/complete" style="margin: 0;">
-      <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
-    </form>
-  </div>
-  {% endfor %}
-  {% for occ in active_task_occs %}
-  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-    <div>
-      <span>{{ task_tmpl_map.get(occ.template_id, {}).title if task_tmpl_map.get(occ.template_id) else 'Задача #' ~ occ.template_id }}</span>
-      <small class="muted">(повторяющаяся)</small>
-    </div>
-    <form method="POST" action="/tasks/occurrences/{{ occ.id }}/complete" style="margin: 0;">
-      <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
-    </form>
-  </div>
-  {% endfor %}
-  <p style="margin-top: 8px;"><a href="/tasks">Все задачи &rarr;</a></p>
-</div>
-{% endif %}
 
-<!-- Привычки на сегодня -->
-{% if today_habit_occs %}
-<div class="card">
-  <h2>&#128170; Привычки</h2>
-  {% for occ in today_habit_occs %}
-    {% set habit = habit_map.get(occ.habit_id) %}
-    {% if habit %}
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-      <div>
-        <span>{{ habit.title }}</span>
-        <small class="muted">(стрик: {{ habit.current_streak }})</small>
+  <!-- Overdue items -->
+  {% if overdue_items %}
+  <div class="dash-group">
+    <div class="dash-group-label negative">Просрочено ({{ overdue_items|length }})</div>
+    {% for item in overdue_items %}
+    <div class="dash-item dash-item-overdue">
+      <div class="dash-item-left">
+        {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}
+        <span>{{ item.title }}</span>
+        {% if item.kind == "planned_op" %}
+        <span class="badge">{{ item.meta.op_kind_label }} {{ item.meta.amount_formatted }}</span>
+        {% endif %}
+        <small class="negative">({{ item.date.strftime('%d.%m') }})</small>
       </div>
-      <div>
-        {% if occ.status == 'DONE' %}
-          <span class="positive" style="font-size: 18px;">&#10003;</span>
-        {% elif occ.status == 'SKIPPED' %}
-          <span class="muted">пропущено</span>
-        {% else %}
-          <form method="POST" action="/habits/occurrences/{{ occ.id }}/complete" style="display:inline; margin: 0;">
-            <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
-          </form>
-          <form method="POST" action="/habits/occurrences/{{ occ.id }}/skip" style="display:inline; margin: 0;">
-            <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
-          </form>
+      <div class="dash-item-actions">
+        {% if item.kind == "task" %}
+        <form method="POST" action="/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
+        </form>
+        {% elif item.kind == "task_occ" %}
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
+        </form>
+        {% elif item.kind == "planned_op" %}
+        <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2F"
+           class="dash-btn-link">&#10003;</a>
+        <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
+        </form>
         {% endif %}
       </div>
     </div>
-    {% endif %}
-  {% endfor %}
-  <p style="margin-top: 8px;"><a href="/habits">Все привычки &rarr;</a></p>
-</div>
-{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
 
-<!-- Плановые операции -->
-{% if today_op_occs %}
-<div class="card">
-  <h2>&#128197; Плановые операции</h2>
-  {% for occ in today_op_occs %}
-    {% set tmpl = op_tmpl_map.get(occ.template_id) %}
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-      <div>
-        <span>{{ tmpl.title if tmpl else 'Операция #' ~ occ.template_id }}</span>
-        {% if tmpl %}
-          <small class="muted">
-            {% if tmpl.kind == 'INCOME' %}Доход{% elif tmpl.kind == 'EXPENSE' %}Расход{% else %}Перевод{% endif %}
-            {{ "{:,.2f}".format(tmpl.amount).replace(",", " ") }}
-          </small>
+  <!-- Active items -->
+  {% if active_items %}
+  <div class="dash-group">
+    <div class="dash-group-label">Активные ({{ active_items|length }})</div>
+    {% for item in active_items %}
+    <div class="dash-item">
+      <div class="dash-item-left">
+        {% if item.kind == "event" %}&#128198;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% elif item.kind == "habit" %}&#128170;{% endif %}
+        {% if item.category_emoji %}{{ item.category_emoji }}{% endif %}
+        <span>{{ item.title }}</span>
+
+        {% if item.kind == "planned_op" %}
+        <span class="badge">{{ item.meta.op_kind_label }} {{ item.meta.amount_formatted }}</span>
         {% endif %}
-        {% if occ.scheduled_date < today %}
-          <small class="negative">({{ occ.scheduled_date.strftime('%d.%m') }})</small>
+
+        {% if item.kind == "habit" and item.meta.current_streak > 0 %}
+        <small class="muted">&#128293; {{ item.meta.current_streak }} дн.</small>
+        {% endif %}
+
+        {% if item.time %}
+        <small class="muted">{{ item.time.strftime('%H:%M') }}</small>
         {% endif %}
       </div>
-      <div style="white-space: nowrap;">
-        <form method="POST" action="/planned-operations/occurrences/{{ occ.id }}/confirm" style="display:inline; margin: 0;">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px;"
-                  onclick="return confirm('Подтвердить операцию?')">Подтвердить</button>
+      <div class="dash-item-actions">
+        {% if item.kind == "task" %}
+        <form method="POST" action="/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
         </form>
-        <form method="POST" action="/planned-operations/occurrences/{{ occ.id }}/skip" style="display:inline; margin: 0;">
-          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">Пропустить</button>
+        {% elif item.kind == "task_occ" %}
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
         </form>
+        {% elif item.kind == "planned_op" %}
+        <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2F"
+           class="dash-btn-link">&#10003;</a>
+        <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
+        </form>
+        {% elif item.kind == "habit" %}
+        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" style="font-size: 12px; padding: 4px 10px; background: #28a745;">&#10003;</button>
+        </form>
+        {% endif %}
       </div>
     </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Done items -->
+  {% if done_items %}
+  <div class="dash-group">
+    <div class="dash-group-label positive">Сделано ({{ done_items|length }})</div>
+    {% for item in done_items %}
+    <div class="dash-item dash-item-done">
+      <div class="dash-item-left">
+        {% if item.kind == "habit" %}&#128170;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% endif %}
+        <s class="muted">{{ item.title }}</s>
+      </div>
+      <div class="dash-item-actions">
+        {% if item.kind == "habit" %}
+        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8634;</button>
+        </form>
+        {% endif %}
+        <span class="positive" style="font-size: 18px;">&#10003;</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not overdue_items and not active_items and not done_items %}
+  <p class="muted" style="text-align: center; padding: 16px 0;">Нет дел на сегодня</p>
+  {% endif %}
+
+  <p style="margin-top: 8px;"><a href="/plan">Открыть план &rarr;</a></p>
+</div>
+
+<!-- ============ БЛИЖАЙШИЕ ПЛАТЕЖИ ============ -->
+{% if upcoming_payments %}
+<div class="card">
+  <div class="dash-section-title">Ближайшие платежи</div>
+  {% for pay in upcoming_payments %}
+  <div class="dash-item">
+    <div class="dash-item-left">
+      &#128197;
+      <span>{{ pay.title }}</span>
+      <span class="badge {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
+        {{ pay.kind_label }} {{ pay.amount_formatted }}
+      </span>
+      <small class="muted">через {{ pay.days_until }} дн. ({{ pay.scheduled_date.strftime('%d.%m') }})</small>
+    </div>
+  </div>
   {% endfor %}
   <p style="margin-top: 8px;"><a href="/planned-operations">Все плановые &rarr;</a></p>
 </div>
 {% endif %}
 
-<!-- События (7 дней) -->
-{% if events_7d %}
+<!-- ============ АКТИВНОСТЬ ПРИВЫЧЕК ============ -->
+{% if habit_heatmap %}
 <div class="card">
-  <h2>&#128198; События (7 дней)</h2>
-  {% for occ in events_7d %}
-    {% set ev = event_map.get(occ.event_id) %}
-    {% set wc = wc_map.get(ev.category_id) if ev else None %}
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-      <div>
-        {% if wc and wc.emoji %}{{ wc.emoji }} {% endif %}
-        <span>{{ ev.title if ev else 'Событие #' ~ occ.event_id }}</span>
-        {% if ev and ev.importance > 0 %}<span class="badge">&#9733; {{ ev.importance }}</span>{% endif %}
-        <small class="muted">
-          {{ occ.start_date.strftime('%d.%m') }}{% if occ.start_date == today %} (сегодня){% endif %}
-          {% if occ.start_time %} {{ occ.start_time.strftime('%H:%M') }}{% endif %}
-        </small>
-      </div>
+  <div class="dash-section-title">Активность привычек</div>
+  <div class="dash-heatmap">
+    {% for cell in habit_heatmap %}
+    <div class="dash-heatmap-cell dash-heatmap-level-{{ cell.level }}"
+         title="{{ cell.date.strftime('%d.%m') }}: {{ cell.done_count }}/{{ cell.due_count }}">
+      <span class="dash-heatmap-day">{{ cell.date.strftime('%d') }}</span>
     </div>
-  {% endfor %}
-  <p style="margin-top: 8px;"><a href="/events">Все события &rarr;</a></p>
+    {% endfor %}
+  </div>
+  <div class="dash-heatmap-legend">
+    <span class="muted" style="font-size: 12px;">0%</span>
+    <div class="dash-heatmap-cell dash-heatmap-level-0" style="width:14px;height:14px;"></div>
+    <div class="dash-heatmap-cell dash-heatmap-level-1" style="width:14px;height:14px;"></div>
+    <div class="dash-heatmap-cell dash-heatmap-level-2" style="width:14px;height:14px;"></div>
+    <div class="dash-heatmap-cell dash-heatmap-level-3" style="width:14px;height:14px;"></div>
+    <div class="dash-heatmap-cell dash-heatmap-level-4" style="width:14px;height:14px;"></div>
+    <span class="muted" style="font-size: 12px;">100%</span>
+  </div>
+  <p style="margin-top: 8px;"><a href="/habits">Все привычки &rarr;</a></p>
 </div>
 {% endif %}
 
-<!-- Деньги (счета) -->
+<!-- ============ ФИНАНСЫ ============ -->
 <div class="card">
-  <h2>Счета</h2>
-  {% set regular_wallets = wallets | selectattr('wallet_type', 'equalto', 'REGULAR') | list %}
-  {% if regular_wallets %}
-    <table>
-      <tbody>
-        {% for wallet in regular_wallets %}
-        <tr>
-          <td>{{ wallet.title }}</td>
-          <td class="text-right {% if wallet.balance >= 0 %}positive{% else %}negative{% endif %}">
-            {{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="muted">Нет кошельков. <a href="/wallets">Создать</a></p>
-  {% endif %}
-</div>
-
-<!-- Накопления -->
-{% set savings_wallets = wallets | selectattr('wallet_type', 'equalto', 'SAVINGS') | list %}
-{% if savings_wallets %}
-<div class="card">
-  <h2>Накопления</h2>
-  <table>
-    <tbody>
-      {% for wallet in savings_wallets %}
-      <tr>
-        <td>{{ wallet.title }}</td>
-        <td class="text-right positive">{{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-
-<!-- Кредиты -->
-{% set credit_wallets = wallets | selectattr('wallet_type', 'equalto', 'CREDIT') | list %}
-{% if credit_wallets %}
-<div class="card">
-  <h2>Кредиты</h2>
-  <table>
-    <tbody>
-      {% for wallet in credit_wallets %}
-      <tr>
-        <td>{{ wallet.title }}</td>
-        <td class="text-right negative">{{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-
-<!-- Операции -->
-<div class="card">
-  <h2>Операции</h2>
-  {% if transactions %}
-    <table>
-      <tbody>
-        {% for tx in transactions %}
-        <tr>
-          <td style="width: 60px;">{{ tx.occurred_at.strftime('%d.%m') }}</td>
-          <td>
-            {% if tx.operation_type == 'INCOME' %}
-              <span class="positive">+</span> Доход
-            {% elif tx.operation_type == 'EXPENSE' %}
-              <span class="negative">-</span> Расход
-            {% else %}
-              Перевод
-            {% endif %}
-            {{ "{:,.2f}".format(tx.amount).replace(",", " ") }}
-            {% if tx.description %} — {{ tx.description }}{% endif %}
-          </td>
-          <td class="text-right {% if tx.operation_type == 'INCOME' %}positive{% elif tx.operation_type == 'EXPENSE' %}negative{% endif %}" style="white-space: nowrap;">
-            {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ "{:,.2f}".format(tx.amount).replace(",", " ") }}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p style="margin-top: 16px;"><a href="/transactions">Все операции &rarr;</a></p>
-  {% else %}
-    <p class="muted">Нет операций. <a href="/transactions">Добавить первую операцию</a></p>
-  {% endif %}
+  <div class="dash-section-title">{{ current_month }}</div>
+  <div class="financial-result">
+    <div class="fr-item">
+      <span class="fr-label">Доходы</span>
+      <span class="fr-value positive">+{{ fmt(income) }}</span>
+    </div>
+    <div class="fr-item">
+      <span class="fr-label">Расходы</span>
+      <span class="fr-value negative">-{{ fmt(expense) }}</span>
+    </div>
+    <div class="fr-item fr-total">
+      <span class="fr-label">Разница</span>
+      <span class="fr-value {% if difference >= 0 %}positive{% else %}negative{% endif %}">
+        {% if difference > 0 %}+{% endif %}{{ fmt(difference) }}
+      </span>
+    </div>
+  </div>
+  <p style="margin-top: 8px;"><a href="/budget">Бюджет &rarr;</a></p>
 </div>
 {% endblock %}

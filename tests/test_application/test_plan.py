@@ -76,10 +76,10 @@ def _add_task_occ(db, occ_id, template_id, scheduled_date, status="ACTIVE"):
     return o
 
 
-def _add_event(db, event_id, title="Event", category_id=1, is_active=True, importance=0):
+def _add_event(db, event_id, title="Event", category_id=1, is_active=True):
     e = CalendarEventModel(
         event_id=event_id, account_id=ACCOUNT, title=title,
-        category_id=category_id, is_active=is_active, importance=importance,
+        category_id=category_id, is_active=is_active,
     )
     db.add(e)
     db.flush()

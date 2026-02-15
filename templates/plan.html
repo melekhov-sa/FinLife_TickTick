@@ -109,10 +109,6 @@
       {% endif %}
       {% endif %}
 
-      {% if item.kind == "event" and item.meta.importance > 0 %}
-      <span class="badge">&#9733; {{ item.meta.importance }}</span>
-      {% endif %}
-
       <!-- Time -->
       {% if item.time %}
       <small class="muted">{{ item.time.strftime('%H:%M') }}</small>

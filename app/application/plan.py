@@ -33,7 +33,7 @@ MONTH_GEN = {
     7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек",
 }
 
-OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
+OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход"}
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +348,6 @@ def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map
         "meta": {
             "occurrence_id": occ.id,
             "event_id": occ.event_id,
-            "importance": ev.importance,
             "start_time": occ.start_time,
             "end_date": occ.end_date,
             "end_time": occ.end_time,

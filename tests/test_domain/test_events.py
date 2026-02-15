@@ -23,7 +23,6 @@ def test_calendar_event_create_minimal():
     assert payload["event_id"] == 10
     assert payload["title"] == "День рождения"
     assert payload["category_id"] == 5
-    assert payload["importance"] == 0
     assert payload["repeat_rule_id"] is None
     assert "created_at" in payload
 
@@ -32,19 +31,17 @@ def test_calendar_event_create_full():
     """Create event with all fields."""
     payload = CalendarEvent.create(
         account_id=1, event_id=11, title="Встреча", category_id=3,
-        description="Zoom-звонок", importance=3, repeat_rule_id=7,
+        description="Zoom-звонок", repeat_rule_id=7,
     )
     assert payload["description"] == "Zoom-звонок"
-    assert payload["importance"] == 3
     assert payload["repeat_rule_id"] == 7
 
 
 def test_calendar_event_update():
     """Update event returns only changed fields + event_id."""
-    payload = CalendarEvent.update(event_id=10, title="Новое название", importance=2)
+    payload = CalendarEvent.update(event_id=10, title="Новое название")
     assert payload["event_id"] == 10
     assert payload["title"] == "Новое название"
-    assert payload["importance"] == 2
     assert "updated_at" in payload
     assert "description" not in payload  # not changed
 
@@ -55,6 +52,14 @@ def test_calendar_event_deactivate():
     assert payload["event_id"] == 10
     assert payload["is_active"] is False
     assert "deactivated_at" in payload
+
+
+def test_calendar_event_reactivate():
+    """Reactivate sets is_active=True."""
+    payload = CalendarEvent.reactivate(event_id=10)
+    assert payload["event_id"] == 10
+    assert payload["is_active"] is True
+    assert "reactivated_at" in payload
 
 
 # --- EventOccurrenceEvent domain tests ---

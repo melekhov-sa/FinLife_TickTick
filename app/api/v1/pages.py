@@ -18,11 +18,13 @@ from app.infrastructure.db.models import (
     TaskTemplateModel, TaskOccurrence,
     OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel,
     CalendarEventModel, EventOccurrenceModel, EventFilterPresetModel,
+    SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
+    ContactModel,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import CreateCategoryUseCase, UpdateCategoryUseCase, EnsureSystemCategoriesUseCase, CategoryValidationError
 from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
-from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase
+from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase, UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
 from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, TaskValidationError
 from app.application.habits import (
     CreateHabitUseCase, ArchiveHabitUseCase, UnarchiveHabitUseCase,
@@ -33,13 +35,16 @@ from app.application.habits import (
     get_global_heatmap, get_recent_milestones,
 )
 from app.application.task_templates import CreateTaskTemplateUseCase, CompleteTaskOccurrenceUseCase, SkipTaskOccurrenceUseCase, TaskTemplateValidationError
-from app.application.operation_templates import CreateOperationTemplateUseCase, ConfirmOperationOccurrenceUseCase, SkipOperationOccurrenceUseCase
+from app.application.operation_templates import (
+    CreateOperationTemplateUseCase, UpdateOperationTemplateUseCase,
+    ArchiveOperationTemplateUseCase, UnarchiveOperationTemplateUseCase,
+    ConfirmOperationOccurrenceUseCase, SkipOperationOccurrenceUseCase,
+    OperationTemplateValidationError,
+)
 from app.application.occurrence_generator import OccurrenceGenerator
 from app.application.events import (
     CreateEventUseCase, UpdateEventUseCase, DeactivateEventUseCase,
-    CreateEventOccurrenceUseCase, CancelEventOccurrenceUseCase,
-    CreateFilterPresetUseCase, SelectFilterPresetUseCase, DeleteFilterPresetUseCase,
-    get_today_events, get_7days_events, get_history_events,
+    ReactivateEventUseCase, EventValidationError,
     validate_event_form, rebuild_event_occurrences,
 )
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase, UpdateRecurrenceRuleUseCase
@@ -50,6 +55,21 @@ from app.application.budget import (
 )
 from app.application.budget_matrix import BudgetMatrixService, RANGE_LIMITS
 from app.application.plan import build_plan_view
+from app.application.dashboard import DashboardService
+from app.application.subscriptions import (
+    CreateSubscriptionUseCase, UpdateSubscriptionUseCase,
+    ArchiveSubscriptionUseCase, UnarchiveSubscriptionUseCase,
+    AddSubscriptionMemberUseCase, ArchiveMemberUseCase, UnarchiveMemberUseCase, UpdateMemberPaymentUseCase,
+    CreateSubscriptionCoverageUseCase, CreateInitialCoverageUseCase,
+    SubscriptionValidationError,
+    validate_coverage_before_transaction, compute_subscription_detail,
+    compute_subscriptions_overview,
+)
+from app.application.contacts import (
+    CreateContactUseCase, UpdateContactUseCase,
+    ArchiveContactUseCase, UnarchiveContactUseCase,
+    ContactValidationError,
+)
 from app.utils.validation import validate_and_normalize_amount
 
 
@@ -62,199 +82,60 @@ templates = Jinja2Templates(directory=str(templates_dir))
 
 # === Dashboard ===
 
+MONTH_NAMES_RU = {
+    1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
+    5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
+    9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь",
+}
+
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
-    """Главная страница - dashboard"""
+    """Главная страница - Dashboard V2"""
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
 
     user_id = request.session["user_id"]
 
-    # Ensure system categories exist (создаются при первом входе)
-    ensure_use_case = EnsureSystemCategoriesUseCase(db)
-    ensure_use_case.execute(account_id=user_id, actor_user_id=user_id)
-
-    # Получить кошельки
-    wallets = db.query(WalletBalance).filter(
-        WalletBalance.account_id == user_id,
-        WalletBalance.is_archived == False
-    ).all()
-
-    # Подсчитать балансы по типам кошельков
-    regular_balance = sum(w.balance for w in wallets if w.wallet_type == "REGULAR")
-    savings_balance = sum(w.balance for w in wallets if w.wallet_type == "SAVINGS")
-    credit_balance = sum(w.balance for w in wallets if w.wallet_type == "CREDIT")
-    # Финансовый результат = счета + накопления + кредиты (кредиты уже отрицательные)
-    financial_result_total = regular_balance + savings_balance + credit_balance
-
-    # --- Изменения за 30 дней ---
-    now = datetime.now()
-    thirty_days_ago = now - timedelta(days=30)
-
-    # Собрать wallet_id -> wallet_type для быстрого lookup
-    wallet_types = {w.wallet_id: w.wallet_type for w in wallets}
-
-    # Получить все транзакции за 30 дней
-    recent_txs = db.query(TransactionFeed).filter(
-        TransactionFeed.account_id == user_id,
-        TransactionFeed.occurred_at >= thirty_days_ago
-    ).all()
-
-    # Подсчитать net change для каждого кошелька
-    wallet_changes: dict[int, Decimal] = {}
-    for tx in recent_txs:
-        if tx.operation_type == "INCOME" and tx.wallet_id:
-            wallet_changes[tx.wallet_id] = wallet_changes.get(tx.wallet_id, Decimal("0")) + tx.amount
-        elif tx.operation_type == "EXPENSE" and tx.wallet_id:
-            wallet_changes[tx.wallet_id] = wallet_changes.get(tx.wallet_id, Decimal("0")) - tx.amount
-        elif tx.operation_type == "TRANSFER":
-            if tx.from_wallet_id:
-                wallet_changes[tx.from_wallet_id] = wallet_changes.get(tx.from_wallet_id, Decimal("0")) - tx.amount
-            if tx.to_wallet_id:
-                wallet_changes[tx.to_wallet_id] = wallet_changes.get(tx.to_wallet_id, Decimal("0")) + tx.amount
-
-    # Группировка изменений по типам кошельков
-    change_regular = sum(
-        amt for wid, amt in wallet_changes.items() if wallet_types.get(wid) == "REGULAR"
-    )
-    change_savings = sum(
-        amt for wid, amt in wallet_changes.items() if wallet_types.get(wid) == "SAVINGS"
-    )
-    change_credit = sum(
-        amt for wid, amt in wallet_changes.items() if wallet_types.get(wid) == "CREDIT"
-    )
-    change_total = change_regular + change_savings + change_credit
-
-    # --- Статистика за текущий месяц ---
-    month_start = datetime(now.year, now.month, 1)
-    if now.month == 12:
-        month_end = datetime(now.year + 1, 1, 1)
-    else:
-        month_end = datetime(now.year, now.month + 1, 1)
-
-    income_this_month = db.query(func.sum(TransactionFeed.amount)).filter(
-        TransactionFeed.account_id == user_id,
-        TransactionFeed.operation_type == "INCOME",
-        TransactionFeed.occurred_at >= month_start,
-        TransactionFeed.occurred_at < month_end
-    ).scalar() or Decimal("0")
-
-    expense_this_month = db.query(func.sum(TransactionFeed.amount)).filter(
-        TransactionFeed.account_id == user_id,
-        TransactionFeed.operation_type == "EXPENSE",
-        TransactionFeed.occurred_at >= month_start,
-        TransactionFeed.occurred_at < month_end
-    ).scalar() or Decimal("0")
-
-    month_result = income_this_month - expense_this_month
-
-    # Русские названия месяцев
-    month_names = {
-        1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
-        5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
-        9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь"
-    }
-    current_month = f"{month_names[now.month]} {now.year}"
-
-    # Получить последние 10 операций
-    transactions = db.query(TransactionFeed).filter(
-        TransactionFeed.account_id == user_id
-    ).order_by(TransactionFeed.occurred_at.desc()).limit(10).all()
-
-    # --- Tasks, Habits, Planned Operations for today ---
-    today = date.today()
+    # Ensure system categories exist
+    EnsureSystemCategoriesUseCase(db).execute(account_id=user_id, actor_user_id=user_id)
 
     # Generate occurrences lazily
-    gen = OccurrenceGenerator(db)
-    gen.generate_all(user_id)
+    OccurrenceGenerator(db).generate_all(user_id)
 
-    # Today's tasks: active one-off tasks with due_date <= today (or no due_date)
-    today_tasks = db.query(TaskModel).filter(
-        TaskModel.account_id == user_id,
-        TaskModel.status == "ACTIVE",
-    ).order_by(TaskModel.due_date.asc().nullslast()).all()
+    today = date.today()
+    svc = DashboardService(db)
 
-    # Today's task occurrences (from recurring templates)
-    today_task_occs = db.query(TaskOccurrence).filter(
-        TaskOccurrence.account_id == user_id,
-        TaskOccurrence.scheduled_date == today,
-    ).all()
-    task_tmpl_map = {}
-    if today_task_occs:
-        tmpl_ids = {o.template_id for o in today_task_occs}
-        for t in db.query(TaskTemplateModel).filter(TaskTemplateModel.template_id.in_(tmpl_ids)).all():
-            task_tmpl_map[t.template_id] = t
+    # 1. Today block
+    today_block = svc.get_today_block(user_id, today)
 
-    # Today's habits
-    today_habit_occs = db.query(HabitOccurrence).filter(
-        HabitOccurrence.account_id == user_id,
-        HabitOccurrence.scheduled_date == today,
-    ).all()
-    habit_map = {}
-    if today_habit_occs:
-        habit_ids = {o.habit_id for o in today_habit_occs}
-        for h in db.query(HabitModel).filter(HabitModel.habit_id.in_(habit_ids), HabitModel.is_archived == False).all():
-            habit_map[h.habit_id] = h
+    # 2. Upcoming payments
+    upcoming_payments = svc.get_upcoming_payments(user_id, today, limit=3)
 
-    # Today's planned operations
-    today_op_occs = db.query(OperationOccurrence).filter(
-        OperationOccurrence.account_id == user_id,
-        OperationOccurrence.scheduled_date <= today,
-        OperationOccurrence.status == "ACTIVE",
-    ).order_by(OperationOccurrence.scheduled_date.asc()).all()
-    op_tmpl_map = {}
-    if today_op_occs:
-        tmpl_ids = {o.template_id for o in today_op_occs}
-        for t in db.query(OperationTemplateModel).filter(OperationTemplateModel.template_id.in_(tmpl_ids)).all():
-            op_tmpl_map[t.template_id] = t
+    # 3. Habit heatmap (15 days, 3 rows x 5 cols)
+    habit_heatmap = svc.get_habit_heatmap(user_id, today, days=15)
 
-    # Events (7 days)
-    events_7d = get_7days_events(db, user_id, today)
-    event_map = {}
-    if events_7d:
-        ev_ids = {o.event_id for o in events_7d}
-        for ev in db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(ev_ids)).all():
-            event_map[ev.event_id] = ev
-    # Work categories for event display
-    wc_map = {}
-    if event_map:
-        wc_ids = {ev.category_id for ev in event_map.values() if ev.category_id}
-        if wc_ids:
-            for wc in db.query(WorkCategory).filter(WorkCategory.category_id.in_(wc_ids)).all():
-                wc_map[wc.category_id] = wc
+    # 4. Financial summary
+    fin = svc.get_financial_summary(user_id, today)
+    current_month = f"{MONTH_NAMES_RU[today.month]} {today.year}"
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
-        "wallets": wallets,
-        "transactions": transactions,
-        # Балансы
-        "regular_balance": regular_balance,
-        "savings_balance": savings_balance,
-        "credit_balance": credit_balance,
-        "financial_result_total": financial_result_total,
-        # Изменения за 30 дней
-        "change_regular": change_regular,
-        "change_savings": change_savings,
-        "change_credit": change_credit,
-        "change_total": change_total,
-        # Месяц
-        "income_this_month": income_this_month,
-        "expense_this_month": expense_this_month,
-        "month_result": month_result,
-        "current_month": current_month,
-        # Tasks, Habits, Planned Operations
         "today": today,
-        "today_tasks": today_tasks,
-        "today_task_occs": today_task_occs,
-        "task_tmpl_map": task_tmpl_map,
-        "today_habit_occs": today_habit_occs,
-        "habit_map": habit_map,
-        "today_op_occs": today_op_occs,
-        "op_tmpl_map": op_tmpl_map,
-        # Events
-        "events_7d": events_7d,
-        "event_map": event_map,
-        "wc_map": wc_map,
+        # Today block
+        "overdue_items": today_block["overdue"],
+        "active_items": today_block["active"],
+        "done_items": today_block["done"],
+        "progress": today_block["progress"],
+        # Upcoming payments
+        "upcoming_payments": upcoming_payments,
+        # Habit heatmap
+        "habit_heatmap": habit_heatmap,
+        # Financial
+        "current_month": current_month,
+        "income": fin["income"],
+        "expense": fin["expense"],
+        "difference": fin["difference"],
     })
 
 
@@ -552,6 +433,35 @@ def transactions_page(
         filter_parts.append(f"search={search}")
     filter_qs = "&".join(filter_parts)
 
+    # Subscription category map for JS hook
+    active_subs = db.query(SubscriptionModel).filter(
+        SubscriptionModel.account_id == user_id,
+        SubscriptionModel.is_archived == False,
+    ).all()
+    sub_category_map: dict = {}
+    for s in active_subs:
+        sub_category_map[str(s.expense_category_id)] = {
+            "subscription_id": s.id,
+            "subscription_name": s.name,
+            "type": "expense",
+            "members": [],
+        }
+        members = db.query(SubscriptionMemberModel).filter(
+            SubscriptionMemberModel.subscription_id == s.id,
+            SubscriptionMemberModel.is_archived == False,
+        ).all()
+        # Resolve contact names for members
+        m_contact_ids = list({m.contact_id for m in members})
+        m_contacts = {}
+        if m_contact_ids:
+            m_contacts = {c.id: c for c in db.query(ContactModel).filter(ContactModel.id.in_(m_contact_ids)).all()}
+        sub_category_map[str(s.income_category_id)] = {
+            "subscription_id": s.id,
+            "subscription_name": s.name,
+            "type": "income",
+            "members": [{"id": m.id, "name": m_contacts[m.contact_id].name if m.contact_id in m_contacts else "?"} for m in members],
+        }
+
     return templates.TemplateResponse("transactions.html", {
         "request": request,
         "wallets": wallets,
@@ -572,6 +482,7 @@ def transactions_page(
         "search": search,
         "kpi_income": kpi_income,
         "kpi_expense": kpi_expense,
+        "sub_category_map": sub_category_map,
     })
 
 
@@ -580,12 +491,18 @@ def create_transaction_form(
     request: Request,
     operation_type: str = Form(...),
     amount: str = Form(...),
-    description: str = Form(...),
+    description: str = Form(""),
     wallet_id: int | None = Form(None),
     from_wallet_id: int | None = Form(None),
     to_wallet_id: int | None = Form(None),
     category_id: int | None = Form(None),
     occurred_at: str = Form(""),
+    # Subscription coverage fields (optional)
+    sub_subscription_id: int | None = Form(None),
+    sub_payer_type: str | None = Form(None),
+    sub_member_id: int | None = Form(None),
+    sub_start_date: str | None = Form(None),
+    sub_end_date: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
     """Обработка формы создания операции"""
@@ -605,9 +522,28 @@ def create_transaction_form(
             except ValueError:
                 pass
 
+    # Pre-validate subscription coverage (before creating transaction)
+    has_coverage = bool(sub_subscription_id and sub_start_date and sub_end_date)
+    if has_coverage:
+        try:
+            cov_start = date.fromisoformat(sub_start_date)
+            cov_end = date.fromisoformat(sub_end_date)
+            validate_coverage_before_transaction(
+                db,
+                account_id=user_id,
+                subscription_id=sub_subscription_id,
+                payer_type=sub_payer_type or "SELF",
+                member_id=sub_member_id,
+                start_date=cov_start,
+                end_date=cov_end,
+            )
+        except SubscriptionValidationError as e:
+            return RedirectResponse(f"/transactions?error={e}", status_code=302)
+
     try:
         use_case = CreateTransactionUseCase(db)
         amount_decimal = Decimal(amount)
+        transaction_id = None
 
         if operation_type == "INCOME":
             if not wallet_id:
@@ -618,7 +554,7 @@ def create_transaction_form(
             if not wallet:
                 raise ValueError("Wallet not found")
 
-            use_case.execute_income(
+            transaction_id = use_case.execute_income(
                 account_id=user_id,
                 wallet_id=wallet_id,
                 amount=amount_decimal,
@@ -637,7 +573,7 @@ def create_transaction_form(
             if not wallet:
                 raise ValueError("Wallet not found")
 
-            use_case.execute_expense(
+            transaction_id = use_case.execute_expense(
                 account_id=user_id,
                 wallet_id=wallet_id,
                 amount=amount_decimal,
@@ -656,7 +592,7 @@ def create_transaction_form(
             if not from_wallet:
                 raise ValueError("From wallet not found")
 
-            use_case.execute_transfer(
+            transaction_id = use_case.execute_transfer(
                 account_id=user_id,
                 from_wallet_id=from_wallet_id,
                 to_wallet_id=to_wallet_id,
@@ -668,6 +604,20 @@ def create_transaction_form(
             )
         else:
             raise ValueError("Invalid operation_type")
+
+        # Create subscription coverage if fields present
+        if has_coverage and transaction_id:
+            cov_start = date.fromisoformat(sub_start_date)
+            cov_end = date.fromisoformat(sub_end_date)
+            CreateSubscriptionCoverageUseCase(db).execute(
+                account_id=user_id,
+                subscription_id=sub_subscription_id,
+                payer_type=sub_payer_type or "SELF",
+                member_id=sub_member_id,
+                transaction_id=transaction_id,
+                start_date=cov_start,
+                end_date=cov_end,
+            )
 
         return RedirectResponse("/transactions", status_code=302)
     except Exception as e:
@@ -848,6 +798,119 @@ def archive_work_category_form(request: Request, category_id: int, db: Session =
         db.rollback()
         categories = db.query(WorkCategory).filter(WorkCategory.account_id == user_id).order_by(WorkCategory.title).all()
         return templates.TemplateResponse("work_categories.html", {"request": request, "categories": categories, "error": str(e)})
+
+
+# === Task Categories (new UX) ===
+
+@router.get("/task-categories", response_class=HTMLResponse)
+def task_categories_list(request: Request, view: str = "active", q: str = "", db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    query = db.query(WorkCategory).filter(WorkCategory.account_id == user_id)
+    if view == "archived":
+        query = query.filter(WorkCategory.is_archived == True)  # noqa: E712
+    else:
+        query = query.filter(WorkCategory.is_archived == False)  # noqa: E712
+    if q.strip():
+        query = query.filter(WorkCategory.title.ilike(f"%{q.strip()}%"))
+    categories = query.order_by(WorkCategory.title).all()
+
+    return templates.TemplateResponse("task_categories_list.html", {
+        "request": request, "categories": categories,
+        "view": view, "q": q,
+    })
+
+
+@router.get("/task-categories/new", response_class=HTMLResponse)
+def task_category_new_page(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("task_category_form.html", {
+        "request": request, "mode": "new",
+    })
+
+
+@router.post("/task-categories/new", response_class=HTMLResponse)
+def task_category_create(request: Request, title: str = Form(...), emoji: str = Form(""), db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        CreateWorkCategoryUseCase(db).execute(
+            account_id=user_id, title=title, emoji=emoji.strip() or None, actor_user_id=user_id,
+        )
+        return RedirectResponse("/task-categories", status_code=302)
+    except WorkCategoryValidationError as e:
+        return templates.TemplateResponse("task_category_form.html", {
+            "request": request, "mode": "new",
+            "error": str(e), "form_title": title, "form_emoji": emoji,
+        })
+
+
+@router.get("/task-categories/{category_id}/edit", response_class=HTMLResponse)
+def task_category_edit_page(request: Request, category_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if not cat:
+        return RedirectResponse("/task-categories", status_code=302)
+    return templates.TemplateResponse("task_category_form.html", {
+        "request": request, "mode": "edit", "cat": cat,
+    })
+
+
+@router.post("/task-categories/{category_id}/edit", response_class=HTMLResponse)
+def task_category_update(
+    request: Request, category_id: int,
+    title: str = Form(...), emoji: str = Form(""),
+    is_archived: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if not cat:
+        return RedirectResponse("/task-categories", status_code=302)
+
+    want_archived = is_archived == "on"
+    try:
+        # Unarchive first (if needed) so update doesn't hit stale state
+        if cat.is_archived and not want_archived:
+            UnarchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
+
+        # Update title/emoji
+        UpdateWorkCategoryUseCase(db).execute(
+            category_id=category_id, account_id=user_id,
+            title=title, emoji=emoji.strip() or None, actor_user_id=user_id,
+        )
+
+        # Archive last (if needed)
+        if not cat.is_archived and want_archived:
+            ArchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
+
+        redirect_view = "archived" if want_archived else "active"
+        return RedirectResponse(f"/task-categories?view={redirect_view}", status_code=302)
+    except WorkCategoryValidationError as e:
+        # Reload cat from DB to show current state
+        db.rollback()
+        cat = db.query(WorkCategory).filter(
+            WorkCategory.category_id == category_id,
+            WorkCategory.account_id == user_id,
+        ).first()
+        return templates.TemplateResponse("task_category_form.html", {
+            "request": request, "mode": "edit", "cat": cat, "error": str(e),
+        })
 
 
 # === Tasks ===
@@ -1169,8 +1232,67 @@ def reset_habit_occurrence_form(request: Request, occurrence_id: int, db: Sessio
 
 # === Planned Operations ===
 
-@router.get("/planned-operations", response_class=HTMLResponse)
-def planned_operations_page(request: Request, db: Session = Depends(get_db)):
+OP_KIND_LABELS = {"INCOME": "Доход", "EXPENSE": "Расход"}
+OP_FREQ_LABELS = {
+    "MONTHLY": "ежемесячно", "WEEKLY": "еженедельно",
+    "DAILY": "ежедневно", "YEARLY": "ежегодно",
+    "INTERVAL_DAYS": "интервал",
+}
+
+
+@router.get("/planned-ops", response_class=HTMLResponse)
+def planned_ops_list(
+    request: Request,
+    view: str = "active",
+    q: str = "",
+    kind_filter: str = "",
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    query = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.account_id == user_id,
+    )
+    if view == "archived":
+        query = query.filter(OperationTemplateModel.is_archived == True)
+    else:
+        query = query.filter(OperationTemplateModel.is_archived == False)
+    if q:
+        query = query.filter(OperationTemplateModel.title.ilike(f"%{q}%"))
+    if kind_filter in ("INCOME", "EXPENSE"):
+        query = query.filter(OperationTemplateModel.kind == kind_filter)
+
+    op_templates = query.order_by(OperationTemplateModel.title).all()
+
+    # Build rule map for frequency display
+    rule_ids = [t.rule_id for t in op_templates if t.rule_id]
+    rules = db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all() if rule_ids else []
+    rule_map = {r.rule_id: r for r in rules}
+
+    # Wallet and category maps for display
+    wallets = db.query(WalletBalance).filter(WalletBalance.account_id == user_id).all()
+    wallet_map = {w.wallet_id: w for w in wallets}
+    fin_categories = db.query(CategoryInfo).filter(CategoryInfo.account_id == user_id).all()
+    cat_map = {c.category_id: c for c in fin_categories}
+
+    return templates.TemplateResponse("planned_ops_list.html", {
+        "request": request,
+        "templates_list": op_templates,
+        "rule_map": rule_map,
+        "wallet_map": wallet_map,
+        "cat_map": cat_map,
+        "kind_labels": OP_KIND_LABELS,
+        "freq_labels": OP_FREQ_LABELS,
+        "view": view,
+        "q": q,
+        "kind_filter": kind_filter,
+    })
+
+
+@router.get("/planned-ops/upcoming", response_class=HTMLResponse)
+def planned_ops_upcoming(request: Request, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
@@ -1178,38 +1300,70 @@ def planned_operations_page(request: Request, db: Session = Depends(get_db)):
     gen = OccurrenceGenerator(db)
     gen.generate_operation_occurrences(user_id)
 
-    op_templates = db.query(OperationTemplateModel).filter(
-        OperationTemplateModel.account_id == user_id, OperationTemplateModel.is_archived == False,
-    ).order_by(OperationTemplateModel.title).all()
-
     today = date.today()
-    op_occurrences = db.query(OperationOccurrence).filter(
+    all_occs = db.query(OperationOccurrence).filter(
         OperationOccurrence.account_id == user_id,
         OperationOccurrence.scheduled_date >= today - timedelta(days=30),
-        OperationOccurrence.scheduled_date <= today + timedelta(days=60),
+        OperationOccurrence.scheduled_date <= today + timedelta(days=90),
     ).order_by(OperationOccurrence.scheduled_date.asc()).all()
 
-    wallets = db.query(WalletBalance).filter(
-        WalletBalance.account_id == user_id, WalletBalance.is_archived == False,
-    ).all()
-    fin_categories = db.query(CategoryInfo).filter(
-        CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False,
-    ).all()
+    # Template map
+    tmpl_ids = list({o.template_id for o in all_occs})
+    tmpls = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id.in_(tmpl_ids)
+    ).all() if tmpl_ids else []
+    tmpl_map = {t.template_id: t for t in tmpls}
 
-    return templates.TemplateResponse("planned_operations.html", {
-        "request": request, "op_templates": op_templates, "op_occurrences": op_occurrences,
-        "wallets": wallets, "fin_categories": fin_categories, "today": today,
+    active_occs = [o for o in all_occs if o.status == "ACTIVE"]
+    done_occs = [o for o in all_occs if o.status != "ACTIVE"]
+
+    return templates.TemplateResponse("planned_ops_upcoming.html", {
+        "request": request,
+        "active_occs": active_occs,
+        "done_occs": done_occs,
+        "tmpl_map": tmpl_map,
+        "kind_labels": OP_KIND_LABELS,
+        "today": today,
     })
 
 
-@router.post("/planned-operations/create")
-def create_operation_template_form(
-    request: Request, title: str = Form(...), kind: str = Form(...), amount: str = Form(...),
-    freq: str = Form(...), interval: int = Form(1), start_date: str = Form(...),
-    wallet_id: int | None = Form(None), category_id: int | None = Form(None),
-    from_wallet_id: int | None = Form(None), to_wallet_id: int | None = Form(None),
-    by_monthday: int | None = Form(None), note: str = Form(""),
-    db: Session = Depends(get_db)
+@router.get("/planned-ops/new", response_class=HTMLResponse)
+def planned_op_new_page(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id, WalletBalance.is_archived == False,
+        WalletBalance.wallet_type != "CREDIT",
+    ).order_by(WalletBalance.title).all()
+    fin_categories = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False,
+    ).order_by(CategoryInfo.title).all()
+
+    return templates.TemplateResponse("planned_op_form.html", {
+        "request": request,
+        "mode": "new",
+        "wallets": wallets,
+        "fin_categories": fin_categories,
+        "today": date.today(),
+    })
+
+
+@router.post("/planned-ops/new")
+def planned_op_create(
+    request: Request,
+    title: str = Form(...),
+    kind: str = Form(...),
+    amount: str = Form(...),
+    wallet_id: int | None = Form(None),
+    category_id: int | None = Form(None),
+    freq: str = Form(...),
+    interval: int = Form(1),
+    start_date: str = Form(...),
+    by_monthday: int | None = Form(None),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
 ):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
@@ -1219,161 +1373,958 @@ def create_operation_template_form(
             account_id=user_id, title=title, freq=freq, interval=interval,
             start_date=start_date, kind=kind, amount=amount,
             wallet_id=wallet_id, category_id=category_id,
-            from_wallet_id=from_wallet_id, to_wallet_id=to_wallet_id,
             note=note.strip() or None,
-            by_monthday=by_monthday, actor_user_id=user_id)
-        return RedirectResponse("/planned-operations", status_code=302)
-    except Exception as e:
+            by_monthday=by_monthday, actor_user_id=user_id,
+        )
+        return RedirectResponse("/planned-ops", status_code=302)
+    except (OperationTemplateValidationError, Exception) as e:
         db.rollback()
-        today = date.today()
-        gen = OccurrenceGenerator(db)
-        gen.generate_operation_occurrences(user_id)
-        op_templates = db.query(OperationTemplateModel).filter(
-            OperationTemplateModel.account_id == user_id, OperationTemplateModel.is_archived == False,
-        ).order_by(OperationTemplateModel.title).all()
-        op_occurrences = db.query(OperationOccurrence).filter(
-            OperationOccurrence.account_id == user_id,
-            OperationOccurrence.scheduled_date >= today - timedelta(days=30),
-            OperationOccurrence.scheduled_date <= today + timedelta(days=60),
-        ).order_by(OperationOccurrence.scheduled_date.asc()).all()
         wallets = db.query(WalletBalance).filter(
             WalletBalance.account_id == user_id, WalletBalance.is_archived == False,
-        ).all()
+            WalletBalance.wallet_type != "CREDIT",
+        ).order_by(WalletBalance.title).all()
         fin_categories = db.query(CategoryInfo).filter(
             CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False,
-        ).all()
-        return templates.TemplateResponse("planned_operations.html", {
-            "request": request, "op_templates": op_templates, "op_occurrences": op_occurrences,
-            "wallets": wallets, "fin_categories": fin_categories, "today": today,
+        ).order_by(CategoryInfo.title).all()
+        return templates.TemplateResponse("planned_op_form.html", {
+            "request": request,
+            "mode": "new",
+            "wallets": wallets,
+            "fin_categories": fin_categories,
+            "today": date.today(),
             "error": str(e),
+            "form_title": title, "form_kind": kind, "form_amount": amount,
+            "form_wallet_id": wallet_id, "form_category_id": category_id,
+            "form_freq": freq, "form_interval": interval,
+            "form_start_date": start_date, "form_by_monthday": by_monthday,
+            "form_note": note,
         })
 
 
-@router.post("/planned-operations/occurrences/{occurrence_id}/confirm")
-def confirm_operation_occurrence_form(request: Request, occurrence_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    try:
-        ConfirmOperationOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/planned-operations", status_code=302)
-
-
-@router.post("/planned-operations/occurrences/{occurrence_id}/skip")
-def skip_operation_occurrence_form(request: Request, occurrence_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    try:
-        SkipOperationOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/planned-operations", status_code=302)
-
-
-# === Events ===
-
-@router.get("/events", response_class=HTMLResponse)
-def events_page(request: Request, db: Session = Depends(get_db)):
+@router.get("/planned-ops/{template_id}/edit", response_class=HTMLResponse)
+def planned_op_edit_page(request: Request, template_id: int, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
 
-    gen = OccurrenceGenerator(db)
-    gen.generate_event_occurrences(user_id)
+    tmpl = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not tmpl:
+        return RedirectResponse("/planned-ops", status_code=302)
 
-    today = date.today()
-    today_events = get_today_events(db, user_id, today)
-    week_events = get_7days_events(db, user_id, today)
+    rule = db.query(RecurrenceRuleModel).filter(
+        RecurrenceRuleModel.rule_id == tmpl.rule_id,
+    ).first()
 
-    # Build event_id -> CalendarEventModel map
-    ev_ids = {o.event_id for o in today_events} | {o.event_id for o in week_events}
-    event_map = {}
-    if ev_ids:
-        for ev in db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(ev_ids)).all():
-            event_map[ev.event_id] = ev
+    has_confirmed = db.query(OperationOccurrence).filter(
+        OperationOccurrence.template_id == template_id,
+        OperationOccurrence.account_id == user_id,
+        OperationOccurrence.status.in_(["DONE", "SKIPPED"]),
+    ).first() is not None
 
-    # All active events for management section
-    active_events = db.query(CalendarEventModel).filter(
-        CalendarEventModel.account_id == user_id,
-        CalendarEventModel.is_active == True,
-    ).order_by(CalendarEventModel.title).all()
+    wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id, WalletBalance.is_archived == False,
+        WalletBalance.wallet_type != "CREDIT",
+    ).order_by(WalletBalance.title).all()
+    fin_categories = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False,
+    ).order_by(CategoryInfo.title).all()
 
-    # Work categories for forms and display
-    work_categories = db.query(WorkCategory).filter(
-        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    return templates.TemplateResponse("planned_op_form.html", {
+        "request": request,
+        "mode": "edit",
+        "tmpl": tmpl,
+        "rule": rule,
+        "has_confirmed": has_confirmed,
+        "wallets": wallets,
+        "fin_categories": fin_categories,
+        "today": date.today(),
+    })
+
+
+@router.post("/planned-ops/{template_id}/edit")
+def planned_op_update(
+    request: Request,
+    template_id: int,
+    title: str = Form(...),
+    kind: str = Form(...),
+    amount: str = Form(...),
+    wallet_id: int | None = Form(None),
+    category_id: int | None = Form(None),
+    note: str = Form(""),
+    is_archived: str = Form(""),
+    version_from_date: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    tmpl = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not tmpl:
+        return RedirectResponse("/planned-ops", status_code=302)
+
+    try:
+        want_archived = is_archived == "on"
+
+        # 1. Unarchive first if needed
+        if tmpl.is_archived and not want_archived:
+            UnarchiveOperationTemplateUseCase(db).execute(template_id, user_id, actor_user_id=user_id)
+            tmpl = db.query(OperationTemplateModel).filter(
+                OperationTemplateModel.template_id == template_id,
+            ).first()
+
+        # 2. Update fields
+        UpdateOperationTemplateUseCase(db).execute(
+            template_id=template_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+            version_from_date=version_from_date or None,
+            title=title.strip(),
+            kind=kind,
+            amount=amount,
+            wallet_id=wallet_id,
+            category_id=category_id,
+            note=note.strip() or None,
+        )
+
+        # Reload after update
+        tmpl = db.query(OperationTemplateModel).filter(
+            OperationTemplateModel.template_id == template_id,
+        ).first()
+
+        # 3. Archive last if needed
+        if tmpl and not tmpl.is_archived and want_archived:
+            ArchiveOperationTemplateUseCase(db).execute(template_id, user_id, actor_user_id=user_id)
+
+        redirect_view = "archived" if want_archived else "active"
+        return RedirectResponse(f"/planned-ops?view={redirect_view}", status_code=302)
+
+    except (OperationTemplateValidationError, Exception) as e:
+        db.rollback()
+        tmpl = db.query(OperationTemplateModel).filter(
+            OperationTemplateModel.template_id == template_id,
+            OperationTemplateModel.account_id == user_id,
+        ).first()
+        rule = db.query(RecurrenceRuleModel).filter(
+            RecurrenceRuleModel.rule_id == tmpl.rule_id,
+        ).first() if tmpl else None
+        has_confirmed = db.query(OperationOccurrence).filter(
+            OperationOccurrence.template_id == template_id,
+            OperationOccurrence.account_id == user_id,
+            OperationOccurrence.status.in_(["DONE", "SKIPPED"]),
+        ).first() is not None
+        wallets = db.query(WalletBalance).filter(
+            WalletBalance.account_id == user_id, WalletBalance.is_archived == False,
+            WalletBalance.wallet_type != "CREDIT",
+        ).order_by(WalletBalance.title).all()
+        fin_categories = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False,
+        ).order_by(CategoryInfo.title).all()
+        return templates.TemplateResponse("planned_op_form.html", {
+            "request": request,
+            "mode": "edit",
+            "tmpl": tmpl,
+            "rule": rule,
+            "has_confirmed": has_confirmed,
+            "wallets": wallets,
+            "fin_categories": fin_categories,
+            "today": date.today(),
+            "error": str(e),
+        })
+
+
+@router.post("/planned-ops/occurrences/{occurrence_id}/confirm")
+def confirm_op_occurrence(request: Request, occurrence_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    try:
+        ConfirmOperationOccurrenceUseCase(db).execute(
+            occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"],
+        )
+    except Exception:
+        db.rollback()
+    return RedirectResponse("/planned-ops/upcoming", status_code=302)
+
+
+@router.post("/planned-ops/occurrences/{occurrence_id}/skip")
+def skip_op_occurrence(request: Request, occurrence_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    try:
+        SkipOperationOccurrenceUseCase(db).execute(
+            occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"],
+        )
+    except Exception:
+        db.rollback()
+    return RedirectResponse("/planned-ops/upcoming", status_code=302)
+
+
+# === Subscriptions ===
+
+MONTH_NAMES_RU = {
+    1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
+    5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
+    9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь",
+}
+
+
+@router.get("/subscriptions", response_class=HTMLResponse)
+def subscriptions_list(
+    request: Request,
+    view: str = "active",
+    q: str = "",
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    query = db.query(SubscriptionModel).filter(
+        SubscriptionModel.account_id == user_id,
+    )
+    if view == "archived":
+        query = query.filter(SubscriptionModel.is_archived == True)
+    else:
+        query = query.filter(SubscriptionModel.is_archived == False)
+
+    if q:
+        query = query.filter(SubscriptionModel.name.ilike(f"%{q}%"))
+
+    subs = query.order_by(SubscriptionModel.name).all()
+
+    # Category map for display
+    cats = db.query(CategoryInfo).filter(CategoryInfo.account_id == user_id).all()
+    cat_map = {c.category_id: c for c in cats}
+
+    # Members count per subscription
+    member_counts = {}
+    for s in subs:
+        cnt = db.query(SubscriptionMemberModel).filter(
+            SubscriptionMemberModel.subscription_id == s.id,
+            SubscriptionMemberModel.is_archived == False,
+        ).count()
+        member_counts[s.id] = cnt
+
+    # Progress bars data
+    sub_ids = [s.id for s in subs]
+    overview_map = compute_subscriptions_overview(db, user_id, sub_ids)
+
+    return templates.TemplateResponse("subscriptions_list.html", {
+        "request": request,
+        "subs": subs,
+        "cat_map": cat_map,
+        "member_counts": member_counts,
+        "overview_map": overview_map,
+        "view": view,
+        "q": q,
+    })
+
+
+@router.get("/subscriptions/new", response_class=HTMLResponse)
+def subscription_new_page(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    cats = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+    ).all()
+    expense_cats = [c for c in cats if c.category_type == "EXPENSE"]
+    income_cats = [c for c in cats if c.category_type == "INCOME"]
+
+    return templates.TemplateResponse("subscription_form.html", {
+        "request": request,
+        "mode": "new",
+        "sub": None,
+        "expense_cats": expense_cats,
+        "income_cats": income_cats,
+        "members": [],
+        "error": "",
+    })
+
+
+@router.post("/subscriptions/new", response_class=HTMLResponse)
+def subscription_create(
+    request: Request,
+    name: str = Form(...),
+    expense_category_id: int = Form(...),
+    income_category_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        CreateSubscriptionUseCase(db).execute(
+            account_id=user_id,
+            name=name,
+            expense_category_id=expense_category_id,
+            income_category_id=income_category_id,
+        )
+        return RedirectResponse("/subscriptions", status_code=302)
+    except SubscriptionValidationError as e:
+        db.rollback()
+        cats = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.is_archived == False,
+        ).all()
+        return templates.TemplateResponse("subscription_form.html", {
+            "request": request,
+            "mode": "new",
+            "sub": None,
+            "expense_cats": [c for c in cats if c.category_type == "EXPENSE"],
+            "income_cats": [c for c in cats if c.category_type == "INCOME"],
+            "members": [],
+            "error": str(e),
+        })
+
+
+@router.get("/subscriptions/{sub_id}", response_class=HTMLResponse)
+def subscription_detail_page(
+    request: Request,
+    sub_id: int,
+    month: str = "",
+    error: str = "",
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id,
+        SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        return RedirectResponse("/subscriptions", status_code=302)
+
+    # Parse selected month
+    if month:
+        try:
+            selected = date.fromisoformat(month + "-01")
+        except ValueError:
+            selected = date.today().replace(day=1)
+    else:
+        selected = date.today().replace(day=1)
+
+    detail = compute_subscription_detail(db, sub, selected)
+
+    # Nav months
+    prev_m = selected.month - 2
+    prev_month = date(selected.year + prev_m // 12, prev_m % 12 + 1, 1)
+    next_m = selected.month
+    next_month = date(selected.year + next_m // 12, next_m % 12 + 1, 1)
+
+    # Category map for display
+    cats = db.query(CategoryInfo).filter(CategoryInfo.account_id == user_id).all()
+    cat_map = {c.category_id: c for c in cats}
+
+    # Members for initial coverage form
+    members = db.query(SubscriptionMemberModel).filter(
+        SubscriptionMemberModel.subscription_id == sub.id,
+        SubscriptionMemberModel.is_archived == False,
+    ).all()
+    # contact_map is already inside detail (from compute_subscription_detail)
+    contact_map = detail.get("contact_map", {})
+    members.sort(key=lambda m: (contact_map.get(m.contact_id) and contact_map[m.contact_id].name or "").lower())
+
+    return templates.TemplateResponse("subscription_detail.html", {
+        "request": request,
+        "sub": sub,
+        "selected": selected,
+        "selected_label": f"{MONTH_NAMES_RU[selected.month]} {selected.year}",
+        "prev_month": prev_month.strftime("%Y-%m"),
+        "next_month": next_month.strftime("%Y-%m"),
+        "detail": detail,
+        "cat_map": cat_map,
+        "month_names": MONTH_NAMES_RU,
+        "members": members,
+        "contact_map": contact_map,
+        "error": error,
+    })
+
+
+@router.post("/subscriptions/{sub_id}/initial-coverage")
+def subscription_add_initial_coverage(
+    request: Request,
+    sub_id: int,
+    payer_type: str = Form(...),
+    member_id: int | None = Form(None),
+    end_date: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        end_date_parsed = date.fromisoformat(end_date)
+        if payer_type == "SELF":
+            member_id = None
+
+        # Auto-compute start_date: day after the latest existing coverage end
+        q = db.query(SubscriptionCoverageModel).filter(
+            SubscriptionCoverageModel.subscription_id == sub_id,
+            SubscriptionCoverageModel.payer_type == payer_type,
+        )
+        if payer_type == "MEMBER":
+            q = q.filter(SubscriptionCoverageModel.member_id == member_id)
+        else:
+            q = q.filter(SubscriptionCoverageModel.member_id.is_(None))
+
+        existing = q.all()
+        if existing:
+            max_end = max(c.end_date for c in existing)
+            start_date_parsed = max_end + timedelta(days=1)
+        else:
+            start_date_parsed = end_date_parsed
+
+        CreateInitialCoverageUseCase(db).execute(
+            account_id=user_id,
+            subscription_id=sub_id,
+            payer_type=payer_type,
+            member_id=member_id,
+            start_date=start_date_parsed,
+            end_date=end_date_parsed,
+        )
+    except (SubscriptionValidationError, ValueError) as e:
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?error={str(e)}",
+            status_code=302,
+        )
+
+    return RedirectResponse(f"/subscriptions/{sub_id}", status_code=302)
+
+
+@router.get("/subscriptions/{sub_id}/edit", response_class=HTMLResponse)
+def subscription_edit_page(
+    request: Request,
+    sub_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id,
+        SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        return RedirectResponse("/subscriptions", status_code=302)
+
+    cats = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+    ).all()
+    expense_cats = [c for c in cats if c.category_type == "EXPENSE"]
+    income_cats = [c for c in cats if c.category_type == "INCOME"]
+
+    members = db.query(SubscriptionMemberModel).filter(
+        SubscriptionMemberModel.subscription_id == sub_id,
+    ).all()
+    # Build contact_map for member names
+    contact_ids = list({m.contact_id for m in members})
+    contact_map = {}
+    if contact_ids:
+        contacts = db.query(ContactModel).filter(ContactModel.id.in_(contact_ids)).all()
+        contact_map = {c.id: c for c in contacts}
+    members.sort(key=lambda m: (contact_map.get(m.contact_id) and contact_map[m.contact_id].name or "").lower())
+
+    # All contacts for the "add member" dropdown
+    all_contacts = db.query(ContactModel).filter(
+        ContactModel.account_id == user_id,
+        ContactModel.is_archived == False,
+    ).order_by(ContactModel.name).all()
+
+    return templates.TemplateResponse("subscription_form.html", {
+        "request": request,
+        "mode": "edit",
+        "sub": sub,
+        "expense_cats": expense_cats,
+        "income_cats": income_cats,
+        "members": members,
+        "contact_map": contact_map,
+        "all_contacts": all_contacts,
+        "error": "",
+    })
+
+
+@router.post("/subscriptions/{sub_id}/edit", response_class=HTMLResponse)
+def subscription_update(
+    request: Request,
+    sub_id: int,
+    name: str = Form(...),
+    expense_category_id: int = Form(...),
+    income_category_id: int = Form(...),
+    is_archived: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id,
+        SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        return RedirectResponse("/subscriptions", status_code=302)
+
+    want_archived = is_archived == "on"
+
+    try:
+        # Unarchive first if needed
+        if sub.is_archived and not want_archived:
+            UnarchiveSubscriptionUseCase(db).execute(sub_id, user_id)
+            sub = db.query(SubscriptionModel).filter(SubscriptionModel.id == sub_id).first()
+
+        # Update fields
+        UpdateSubscriptionUseCase(db).execute(
+            sub_id, user_id,
+            name=name,
+            expense_category_id=expense_category_id,
+            income_category_id=income_category_id,
+        )
+
+        # Archive last if needed
+        sub = db.query(SubscriptionModel).filter(SubscriptionModel.id == sub_id).first()
+        if not sub.is_archived and want_archived:
+            ArchiveSubscriptionUseCase(db).execute(sub_id, user_id)
+
+        view = "archived" if want_archived else "active"
+        return RedirectResponse(f"/subscriptions?view={view}", status_code=302)
+    except SubscriptionValidationError as e:
+        db.rollback()
+        cats = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.is_archived == False,
+        ).all()
+        members = db.query(SubscriptionMemberModel).filter(
+            SubscriptionMemberModel.subscription_id == sub_id,
+        ).all()
+        c_ids = list({m.contact_id for m in members})
+        c_map = {}
+        if c_ids:
+            c_map = {c.id: c for c in db.query(ContactModel).filter(ContactModel.id.in_(c_ids)).all()}
+        members.sort(key=lambda m: (c_map.get(m.contact_id) and c_map[m.contact_id].name or "").lower())
+        all_contacts = db.query(ContactModel).filter(
+            ContactModel.account_id == user_id, ContactModel.is_archived == False,
+        ).order_by(ContactModel.name).all()
+        return templates.TemplateResponse("subscription_form.html", {
+            "request": request,
+            "mode": "edit",
+            "sub": sub,
+            "expense_cats": [c for c in cats if c.category_type == "EXPENSE"],
+            "income_cats": [c for c in cats if c.category_type == "INCOME"],
+            "members": members,
+            "contact_map": c_map,
+            "all_contacts": all_contacts,
+            "error": str(e),
+        })
+
+
+@router.post("/subscriptions/{sub_id}/members", response_class=HTMLResponse)
+def subscription_add_member(
+    request: Request,
+    sub_id: int,
+    contact_id: int = Form(...),
+    payment_per_year: str = Form(""),
+    payment_per_month: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    ppy = Decimal(payment_per_year) if payment_per_year.strip() else None
+    ppm = Decimal(payment_per_month) if payment_per_month.strip() else None
+
+    try:
+        AddSubscriptionMemberUseCase(db).execute(
+            account_id=user_id,
+            subscription_id=sub_id,
+            contact_id=contact_id,
+            payment_per_year=ppy,
+            payment_per_month=ppm,
+        )
+    except SubscriptionValidationError:
+        db.rollback()
+    return RedirectResponse(f"/subscriptions/{sub_id}/edit", status_code=302)
+
+
+@router.post("/subscriptions/{sub_id}/members/{mid}/archive", response_class=HTMLResponse)
+def subscription_archive_member(
+    request: Request,
+    sub_id: int,
+    mid: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        ArchiveMemberUseCase(db).execute(mid, user_id)
+    except SubscriptionValidationError:
+        db.rollback()
+    return RedirectResponse(f"/subscriptions/{sub_id}/edit", status_code=302)
+
+
+@router.post("/subscriptions/{sub_id}/members/{mid}/unarchive", response_class=HTMLResponse)
+def subscription_unarchive_member(
+    request: Request,
+    sub_id: int,
+    mid: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        UnarchiveMemberUseCase(db).execute(mid, user_id)
+    except SubscriptionValidationError:
+        db.rollback()
+    return RedirectResponse(f"/subscriptions/{sub_id}/edit", status_code=302)
+
+
+@router.post("/subscriptions/{sub_id}/members/{mid}/payment", response_class=HTMLResponse)
+def subscription_update_member_payment(
+    request: Request,
+    sub_id: int,
+    mid: int,
+    payment_per_year: str = Form(""),
+    payment_per_month: str = Form(""),
+    next: str = Form("edit"),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    ppy = Decimal(payment_per_year) if payment_per_year.strip() else None
+    ppm = Decimal(payment_per_month) if payment_per_month.strip() else None
+
+    try:
+        UpdateMemberPaymentUseCase(db).execute(mid, user_id, ppy, ppm)
+    except SubscriptionValidationError:
+        db.rollback()
+
+    if next == "detail":
+        return RedirectResponse(f"/subscriptions/{sub_id}", status_code=302)
+    return RedirectResponse(f"/subscriptions/{sub_id}/edit", status_code=302)
+
+
+# === Contacts ===
+
+
+@router.get("/contacts", response_class=HTMLResponse)
+def contacts_list(
+    request: Request,
+    view: str = "active",
+    q: str = "",
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    query = db.query(ContactModel).filter(ContactModel.account_id == user_id)
+    if view == "archived":
+        query = query.filter(ContactModel.is_archived == True)
+    else:
+        query = query.filter(ContactModel.is_archived == False)
+
+    if q:
+        query = query.filter(ContactModel.name.ilike(f"%{q}%"))
+
+    contacts = query.order_by(ContactModel.name).all()
+
+    return templates.TemplateResponse("contacts_list.html", {
+        "request": request,
+        "contacts": contacts,
+        "view": view,
+        "q": q,
+    })
+
+
+@router.get("/contacts/new", response_class=HTMLResponse)
+def contact_new_page(request: Request):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("contact_form.html", {
+        "request": request,
+        "mode": "new",
+        "contact": None,
+        "error": "",
+    })
+
+
+@router.post("/contacts/new", response_class=HTMLResponse)
+def contact_create(
+    request: Request,
+    name: str = Form(...),
+    note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        cid = CreateContactUseCase(db).execute(
+            account_id=user_id, name=name, note=note,
+        )
+        return RedirectResponse(f"/contacts/{cid}", status_code=302)
+    except ContactValidationError as e:
+        db.rollback()
+        return templates.TemplateResponse("contact_form.html", {
+            "request": request,
+            "mode": "new",
+            "contact": None,
+            "error": str(e),
+        })
+
+
+@router.get("/contacts/{contact_id}", response_class=HTMLResponse)
+def contact_detail_page(
+    request: Request,
+    contact_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_id,
+        ContactModel.account_id == user_id,
+    ).first()
+    if not contact:
+        return RedirectResponse("/contacts", status_code=302)
+
+    # Find all subscription memberships for this contact
+    links = db.query(SubscriptionMemberModel).filter(
+        SubscriptionMemberModel.contact_id == contact_id,
+        SubscriptionMemberModel.account_id == user_id,
+    ).all()
+
+    sub_ids = [lnk.subscription_id for lnk in links]
+    subs_map = {}
+    if sub_ids:
+        subs = db.query(SubscriptionModel).filter(SubscriptionModel.id.in_(sub_ids)).all()
+        subs_map = {s.id: s for s in subs}
+
+    # For each link, compute paid_until from coverages
+    subscriptions_info = []
+    for lnk in links:
+        sub = subs_map.get(lnk.subscription_id)
+        if not sub:
+            continue
+
+        coverages = db.query(SubscriptionCoverageModel).filter(
+            SubscriptionCoverageModel.subscription_id == lnk.subscription_id,
+            SubscriptionCoverageModel.payer_type == "MEMBER",
+            SubscriptionCoverageModel.member_id == lnk.id,
+        ).all()
+
+        paid_until = None
+        for cov in coverages:
+            if paid_until is None or cov.end_date > paid_until:
+                paid_until = cov.end_date
+
+        subscriptions_info.append({
+            "subscription": sub,
+            "member_link": lnk,
+            "paid_until": paid_until,
+        })
+
+    return templates.TemplateResponse("contact_detail.html", {
+        "request": request,
+        "contact": contact,
+        "subscriptions_info": subscriptions_info,
+    })
+
+
+@router.get("/contacts/{contact_id}/edit", response_class=HTMLResponse)
+def contact_edit_page(
+    request: Request,
+    contact_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_id,
+        ContactModel.account_id == user_id,
+    ).first()
+    if not contact:
+        return RedirectResponse("/contacts", status_code=302)
+
+    return templates.TemplateResponse("contact_form.html", {
+        "request": request,
+        "mode": "edit",
+        "contact": contact,
+        "error": "",
+    })
+
+
+@router.post("/contacts/{contact_id}/edit", response_class=HTMLResponse)
+def contact_update(
+    request: Request,
+    contact_id: int,
+    name: str = Form(...),
+    note: str = Form(""),
+    is_archived: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == contact_id,
+        ContactModel.account_id == user_id,
+    ).first()
+    if not contact:
+        return RedirectResponse("/contacts", status_code=302)
+
+    want_archived = is_archived == "on"
+
+    try:
+        if contact.is_archived and not want_archived:
+            UnarchiveContactUseCase(db).execute(contact_id, user_id)
+
+        UpdateContactUseCase(db).execute(
+            contact_id, user_id, name=name, note=note,
+        )
+
+        contact = db.query(ContactModel).filter(ContactModel.id == contact_id).first()
+        if not contact.is_archived and want_archived:
+            ArchiveContactUseCase(db).execute(contact_id, user_id)
+
+        view = "archived" if want_archived else "active"
+        return RedirectResponse(f"/contacts?view={view}", status_code=302)
+    except ContactValidationError as e:
+        db.rollback()
+        return templates.TemplateResponse("contact_form.html", {
+            "request": request,
+            "mode": "edit",
+            "contact": contact,
+            "error": str(e),
+        })
+
+
+# === Events ===
+
+FREQ_LABELS = {"YEARLY": "ежегодно", "MONTHLY": "ежемесячно", "WEEKLY": "еженедельно", "INTERVAL_DAYS": "каждые N дней", "DAILY": "ежедневно"}
+
+
+@router.get("/events", response_class=HTMLResponse)
+def events_list(
+    request: Request,
+    view: str = "active",
+    q: str = "",
+    category_id: str = "",
+    event_type: str = "",
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    query = db.query(CalendarEventModel).filter(CalendarEventModel.account_id == user_id)
+
+    if view == "archived":
+        query = query.filter(CalendarEventModel.is_active == False)
+    else:
+        query = query.filter(CalendarEventModel.is_active == True)
+
+    if q.strip():
+        query = query.filter(CalendarEventModel.title.ilike(f"%{q.strip()}%"))
+
+    if category_id:
+        try:
+            query = query.filter(CalendarEventModel.category_id == int(category_id))
+        except ValueError:
+            pass
+
+    if event_type == "single":
+        query = query.filter(CalendarEventModel.repeat_rule_id == None)
+    elif event_type == "recurring":
+        query = query.filter(CalendarEventModel.repeat_rule_id != None)
+
+    events = query.order_by(CalendarEventModel.title).all()
+
+    # Categories for filter + display
+    categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
     ).order_by(WorkCategory.title).all()
-    wc_map = {wc.category_id: wc for wc in work_categories}
+    wc_map = {wc.category_id: wc for wc in categories}
 
-    # Filter presets
-    presets = db.query(EventFilterPresetModel).filter(
-        EventFilterPresetModel.account_id == user_id,
-    ).order_by(EventFilterPresetModel.name).all()
-
-    # Recurrence rules for active events (for inline edit)
-    rule_ids = {ev.repeat_rule_id for ev in active_events if ev.repeat_rule_id}
+    # Recurrence rules for display
+    rule_ids = {ev.repeat_rule_id for ev in events if ev.repeat_rule_id}
     rule_map = {}
     if rule_ids:
         for r in db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all():
             rule_map[r.rule_id] = r
 
-    return templates.TemplateResponse("events.html", {
+    return templates.TemplateResponse("events_list.html", {
         "request": request,
-        "today": today,
-        "today_events": today_events,
-        "week_events": week_events,
-        "event_map": event_map,
-        "active_events": active_events,
-        "work_categories": work_categories,
+        "events": events,
+        "categories": categories,
         "wc_map": wc_map,
-        "presets": presets,
         "rule_map": rule_map,
+        "freq_labels": FREQ_LABELS,
+        "view": view,
+        "q": q,
+        "category_id": category_id,
+        "event_type": event_type,
     })
 
 
-@router.get("/events/history", response_class=HTMLResponse)
-def events_history_page(request: Request, db: Session = Depends(get_db)):
+@router.get("/events/new", response_class=HTMLResponse)
+def event_new_page(request: Request, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
 
-    today = date.today()
-    history = get_history_events(db, user_id, today, limit=100)
-
-    ev_ids = {o.event_id for o in history}
-    event_map = {}
-    if ev_ids:
-        for ev in db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(ev_ids)).all():
-            event_map[ev.event_id] = ev
-
-    work_categories = db.query(WorkCategory).filter(
-        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
     ).order_by(WorkCategory.title).all()
-    wc_map = {wc.category_id: wc for wc in work_categories}
 
-    return templates.TemplateResponse("events_history.html", {
+    return templates.TemplateResponse("event_form.html", {
         "request": request,
-        "history": history,
-        "event_map": event_map,
-        "wc_map": wc_map,
-        "today": today,
+        "mode": "new",
+        "categories": categories,
     })
 
 
-@router.post("/events/create")
-def create_event_form(
+@router.post("/events/new", response_class=HTMLResponse)
+def event_create(
     request: Request,
     title: str = Form(...),
     category_id: int = Form(...),
     description: str = Form(""),
-    importance: int = Form(0),
     event_type: str = Form("onetime"),
-    # One-time fields
     start_date: str = Form(""),
     start_time: str = Form(""),
     end_date: str = Form(""),
     end_time: str = Form(""),
-    # Recurring fields
     recurrence_type: str = Form(""),
     rec_month: int | None = Form(None),
     rec_day: int | None = Form(None),
@@ -1386,7 +2337,6 @@ def create_event_form(
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
 
-    # Server-side validation
     error = validate_event_form(
         event_type=event_type,
         title=title,
@@ -1399,37 +2349,17 @@ def create_event_form(
         rec_start_date=rec_start_date,
     )
     if error:
-        # Re-render events page with error
-        today = date.today()
-        gen = OccurrenceGenerator(db)
-        gen.generate_event_occurrences(user_id)
-        today_events = get_today_events(db, user_id, today)
-        week_events = get_7days_events(db, user_id, today)
-        ev_ids = {o.event_id for o in today_events} | {o.event_id for o in week_events}
-        event_map = {}
-        if ev_ids:
-            for ev in db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(ev_ids)).all():
-                event_map[ev.event_id] = ev
-        active_events = db.query(CalendarEventModel).filter(
-            CalendarEventModel.account_id == user_id, CalendarEventModel.is_active == True,
-        ).order_by(CalendarEventModel.title).all()
-        work_categories = db.query(WorkCategory).filter(
-            WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+        categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
         ).order_by(WorkCategory.title).all()
-        wc_map = {wc.category_id: wc for wc in work_categories}
-        presets = db.query(EventFilterPresetModel).filter(
-            EventFilterPresetModel.account_id == user_id,
-        ).order_by(EventFilterPresetModel.name).all()
-        rule_ids = {ev.repeat_rule_id for ev in active_events if ev.repeat_rule_id}
-        rule_map = {}
-        if rule_ids:
-            for r in db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all():
-                rule_map[r.rule_id] = r
-        return templates.TemplateResponse("events.html", {
-            "request": request, "today": today, "today_events": today_events,
-            "week_events": week_events, "event_map": event_map,
-            "active_events": active_events, "work_categories": work_categories,
-            "wc_map": wc_map, "presets": presets, "rule_map": rule_map, "error": error,
+        return templates.TemplateResponse("event_form.html", {
+            "request": request, "mode": "new", "categories": categories, "error": error,
+            "form_title": title, "form_category_id": category_id, "form_description": description,
+            "form_event_type": event_type, "form_start_date": start_date, "form_start_time": start_time,
+            "form_end_date": end_date, "form_end_time": end_time,
+            "form_recurrence_type": recurrence_type, "form_rec_month": rec_month,
+            "form_rec_day": rec_day, "form_rec_weekdays": rec_weekdays,
+            "form_rec_interval": rec_interval, "form_rec_start_date": rec_start_date,
         })
 
     try:
@@ -1440,7 +2370,6 @@ def create_event_form(
                 title=title,
                 category_id=category_id,
                 description=description.strip() or None,
-                importance=importance,
                 occ_start_date=start_date.strip() or None,
                 occ_start_time=start_time.strip() or None,
                 occ_end_date=end_date.strip() or None,
@@ -1448,14 +2377,8 @@ def create_event_form(
                 actor_user_id=user_id,
             )
         else:
-            # Map UI recurrence type to RecurrenceRule params
-            freq = None
-            interval = 1
-            rule_start_date = None
-            by_weekday = None
-            by_monthday = None
-            by_month = None
-            by_monthday_for_year = None
+            freq, interval, rule_start_date = None, 1, None
+            by_weekday, by_monthday, by_month, by_monthday_for_year = None, None, None, None
 
             if recurrence_type == "yearly":
                 freq = "YEARLY"
@@ -1476,18 +2399,11 @@ def create_event_form(
                 rule_start_date = rec_start_date.strip()
 
             CreateEventUseCase(db).execute(
-                account_id=user_id,
-                title=title,
-                category_id=category_id,
+                account_id=user_id, title=title, category_id=category_id,
                 description=description.strip() or None,
-                importance=importance,
-                freq=freq,
-                interval=interval,
-                start_date=rule_start_date,
-                by_weekday=by_weekday,
-                by_monthday=by_monthday,
-                by_month=by_month,
-                by_monthday_for_year=by_monthday_for_year,
+                freq=freq, interval=interval, start_date=rule_start_date,
+                by_weekday=by_weekday, by_monthday=by_monthday,
+                by_month=by_month, by_monthday_for_year=by_monthday_for_year,
                 actor_user_id=user_id,
             )
     except Exception:
@@ -1495,16 +2411,47 @@ def create_event_form(
     return RedirectResponse("/events", status_code=302)
 
 
-@router.post("/events/{event_id}/update")
-def update_event_form(
+@router.get("/events/{event_id}/edit", response_class=HTMLResponse)
+def event_edit_page(request: Request, event_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    ev = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not ev:
+        return RedirectResponse("/events", status_code=302)
+
+    categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+    ).order_by(WorkCategory.title).all()
+
+    rule = None
+    if ev.repeat_rule_id:
+        rule = db.query(RecurrenceRuleModel).filter(
+            RecurrenceRuleModel.rule_id == ev.repeat_rule_id,
+        ).first()
+
+    return templates.TemplateResponse("event_form.html", {
+        "request": request,
+        "mode": "edit",
+        "event": ev,
+        "rule": rule,
+        "categories": categories,
+    })
+
+
+@router.post("/events/{event_id}/edit", response_class=HTMLResponse)
+def event_update(
     request: Request,
     event_id: int,
     title: str = Form(...),
     category_id: int = Form(...),
     description: str = Form(""),
-    importance: int = Form(0),
-    # Recurrence editing fields (optional)
-    edit_recurrence: str = Form(""),
+    is_archived: str = Form(""),
+    event_type: str = Form("onetime"),
     recurrence_type: str = Form(""),
     rec_month: int | None = Form(None),
     rec_day: int | None = Form(None),
@@ -1516,196 +2463,106 @@ def update_event_form(
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
+
+    ev = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not ev:
+        return RedirectResponse("/events", status_code=302)
+
+    want_archived = is_archived == "on"
+
     try:
-        # Update basic event fields
+        # 1. Reactivate first if needed
+        if not ev.is_active and not want_archived:
+            ReactivateEventUseCase(db).execute(event_id, user_id, actor_user_id=user_id)
+
+        # 2. Update basic fields
         UpdateEventUseCase(db).execute(
             event_id=event_id,
             account_id=user_id,
             title=title.strip(),
             category_id=category_id,
             description=description.strip() or None,
-            importance=importance,
             actor_user_id=user_id,
         )
 
+        # 3. Handle recurrence changes
         today = date.today()
+        if event_type == "recurring" and recurrence_type:
+            freq, interval, rule_start_date = None, 1, None
+            by_weekday, by_monthday, by_month, by_monthday_for_year = None, None, None, None
 
-        # Handle recurrence changes
-        if edit_recurrence == "1" and recurrence_type:
-            ev = db.query(CalendarEventModel).filter(
-                CalendarEventModel.event_id == event_id,
-                CalendarEventModel.account_id == user_id,
+            if recurrence_type == "yearly":
+                freq = "YEARLY"
+                by_month = rec_month
+                by_monthday_for_year = rec_day
+                rule_start_date = f"{today.year}-{rec_month:02d}-{rec_day:02d}"
+            elif recurrence_type == "monthly":
+                freq = "MONTHLY"
+                by_monthday = rec_day
+                rule_start_date = today.isoformat()
+            elif recurrence_type == "weekly":
+                freq = "WEEKLY"
+                by_weekday = ",".join(rec_weekdays) if rec_weekdays else None
+                rule_start_date = today.isoformat()
+            elif recurrence_type == "interval":
+                freq = "INTERVAL_DAYS"
+                interval = rec_interval
+                rule_start_date = rec_start_date.strip() or today.isoformat()
+
+            if freq:
+                # Reload ev after potential reactivate
+                ev = db.query(CalendarEventModel).filter(
+                    CalendarEventModel.event_id == event_id,
+                ).first()
+                if ev and ev.repeat_rule_id:
+                    UpdateRecurrenceRuleUseCase(db).execute(
+                        rule_id=ev.repeat_rule_id, account_id=user_id,
+                        freq=freq, interval=interval, start_date=rule_start_date,
+                        by_weekday=by_weekday, by_monthday=by_monthday,
+                        by_month=by_month, by_monthday_for_year=by_monthday_for_year,
+                        actor_user_id=user_id,
+                    )
+                    rebuild_event_occurrences(db, event_id, user_id, today)
+                elif ev:
+                    new_rule_id = CreateRecurrenceRuleUseCase(db).execute(
+                        account_id=user_id, freq=freq, interval=interval,
+                        start_date=rule_start_date, by_weekday=by_weekday,
+                        by_monthday=by_monthday, by_month=by_month,
+                        by_monthday_for_year=by_monthday_for_year,
+                        actor_user_id=user_id,
+                    )
+                    UpdateEventUseCase(db).execute(
+                        event_id=event_id, account_id=user_id,
+                        repeat_rule_id=new_rule_id, actor_user_id=user_id,
+                    )
+                    OccurrenceGenerator(db).generate_event_occurrences(user_id)
+
+        # 4. Deactivate last if needed
+        if ev.is_active and want_archived:
+            DeactivateEventUseCase(db).execute(event_id, user_id, actor_user_id=user_id)
+
+        redirect_view = "archived" if want_archived else "active"
+        return RedirectResponse(f"/events?view={redirect_view}", status_code=302)
+    except (EventValidationError, Exception) as e:
+        db.rollback()
+        ev = db.query(CalendarEventModel).filter(
+            CalendarEventModel.event_id == event_id,
+        ).first()
+        categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+        ).order_by(WorkCategory.title).all()
+        rule = None
+        if ev and ev.repeat_rule_id:
+            rule = db.query(RecurrenceRuleModel).filter(
+                RecurrenceRuleModel.rule_id == ev.repeat_rule_id,
             ).first()
-
-            if ev:
-                # Build new rule params
-                freq = None
-                interval = 1
-                rule_start_date = None
-                by_weekday = None
-                by_monthday = None
-                by_month = None
-                by_monthday_for_year = None
-
-                if recurrence_type == "yearly":
-                    freq = "YEARLY"
-                    by_month = rec_month
-                    by_monthday_for_year = rec_day
-                    rule_start_date = f"{today.year}-{rec_month:02d}-{rec_day:02d}"
-                elif recurrence_type == "monthly":
-                    freq = "MONTHLY"
-                    by_monthday = rec_day
-                    rule_start_date = today.isoformat()
-                elif recurrence_type == "weekly":
-                    freq = "WEEKLY"
-                    by_weekday = ",".join(rec_weekdays) if rec_weekdays else None
-                    rule_start_date = today.isoformat()
-                elif recurrence_type == "interval":
-                    freq = "INTERVAL_DAYS"
-                    interval = rec_interval
-                    rule_start_date = rec_start_date.strip() or today.isoformat()
-
-                if freq:
-                    if ev.repeat_rule_id:
-                        # Update existing rule
-                        UpdateRecurrenceRuleUseCase(db).execute(
-                            rule_id=ev.repeat_rule_id,
-                            account_id=user_id,
-                            freq=freq,
-                            interval=interval,
-                            start_date=rule_start_date,
-                            by_weekday=by_weekday,
-                            by_monthday=by_monthday,
-                            by_month=by_month,
-                            by_monthday_for_year=by_monthday_for_year,
-                            actor_user_id=user_id,
-                        )
-                        # Rebuild occurrences
-                        rebuild_event_occurrences(db, event_id, user_id, today)
-                    else:
-                        # Convert one-time to recurring: create new rule
-                        rule_uc = CreateRecurrenceRuleUseCase(db)
-                        new_rule_id = rule_uc.execute(
-                            account_id=user_id,
-                            freq=freq,
-                            interval=interval,
-                            start_date=rule_start_date,
-                            by_weekday=by_weekday,
-                            by_monthday=by_monthday,
-                            by_month=by_month,
-                            by_monthday_for_year=by_monthday_for_year,
-                            actor_user_id=user_id,
-                        )
-                        UpdateEventUseCase(db).execute(
-                            event_id=event_id,
-                            account_id=user_id,
-                            repeat_rule_id=new_rule_id,
-                            actor_user_id=user_id,
-                        )
-                        OccurrenceGenerator(db).generate_event_occurrences(user_id)
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/{event_id}/deactivate")
-def deactivate_event_form(request: Request, event_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        DeactivateEventUseCase(db).execute(event_id, user_id, actor_user_id=user_id)
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/occurrences/create")
-def create_event_occurrence_form(
-    request: Request,
-    event_id: int = Form(...),
-    start_date: str = Form(...),
-    start_time: str = Form(""),
-    end_date: str = Form(""),
-    end_time: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        CreateEventOccurrenceUseCase(db).execute(
-            event_id=event_id,
-            account_id=user_id,
-            start_date=start_date,
-            start_time=start_time.strip() or None,
-            end_date=end_date.strip() or None,
-            end_time=end_time.strip() or None,
-            source="manual",
-            actor_user_id=user_id,
-        )
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/occurrences/{occurrence_id}/cancel")
-def cancel_event_occurrence_form(request: Request, occurrence_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        CancelEventOccurrenceUseCase(db).execute(occurrence_id, user_id, actor_user_id=user_id)
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/presets/create")
-def create_event_preset_form(
-    request: Request,
-    name: str = Form(...),
-    category_ids: str = Form(""),
-    db: Session = Depends(get_db),
-):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        ids = [int(x.strip()) for x in category_ids.split(",") if x.strip()]
-        CreateFilterPresetUseCase(db).execute(
-            account_id=user_id,
-            name=name,
-            category_ids=ids or None,
-            actor_user_id=user_id,
-        )
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/presets/{preset_id}/select")
-def select_event_preset_form(request: Request, preset_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        SelectFilterPresetUseCase(db).execute(preset_id, user_id, actor_user_id=user_id)
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
-
-
-@router.post("/events/presets/{preset_id}/delete")
-def delete_event_preset_form(request: Request, preset_id: int, db: Session = Depends(get_db)):
-    if not require_user(request):
-        return RedirectResponse("/login", status_code=302)
-    user_id = request.session["user_id"]
-    try:
-        DeleteFilterPresetUseCase(db).execute(preset_id, user_id, actor_user_id=user_id)
-    except Exception:
-        db.rollback()
-    return RedirectResponse("/events", status_code=302)
+        return templates.TemplateResponse("event_form.html", {
+            "request": request, "mode": "edit", "event": ev,
+            "rule": rule, "categories": categories, "error": str(e),
+        })
 
 
 # === Budget ===
@@ -2061,10 +2918,9 @@ def plan_confirm_operation_form(request: Request, occurrence_id: int, redirect: 
         CategoryInfo.account_id == user_id,
         CategoryInfo.is_archived == False,
     ).all()
-    if tmpl.kind in ("INCOME", "EXPENSE"):
-        categories = [c for c in categories if c.category_type == tmpl.kind]
+    categories = [c for c in categories if c.category_type == tmpl.kind]
 
-    kind_labels = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
+    kind_labels = {"INCOME": "Доход", "EXPENSE": "Расход"}
 
     return templates.TemplateResponse("confirm_operation.html", {
         "request": request,
@@ -2084,8 +2940,6 @@ def plan_confirm_operation(
     wallet_id: int | None = Form(None),
     category_id: int | None = Form(None),
     description: str = Form(""),
-    from_wallet_id: int | None = Form(None),
-    to_wallet_id: int | None = Form(None),
     redirect: str = Form("/plan"),
     db: Session = Depends(get_db),
 ):
@@ -2099,8 +2953,6 @@ def plan_confirm_operation(
             override_wallet_id=wallet_id,
             override_category_id=category_id,
             override_description=description or None,
-            override_from_wallet_id=from_wallet_id,
-            override_to_wallet_id=to_wallet_id,
         )
     except Exception:
         db.rollback()

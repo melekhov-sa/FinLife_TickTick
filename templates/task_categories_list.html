@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Категории дел — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Категории дел</h1>
+  <a href="/task-categories/new" class="btn">+ Создать категорию</a>
+</div>
+
+<!-- Tabs: Active / Archived -->
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/task-categories?view=active{% if q %}&q={{ q }}{% endif %}" {% if view != "archived" %}class="active"{% endif %}>Активные</a>
+  <a href="/task-categories?view=archived{% if q %}&q={{ q }}{% endif %}" {% if view == "archived" %}class="active"{% endif %}>Архивные</a>
+</div>
+
+<!-- Search -->
+<div class="card" style="padding: 12px 24px;">
+  <form method="GET" action="/task-categories" style="display: flex; gap: 8px; align-items: center;">
+    <input type="hidden" name="view" value="{{ view }}">
+    <input name="q" type="text" value="{{ q }}" placeholder="Поиск по названию…" style="flex: 1; max-width: 400px;">
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+    {% if q %}
+    <a href="/task-categories?view={{ view }}" style="color: #666; text-decoration: none; font-size: 13px;">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Category list -->
+{% if categories %}
+<div class="card">
+  {% for cat in categories %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left" style="font-size: 15px;">
+      <span style="font-size: 20px; min-width: 28px; text-align: center;">{{ cat.emoji or '' }}</span>
+      <span {% if cat.is_archived %}class="muted"{% endif %}>{{ cat.title }}</span>
+      {% if cat.is_archived %}
+      <span class="badge badge-archive">архив</span>
+      {% endif %}
+    </div>
+    <div class="dash-item-actions">
+      <a href="/task-categories/{{ cat.category_id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  {% if view == "archived" %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Архив пуст</p>
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">
+    Активных категорий нет.
+    <a href="/task-categories/new">Создать</a>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

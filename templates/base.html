@@ -2,7 +2,9 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>{% block title %}FinLife{% endblock %}</title>
   <style>
     * { box-sizing: border-box; }
@@ -359,11 +361,138 @@
     .badge-income { background: #d4edda; color: #155724; }
     .badge-expense { background: #f8d7da; color: #721c24; }
     .badge-transfer { background: #d1ecf1; color: #0c5460; }
+    /* Dashboard V2 */
+    .dash-section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+    .dash-progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 13px; }
+    .dash-progress-bar { flex: 1; background: #eee; border-radius: 4px; height: 8px; overflow: hidden; }
+    .dash-progress-fill { background: #28a745; height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .dash-group { margin-bottom: 12px; }
+    .dash-group-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; color: #555; }
+    .dash-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .dash-item:last-child { border-bottom: none; }
+    .dash-item-overdue { background: #fff5f5; margin: 0 -8px; padding: 6px 8px; border-radius: 4px; }
+    .dash-item-done { opacity: 0.6; }
+    .dash-item-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .dash-item-actions { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .dash-btn-link { font-size: 12px; padding: 4px 10px; display: inline-block; text-decoration: none; border: 1px solid #007AFF; border-radius: 6px; color: #007AFF; background: #fff; }
+    .dash-btn-link:hover { background: #e8f0fe; }
+    /* Dashboard heatmap */
+    .dash-heatmap { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 8px; max-width: 280px; }
+    .dash-heatmap-cell { aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: default; }
+    .dash-heatmap-day { font-size: 11px; font-weight: 500; color: rgba(0,0,0,0.5); }
+    .dash-heatmap-level-0 { background: #ebedf0; }
+    .dash-heatmap-level-1 { background: #9be9a8; }
+    .dash-heatmap-level-2 { background: #40c463; }
+    .dash-heatmap-level-3 { background: #30a14e; }
+    .dash-heatmap-level-4 { background: #216e39; }
+    .dash-heatmap-level-4 .dash-heatmap-day { color: rgba(255,255,255,0.8); }
+    .dash-heatmap-level-3 .dash-heatmap-day { color: rgba(255,255,255,0.7); }
+    .dash-heatmap-legend { display: flex; align-items: center; gap: 3px; margin-top: 4px; }
+    /* Mobile hamburger */
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 200;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      width: 40px;
+      height: 40px;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 90;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* ===== MOBILE ===== */
+    @media (max-width: 768px) {
+      /* Prevent iOS zoom on input focus (needs font-size >= 16px) */
+      input, select, textarea { font-size: 16px; }
+      .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        width: 260px;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .main-content {
+        margin-left: 0;
+        padding: 60px 16px 24px;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      }
+      h1 { font-size: 22px; }
+      /* Forms */
+      input, select, textarea { max-width: 100%; }
+      .budget-input { max-width: 100%; width: 100%; }
+      /* Stats grid */
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 20px; }
+      /* Filters */
+      .tx-filters { flex-direction: column; align-items: stretch; }
+      .tx-filters select, .tx-filters input[type="date"], .tx-filters input[type="text"] { max-width: 100%; }
+      /* Tables */
+      .matrix-scroll-wrapper { margin: 0 -16px; padding: 0 16px; }
+      table th, table td { padding: 8px 6px; font-size: 13px; }
+      /* Cards */
+      .card { padding: 16px; }
+      /* Dash items */
+      .dash-item { flex-wrap: wrap; gap: 4px; }
+      .dash-item-left { min-width: 0; }
+      .dash-item-actions { flex-shrink: 0; }
+      /* Progress bars */
+      .dash-progress-bar { max-width: none !important; }
+      /* Budget */
+      .budget-nav { flex-wrap: wrap; gap: 8px; }
+      .budget-nav .budget-month-title { font-size: 16px; }
+      .budget-result { flex-direction: column; gap: 8px; }
+      .grain-selector { flex-wrap: wrap; }
+      .matrix-controls { flex-direction: column; align-items: stretch; }
+      .matrix-controls input[type="number"] { max-width: 100%; }
+      .matrix-controls select { max-width: 100%; }
+      /* Plan */
+      .plan-tabs { max-width: 100% !important; }
+      .plan-ranges { flex-wrap: wrap; }
+      /* Event form toggles */
+      .event-type-toggle { flex-wrap: wrap; }
+      .weekday-checkboxes { gap: 2px; }
+      /* Buttons — larger touch targets */
+      button, .btn { padding: 10px 16px; font-size: 14px; min-height: 44px; }
+      /* Pagination */
+      .pagination { gap: 8px; font-size: 13px; }
+      /* Wallet settings */
+      .wallet-settings-row { flex-wrap: wrap; }
+      /* Heatmap */
+      .dash-heatmap { grid-template-columns: repeat(5, 1fr); max-width: 100%; }
+      /* Filter panel */
+      .category-checkboxes { gap: 4px; }
+      .filter-actions button { min-height: 36px; }
+    }
+    /* ===== SMALL PHONE ===== */
+    @media (max-width: 380px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .main-content { padding: 56px 10px 16px; }
+      .card { padding: 12px; }
+    }
   </style>
 </head>
 <body>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Меню">&#9776;</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <div class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">FinLife</div>
       <nav class="sidebar-nav">
         <a href="/"><span class="nav-icon">&#9776;</span>Dashboard</a>
@@ -375,9 +504,11 @@
         <a href="/plan"><span class="nav-icon">&#128203;</span>План</a>
         <a href="/tasks"><span class="nav-icon">&#9745;</span>Задачи</a>
         <a href="/habits"><span class="nav-icon">&#128170;</span>Привычки</a>
-        <a href="/planned-operations"><span class="nav-icon">&#128197;</span>Плановые</a>
+        <a href="/planned-ops"><span class="nav-icon">&#128197;</span>Плановые</a>
+        <a href="/subscriptions"><span class="nav-icon">&#128176;</span>Подписки</a>
+        <a href="/contacts"><span class="nav-icon">&#128100;</span>Контакты</a>
         <a href="/events"><span class="nav-icon">&#128198;</span>События</a>
-        <a href="/work-categories"><span class="nav-icon">&#127991;</span>Категории дел</a>
+        <a href="/task-categories"><span class="nav-icon">&#127991;</span>Категории дел</a>
       </nav>
       <div class="sidebar-bottom">
         <a href="/logout">&#8594; Выход</a>
@@ -387,5 +518,26 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+<script>
+(function(){
+  var btn = document.getElementById('sidebarToggle');
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  function toggle() {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+  }
+  btn.addEventListener('click', toggle);
+  overlay.addEventListener('click', toggle);
+  sidebar.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>

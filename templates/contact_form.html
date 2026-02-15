@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ "Новый контакт" if mode == "new" else "Редактировать контакт" }} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{{ "Новый контакт" if mode == "new" else "Редактировать контакт" }}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  <form method="POST" action="{{ '/contacts/new' if mode == 'new' else '/contacts/' ~ contact.id ~ '/edit' }}">
+    <div class="form-row">
+      <label>Имя</label>
+      <input name="name" type="text" required placeholder="Иван"
+             value="{{ contact.name if contact else '' }}">
+    </div>
+
+    <div class="form-row">
+      <label>Заметка</label>
+      <input name="note" type="text" placeholder="Необязательно"
+             value="{{ contact.note if contact and contact.note else '' }}">
+    </div>
+
+    {% if mode == "edit" %}
+    <div style="margin-top: 16px;">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived"
+               {% if contact.is_archived %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать
+      </label>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 20px; display: flex; gap: 12px;">
+      <button type="submit">{{ "Создать" if mode == "new" else "Сохранить" }}</button>
+      <a href="/contacts{% if mode == 'edit' and contact.is_archived %}?view=archived{% endif %}"
+         style="padding: 8px 16px; color: #666; text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

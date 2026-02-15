@@ -35,7 +35,6 @@ def setup_event(db_session, sample_account_id, setup_work_category):
         account_id=sample_account_id,
         title="День рождения",
         category_id=setup_work_category.category_id,
-        importance=2,
         is_active=True,
     )
     db_session.add(ev)

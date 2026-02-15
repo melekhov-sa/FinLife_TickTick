@@ -138,7 +138,6 @@ class CreateEventUseCase:
         title: str,
         category_id: int,
         description: str | None = None,
-        importance: int = 0,
         freq: str | None = None,
         interval: int = 1,
         start_date: str | None = None,
@@ -181,7 +180,6 @@ class CreateEventUseCase:
             title=title,
             category_id=category_id,
             description=description,
-            importance=importance,
             repeat_rule_id=repeat_rule_id,
         )
         self.event_repo.append_event(
@@ -263,6 +261,32 @@ class DeactivateEventUseCase:
         )
         self.db.commit()
         EventsProjector(self.db).run(account_id, event_types=["calendar_event_deactivated"])
+
+
+class ReactivateEventUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, event_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        ev = self.db.query(CalendarEventModel).filter(
+            CalendarEventModel.event_id == event_id,
+            CalendarEventModel.account_id == account_id,
+        ).first()
+        if not ev:
+            raise EventValidationError(f"Событие #{event_id} не найдено")
+        if ev.is_active:
+            raise EventValidationError("Событие уже активно")
+
+        payload = CalendarEvent.reactivate(event_id)
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="calendar_event_reactivated",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        EventsProjector(self.db).run(account_id, event_types=["calendar_event_reactivated"])
 
 
 # ============================================================================

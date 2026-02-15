@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Плановые операции — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Плановые операции</h1>
+  <div style="display: flex; gap: 8px;">
+    <a href="/planned-ops/upcoming" class="btn secondary" style="text-decoration: none;">Предстоящие</a>
+    <a href="/planned-ops/new" class="btn">+ Создать</a>
+  </div>
+</div>
+
+<!-- Tabs: Active / Archived -->
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/planned-ops?view=active{% if q %}&q={{ q }}{% endif %}{% if kind_filter %}&kind_filter={{ kind_filter }}{% endif %}"
+     {% if view != "archived" %}class="active"{% endif %}>Активные</a>
+  <a href="/planned-ops?view=archived{% if q %}&q={{ q }}{% endif %}{% if kind_filter %}&kind_filter={{ kind_filter }}{% endif %}"
+     {% if view == "archived" %}class="active"{% endif %}>Архивные</a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="padding: 12px 24px;">
+  <form method="GET" action="/planned-ops" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <input type="hidden" name="view" value="{{ view }}">
+    <input name="q" type="text" value="{{ q }}" placeholder="Поиск по названию…" style="flex: 1; max-width: 220px;">
+    <select name="kind_filter" style="max-width: 180px;">
+      <option value="">Все типы</option>
+      <option value="INCOME" {% if kind_filter == "INCOME" %}selected{% endif %}>Доход</option>
+      <option value="EXPENSE" {% if kind_filter == "EXPENSE" %}selected{% endif %}>Расход</option>
+    </select>
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+    {% if q or kind_filter %}
+    <a href="/planned-ops?view={{ view }}" style="color: #666; text-decoration: none; font-size: 13px;">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Templates list -->
+{% if templates_list %}
+<div class="card">
+  {% for tmpl in templates_list %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left" style="font-size: 15px;">
+      <span {% if tmpl.is_archived %}class="muted"{% endif %}>{{ tmpl.title }}</span>
+      {% if tmpl.kind == "INCOME" %}
+      <span class="badge badge-income">Доход</span>
+      {% elif tmpl.kind == "EXPENSE" %}
+      <span class="badge badge-expense">Расход</span>
+      {% endif %}
+      <span class="badge">{{ "{:,.2f}".format(tmpl.amount).replace(",", " ") }}</span>
+      {% if rule_map.get(tmpl.rule_id) %}
+      <span class="badge" style="background: #e8f0fe; color: #1a56db;">{{ freq_labels.get(rule_map[tmpl.rule_id].freq, rule_map[tmpl.rule_id].freq) }}</span>
+      {% endif %}
+      {% if wallet_map.get(tmpl.wallet_id) %}
+      <span class="muted" style="font-size: 12px;">{{ wallet_map[tmpl.wallet_id].title }}</span>
+      {% endif %}
+      {% if tmpl.active_until %}
+      <span class="muted" style="font-size: 12px;">до {{ tmpl.active_until.strftime('%d.%m.%Y') }}</span>
+      {% endif %}
+      {% if tmpl.is_archived %}
+      <span class="badge badge-archive">архив</span>
+      {% endif %}
+    </div>
+    <div class="dash-item-actions">
+      <a href="/planned-ops/{{ tmpl.template_id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  {% if view == "archived" %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Архив пуст</p>
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">
+    Плановых операций нет.
+    <a href="/planned-ops/new">Создать первую</a>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

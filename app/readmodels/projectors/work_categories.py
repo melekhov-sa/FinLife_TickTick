@@ -15,6 +15,8 @@ class WorkCategoriesProjector(BaseProjector):
             self._handle_updated(event)
         elif event.event_type == "work_category_archived":
             self._handle_archived(event)
+        elif event.event_type == "work_category_unarchived":
+            self._handle_unarchived(event)
 
     def _handle_created(self, event: EventLog) -> None:
         payload = event.payload_json
@@ -54,6 +56,14 @@ class WorkCategoriesProjector(BaseProjector):
         ).first()
         if cat:
             cat.is_archived = True
+
+    def _handle_unarchived(self, event: EventLog) -> None:
+        payload = event.payload_json
+        cat = self.db.query(WorkCategory).filter(
+            WorkCategory.category_id == payload["category_id"]
+        ).first()
+        if cat:
+            cat.is_archived = False
 
     def reset(self, account_id: int) -> None:
         self.db.query(WorkCategory).filter(WorkCategory.account_id == account_id).delete()

@@ -43,7 +43,17 @@
       "Bash(c:/Projects/FinLife_TickTick/.venv/Scripts/python.exe:*)",
       "Bash(.venv\\\\Scripts\\\\python.exe -m pytest:*)",
       "Bash(more:*)",
-      "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/python.exe -m pytest:*)"
+      "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/python.exe -m pytest:*)",
+      "Bash(c:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\python.exe -m pytest:*)",
+      "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/python.exe:*)",
+      "Bash(DATABASE_URL=postgresql://finlife:finlife_password_change_me@localhost:5432/finlife .venv/Scripts/python.exe -m alembic:*)",
+      "Bash(DATABASE_URL=postgresql://finlife:finlife_password_change_me@localhost:5432/finlife .venv/Scripts/python.exe:*)",
+      "Bash(py:*)",
+      "Bash(c:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\pip install:*)",
+      "Bash(\"c:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\pip.exe\" install:*)",
+      "Bash(set \"DATABASE_URL=postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\")",
+      "Bash(DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\" \"c:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\python.exe\" -m alembic upgrade head:*)",
+      "Bash(DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\" c:/Projects/FinLife_TickTick/.venv/Scripts/python.exe -m alembic upgrade head:*)"
     ]
   }
 }

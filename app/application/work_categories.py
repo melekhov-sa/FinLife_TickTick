@@ -64,8 +64,6 @@ class UpdateWorkCategoryUseCase:
         ).first()
         if not cat:
             raise WorkCategoryValidationError(f"Категория #{category_id} не найдена")
-        if cat.is_archived:
-            raise WorkCategoryValidationError("Нельзя редактировать архивированную категорию")
 
         changes = {}
         if title is not None:
@@ -88,6 +86,32 @@ class UpdateWorkCategoryUseCase:
         )
         self.db.commit()
         WorkCategoriesProjector(self.db).run(account_id, event_types=["work_category_updated"])
+
+
+class UnarchiveWorkCategoryUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, category_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        cat = self.db.query(WorkCategory).filter(
+            WorkCategory.category_id == category_id,
+            WorkCategory.account_id == account_id,
+        ).first()
+        if not cat:
+            raise WorkCategoryValidationError(f"Категория #{category_id} не найдена")
+        if not cat.is_archived:
+            raise WorkCategoryValidationError("Категория не в архиве")
+
+        payload = WorkCategoryDomain.unarchive(category_id)
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="work_category_unarchived",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        WorkCategoriesProjector(self.db).run(account_id, event_types=["work_category_unarchived"])
 
 
 class ArchiveWorkCategoryUseCase:

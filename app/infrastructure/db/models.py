@@ -342,14 +342,12 @@ class OperationTemplateModel(Base):
     active_until: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
-    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # INCOME/EXPENSE/TRANSFER
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # INCOME/EXPENSE
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
     note: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for INCOME/EXPENSE
     category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> categories (financial)
-    from_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for TRANSFER
-    to_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for TRANSFER
     work_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> work_categories
 
     created_at: Mapped[DateTime] = mapped_column(
@@ -390,7 +388,6 @@ class CalendarEventModel(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_id: Mapped[int] = mapped_column(Integer, nullable=False)  # -> work_categories
-    importance: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     repeat_rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> recurrence_rules
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 
@@ -543,4 +540,88 @@ class BudgetLine(Base):
     __table_args__ = (
         UniqueConstraint('budget_month_id', 'category_id', 'kind', name='uq_budget_line'),
         Index('ix_budget_line_month', 'budget_month_id'),
+    )
+
+
+# ============================================================================
+# Subscriptions Models
+# ============================================================================
+
+
+class SubscriptionModel(Base):
+    """Subscription tracking: links expense and income categories"""
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    expense_category_id: Mapped[int] = mapped_column(Integer, nullable=False)  # -> categories (EXPENSE)
+    income_category_id: Mapped[int] = mapped_column(Integer, nullable=False)   # -> categories (INCOME)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ContactModel(Base):
+    """Global contact directory — people who participate in subscriptions"""
+    __tablename__ = "contacts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SubscriptionMemberModel(Base):
+    """Link table: which contact participates in which subscription"""
+    __tablename__ = "subscription_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    contact_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> contacts
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    payment_per_year: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    payment_per_month: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SubscriptionCoverageModel(Base):
+    """Coverage period: OPERATION (tied to transaction) or INITIAL (manual entry)"""
+    __tablename__ = "subscription_coverages"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    source_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="OPERATION", server_default="OPERATION",
+    )  # OPERATION / INITIAL
+    payer_type: Mapped[str] = mapped_column(String(16), nullable=False)  # SELF / MEMBER
+    member_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> subscription_members
+    transaction_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)  # -> transactions_feed (NULL for INITIAL)
+    start_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date_type] = mapped_column(Date, nullable=False)  # inclusive
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('transaction_id', name='uq_coverage_transaction'),
+        Index('ix_coverage_sub_payer', 'subscription_id', 'payer_type', 'member_id'),
     )

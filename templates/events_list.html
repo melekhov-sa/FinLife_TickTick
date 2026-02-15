@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}События — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">События</h1>
+  <a href="/events/new" class="btn">+ Создать событие</a>
+</div>
+
+<!-- Tabs: Active / Archived -->
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/events?view=active{% if q %}&q={{ q }}{% endif %}{% if category_id %}&category_id={{ category_id }}{% endif %}{% if event_type %}&event_type={{ event_type }}{% endif %}"
+     {% if view != "archived" %}class="active"{% endif %}>Активные</a>
+  <a href="/events?view=archived{% if q %}&q={{ q }}{% endif %}{% if category_id %}&category_id={{ category_id }}{% endif %}{% if event_type %}&event_type={{ event_type }}{% endif %}"
+     {% if view == "archived" %}class="active"{% endif %}>Архивные</a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="padding: 12px 24px;">
+  <form method="GET" action="/events" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <input type="hidden" name="view" value="{{ view }}">
+    <input name="q" type="text" value="{{ q }}" placeholder="Поиск по названию…" style="flex: 1; max-width: 220px;">
+    <select name="category_id" style="max-width: 180px;">
+      <option value="">Все категории</option>
+      {% for cat in categories %}
+      <option value="{{ cat.category_id }}" {% if category_id == cat.category_id|string %}selected{% endif %}>
+        {{ cat.emoji or '' }} {{ cat.title }}
+      </option>
+      {% endfor %}
+    </select>
+    <select name="event_type" style="max-width: 180px;">
+      <option value="">Все типы</option>
+      <option value="single" {% if event_type == "single" %}selected{% endif %}>Однократные</option>
+      <option value="recurring" {% if event_type == "recurring" %}selected{% endif %}>Повторяющиеся</option>
+    </select>
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+    {% if q or category_id or event_type %}
+    <a href="/events?view={{ view }}" style="color: #666; text-decoration: none; font-size: 13px;">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Event list -->
+{% if events %}
+<div class="card">
+  {% for ev in events %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left" style="font-size: 15px;">
+      <span style="font-size: 20px; min-width: 28px; text-align: center;">
+        {% if wc_map.get(ev.category_id) %}{{ wc_map[ev.category_id].emoji or '' }}{% endif %}
+      </span>
+      <span {% if not ev.is_active %}class="muted"{% endif %}>{{ ev.title }}</span>
+      {% if wc_map.get(ev.category_id) %}
+      <span class="badge">{{ wc_map[ev.category_id].title }}</span>
+      {% endif %}
+      {% if ev.repeat_rule_id and rule_map.get(ev.repeat_rule_id) %}
+      <span class="badge" style="background: #e8f0fe; color: #1a56db;">{{ freq_labels.get(rule_map[ev.repeat_rule_id].freq, rule_map[ev.repeat_rule_id].freq) }}</span>
+      {% elif not ev.repeat_rule_id %}
+      <span class="badge" style="background: #f3f4f6; color: #666;">однократное</span>
+      {% endif %}
+      {% if not ev.is_active %}
+      <span class="badge badge-archive">архив</span>
+      {% endif %}
+    </div>
+    <div class="dash-item-actions">
+      <a href="/events/{{ ev.event_id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  {% if view == "archived" %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Архив пуст</p>
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">
+    Событий нет.
+    <a href="/events/new">Создать первое событие</a>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

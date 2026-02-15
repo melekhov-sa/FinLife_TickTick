@@ -84,46 +84,15 @@ class TestIncomeValidation:
             )
 
 
-class TestTransferValidation:
-    def test_transfer_same_wallet_fails(self, db_session, sample_account_id, setup_wallets, setup_category):
-        """TRANSFER from_wallet == to_wallet -> ошибка."""
+class TestTransferRejected:
+    def test_transfer_kind_rejected(self, db_session, sample_account_id, setup_wallets, setup_category):
+        """TRANSFER kind -> ошибка (больше не поддерживается)."""
         uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="тот же кошелёк"):
-            uc.execute(
-                account_id=sample_account_id, title="Себе", freq="MONTHLY",
-                interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="1000", from_wallet_id=1, to_wallet_id=1,
-            )
-
-    def test_transfer_ignores_category(self, db_session, sample_account_id, setup_wallets, setup_category):
-        """TRANSFER с category_id -> category_id обнуляется (не ошибка)."""
-        uc = CreateOperationTemplateUseCase(db_session)
-        template_id = uc.execute(
-            account_id=sample_account_id, title="На накопления", freq="MONTHLY",
-            interval=1, start_date="2026-03-01", kind="TRANSFER",
-            amount="5000", from_wallet_id=1, to_wallet_id=2,
-            category_id=1,  # должна быть проигнорирована
-        )
-        assert template_id > 0
-
-    def test_transfer_without_from_wallet_fails(self, db_session, sample_account_id, setup_wallets):
-        """TRANSFER без from_wallet_id -> ошибка."""
-        uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="источник обязателен"):
+        with pytest.raises(OperationTemplateValidationError, match="Неверный тип операции"):
             uc.execute(
                 account_id=sample_account_id, title="Перевод", freq="MONTHLY",
                 interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="1000", from_wallet_id=None, to_wallet_id=2,
-            )
-
-    def test_transfer_without_to_wallet_fails(self, db_session, sample_account_id, setup_wallets):
-        """TRANSFER без to_wallet_id -> ошибка."""
-        uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="получатель обязателен"):
-            uc.execute(
-                account_id=sample_account_id, title="Перевод", freq="MONTHLY",
-                interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="1000", from_wallet_id=1, to_wallet_id=None,
+                amount="1000", wallet_id=1, category_id=1,
             )
 
 
@@ -146,26 +115,6 @@ class TestCreditWalletRestriction:
                 account_id=sample_account_id, title="На кредитку", freq="MONTHLY",
                 interval=1, start_date="2026-03-01", kind="INCOME",
                 amount="500", wallet_id=3, category_id=1,
-            )
-
-    def test_credit_wallet_for_transfer_from_fails(self, db_session, sample_account_id, setup_wallets):
-        """Кредитный кошелёк как from_wallet для TRANSFER -> ошибка."""
-        uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="Кредитные кошельки"):
-            uc.execute(
-                account_id=sample_account_id, title="С кредитки", freq="MONTHLY",
-                interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="500", from_wallet_id=3, to_wallet_id=1,
-            )
-
-    def test_credit_wallet_for_transfer_to_fails(self, db_session, sample_account_id, setup_wallets):
-        """Кредитный кошелёк как to_wallet для TRANSFER -> ошибка."""
-        uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="Кредитные кошельки"):
-            uc.execute(
-                account_id=sample_account_id, title="На кредитку", freq="MONTHLY",
-                interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="500", from_wallet_id=1, to_wallet_id=3,
             )
 
 

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Контакты — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <h1 style="margin: 0;">Контакты</h1>
+  <a href="/contacts/new" class="btn" style="font-size: 13px;">+ Новый контакт</a>
+</div>
+
+<!-- Tabs -->
+<div style="display: flex; gap: 8px; margin-bottom: 16px;">
+  <a href="/contacts?view=active"
+     style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
+            {% if view != 'archived' %}background: #007AFF; color: white;{% else %}background: #e9ecef; color: #495057;{% endif %}">
+    Активные
+  </a>
+  <a href="/contacts?view=archived"
+     style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
+            {% if view == 'archived' %}background: #007AFF; color: white;{% else %}background: #e9ecef; color: #495057;{% endif %}">
+    Архив
+  </a>
+</div>
+
+<!-- Search -->
+<form method="GET" action="/contacts" style="margin-bottom: 16px;">
+  <input type="hidden" name="view" value="{{ view }}">
+  <div style="display: flex; gap: 8px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Поиск по имени..." style="max-width: 250px;">
+    <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+  </div>
+</form>
+
+{% if contacts %}
+<div class="card">
+  {% for c in contacts %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left">
+      <a href="/contacts/{{ c.id }}" style="text-decoration: none; font-weight: 500; color: #333;">
+        {{ c.name }}
+      </a>
+      {% if c.note %}
+      <span class="muted" style="font-size: 13px;">{{ c.note }}</span>
+      {% endif %}
+    </div>
+    <div class="dash-item-actions">
+      <a href="/contacts/{{ c.id }}/edit" style="font-size: 13px; color: #999; text-decoration: none;">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="muted" style="text-align: center; padding: 16px 0;">
+    {% if q %}Ничего не найдено{% else %}Контактов пока нет{% endif %}
+  </p>
+</div>
+{% endif %}
+{% endblock %}

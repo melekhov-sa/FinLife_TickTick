@@ -16,7 +16,6 @@
       <input type="text" value="{{ kind_label }}" disabled>
     </div>
 
-    {% if template.kind != 'TRANSFER' %}
     <div class="form-row">
       <label>Кошелёк</label>
       <select name="wallet_id">
@@ -27,37 +26,12 @@
         {% endfor %}
       </select>
     </div>
-    {% endif %}
-
-    {% if template.kind == 'TRANSFER' %}
-    <div class="form-row">
-      <label>Из кошелька</label>
-      <select name="from_wallet_id">
-        {% for w in wallets %}
-        <option value="{{ w.wallet_id }}" {% if w.wallet_id == template.from_wallet_id %}selected{% endif %}>
-          {{ w.title }} ({{ w.currency }})
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-row">
-      <label>В кошелёк</label>
-      <select name="to_wallet_id">
-        {% for w in wallets %}
-        <option value="{{ w.wallet_id }}" {% if w.wallet_id == template.to_wallet_id %}selected{% endif %}>
-          {{ w.title }} ({{ w.currency }})
-        </option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
 
     <div class="form-row">
       <label>Сумма</label>
       <input name="amount" type="number" step="0.01" value="{{ template.amount }}" required>
     </div>
 
-    {% if template.kind != 'TRANSFER' %}
     <div class="form-row">
       <label>Категория</label>
       <select name="category_id">
@@ -69,7 +43,6 @@
         {% endfor %}
       </select>
     </div>
-    {% endif %}
 
     <div class="form-row">
       <label>Описание</label>

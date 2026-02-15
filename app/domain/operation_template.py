@@ -15,8 +15,6 @@ class OperationTemplate:
         amount: str,
         wallet_id: int | None = None,
         category_id: int | None = None,
-        from_wallet_id: int | None = None,
-        to_wallet_id: int | None = None,
         note: str | None = None,
         active_until: str | None = None,
         work_category_id: int | None = None,
@@ -33,8 +31,6 @@ class OperationTemplate:
             "note": note,
             "wallet_id": wallet_id,
             "category_id": category_id,
-            "from_wallet_id": from_wallet_id,
-            "to_wallet_id": to_wallet_id,
             "work_category_id": work_category_id,
             "created_at": datetime.utcnow().isoformat()
         }
@@ -43,8 +39,7 @@ class OperationTemplate:
     def update(template_id: int, **changes) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"template_id": template_id, "updated_at": datetime.utcnow().isoformat()}
         allowed = ("title", "active_until", "kind", "amount", "note",
-                    "wallet_id", "category_id", "from_wallet_id", "to_wallet_id",
-                    "work_category_id", "is_archived")
+                    "wallet_id", "category_id", "work_category_id", "is_archived")
         for key in allowed:
             if key in changes:
                 payload[key] = changes[key]
@@ -53,3 +48,13 @@ class OperationTemplate:
     @staticmethod
     def archive(template_id: int) -> Dict[str, Any]:
         return {"template_id": template_id, "is_archived": True, "archived_at": datetime.utcnow().isoformat()}
+
+    @staticmethod
+    def close_version(template_id: int, active_until: str) -> Dict[str, Any]:
+        return {"template_id": template_id, "active_until": active_until,
+                "closed_at": datetime.utcnow().isoformat()}
+
+    @staticmethod
+    def unarchive(template_id: int) -> Dict[str, Any]:
+        return {"template_id": template_id, "is_archived": False,
+                "unarchived_at": datetime.utcnow().isoformat()}

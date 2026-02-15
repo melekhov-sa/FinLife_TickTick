@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Создать событие{% else %}Редактировать событие{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Создать событие{% else %}Настройки события{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/events/new">
+  {% else %}
+  <form method="POST" action="/events/{{ event.event_id }}/edit">
+  {% endif %}
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" required
+             value="{% if mode == 'new' %}{{ form_title or '' }}{% else %}{{ event.title }}{% endif %}"
+             placeholder="Например: День рождения">
+    </div>
+
+    <div class="form-row">
+      <label>Категория</label>
+      <select name="category_id" required>
+        <option value="">— выберите —</option>
+        {% for cat in categories %}
+        <option value="{{ cat.category_id }}"
+          {% if mode == "new" and form_category_id is defined and form_category_id == cat.category_id %}selected
+          {% elif mode == "edit" and event.category_id == cat.category_id %}selected
+          {% endif %}>
+          {{ cat.emoji or '' }} {{ cat.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Описание</label>
+      <textarea name="description" rows="2"
+                placeholder="Необязательно">{% if mode == 'new' %}{{ form_description or '' }}{% else %}{{ event.description or '' }}{% endif %}</textarea>
+    </div>
+
+    <!-- Event type selector -->
+    {% set current_event_type = "recurring" if (mode == "edit" and event.repeat_rule_id) or (mode == "new" and form_event_type is defined and form_event_type == "recurring") else "onetime" %}
+    <div class="form-row">
+      <label>Тип события</label>
+      <select name="event_type" id="event-type-select">
+        <option value="onetime" {% if current_event_type == "onetime" %}selected{% endif %}>Однократное</option>
+        <option value="recurring" {% if current_event_type == "recurring" %}selected{% endif %}>Повторяющееся</option>
+      </select>
+    </div>
+
+    <!-- One-time fields -->
+    <div id="onetime-fields" {% if current_event_type == "recurring" %}style="display:none"{% endif %}>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div class="form-row" style="flex: 1; min-width: 140px;">
+          <label>Дата начала</label>
+          <input name="start_date" type="date"
+                 value="{% if mode == 'new' %}{{ form_start_date or '' }}{% endif %}">
+        </div>
+        <div class="form-row" style="flex: 1; min-width: 120px;">
+          <label>Время начала</label>
+          <input name="start_time" type="time"
+                 value="{% if mode == 'new' %}{{ form_start_time or '' }}{% endif %}">
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div class="form-row" style="flex: 1; min-width: 140px;">
+          <label>Дата окончания</label>
+          <input name="end_date" type="date"
+                 value="{% if mode == 'new' %}{{ form_end_date or '' }}{% endif %}">
+        </div>
+        <div class="form-row" style="flex: 1; min-width: 120px;">
+          <label>Время окончания</label>
+          <input name="end_time" type="time"
+                 value="{% if mode == 'new' %}{{ form_end_time or '' }}{% endif %}">
+        </div>
+      </div>
+    </div>
+
+    <!-- Recurring fields -->
+    {% set current_rec_type = "" %}
+    {% if mode == "edit" and rule %}
+      {% if rule.freq == "YEARLY" %}{% set current_rec_type = "yearly" %}
+      {% elif rule.freq == "MONTHLY" %}{% set current_rec_type = "monthly" %}
+      {% elif rule.freq == "WEEKLY" %}{% set current_rec_type = "weekly" %}
+      {% elif rule.freq == "INTERVAL_DAYS" %}{% set current_rec_type = "interval" %}
+      {% endif %}
+    {% elif mode == "new" and form_recurrence_type is defined %}
+      {% set current_rec_type = form_recurrence_type %}
+    {% endif %}
+
+    <div id="recurring-fields" {% if current_event_type != "recurring" %}style="display:none"{% endif %}>
+      <div class="form-row">
+        <label>Частота</label>
+        <select name="recurrence_type" id="rec-type-select">
+          <option value="">— выберите —</option>
+          <option value="yearly" {% if current_rec_type == "yearly" %}selected{% endif %}>Ежегодно</option>
+          <option value="monthly" {% if current_rec_type == "monthly" %}selected{% endif %}>Ежемесячно</option>
+          <option value="weekly" {% if current_rec_type == "weekly" %}selected{% endif %}>Еженедельно</option>
+          <option value="interval" {% if current_rec_type == "interval" %}selected{% endif %}>Каждые N дней</option>
+        </select>
+      </div>
+
+      <!-- Yearly: month + day -->
+      <div id="rec-yearly" {% if current_rec_type != "yearly" %}style="display:none"{% endif %}>
+        <div style="display: flex; gap: 12px;">
+          <div class="form-row" style="flex: 1;">
+            <label>Месяц (1-12)</label>
+            <input name="rec_month" type="number" min="1" max="12" style="max-width: 100px;"
+                   value="{% if mode == 'edit' and rule and rule.by_month %}{{ rule.by_month }}{% elif form_rec_month is defined and form_rec_month %}{{ form_rec_month }}{% endif %}">
+          </div>
+          <div class="form-row" style="flex: 1;">
+            <label>День (1-31)</label>
+            <input name="rec_day" type="number" min="1" max="31" style="max-width: 100px;"
+                   value="{% if mode == 'edit' and rule and rule.by_monthday_for_year %}{{ rule.by_monthday_for_year }}{% elif form_rec_day is defined and form_rec_day %}{{ form_rec_day }}{% endif %}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly: day -->
+      <div id="rec-monthly" {% if current_rec_type != "monthly" %}style="display:none"{% endif %}>
+        <div class="form-row">
+          <label>День месяца (1-31)</label>
+          <input name="rec_day" type="number" min="1" max="31" style="max-width: 100px;"
+                 value="{% if mode == 'edit' and rule and current_rec_type == 'monthly' and rule.by_monthday %}{{ rule.by_monthday }}{% elif form_rec_day is defined and form_rec_day %}{{ form_rec_day }}{% endif %}">
+        </div>
+      </div>
+
+      <!-- Weekly: weekdays -->
+      {% set current_weekdays = [] %}
+      {% if mode == "edit" and rule and rule.by_weekday %}
+        {% set current_weekdays = rule.by_weekday.split(",") %}
+      {% elif form_rec_weekdays is defined %}
+        {% set current_weekdays = form_rec_weekdays %}
+      {% endif %}
+      <div id="rec-weekly" {% if current_rec_type != "weekly" %}style="display:none"{% endif %}>
+        <div class="form-row">
+          <label>Дни недели</label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            {% for wd, label in [("MO","Пн"), ("TU","Вт"), ("WE","Ср"), ("TH","Чт"), ("FR","Пт"), ("SA","Сб"), ("SU","Вс")] %}
+            <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px;">
+              <input type="checkbox" name="rec_weekdays" value="{{ wd }}"
+                     {% if wd in current_weekdays %}checked{% endif %}
+                     style="width: auto; max-width: none;">
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Interval: N days + start -->
+      <div id="rec-interval" {% if current_rec_type != "interval" %}style="display:none"{% endif %}>
+        <div style="display: flex; gap: 12px;">
+          <div class="form-row" style="flex: 1;">
+            <label>Интервал (дней)</label>
+            <input name="rec_interval" type="number" min="1" style="max-width: 100px;"
+                   value="{% if mode == 'edit' and rule and current_rec_type == 'interval' %}{{ rule.interval }}{% elif form_rec_interval is defined %}{{ form_rec_interval }}{% else %}1{% endif %}">
+          </div>
+          <div class="form-row" style="flex: 1;">
+            <label>Начать с</label>
+            <input name="rec_start_date" type="date"
+                   value="{% if mode == 'edit' and rule and current_rec_type == 'interval' %}{{ rule.start_date.isoformat() }}{% elif form_rec_start_date is defined %}{{ form_rec_start_date }}{% endif %}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if mode == "edit" %}
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived" {% if not event.is_active %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать событие
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Архивные события не генерируют новые вхождения
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      <a href="/events" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      <a href="/events?view={% if not event.is_active %}archived{% else %}active{% endif %}" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+(function() {
+  var etSel = document.getElementById('event-type-select');
+  var otFields = document.getElementById('onetime-fields');
+  var rcFields = document.getElementById('recurring-fields');
+  var rtSel = document.getElementById('rec-type-select');
+
+  function toggleEventType() {
+    if (etSel.value === 'recurring') {
+      otFields.style.display = 'none';
+      rcFields.style.display = '';
+    } else {
+      otFields.style.display = '';
+      rcFields.style.display = 'none';
+    }
+  }
+
+  function toggleRecType() {
+    var v = rtSel.value;
+    document.getElementById('rec-yearly').style.display = v === 'yearly' ? '' : 'none';
+    document.getElementById('rec-monthly').style.display = v === 'monthly' ? '' : 'none';
+    document.getElementById('rec-weekly').style.display = v === 'weekly' ? '' : 'none';
+    document.getElementById('rec-interval').style.display = v === 'interval' ? '' : 'none';
+  }
+
+  etSel.addEventListener('change', toggleEventType);
+  rtSel.addEventListener('change', toggleRecType);
+})();
+</script>
+{% endblock %}

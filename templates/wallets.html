@@ -14,6 +14,7 @@
 <div class="card">
   <h2>Мои кошельки</h2>
   {% if active_wallets %}
+    <div class="matrix-scroll-wrapper">
     <table>
       <thead>
         <tr>
@@ -62,6 +63,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <p class="muted">Нет активных кошельков</p>
   {% endif %}
@@ -70,6 +72,7 @@
 {% if archived_wallets %}
 <div class="card">
   <h2>Архив</h2>
+  <div class="matrix-scroll-wrapper">
   <table>
     <thead>
       <tr>
@@ -103,6 +106,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endif %}
 
