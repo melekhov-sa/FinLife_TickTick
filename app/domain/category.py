@@ -100,6 +100,23 @@ class Category:
         }
 
     @staticmethod
+    def unarchive(category_id: int) -> Dict[str, Any]:
+        """
+        Создать событие category_unarchived
+
+        Args:
+            category_id: ID категории
+
+        Returns:
+            Event payload для event_log
+        """
+        return {
+            "category_id": category_id,
+            "is_archived": False,
+            "unarchived_at": datetime.utcnow().isoformat()
+        }
+
+    @staticmethod
     def delete(category_id: int) -> Dict[str, Any]:
         """
         Создать событие category_deleted

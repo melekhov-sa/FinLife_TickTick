@@ -106,6 +106,11 @@ class WalletBalance(Base):
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
+    # Dynamics fields for wallets list
+    balance_30d_ago: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+    operations_count_30d: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    last_operation_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     updated_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True),
@@ -578,6 +583,37 @@ class ContactModel(Base):
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WishModel(Base):
+    """Read model: Wishes - long-term intentions backlog"""
+    __tablename__ = "wishes"
+
+    wish_id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    wish_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # PURCHASE, EVENT, PLACE, OTHER
+    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # IDEA, CONSIDERING, PLANNED, DONE, CANCELED
+
+    # Scheduling (mutually exclusive)
+    target_date: Mapped[date_type | None] = mapped_column(Date, nullable=True, index=True)
+    target_month: Mapped[str | None] = mapped_column(String(7), nullable=True, index=True)  # YYYY-MM format
+
+    # Finance
+    estimated_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", index=True)
+    last_completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Meta
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
     )
 
 

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}{% if mode == 'create' %}Новая хотелка{% else %}Изменить хотелку{% endif %}{% endblock %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 600px;">
+    <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 20px;">
+        {% if mode == 'create' %}Новая хотелка{% else %}Изменить хотелку{% endif %}
+    </h2>
+
+    {% set error = request.query_params.get('error') %}
+    {% if error %}
+    <div style="background: #ffebee; border: 1px solid #ef5350; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; color: #c62828; font-size: 13px;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{% if mode == 'create' %}/wishes/new{% else %}/wishes/{{ wish.wish_id }}/edit{% endif %}"
+          style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+
+        <!-- Title -->
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                Название <span style="color: #f44336;">*</span>
+            </label>
+            <input type="text" name="title" required
+                   value="{% if wish %}{{ wish.title }}{% endif %}"
+                   style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+        </div>
+
+        <!-- Type -->
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                Тип <span style="color: #f44336;">*</span>
+            </label>
+            <select name="wish_type" required
+                    style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="PURCHASE" {% if wish and wish.wish_type == 'PURCHASE' %}selected{% endif %}>💰 Покупка</option>
+                <option value="EVENT" {% if wish and wish.wish_type == 'EVENT' %}selected{% endif %}>🎉 Событие</option>
+                <option value="PLACE" {% if wish and wish.wish_type == 'PLACE' %}selected{% endif %}>🌍 Место</option>
+                <option value="OTHER" {% if wish and wish.wish_type == 'OTHER' %}selected{% endif %}>📝 Другое</option>
+            </select>
+        </div>
+
+        <!-- Status -->
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                Статус <span style="color: #f44336;">*</span>
+            </label>
+            <select name="status" required
+                    style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                <option value="IDEA" {% if not wish or wish.status == 'IDEA' %}selected{% endif %}>💡 Идея</option>
+                <option value="CONSIDERING" {% if wish and wish.status == 'CONSIDERING' %}selected{% endif %}>🤔 Думаю</option>
+                <option value="PLANNED" {% if wish and wish.status == 'PLANNED' %}selected{% endif %}>📅 Запланировано</option>
+                <option value="DONE" {% if wish and wish.status == 'DONE' %}selected{% endif %}>✅ Выполнено</option>
+                <option value="CANCELED" {% if wish and wish.status == 'CANCELED' %}selected{% endif %}>❌ Отменено</option>
+            </select>
+        </div>
+
+        <!-- Target date OR target month -->
+        <div style="margin-bottom: 16px; display: flex; gap: 12px;">
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                    Целевая дата
+                </label>
+                <input type="date" name="target_date" id="target_date"
+                       value="{% if wish and wish.target_date %}{{ wish.target_date.strftime('%Y-%m-%d') }}{% endif %}"
+                       onchange="clearTargetMonth()"
+                       style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                    Целевой месяц
+                </label>
+                <input type="month" name="target_month" id="target_month"
+                       value="{% if wish and wish.target_month %}{{ wish.target_month }}{% endif %}"
+                       onchange="clearTargetDate()"
+                       style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            </div>
+        </div>
+        <div style="font-size: 11px; color: #999; margin-top: -10px; margin-bottom: 16px;">
+            Укажите либо конкретную дату, либо месяц (не оба сразу)
+        </div>
+
+        <!-- Estimated amount -->
+        <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                Ориентировочная сумма (руб.)
+            </label>
+            <input type="number" name="estimated_amount" step="0.01" min="0"
+                   value="{% if wish and wish.estimated_amount %}{{ wish.estimated_amount }}{% endif %}"
+                   style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+        </div>
+
+        <!-- Is recurring -->
+        <div style="margin-bottom: 16px;">
+            <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" name="is_recurring" value="true"
+                       {% if wish and wish.is_recurring %}checked{% endif %}
+                       style="width: 16px; height: 16px; margin-right: 8px; cursor: pointer;">
+                <span style="font-size: 13px; color: #333;">
+                    ♻️ Повторяющаяся хотелка
+                </span>
+            </label>
+            <div style="font-size: 11px; color: #999; margin-left: 24px; margin-top: 4px;">
+                При выполнении статус не изменится, только обновится дата последнего выполнения
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333;">
+                Заметки
+            </label>
+            <textarea name="notes" rows="3"
+                      style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical;"
+            >{% if wish and wish.notes %}{{ wish.notes }}{% endif %}</textarea>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display: flex; gap: 10px;">
+            <button type="submit"
+                    style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                {% if mode == 'create' %}Создать{% else %}Сохранить{% endif %}
+            </button>
+            <a href="/wishes"
+               style="background: #f5f5f5; color: #333; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; display: inline-block;">
+                Отмена
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function clearTargetDate() {
+    const targetMonth = document.getElementById('target_month');
+    if (targetMonth.value) {
+        document.getElementById('target_date').value = '';
+    }
+}
+
+function clearTargetMonth() {
+    const targetDate = document.getElementById('target_date');
+    if (targetDate.value) {
+        document.getElementById('target_month').value = '';
+    }
+}
+</script>
+{% endblock %}

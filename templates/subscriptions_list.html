@@ -2,6 +2,7 @@
 {% block title %}Подписки — FinLife{% endblock %}
 
 {% macro fmt_date(d) %}{{ d.strftime('%d.%m.%Y') }}{% endmacro %}
+{% macro fmt2(val) %}{{ "{:,.2f}".format(val).replace(",", " ") }}{% endmacro %}
 {% macro progress_color(days_left) %}{% if days_left < 0 %}#dc3545{% elif days_left < 7 %}#dc3545{% elif days_left < 30 %}#ffc107{% else %}#28a745{% endif %}{% endmacro %}
 
 {% block content %}
@@ -89,7 +90,7 @@
         <span style="color: #dc3545; font-weight: 500;">Истекла</span>
         {% else %}
         <span>до {{ fmt_date(mi.paid_until) }}</span>
-        <span class="muted">({{ mi.days_left }} дн.)</span>
+        <span class="muted">({{ mi.days_left }} дн.){% if mi.payment_per_year or mi.payment_per_month %} · {% if mi.payment_per_year %}{{ fmt2(mi.payment_per_year) }}/г{% endif %}{% if mi.payment_per_year and mi.payment_per_month %} · {% endif %}{% if mi.payment_per_month %}{{ fmt2(mi.payment_per_month) }}/м{% endif %}{% endif %}</span>
         {% endif %}
         {% else %}
         <span class="muted">нет данных</span>

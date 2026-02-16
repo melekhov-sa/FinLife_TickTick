@@ -1,212 +1,118 @@
 {% extends "base.html" %}
-{% block title %}Статьи - FinLife{% endblock %}
+{% block title %}Статьи (категории) — FinLife{% endblock %}
 
 {% block content %}
-<h1>Статьи (категории)</h1>
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <h1 style="margin: 0;">Статьи (категории)</h1>
+</div>
 
-{% if error %}
-  <div class="error-card">{{ error }}</div>
+{% if request.query_params.get('error') %}
+<div class="error-card">{{ request.query_params.get('error') }}</div>
 {% endif %}
 
-{% set income_categories = categories | selectattr('category_type', 'equalto', 'INCOME') | list %}
-{% set expense_categories = categories | selectattr('category_type', 'equalto', 'EXPENSE') | list %}
+<!-- Toolbar: Tabs + Filters + Actions -->
+<div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+  <!-- Tabs: Расходы / Доходы -->
+  <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+    <a href="/categories?kind=expense&status={{ status }}&q={{ q }}"
+       style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
+              {% if kind == 'expense' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}">
+      Расходы
+      {% if kind == 'expense' or kind == 'income' %}
+        ({{ counts.expense_active }})
+      {% endif %}
+    </a>
+    <a href="/categories?kind=income&status={{ status }}&q={{ q }}"
+       style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
+              {% if kind == 'income' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}">
+      Доходы
+      {% if kind == 'expense' or kind == 'income' %}
+        ({{ counts.income_active }})
+      {% endif %}
+    </a>
+  </div>
 
-<!-- Категории расходов -->
+  <!-- Filters + Search + Actions -->
+  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <!-- Status Filter -->
+    <form method="GET" action="/categories" style="display: flex; gap: 8px; align-items: center;">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="q" value="{{ q }}">
+      <select name="status" onchange="this.form.submit()" style="max-width: 150px; font-size: 13px; padding: 6px;">
+        <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
+        <option value="archived" {% if status == 'archived' %}selected{% endif %}>Архив</option>
+        <option value="all" {% if status == 'all' %}selected{% endif %}>Все</option>
+      </select>
+    </form>
+
+    <!-- Search -->
+    <form method="GET" action="/categories" style="display: flex; gap: 8px; flex: 1;">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      <input type="hidden" name="status" value="{{ status }}">
+      <input type="text" name="q" value="{{ q }}" placeholder="Поиск..." style="max-width: 200px; font-size: 13px;">
+      <button type="submit" style="font-size: 13px; padding: 6px 14px;">Найти</button>
+      {% if q %}
+      <a href="/categories?kind={{ kind }}&status={{ status }}" class="btn secondary" style="font-size: 13px; padding: 6px 14px; text-decoration: none;">Сбросить</a>
+      {% endif %}
+    </form>
+
+    <!-- Create Button -->
+    <a href="/categories/new?kind={{ kind }}" class="btn" style="font-size: 13px; padding: 6px 14px; text-decoration: none; white-space: nowrap;">+ Создать</a>
+  </div>
+</div>
+
+<!-- Categories Table -->
 <div class="card">
-  <h2>Категории расходов</h2>
-  {% if expense_categories %}
-    <table>
-      <thead>
-        <tr>
-          <th>Название</th>
-          <th>Родитель</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for category in expense_categories %}
-        <tr id="cat-row-{{ category.category_id }}">
-          <td>
-            {% if category.parent_id %}
-              <span class="muted" style="margin-right: 4px;">└</span>
-            {% endif %}
-            {{ category.title }}
-            {% if category.is_system %}<span class="badge">Системная</span>{% endif %}
-            {% if category.is_archived %}<span class="badge badge-archive">Архив</span>{% endif %}
-          </td>
-          <td class="muted">
-            {% if category.parent_id %}
-              {% for c in expense_categories if c.category_id == category.parent_id %}
-                {{ c.title }}
-              {% endfor %}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td style="white-space: nowrap;">
-            {% if not category.is_archived and not category.is_system %}
-              <button type="button" class="secondary" onclick="toggleEdit({{ category.category_id }})" style="font-size: 12px; padding: 4px 10px;">Изменить</button>
-              <form method="POST" action="/api/v1/categories/{{ category.category_id }}/archive" style="display:inline;">
-                <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;" onclick="return confirm('Архивировать категорию?')">Архив</button>
-              </form>
-            {% elif category.is_system %}
-              <span class="muted">Системная</span>
-            {% endif %}
-          </td>
-        </tr>
-        <tr id="cat-edit-{{ category.category_id }}" style="display: none;">
-          <td colspan="3">
-            <form method="POST" action="/categories/{{ category.category_id }}/update" style="display: flex; gap: 8px; align-items: center;">
-              <input name="title" value="{{ category.title }}" style="max-width: 200px;" required>
-              <select name="parent_id" style="max-width: 200px;">
-                <option value="">— Без родителя —</option>
-                {% for c in expense_categories if c.category_id != category.category_id and not c.is_archived and not c.parent_id and not c.is_system %}
-                  <option value="{{ c.category_id }}" {% if category.parent_id == c.category_id %}selected{% endif %}>{{ c.title }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" style="font-size: 12px; padding: 4px 10px;">Сохранить</button>
-              <button type="button" class="secondary" onclick="toggleEdit({{ category.category_id }})" style="font-size: 12px; padding: 4px 10px;">Отмена</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% if categories %}
+  <div class="matrix-scroll-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th style="width: 200px;">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for category in categories %}
+      <tr>
+        <td>
+          {{ category.title }}
+          {% if category.is_system %}
+          <span class="badge" style="background: #6c757d; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 6px;">Системная</span>
+          {% endif %}
+          {% if status == 'all' and category.is_archived %}
+          <span class="badge badge-archive" style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 6px;">Архив</span>
+          {% endif %}
+        </td>
+        <td style="white-space: nowrap;">
+          {% if category.is_system %}
+            <span class="muted" style="font-size: 12px;" title="Системная категория">—</span>
+          {% elif category.is_archived %}
+            <a href="/categories/{{ category.category_id }}/confirm-unarchive" class="btn secondary" style="font-size: 12px; padding: 4px 10px; text-decoration: none;">Восстановить</a>
+          {% else %}
+            <a href="/categories/{{ category.category_id }}/edit" style="font-size: 18px; text-decoration: none; color: #6c757d;" title="Настройки">⚙️</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
   {% else %}
-    <p class="muted">Нет категорий расходов</p>
+  <div style="text-align: center; padding: 32px 16px;">
+    <p class="muted" style="margin-bottom: 16px;">
+      {% if q %}
+        Ничего не найдено по запросу «{{ q }}»
+      {% elif status == 'archived' %}
+        Нет архивных категорий
+      {% else %}
+        Нет категорий
+      {% endif %}
+    </p>
+    {% if not q %}
+    <a href="/categories/new?kind={{ kind }}" class="btn" style="text-decoration: none;">+ Создать первую категорию</a>
+    {% endif %}
+  </div>
   {% endif %}
 </div>
-
-<!-- Категории доходов -->
-<div class="card">
-  <h2>Категории доходов</h2>
-  {% if income_categories %}
-    <table>
-      <thead>
-        <tr>
-          <th>Название</th>
-          <th>Родитель</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for category in income_categories %}
-        <tr id="cat-row-{{ category.category_id }}">
-          <td>
-            {% if category.parent_id %}
-              <span class="muted" style="margin-right: 4px;">└</span>
-            {% endif %}
-            {{ category.title }}
-            {% if category.is_system %}<span class="badge">Системная</span>{% endif %}
-            {% if category.is_archived %}<span class="badge badge-archive">Архив</span>{% endif %}
-          </td>
-          <td class="muted">
-            {% if category.parent_id %}
-              {% for c in income_categories if c.category_id == category.parent_id %}
-                {{ c.title }}
-              {% endfor %}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td style="white-space: nowrap;">
-            {% if not category.is_archived and not category.is_system %}
-              <button type="button" class="secondary" onclick="toggleEdit({{ category.category_id }})" style="font-size: 12px; padding: 4px 10px;">Изменить</button>
-              <form method="POST" action="/api/v1/categories/{{ category.category_id }}/archive" style="display:inline;">
-                <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;" onclick="return confirm('Архивировать категорию?')">Архив</button>
-              </form>
-            {% elif category.is_system %}
-              <span class="muted">Системная</span>
-            {% endif %}
-          </td>
-        </tr>
-        <tr id="cat-edit-{{ category.category_id }}" style="display: none;">
-          <td colspan="3">
-            <form method="POST" action="/categories/{{ category.category_id }}/update" style="display: flex; gap: 8px; align-items: center;">
-              <input name="title" value="{{ category.title }}" style="max-width: 200px;" required>
-              <select name="parent_id" style="max-width: 200px;">
-                <option value="">— Без родителя —</option>
-                {% for c in income_categories if c.category_id != category.category_id and not c.is_archived and not c.parent_id and not c.is_system %}
-                  <option value="{{ c.category_id }}" {% if category.parent_id == c.category_id %}selected{% endif %}>{{ c.title }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" style="font-size: 12px; padding: 4px 10px;">Сохранить</button>
-              <button type="button" class="secondary" onclick="toggleEdit({{ category.category_id }})" style="font-size: 12px; padding: 4px 10px;">Отмена</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="muted">Нет категорий доходов</p>
-  {% endif %}
-</div>
-
-<!-- Создать категорию -->
-<div class="card">
-  <h2>Создать категорию</h2>
-  <form method="POST" action="/categories/create" id="create-category-form">
-    <div class="form-row">
-      <label>Название</label>
-      <input name="title" placeholder="Например: Зарплата" required>
-    </div>
-    <div class="form-row">
-      <label>Тип категории</label>
-      <select name="category_type" id="new-category-type" required onchange="updateParentOptions()">
-        <option value="EXPENSE">Расход</option>
-        <option value="INCOME">Доход</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Родительская категория</label>
-      <select name="parent_id" id="new-category-parent">
-        <option value="">— Без родителя —</option>
-      </select>
-    </div>
-    <button type="submit">Создать</button>
-  </form>
-</div>
-
-<script>
-function toggleEdit(categoryId) {
-  var row = document.getElementById('cat-row-' + categoryId);
-  var edit = document.getElementById('cat-edit-' + categoryId);
-  if (edit.style.display === 'none') {
-    edit.style.display = '';
-    row.style.display = 'none';
-  } else {
-    edit.style.display = 'none';
-    row.style.display = '';
-  }
-}
-
-var categoriesByType = {
-  'EXPENSE': [
-    {% for c in expense_categories if not c.is_archived and not c.parent_id and not c.is_system %}
-    { id: {{ c.category_id }}, title: "{{ c.title }}" },
-    {% endfor %}
-  ],
-  'INCOME': [
-    {% for c in income_categories if not c.is_archived and not c.parent_id and not c.is_system %}
-    { id: {{ c.category_id }}, title: "{{ c.title }}" },
-    {% endfor %}
-  ]
-};
-
-function updateParentOptions() {
-  var type = document.getElementById('new-category-type').value;
-  var select = document.getElementById('new-category-parent');
-  select.innerHTML = '<option value="">— Без родителя —</option>';
-  var cats = categoriesByType[type] || [];
-  for (var i = 0; i < cats.length; i++) {
-    var opt = document.createElement('option');
-    opt.value = cats[i].id;
-    opt.textContent = cats[i].title;
-    select.appendChild(opt);
-  }
-}
-
-updateParentOptions();
-</script>
 {% endblock %}

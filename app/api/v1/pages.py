@@ -19,10 +19,18 @@ from app.infrastructure.db.models import (
     OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel,
     CalendarEventModel, EventOccurrenceModel, EventFilterPresetModel,
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
-    ContactModel,
+    ContactModel, WishModel,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
-from app.application.categories import CreateCategoryUseCase, UpdateCategoryUseCase, EnsureSystemCategoriesUseCase, CategoryValidationError
+from app.application.categories import (
+    CreateCategoryUseCase,
+    UpdateCategoryUseCase,
+    EnsureSystemCategoriesUseCase,
+    ArchiveCategoryUseCase,
+    UnarchiveCategoryUseCase,
+    ListCategoriesService,
+    CategoryValidationError
+)
 from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
 from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase, UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
 from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, TaskValidationError
@@ -44,8 +52,8 @@ from app.application.operation_templates import (
 from app.application.occurrence_generator import OccurrenceGenerator
 from app.application.events import (
     CreateEventUseCase, UpdateEventUseCase, DeactivateEventUseCase,
-    ReactivateEventUseCase, EventValidationError,
-    validate_event_form, rebuild_event_occurrences,
+    ReactivateEventUseCase, CreateEventOccurrenceUseCase, UpdateEventOccurrenceUseCase,
+    EventValidationError, validate_event_form, rebuild_event_occurrences,
 )
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase, UpdateRecurrenceRuleUseCase
 from app.application.budget import (
@@ -70,6 +78,11 @@ from app.application.contacts import (
     ArchiveContactUseCase, UnarchiveContactUseCase,
     ContactValidationError,
 )
+from app.application.wishes import (
+    CreateWishUseCase, UpdateWishUseCase, CompleteWishesUseCase,
+    WishValidationError,
+)
+from app.application.wishes_service import WishesService
 from app.utils.validation import validate_and_normalize_amount
 
 
@@ -153,9 +166,87 @@ def wallets_page(request: Request, db: Session = Depends(get_db)):
         WalletBalance.account_id == user_id
     ).all()
 
+    # Calculate dynamics for each wallet
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+
+    wallet_data = []
+    for w in wallets:
+        # Count operations in last 30 days
+        ops_count = db.query(func.count(TransactionFeed.transaction_id)).filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.occurred_at >= thirty_days_ago,
+            or_(
+                TransactionFeed.wallet_id == w.wallet_id,
+                TransactionFeed.from_wallet_id == w.wallet_id,
+                TransactionFeed.to_wallet_id == w.wallet_id
+            )
+        ).scalar() or 0
+
+        # Calculate balance 30 days ago by replaying transactions
+        # Get all transactions after 30 days ago
+        recent_txs = db.query(TransactionFeed).filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.occurred_at >= thirty_days_ago,
+            or_(
+                TransactionFeed.wallet_id == w.wallet_id,
+                TransactionFeed.from_wallet_id == w.wallet_id,
+                TransactionFeed.to_wallet_id == w.wallet_id
+            )
+        ).all()
+
+        # Calculate balance change in last 30 days
+        balance_change = Decimal("0")
+        for tx in recent_txs:
+            if tx.operation_type == "INCOME" and tx.wallet_id == w.wallet_id:
+                balance_change += tx.amount
+            elif tx.operation_type == "EXPENSE" and tx.wallet_id == w.wallet_id:
+                balance_change -= tx.amount
+            elif tx.operation_type == "TRANSFER":
+                if tx.from_wallet_id == w.wallet_id:
+                    balance_change -= tx.amount
+                if tx.to_wallet_id == w.wallet_id:
+                    balance_change += tx.amount
+
+        balance_30d_ago = w.balance - balance_change
+
+        wallet_data.append({
+            "wallet": w,
+            "operations_count_30d": ops_count,
+            "balance_30d_ago": balance_30d_ago,
+            "delta_30d": balance_change
+        })
+
+    # Calculate summary by wallet type
+    summary = {
+        "REGULAR": {"count": 0, "total": Decimal("0")},
+        "CREDIT": {"count": 0, "total": Decimal("0")},
+        "SAVINGS": {"count": 0, "total": Decimal("0")}
+    }
+
+    for wd in wallet_data:
+        w = wd["wallet"]
+        if not w.is_archived:
+            wtype = w.wallet_type
+            if wtype in summary:
+                summary[wtype]["count"] += 1
+                summary[wtype]["total"] += w.balance
+
     return templates.TemplateResponse("wallets.html", {
         "request": request,
-        "wallets": wallets
+        "wallet_data": wallet_data,
+        "summary": summary
+    })
+
+
+@router.get("/wallets/new", response_class=HTMLResponse)
+def wallet_new_page(request: Request):
+    """Страница создания кошелька"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("wallet_form.html", {
+        "request": request,
+        "mode": "new"
     })
 
 
@@ -628,7 +719,13 @@ def create_transaction_form(
 # === Categories ===
 
 @router.get("/categories", response_class=HTMLResponse)
-def categories_page(request: Request, db: Session = Depends(get_db)):
+def categories_page(
+    request: Request,
+    kind: str = "expense",  # expense or income
+    status: str = "active",  # active, archived, all
+    q: str = "",  # search query
+    db: Session = Depends(get_db)
+):
     """Страница управления категориями (статьями)"""
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
@@ -639,27 +736,47 @@ def categories_page(request: Request, db: Session = Depends(get_db)):
     ensure_use_case = EnsureSystemCategoriesUseCase(db)
     ensure_use_case.execute(account_id=user_id, actor_user_id=user_id)
 
-    # Get all categories (including archived for display)
-    categories = db.query(CategoryInfo).filter(
-        CategoryInfo.account_id == user_id
-    ).order_by(
-        CategoryInfo.category_type.asc(),  # EXPENSE первым, потом INCOME
-        CategoryInfo.is_system.desc(),     # Системные сверху
-        CategoryInfo.title.asc()
-    ).all()
+    # Get filtered categories
+    service = ListCategoriesService(db)
+    result = service.execute(
+        account_id=user_id,
+        kind=kind,
+        status=status,
+        search_query=q if q else None
+    )
 
     return templates.TemplateResponse("categories.html", {
         "request": request,
-        "categories": categories
+        "categories": result["categories"],
+        "counts": result["counts"],
+        "kind": kind,
+        "status": status,
+        "q": q
     })
 
 
-@router.post("/categories/create", response_class=HTMLResponse)
-def create_category_form(
+@router.get("/categories/new", response_class=HTMLResponse)
+def category_new_page(
+    request: Request,
+    kind: str = "expense",
+    db: Session = Depends(get_db)
+):
+    """Страница создания категории"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("category_form.html", {
+        "request": request,
+        "mode": "new",
+        "kind": kind
+    })
+
+
+@router.post("/categories/new", response_class=HTMLResponse)
+def create_category_handler(
     request: Request,
     title: str = Form(...),
-    category_type: str = Form(...),
-    parent_id: int | None = Form(None),
+    kind: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """Обработка формы создания категории"""
@@ -669,7 +786,12 @@ def create_category_form(
     user_id = request.session["user_id"]
 
     try:
-        if category_type not in ("INCOME", "EXPENSE"):
+        # Map kind to category_type
+        if kind == "expense":
+            category_type = "EXPENSE"
+        elif kind == "income":
+            category_type = "INCOME"
+        else:
             raise ValueError("Неверный тип категории")
 
         use_case = CreateCategoryUseCase(db)
@@ -677,39 +799,61 @@ def create_category_form(
             account_id=user_id,
             title=title,
             category_type=category_type,
-            parent_id=parent_id,
+            parent_id=None,  # No hierarchy in UI
             is_system=False,
             actor_user_id=user_id
         )
-        return RedirectResponse("/categories", status_code=302)
-    except IntegrityError as e:
-        db.rollback()
-        categories = db.query(CategoryInfo).filter(
-            CategoryInfo.account_id == user_id
-        ).all()
-        return templates.TemplateResponse("categories.html", {
-            "request": request,
-            "categories": categories,
-            "error": "Категория уже создается. Пожалуйста, обновите страницу."
-        })
+        return RedirectResponse(f"/categories?kind={kind}", status_code=302)
     except Exception as e:
         db.rollback()
-        categories = db.query(CategoryInfo).filter(
-            CategoryInfo.account_id == user_id
-        ).all()
-        return templates.TemplateResponse("categories.html", {
+        return templates.TemplateResponse("category_form.html", {
             "request": request,
-            "categories": categories,
+            "mode": "new",
+            "kind": kind,
+            "form_title": title,
             "error": str(e)
         })
 
 
-@router.post("/categories/{category_id}/update", response_class=HTMLResponse)
-def update_category_form(
+@router.get("/categories/{category_id}/edit", response_class=HTMLResponse)
+def category_edit_page(
+    request: Request,
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """Страница редактирования категории"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    category = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id
+    ).first()
+
+    if not category:
+        return RedirectResponse("/categories?error=Категория+не+найдена", status_code=302)
+
+    if category.is_system:
+        return RedirectResponse("/categories?error=Нельзя+редактировать+системную+категорию", status_code=302)
+
+    kind = "expense" if category.category_type == "EXPENSE" else "income"
+
+    return templates.TemplateResponse("category_form.html", {
+        "request": request,
+        "mode": "edit",
+        "category": category,
+        "kind": kind
+    })
+
+
+@router.post("/categories/{category_id}/edit", response_class=HTMLResponse)
+def update_category_handler(
     request: Request,
     category_id: int,
     title: str = Form(...),
-    parent_id: int | None = Form(None),
+    is_archived: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     """Обработка формы редактирования категории"""
@@ -719,29 +863,200 @@ def update_category_form(
     user_id = request.session["user_id"]
 
     try:
+        # Get category to determine kind and current state
+        category = db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
+            CategoryInfo.account_id == user_id
+        ).first()
+
+        if not category:
+            raise CategoryValidationError("Категория не найдена")
+
+        kind = "expense" if category.category_type == "EXPENSE" else "income"
+
+        # Update title
         use_case = UpdateCategoryUseCase(db)
         use_case.execute(
             category_id=category_id,
             account_id=user_id,
             title=title,
-            parent_id=parent_id,
+            parent_id=...,  # Don't change parent_id
             actor_user_id=user_id
         )
-        return RedirectResponse("/categories", status_code=302)
+
+        # Handle archive/unarchive if state changed
+        if is_archived and not category.is_archived:
+            # Archive category
+            archive_use_case = ArchiveCategoryUseCase(db)
+            archive_use_case.execute(
+                category_id=category_id,
+                account_id=user_id,
+                actor_user_id=user_id
+            )
+        elif not is_archived and category.is_archived:
+            # Unarchive category
+            unarchive_use_case = UnarchiveCategoryUseCase(db)
+            unarchive_use_case.execute(
+                category_id=category_id,
+                account_id=user_id,
+                actor_user_id=user_id
+            )
+
+        return RedirectResponse(f"/categories?kind={kind}", status_code=302)
     except Exception as e:
         db.rollback()
-        categories = db.query(CategoryInfo).filter(
+        category = db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
             CategoryInfo.account_id == user_id
-        ).order_by(
-            CategoryInfo.category_type.asc(),
-            CategoryInfo.is_system.desc(),
-            CategoryInfo.title.asc()
-        ).all()
-        return templates.TemplateResponse("categories.html", {
+        ).first()
+        if not category:
+            return RedirectResponse("/categories?error=" + str(e), status_code=302)
+        kind = "expense" if category.category_type == "EXPENSE" else "income"
+        return templates.TemplateResponse("category_form.html", {
             "request": request,
-            "categories": categories,
+            "mode": "edit",
+            "category": category,
+            "kind": kind,
             "error": str(e)
         })
+
+
+@router.get("/categories/{category_id}/confirm-archive", response_class=HTMLResponse)
+def category_confirm_archive_page(
+    request: Request,
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """Страница подтверждения архивирования категории"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    category = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id
+    ).first()
+
+    if not category:
+        return RedirectResponse("/categories?error=Категория+не+найдена", status_code=302)
+
+    if category.is_system:
+        return RedirectResponse("/categories?error=Нельзя+архивировать+системную+категорию", status_code=302)
+
+    kind = "expense" if category.category_type == "EXPENSE" else "income"
+
+    return templates.TemplateResponse("category_confirm.html", {
+        "request": request,
+        "category": category,
+        "action": "archive",
+        "kind": kind
+    })
+
+
+@router.post("/categories/{category_id}/archive", response_class=HTMLResponse)
+def archive_category_handler(
+    request: Request,
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """Обработка архивирования категории"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        # Get category to determine kind for redirect
+        category = db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
+            CategoryInfo.account_id == user_id
+        ).first()
+
+        if category:
+            kind = "expense" if category.category_type == "EXPENSE" else "income"
+        else:
+            kind = "expense"
+
+        use_case = ArchiveCategoryUseCase(db)
+        use_case.execute(
+            category_id=category_id,
+            account_id=user_id,
+            actor_user_id=user_id
+        )
+        return RedirectResponse(f"/categories?kind={kind}&status=active", status_code=302)
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse(f"/categories?error={str(e)}", status_code=302)
+
+
+@router.get("/categories/{category_id}/confirm-unarchive", response_class=HTMLResponse)
+def category_confirm_unarchive_page(
+    request: Request,
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """Страница подтверждения восстановления категории"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    category = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id
+    ).first()
+
+    if not category:
+        return RedirectResponse("/categories?error=Категория+не+найдена", status_code=302)
+
+    if category.is_system:
+        return RedirectResponse("/categories?error=Системная+категория+не+может+быть+в+архиве", status_code=302)
+
+    kind = "expense" if category.category_type == "EXPENSE" else "income"
+
+    return templates.TemplateResponse("category_confirm.html", {
+        "request": request,
+        "category": category,
+        "action": "unarchive",
+        "kind": kind
+    })
+
+
+@router.post("/categories/{category_id}/unarchive", response_class=HTMLResponse)
+def unarchive_category_handler(
+    request: Request,
+    category_id: int,
+    db: Session = Depends(get_db)
+):
+    """Обработка восстановления категории из архива"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        # Get category to determine kind for redirect
+        category = db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
+            CategoryInfo.account_id == user_id
+        ).first()
+
+        if category:
+            kind = "expense" if category.category_type == "EXPENSE" else "income"
+        else:
+            kind = "expense"
+
+        use_case = UnarchiveCategoryUseCase(db)
+        use_case.execute(
+            category_id=category_id,
+            account_id=user_id,
+            actor_user_id=user_id
+        )
+        return RedirectResponse(f"/categories?kind={kind}&status=active", status_code=302)
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse(f"/categories?error={str(e)}", status_code=302)
 
 
 # === Work Categories ===
@@ -2434,11 +2749,26 @@ def event_edit_page(request: Request, event_id: int, db: Session = Depends(get_d
             RecurrenceRuleModel.rule_id == ev.repeat_rule_id,
         ).first()
 
+    # Load occurrence for one-time events
+    occurrence = None
+    if not ev.repeat_rule_id:
+        occurrence = db.query(EventOccurrenceModel).filter(
+            EventOccurrenceModel.event_id == event_id,
+            EventOccurrenceModel.account_id == user_id,
+            EventOccurrenceModel.is_cancelled == False,
+        ).first()
+        # Debug: print if occurrence found
+        if occurrence:
+            print(f"DEBUG: Loaded occurrence {occurrence.id} with start_date={occurrence.start_date}")
+        else:
+            print(f"DEBUG: No occurrence found for event {event_id}")
+
     return templates.TemplateResponse("event_form.html", {
         "request": request,
         "mode": "edit",
         "event": ev,
         "rule": rule,
+        "occurrence": occurrence,
         "categories": categories,
     })
 
@@ -2452,6 +2782,10 @@ def event_update(
     description: str = Form(""),
     is_archived: str = Form(""),
     event_type: str = Form("onetime"),
+    start_date: str = Form(""),
+    start_time: str = Form(""),
+    end_date: str = Form(""),
+    end_time: str = Form(""),
     recurrence_type: str = Form(""),
     rec_month: int | None = Form(None),
     rec_day: int | None = Form(None),
@@ -2539,6 +2873,36 @@ def event_update(
                         repeat_rule_id=new_rule_id, actor_user_id=user_id,
                     )
                     OccurrenceGenerator(db).generate_event_occurrences(user_id)
+        elif event_type == "onetime" and start_date:
+            # Update or create occurrence for one-time events
+            occ = db.query(EventOccurrenceModel).filter(
+                EventOccurrenceModel.event_id == event_id,
+                EventOccurrenceModel.is_cancelled == False,
+            ).first()
+            if occ:
+                print(f"DEBUG: Updating occurrence {occ.id} with start_date={start_date}")
+                UpdateEventOccurrenceUseCase(db).execute(
+                    occurrence_id=occ.id,
+                    account_id=user_id,
+                    start_date=start_date.strip() or None,
+                    start_time=start_time.strip() or None,
+                    end_date=end_date.strip() or None,
+                    end_time=end_time.strip() or None,
+                    actor_user_id=user_id,
+                )
+            else:
+                # Create new occurrence if it doesn't exist
+                print(f"DEBUG: Creating new occurrence for event {event_id} with start_date={start_date}")
+                CreateEventOccurrenceUseCase(db).execute(
+                    event_id=event_id,
+                    account_id=user_id,
+                    start_date=start_date.strip(),
+                    start_time=start_time.strip() or None,
+                    end_date=end_date.strip() or None,
+                    end_time=end_time.strip() or None,
+                    source="manual",
+                    actor_user_id=user_id,
+                )
 
         # 4. Deactivate last if needed
         if ev.is_active and want_archived:
@@ -2979,3 +3343,225 @@ def plan_cancel_event(request: Request, occurrence_id: int, redirect: str = Form
     except Exception:
         db.rollback()
     return RedirectResponse(redirect, status_code=302)
+
+
+# ====================
+# WISHES
+# ====================
+
+@router.get("/wishes", response_class=HTMLResponse)
+def wishes_list(
+    request: Request,
+    period: str = "all",
+    status: str = "active",
+    search: str = "",
+    db: Session = Depends(get_db)
+):
+    """Список хотелок"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    # Parse status filter (can be comma-separated)
+    statuses = None
+    if status and status != "all":
+        statuses = [s.strip() for s in status.split(",")]
+
+    service = WishesService(db)
+    wishes = service.get_filtered_wishes(
+        account_id=account_id,
+        period=period,
+        statuses=statuses,
+        search=search if search else None
+    )
+
+    # Group by type
+    grouped = service.group_by_type(wishes)
+
+    return templates.TemplateResponse("wishes_list.html", {
+        "request": request,
+        "grouped_wishes": grouped,
+        "period": period,
+        "status": status,
+        "search": search,
+    })
+
+
+@router.get("/wishes/purchase", response_class=HTMLResponse)
+def wishes_purchase(request: Request, db: Session = Depends(get_db)):
+    """Режим Закупка - массовое выполнение хотелок типа PURCHASE"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    service = WishesService(db)
+    wishes = service.get_purchase_wishes(account_id)
+
+    return templates.TemplateResponse("wishes_purchase.html", {
+        "request": request,
+        "wishes": wishes,
+    })
+
+
+@router.post("/wishes/purchase/complete", response_class=HTMLResponse)
+def complete_purchase_wishes(
+    request: Request,
+    wish_ids: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Отметить выбранные хотелки выполненными"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    # Parse wish_ids (comma-separated)
+    ids = [int(id.strip()) for id in wish_ids.split(",") if id.strip()]
+
+    if ids:
+        try:
+            CompleteWishesUseCase(db).execute(
+                wish_ids=ids,
+                account_id=account_id,
+                actor_user_id=account_id
+            )
+        except Exception:
+            db.rollback()
+
+    return RedirectResponse("/wishes/purchase", status_code=302)
+
+
+@router.get("/wishes/new", response_class=HTMLResponse)
+def new_wish_form(request: Request, db: Session = Depends(get_db)):
+    """Форма создания новой хотелки"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("wish_form.html", {
+        "request": request,
+        "wish": None,
+        "mode": "create",
+    })
+
+
+@router.post("/wishes/new", response_class=HTMLResponse)
+def create_wish_handler(
+    request: Request,
+    title: str = Form(...),
+    wish_type: str = Form(...),
+    status: str = Form("IDEA"),
+    target_date: str = Form(""),
+    target_month: str = Form(""),
+    estimated_amount: str = Form(""),
+    is_recurring: bool = Form(False),
+    notes: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Создать новую хотелку"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    # Parse optional fields
+    target_date_val = target_date if target_date else None
+    target_month_val = target_month if target_month else None
+    estimated_amount_val = None
+    if estimated_amount:
+        try:
+            estimated_amount_val = Decimal(estimated_amount)
+        except:
+            pass
+    notes_val = notes if notes else None
+
+    try:
+        CreateWishUseCase(db).execute(
+            account_id=account_id,
+            title=title,
+            wish_type=wish_type,
+            status=status,
+            target_date=target_date_val,
+            target_month=target_month_val,
+            estimated_amount=estimated_amount_val,
+            is_recurring=is_recurring,
+            notes=notes_val,
+            actor_user_id=account_id
+        )
+        return RedirectResponse("/wishes", status_code=302)
+    except (WishValidationError, ValueError) as e:
+        return RedirectResponse(f"/wishes/new?error={str(e)}", status_code=302)
+
+
+@router.get("/wishes/{wish_id}/edit", response_class=HTMLResponse)
+def edit_wish_form(request: Request, wish_id: int, db: Session = Depends(get_db)):
+    """Форма редактирования хотелки"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    wish = db.query(WishModel).filter(
+        WishModel.wish_id == wish_id,
+        WishModel.account_id == account_id
+    ).first()
+
+    if not wish:
+        return RedirectResponse("/wishes", status_code=302)
+
+    return templates.TemplateResponse("wish_form.html", {
+        "request": request,
+        "wish": wish,
+        "mode": "edit",
+    })
+
+
+@router.post("/wishes/{wish_id}/edit", response_class=HTMLResponse)
+def update_wish_handler(
+    request: Request,
+    wish_id: int,
+    title: str = Form(...),
+    wish_type: str = Form(...),
+    status: str = Form(...),
+    target_date: str = Form(""),
+    target_month: str = Form(""),
+    estimated_amount: str = Form(""),
+    is_recurring: bool = Form(False),
+    notes: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """Обновить хотелку"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    account_id = request.session["user_id"]
+
+    # Parse optional fields
+    target_date_val = target_date if target_date else None
+    target_month_val = target_month if target_month else None
+    estimated_amount_val = None
+    if estimated_amount:
+        try:
+            estimated_amount_val = Decimal(estimated_amount)
+        except:
+            pass
+    notes_val = notes if notes else None
+
+    try:
+        UpdateWishUseCase(db).execute(
+            wish_id=wish_id,
+            account_id=account_id,
+            actor_user_id=account_id,
+            title=title,
+            wish_type=wish_type,
+            status=status,
+            target_date=target_date_val,
+            target_month=target_month_val,
+            estimated_amount=str(estimated_amount_val) if estimated_amount_val else None,
+            is_recurring=is_recurring,
+            notes=notes_val
+        )
+        return RedirectResponse("/wishes", status_code=302)
+    except (WishValidationError, ValueError) as e:
+        return RedirectResponse(f"/wishes/{wish_id}/edit?error={str(e)}", status_code=302)

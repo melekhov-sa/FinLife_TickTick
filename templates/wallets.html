@@ -1,19 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Кошельки - FinLife{% endblock %}
 
+{% macro fmt2(val) %}{{ "{:,.2f}".format(val).replace(",", " ") }}{% endmacro %}
+
 {% block content %}
-<h1>Кошельки</h1>
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <h1 style="margin: 0;">Кошельки</h1>
+  <a href="/wallets/new" class="btn" style="font-size: 13px;">+ Создать кошелёк</a>
+</div>
 
 {% if error %}
   <div class="error-card">{{ error }}</div>
 {% endif %}
 
-{% set active_wallets = wallets | rejectattr('is_archived') | list %}
-{% set archived_wallets = wallets | selectattr('is_archived') | list %}
+<!-- Summary cards by wallet type -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+  <div class="card" style="padding: 16px;">
+    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Обычные кошельки</div>
+    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.REGULAR.total) }} ₽</div>
+    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.REGULAR.count }} шт.</div>
+  </div>
+  <div class="card" style="padding: 16px;">
+    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Кредитные</div>
+    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.CREDIT.total) }} ₽</div>
+    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.CREDIT.count }} шт.</div>
+  </div>
+  <div class="card" style="padding: 16px;">
+    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Накопления</div>
+    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.SAVINGS.total) }} ₽</div>
+    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.SAVINGS.count }} шт.</div>
+  </div>
+</div>
+
+{% set active_wallet_data = wallet_data | rejectattr('wallet.is_archived') | list %}
+{% set archived_wallet_data = wallet_data | selectattr('wallet.is_archived') | list %}
 
 <div class="card">
   <h2>Мои кошельки</h2>
-  {% if active_wallets %}
+  {% if active_wallet_data %}
     <div class="matrix-scroll-wrapper">
     <table>
       <thead>
@@ -22,11 +46,15 @@
           <th>Тип</th>
           <th>Валюта</th>
           <th>Баланс</th>
+          <th>Δ30 дней</th>
+          <th>Операций за 30д</th>
+          <th>Последняя операция</th>
           <th style="width: 40px;"></th>
         </tr>
       </thead>
       <tbody>
-        {% for wallet in active_wallets %}
+        {% for wd in active_wallet_data %}
+        {% set wallet = wd.wallet %}
         <tr>
           <td>{{ wallet.title }}</td>
           <td>
@@ -37,14 +65,23 @@
           </td>
           <td>{{ wallet.currency }}</td>
           <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
-            {{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}
+            {{ fmt2(wallet.balance) }}
+          </td>
+          <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
+            {% if wd.delta_30d|float > 0 %}+{% endif %}{{ fmt2(wd.delta_30d) }}
+          </td>
+          <td>{{ wd.operations_count_30d }}</td>
+          <td class="muted" style="font-size: 12px;">
+            {% if wallet.last_operation_at %}
+              {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
+            {% else %}—{% endif %}
           </td>
           <td>
             <button type="button" class="btn-gear" onclick="toggleSettings({{ wallet.wallet_id }})" title="Настройки">&#9881;</button>
           </td>
         </tr>
         <tr id="wallet-settings-{{ wallet.wallet_id }}" style="display: none;">
-          <td colspan="5" style="padding: 0;">
+          <td colspan="8" style="padding: 0;">
             <div class="wallet-settings">
               <div class="wallet-settings-row">
                 <form method="POST" action="/wallets/{{ wallet.wallet_id }}/rename" style="display: flex; gap: 8px; align-items: center; flex: 1;">
@@ -69,7 +106,7 @@
   {% endif %}
 </div>
 
-{% if archived_wallets %}
+{% if archived_wallet_data %}
 <div class="card">
   <h2>Архив</h2>
   <div class="matrix-scroll-wrapper">
@@ -80,11 +117,15 @@
         <th>Тип</th>
         <th>Валюта</th>
         <th>Баланс</th>
+        <th>Δ30 дней</th>
+        <th>Операций за 30д</th>
+        <th>Последняя операция</th>
         <th style="width: 120px;"></th>
       </tr>
     </thead>
     <tbody>
-      {% for wallet in archived_wallets %}
+      {% for wd in archived_wallet_data %}
+      {% set wallet = wd.wallet %}
       <tr style="opacity: 0.6;">
         <td>{{ wallet.title }}</td>
         <td>
@@ -95,7 +136,16 @@
         </td>
         <td>{{ wallet.currency }}</td>
         <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
-          {{ "{:,.2f}".format(wallet.balance).replace(",", " ") }}
+          {{ fmt2(wallet.balance) }}
+        </td>
+        <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
+          {% if wd.delta_30d|float > 0 %}+{% endif %}{{ fmt2(wd.delta_30d) }}
+        </td>
+        <td>{{ wd.operations_count_30d }}</td>
+        <td class="muted" style="font-size: 12px;">
+          {% if wallet.last_operation_at %}
+            {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
+          {% else %}—{% endif %}
         </td>
         <td>
           <form method="POST" action="/wallets/{{ wallet.wallet_id }}/unarchive" style="display:inline;">
@@ -109,37 +159,6 @@
   </div>
 </div>
 {% endif %}
-
-<div class="card">
-  <h2>Создать кошелёк</h2>
-  <form method="POST" action="/wallets/create">
-    <div class="form-row">
-      <label>Название</label>
-      <input name="title" placeholder="Например: Наличные" required>
-    </div>
-    <div class="form-row">
-      <label>Тип кошелька</label>
-      <select name="wallet_type" required>
-        <option value="REGULAR" selected>Обычный</option>
-        <option value="CREDIT">Кредит</option>
-        <option value="SAVINGS">Накопления</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Валюта</label>
-      <select name="currency" required>
-        <option value="USD">USD</option>
-        <option value="EUR">EUR</option>
-        <option value="RUB" selected>RUB</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Начальный баланс</label>
-      <input name="initial_balance" type="number" step="0.01" value="0" required>
-    </div>
-    <button type="submit">Создать</button>
-  </form>
-</div>
 
 <script>
 function toggleSettings(walletId) {

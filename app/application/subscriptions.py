@@ -611,9 +611,9 @@ def _progress_info(coverages: list, today: date) -> dict | None:
     paid_until = best.end_date
     start = best.start_date
     total_days = (paid_until - start).days + 1
-    elapsed = (today - start).days
-    pct = max(0, min(100, elapsed / total_days * 100)) if total_days > 0 else 100
     days_left = (paid_until - today).days
+    # Progress bar shows "days remaining" (100% = fully paid, 0% = expired)
+    pct = max(0, min(100, (days_left + 1) / total_days * 100)) if total_days > 0 else 0
     return {
         "paid_until": paid_until,
         "pct": round(pct, 1),
@@ -693,6 +693,8 @@ def compute_subscriptions_overview(
                 "contact_name": contact.name if contact else "?",
                 **(info or {"paid_until": None, "pct": 0, "days_left": 0, "expired": False}),
                 "has_data": info is not None,
+                "payment_per_year": m.payment_per_year,
+                "payment_per_month": m.payment_per_month,
             })
 
         result[sub_id] = {

@@ -54,29 +54,34 @@
     </div>
 
     <!-- One-time fields -->
+    {% if mode == "edit" and not event.repeat_rule_id and not occurrence %}
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+      <strong>Обратите внимание:</strong> Для этого события нет сохраненных дат. Заполните поля ниже и сохраните.
+    </div>
+    {% endif %}
     <div id="onetime-fields" {% if current_event_type == "recurring" %}style="display:none"{% endif %}>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div class="form-row" style="flex: 1; min-width: 140px;">
           <label>Дата начала</label>
-          <input name="start_date" type="date"
-                 value="{% if mode == 'new' %}{{ form_start_date or '' }}{% endif %}">
+          <input name="start_date" type="date" id="onetimeStartDate" required
+                 value="{% if mode == 'edit' and occurrence and occurrence.start_date %}{{ occurrence.start_date.isoformat() }}{% else %}{{ form_start_date or '' }}{% endif %}">
         </div>
         <div class="form-row" style="flex: 1; min-width: 120px;">
           <label>Время начала</label>
           <input name="start_time" type="time"
-                 value="{% if mode == 'new' %}{{ form_start_time or '' }}{% endif %}">
+                 value="{% if mode == 'edit' and occurrence and occurrence.start_time %}{{ occurrence.start_time.isoformat() }}{% else %}{{ form_start_time or '' }}{% endif %}">
         </div>
       </div>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div class="form-row" style="flex: 1; min-width: 140px;">
           <label>Дата окончания</label>
           <input name="end_date" type="date"
-                 value="{% if mode == 'new' %}{{ form_end_date or '' }}{% endif %}">
+                 value="{% if mode == 'edit' and occurrence and occurrence.end_date %}{{ occurrence.end_date.isoformat() }}{% else %}{{ form_end_date or '' }}{% endif %}">
         </div>
         <div class="form-row" style="flex: 1; min-width: 120px;">
           <label>Время окончания</label>
           <input name="end_time" type="time"
-                 value="{% if mode == 'new' %}{{ form_end_time or '' }}{% endif %}">
+                 value="{% if mode == 'edit' and occurrence and occurrence.end_time %}{{ occurrence.end_time.isoformat() }}{% else %}{{ form_end_time or '' }}{% endif %}">
         </div>
       </div>
     </div>
@@ -201,14 +206,17 @@
   var otFields = document.getElementById('onetime-fields');
   var rcFields = document.getElementById('recurring-fields');
   var rtSel = document.getElementById('rec-type-select');
+  var otStartDate = document.getElementById('onetimeStartDate');
 
   function toggleEventType() {
     if (etSel.value === 'recurring') {
       otFields.style.display = 'none';
       rcFields.style.display = '';
+      if (otStartDate) otStartDate.required = false;
     } else {
       otFields.style.display = '';
       rcFields.style.display = 'none';
+      if (otStartDate) otStartDate.required = true;
     }
   }
 

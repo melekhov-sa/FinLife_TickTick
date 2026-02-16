@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Создать категорию{% else %}Редактировать категорию{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Создать категорию{% else %}Редактировать категорию{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/categories/new">
+  {% else %}
+  <form method="POST" action="/categories/{{ category.category_id }}/edit">
+  {% endif %}
+
+    <input type="hidden" name="kind" value="{{ kind }}">
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" required
+             value="{% if mode == 'new' %}{{ form_title or '' }}{% else %}{{ category.title }}{% endif %}"
+             placeholder="Например: Продукты">
+    </div>
+
+    <div class="form-row">
+      <label>Тип категории</label>
+      <input type="text" disabled
+             value="{% if kind == 'expense' %}Расход{% else %}Доход{% endif %}">
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Тип категории нельзя изменить после создания
+      </small>
+    </div>
+
+    {% if mode == "edit" %}
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_archived" {% if category.is_archived %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Архивировать
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Архивная категория не будет отображаться при создании новых операций
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      <a href="/categories?kind={{ kind }}" class="btn secondary" style="text-decoration: none;">Отмена</a>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      <a href="/categories?kind={{ kind }}" class="btn secondary" style="text-decoration: none;">Отмена</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

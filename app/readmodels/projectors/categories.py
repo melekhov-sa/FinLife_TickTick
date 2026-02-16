@@ -15,6 +15,7 @@ class CategoriesProjector(BaseProjector):
     - category_created: создать категорию
     - category_updated: обновить категорию
     - category_archived: архивировать категорию
+    - category_unarchived: восстановить категорию из архива
     - category_deleted: удалить категорию
     """
 
@@ -29,6 +30,8 @@ class CategoriesProjector(BaseProjector):
             self._handle_category_updated(event)
         elif event.event_type == "category_archived":
             self._handle_category_archived(event)
+        elif event.event_type == "category_unarchived":
+            self._handle_category_unarchived(event)
         elif event.event_type == "category_deleted":
             self._handle_category_deleted(event)
 
@@ -91,6 +94,17 @@ class CategoriesProjector(BaseProjector):
 
         if category:
             category.is_archived = True
+
+    def _handle_category_unarchived(self, event: EventLog) -> None:
+        """Восстановить категорию из архива"""
+        payload = event.payload_json
+
+        category = self.db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == payload["category_id"]
+        ).first()
+
+        if category:
+            category.is_archived = False
 
     def _handle_category_deleted(self, event: EventLog) -> None:
         """Удалить категорию из read model"""

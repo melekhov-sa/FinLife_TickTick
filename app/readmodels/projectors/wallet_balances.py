@@ -102,6 +102,7 @@ class WalletBalancesProjector(BaseProjector):
         payload = event.payload_json
         operation_type = payload["operation_type"]
         amount = Decimal(payload["amount"])
+        occurred_at = datetime.fromisoformat(payload["occurred_at"])
 
         if operation_type == "INCOME":
             # Увеличить баланс кошелька
@@ -110,6 +111,7 @@ class WalletBalancesProjector(BaseProjector):
             ).first()
             if wallet:
                 wallet.balance += amount
+                wallet.last_operation_at = occurred_at
 
         elif operation_type == "EXPENSE":
             # Уменьшить баланс кошелька
@@ -118,6 +120,7 @@ class WalletBalancesProjector(BaseProjector):
             ).first()
             if wallet:
                 wallet.balance -= amount
+                wallet.last_operation_at = occurred_at
 
         elif operation_type == "TRANSFER":
             # Уменьшить баланс from_wallet, увеличить to_wallet
@@ -130,8 +133,10 @@ class WalletBalancesProjector(BaseProjector):
 
             if from_wallet:
                 from_wallet.balance -= amount
+                from_wallet.last_operation_at = occurred_at
             if to_wallet:
                 to_wallet.balance += amount
+                to_wallet.last_operation_at = occurred_at
 
     def reset(self, account_id: int) -> None:
         """Удалить все балансы кошельков для аккаунта"""

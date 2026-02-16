@@ -19,7 +19,7 @@ from typing import Set
 
 
 WEEKDAY_MAP = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
-VALID_FREQ = frozenset({"DAILY", "WEEKLY", "MONTHLY", "YEARLY", "INTERVAL_DAYS", "MULTI_DATE"})
+VALID_FREQ = frozenset({"DAILY", "WEEKLY", "MONTHLY", "YEARLY", "INTERVAL_DAYS", "MULTI_DATE", "ONETIME"})
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,9 @@ def _validate_rule(rule: RuleSpec, window_start: date, window_end: date) -> None
         raise ValueError(f"invalid freq: {rule.freq}")
     if rule.count is not None and rule.count < 1:
         raise ValueError("count must be >= 1 when set")
+    # ONETIME doesn't require any specific params
+    if rule.freq == "ONETIME":
+        return
     if rule.freq == "WEEKLY" and not rule.by_weekday:
         raise ValueError("WEEKLY requires by_weekday")
     if rule.freq == "MONTHLY" and rule.by_monthday is None:
@@ -191,6 +194,11 @@ def generate_occurrence_dates(
     Deterministic, sorted ascending."""
     _validate_rule(rule, window_start, window_end)
 
+    if rule.freq == "ONETIME":
+        # One-time occurrence: return only start_date if it's in window
+        if window_start <= rule.start_date <= window_end:
+            return [rule.start_date]
+        return []
     if rule.freq in ("DAILY", "INTERVAL_DAYS"):
         return _daily_or_interval(rule, window_start, window_end)
     if rule.freq == "WEEKLY":

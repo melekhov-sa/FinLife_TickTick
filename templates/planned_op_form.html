@@ -79,7 +79,8 @@
     <!-- Recurrence settings (only for new) -->
     <div class="form-row">
       <label>Частота</label>
-      <select name="freq" required>
+      <select name="freq" id="freqSelect" required onchange="toggleRecurrenceFields()">
+        <option value="ONETIME" {% if form_freq is defined and form_freq == "ONETIME" %}selected{% endif %}>Одноразовая</option>
         <option value="MONTHLY" {% if form_freq is defined and form_freq == "MONTHLY" %}selected{% endif %}>Ежемесячно</option>
         <option value="WEEKLY" {% if form_freq is defined and form_freq == "WEEKLY" %}selected{% endif %}>Еженедельно</option>
         <option value="DAILY" {% if form_freq is defined and form_freq == "DAILY" %}selected{% endif %}>Ежедневно</option>
@@ -87,7 +88,7 @@
       </select>
     </div>
 
-    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    <div id="recurrenceFields" style="display: flex; gap: 12px; flex-wrap: wrap;">
       <div class="form-row" style="flex: 1; min-width: 100px;">
         <label>Интервал</label>
         <input name="interval" type="number" value="{{ form_interval if form_interval is defined else 1 }}" min="1" style="max-width: 80px;">
@@ -101,7 +102,7 @@
     </div>
 
     <div class="form-row">
-      <label>Начать с</label>
+      <label id="startDateLabel">Начать с</label>
       <input name="start_date" type="date"
              value="{{ form_start_date if form_start_date is defined and form_start_date else today.isoformat() }}"
              required>
@@ -154,4 +155,23 @@
     </div>
   </form>
 </div>
+
+<script>
+function toggleRecurrenceFields() {
+  var freq = document.getElementById('freqSelect').value;
+  var recFields = document.getElementById('recurrenceFields');
+  var label = document.getElementById('startDateLabel');
+  if (freq === 'ONETIME') {
+    if (recFields) recFields.style.display = 'none';
+    if (label) label.textContent = 'Дата операции';
+  } else {
+    if (recFields) recFields.style.display = 'flex';
+    if (label) label.textContent = 'Начать с';
+  }
+}
+// Initialize on page load
+{% if mode == "new" %}
+toggleRecurrenceFields();
+{% endif %}
+</script>
 {% endblock %}

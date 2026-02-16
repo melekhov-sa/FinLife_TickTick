@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Подтверждение — FinLife{% endblock %}
+
+{% block content %}
+<h1>Подтверждение</h1>
+
+<div class="card">
+  {% if action == "archive" %}
+  <p>Вы уверены, что хотите архивировать категорию <strong>«{{ category.title }}»</strong>?</p>
+  <p class="muted" style="margin-top: 8px;">
+    Архивная категория не будет отображаться при создании новых операций.
+    Существующие операции с этой категорией останутся в системе.
+  </p>
+
+  <div style="display: flex; gap: 8px; margin-top: 20px;">
+    <form method="POST" action="/categories/{{ category.category_id }}/archive" style="display: inline;">
+      <button type="submit" class="danger">Архивировать</button>
+    </form>
+    <a href="/categories?kind={{ kind }}" class="btn secondary" style="text-decoration: none;">Отмена</a>
+  </div>
+
+  {% elif action == "unarchive" %}
+  <p>Вы уверены, что хотите восстановить категорию <strong>«{{ category.title }}»</strong> из архива?</p>
+  <p class="muted" style="margin-top: 8px;">
+    Категория снова станет доступна при создании новых операций.
+  </p>
+
+  <div style="display: flex; gap: 8px; margin-top: 20px;">
+    <form method="POST" action="/categories/{{ category.category_id }}/unarchive" style="display: inline;">
+      <button type="submit">Восстановить</button>
+    </form>
+    <a href="/categories?kind={{ kind }}&status=archived" class="btn secondary" style="text-decoration: none;">Отмена</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

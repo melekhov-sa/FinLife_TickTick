@@ -226,6 +226,20 @@ class ArchiveCategoryUseCase:
         actor_user_id: int | None = None
     ) -> None:
         """Архивировать категорию"""
+        category = self.db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
+            CategoryInfo.account_id == account_id
+        ).first()
+
+        if not category:
+            raise CategoryValidationError(f"Категория #{category_id} не найдена")
+
+        if category.is_system:
+            raise CategoryValidationError("Нельзя архивировать системную категорию")
+
+        if category.is_archived:
+            raise CategoryValidationError("Категория уже архивирована")
+
         event_payload = Category.archive(category_id)
 
         self.event_repo.append_event(
@@ -242,3 +256,129 @@ class ArchiveCategoryUseCase:
     def _run_projectors(self, account_id: int):
         projector = CategoriesProjector(self.db)
         projector.run(account_id, event_types=["category_archived"])
+
+
+class UnarchiveCategoryUseCase:
+    """Use case: Восстановить категорию из архива"""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(
+        self,
+        category_id: int,
+        account_id: int,
+        actor_user_id: int | None = None
+    ) -> None:
+        """Восстановить категорию из архива"""
+        category = self.db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == category_id,
+            CategoryInfo.account_id == account_id
+        ).first()
+
+        if not category:
+            raise CategoryValidationError(f"Категория #{category_id} не найдена")
+
+        if category.is_system:
+            raise CategoryValidationError("Системная категория не может быть в архиве")
+
+        if not category.is_archived:
+            raise CategoryValidationError("Категория не архивирована")
+
+        event_payload = Category.unarchive(category_id)
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="category_unarchived",
+            payload=event_payload,
+            actor_user_id=actor_user_id,
+            idempotency_key=f"category-unarchive-{account_id}-{category_id}"
+        )
+
+        self.db.commit()
+        self._run_projectors(account_id)
+
+    def _run_projectors(self, account_id: int):
+        projector = CategoriesProjector(self.db)
+        projector.run(account_id, event_types=["category_unarchived"])
+
+
+class ListCategoriesService:
+    """Service: Получить список категорий с фильтрацией"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(
+        self,
+        account_id: int,
+        kind: str | None = None,  # "expense" or "income"
+        status: str = "active",  # "active", "archived", "all"
+        search_query: str | None = None
+    ) -> dict:
+        """
+        Получить список категорий с фильтрацией
+
+        Returns:
+            {
+                "categories": [...],
+                "counts": {"expense_active": N, "income_active": M}
+            }
+        """
+        # Base query
+        query = self.db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == account_id
+        )
+
+        # Filter by kind
+        if kind == "expense":
+            category_type = CATEGORY_TYPE_EXPENSE
+        elif kind == "income":
+            category_type = CATEGORY_TYPE_INCOME
+        else:
+            category_type = None
+
+        if category_type:
+            query = query.filter(CategoryInfo.category_type == category_type)
+
+        # Filter by status
+        if status == "active":
+            query = query.filter(CategoryInfo.is_archived == False)
+        elif status == "archived":
+            query = query.filter(CategoryInfo.is_archived == True)
+        # else: "all" - no filter
+
+        # Search by title
+        if search_query:
+            search_pattern = f"%{search_query.strip()}%"
+            query = query.filter(CategoryInfo.title.ilike(search_pattern))
+
+        # Sort: system first, then by title
+        query = query.order_by(
+            CategoryInfo.is_system.desc(),
+            CategoryInfo.title.asc()
+        )
+
+        categories = query.all()
+
+        # Calculate counts for tabs
+        expense_active_count = self.db.query(func.count(CategoryInfo.category_id)).filter(
+            CategoryInfo.account_id == account_id,
+            CategoryInfo.category_type == CATEGORY_TYPE_EXPENSE,
+            CategoryInfo.is_archived == False
+        ).scalar() or 0
+
+        income_active_count = self.db.query(func.count(CategoryInfo.category_id)).filter(
+            CategoryInfo.account_id == account_id,
+            CategoryInfo.category_type == CATEGORY_TYPE_INCOME,
+            CategoryInfo.is_archived == False
+        ).scalar() or 0
+
+        return {
+            "categories": categories,
+            "counts": {
+                "expense_active": expense_active_count,
+                "income_active": income_active_count
+            }
+        }
