@@ -21,7 +21,7 @@ from app.infrastructure.db.models import (
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
     TransactionFeed, WalletBalance,
-    WorkCategory,
+    WorkCategory, WishModel,
 )
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
@@ -492,3 +492,62 @@ class DashboardService:
         if cat_id and cat_id in wc_map:
             return wc_map[cat_id].emoji
         return None
+
+    # ------------------------------------------------------------------
+    # 5. Wishes this month
+    # ------------------------------------------------------------------
+
+    def get_wishes_this_month(self, account_id: int, today: date) -> dict:
+        """
+        Get wishes for current month grouped by type and sorted by date.
+
+        Returns:
+            {
+                "PURCHASE": [wish, ...],
+                "EVENT": [wish, ...],
+                "PLACE": [wish, ...],
+                "OTHER": [wish, ...]
+            }
+        """
+        # Month boundaries
+        month_start = date(today.year, today.month, 1)
+        if today.month == 12:
+            month_end = date(today.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            month_end = date(today.year, today.month + 1, 1) - timedelta(days=1)
+
+        current_month_str = today.strftime("%Y-%m")
+
+        # Active statuses
+        active_statuses = ["IDEA", "CONSIDERING", "PLANNED"]
+
+        # Query wishes with target_date in current month OR target_month matching current month
+        wishes = self.db.query(WishModel).filter(
+            WishModel.account_id == account_id,
+            WishModel.status.in_(active_statuses),
+            or_(
+                and_(
+                    WishModel.target_date != None,  # noqa: E711
+                    WishModel.target_date >= month_start,
+                    WishModel.target_date <= month_end,
+                ),
+                WishModel.target_month == current_month_str,
+            ),
+        ).order_by(
+            WishModel.target_date.asc().nullslast(),
+            WishModel.title.asc(),
+        ).all()
+
+        # Group by type
+        grouped = {
+            "PURCHASE": [],
+            "EVENT": [],
+            "PLACE": [],
+            "OTHER": [],
+        }
+
+        for wish in wishes:
+            if wish.wish_type in grouped:
+                grouped[wish.wish_type].append(wish)
+
+        return grouped

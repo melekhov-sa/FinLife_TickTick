@@ -18,6 +18,7 @@ class OperationTemplate:
         note: str | None = None,
         active_until: str | None = None,
         work_category_id: int | None = None,
+        destination_wallet_id: int | None = None,
     ) -> Dict[str, Any]:
         return {
             "template_id": template_id,
@@ -30,6 +31,7 @@ class OperationTemplate:
             "amount": amount,
             "note": note,
             "wallet_id": wallet_id,
+            "destination_wallet_id": destination_wallet_id,
             "category_id": category_id,
             "work_category_id": work_category_id,
             "created_at": datetime.utcnow().isoformat()
@@ -39,7 +41,7 @@ class OperationTemplate:
     def update(template_id: int, **changes) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"template_id": template_id, "updated_at": datetime.utcnow().isoformat()}
         allowed = ("title", "active_until", "kind", "amount", "note",
-                    "wallet_id", "category_id", "work_category_id", "is_archived")
+                    "wallet_id", "destination_wallet_id", "category_id", "work_category_id", "is_archived")
         for key in allowed:
             if key in changes:
                 payload[key] = changes[key]

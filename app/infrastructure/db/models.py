@@ -347,11 +347,12 @@ class OperationTemplateModel(Base):
     active_until: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
-    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # INCOME/EXPENSE
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # INCOME/EXPENSE/TRANSFER
     amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
     note: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
-    wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for INCOME/EXPENSE
+    wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for INCOME/EXPENSE/TRANSFER (source)
+    destination_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for TRANSFER only
     category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> categories (financial)
     work_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> work_categories
 

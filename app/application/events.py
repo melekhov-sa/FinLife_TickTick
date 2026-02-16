@@ -47,14 +47,14 @@ def validate_event_form(
         if not recurrence_type:
             return "Выберите тип повтора"
         if recurrence_type == "yearly":
-            if not rec_month or not rec_day:
+            if rec_month is None or rec_day is None:
                 return "Укажите месяц и день для ежегодного события"
             if rec_month < 1 or rec_month > 12:
                 return "Месяц должен быть от 1 до 12"
             if rec_day < 1 or rec_day > 31:
                 return "День должен быть от 1 до 31"
         elif recurrence_type == "monthly":
-            if not rec_day:
+            if rec_day is None:
                 return "Укажите день месяца"
             if rec_day < 1 or rec_day > 31:
                 return "День должен быть от 1 до 31"

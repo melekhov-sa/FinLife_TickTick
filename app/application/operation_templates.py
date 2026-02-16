@@ -17,7 +17,7 @@ class OperationTemplateValidationError(ValueError):
     pass
 
 
-MONEY_FIELDS = {"kind", "amount", "wallet_id", "category_id"}
+MONEY_FIELDS = {"kind", "amount", "wallet_id", "destination_wallet_id", "category_id"}
 
 
 class CreateOperationTemplateUseCase:
@@ -41,27 +41,46 @@ class CreateOperationTemplateUseCase:
         work_category_id: int | None = None,
         by_weekday: str | None = None,
         by_monthday: int | None = None,
+        destination_wallet_id: int | None = None,
         actor_user_id: int | None = None,
     ) -> int:
         title = title.strip()
         if not title:
             raise OperationTemplateValidationError("Название не может быть пустым")
-        if kind not in ("INCOME", "EXPENSE"):
+        if kind not in ("INCOME", "EXPENSE", "TRANSFER"):
             raise OperationTemplateValidationError(f"Неверный тип операции: {kind}")
 
         amt = Decimal(amount)
         if amt <= 0:
             raise OperationTemplateValidationError("Сумма должна быть больше нуля")
 
-        if not wallet_id:
-            raise OperationTemplateValidationError("Кошелёк обязателен для дохода/расхода")
-        if not category_id:
-            raise OperationTemplateValidationError("Категория обязательна для дохода/расхода")
+        if kind in ("INCOME", "EXPENSE"):
+            if not wallet_id:
+                raise OperationTemplateValidationError("Кошелёк обязателен для дохода/расхода")
+            if not category_id:
+                raise OperationTemplateValidationError("Категория обязательна для дохода/расхода")
+        elif kind == "TRANSFER":
+            if not wallet_id:
+                raise OperationTemplateValidationError("Кошелёк источника обязателен для перевода")
+            if not destination_wallet_id:
+                raise OperationTemplateValidationError("Кошелёк назначения обязателен для перевода")
+            if wallet_id == destination_wallet_id:
+                raise OperationTemplateValidationError("Кошельки источника и назначения должны различаться")
 
         # --- CREDIT wallet check ---
         if wallet_id:
             credit = self.db.query(WalletBalance.wallet_id).filter(
                 WalletBalance.wallet_id == wallet_id,
+                WalletBalance.wallet_type == "CREDIT",
+            ).first()
+            if credit:
+                raise OperationTemplateValidationError(
+                    "Кредитные кошельки недоступны для плановых операций"
+                )
+
+        if destination_wallet_id:
+            credit = self.db.query(WalletBalance.wallet_id).filter(
+                WalletBalance.wallet_id == destination_wallet_id,
                 WalletBalance.wallet_type == "CREDIT",
             ).first()
             if credit:
@@ -91,6 +110,7 @@ class CreateOperationTemplateUseCase:
             kind=kind,
             amount=amount,
             wallet_id=wallet_id,
+            destination_wallet_id=destination_wallet_id,
             category_id=category_id,
             note=note,
             active_until=active_until,
@@ -139,7 +159,7 @@ class UpdateOperationTemplateUseCase:
 
         # Validate money fields if changed
         new_kind = changes.get("kind", tmpl.kind)
-        if new_kind not in ("INCOME", "EXPENSE"):
+        if new_kind not in ("INCOME", "EXPENSE", "TRANSFER"):
             raise OperationTemplateValidationError(f"Неверный тип операции: {new_kind}")
 
         new_amount = changes.get("amount")
@@ -150,8 +170,20 @@ class UpdateOperationTemplateUseCase:
 
         new_wallet_id = changes.get("wallet_id", tmpl.wallet_id)
         new_category_id = changes.get("category_id", tmpl.category_id)
-        if not new_wallet_id:
-            raise OperationTemplateValidationError("Кошелёк обязателен для дохода/расхода")
+        new_destination_wallet_id = changes.get("destination_wallet_id", tmpl.destination_wallet_id)
+
+        if new_kind in ("INCOME", "EXPENSE"):
+            if not new_wallet_id:
+                raise OperationTemplateValidationError("Кошелёк обязателен для дохода/расхода")
+            if not new_category_id:
+                raise OperationTemplateValidationError("Категория обязательна для дохода/расхода")
+        elif new_kind == "TRANSFER":
+            if not new_wallet_id:
+                raise OperationTemplateValidationError("Кошелёк источника обязателен для перевода")
+            if not new_destination_wallet_id:
+                raise OperationTemplateValidationError("Кошелёк назначения обязателен для перевода")
+            if new_wallet_id == new_destination_wallet_id:
+                raise OperationTemplateValidationError("Кошельки источника и назначения должны различаться")
         if not new_category_id:
             raise OperationTemplateValidationError("Категория обязательна для дохода/расхода")
 
@@ -254,6 +286,7 @@ class UpdateOperationTemplateUseCase:
             kind=actual_money_changes.get("kind", tmpl.kind),
             amount=str(actual_money_changes.get("amount", tmpl.amount)),
             wallet_id=actual_money_changes.get("wallet_id", tmpl.wallet_id),
+            destination_wallet_id=actual_money_changes.get("destination_wallet_id", tmpl.destination_wallet_id),
             category_id=actual_money_changes.get("category_id", tmpl.category_id),
             note=light_changes.get("note", tmpl.note),
             work_category_id=light_changes.get("work_category_id", tmpl.work_category_id),
@@ -375,7 +408,7 @@ class ConfirmOperationOccurrenceUseCase:
                 description=description,
                 actor_user_id=actor_user_id,
             )
-        else:  # EXPENSE
+        elif tmpl.kind == "EXPENSE":
             transaction_id = tx_uc.execute_expense(
                 account_id=account_id,
                 wallet_id=wallet_id,
@@ -385,6 +418,23 @@ class ConfirmOperationOccurrenceUseCase:
                 description=description,
                 actor_user_id=actor_user_id,
             )
+        elif tmpl.kind == "TRANSFER":
+            dest_wallet = self.db.query(WalletBalance).filter(
+                WalletBalance.wallet_id == tmpl.destination_wallet_id
+            ).first()
+            dest_currency = dest_wallet.currency if dest_wallet else currency
+            transaction_id = tx_uc.execute_transfer(
+                account_id=account_id,
+                from_wallet_id=wallet_id,
+                to_wallet_id=tmpl.destination_wallet_id,
+                amount=amount,
+                from_currency=currency,
+                to_currency=dest_currency,
+                description=description,
+                actor_user_id=actor_user_id,
+            )
+        else:
+            raise OperationTemplateValidationError(f"Неизвестный тип операции: {tmpl.kind}")
 
         payload = OperationOccurrenceEvent.confirm(
             tmpl.template_id, occurrence_id, occ.scheduled_date.isoformat(), transaction_id

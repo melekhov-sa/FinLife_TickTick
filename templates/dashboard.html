@@ -212,4 +212,59 @@
   </div>
   <p style="margin-top: 8px;"><a href="/budget">Бюджет &rarr;</a></p>
 </div>
+
+<!-- ============ ХОТЕЛКИ В ЭТОМ МЕСЯЦЕ ============ -->
+{% set wish_type_labels = {
+    'PURCHASE': '💰 Покупки',
+    'EVENT': '🎉 События',
+    'PLACE': '🌍 Места',
+    'OTHER': '📝 Другое'
+} %}
+
+{% set wish_status_labels = {
+    'IDEA': '💡',
+    'CONSIDERING': '🤔',
+    'PLANNED': '📅'
+} %}
+
+{% set has_wishes = wishes_this_month.PURCHASE or wishes_this_month.EVENT or wishes_this_month.PLACE or wishes_this_month.OTHER %}
+
+{% if has_wishes %}
+<div class="card">
+  <div class="dash-section-title">Хотелки в {{ current_month }}</div>
+
+  {% for wish_type in ['PURCHASE', 'EVENT', 'PLACE', 'OTHER'] %}
+    {% set wishes = wishes_this_month[wish_type] %}
+    {% if wishes %}
+    <div class="dash-group" style="margin-bottom: 12px;">
+      <div class="dash-group-label">{{ wish_type_labels[wish_type] }} ({{ wishes|length }})</div>
+      {% for wish in wishes %}
+      <div class="dash-item" style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+        <div class="dash-item-left">
+          {{ wish_status_labels.get(wish.status, '') }}
+          <span>{{ wish.title }}</span>
+          {% if wish.estimated_amount %}
+          <span class="badge" style="background: #e8f5e9; color: #2e7d32;">{{ "{:,.2f}".format(wish.estimated_amount).replace(',', ' ') }} руб.</span>
+          {% endif %}
+          {% if wish.is_recurring %}
+          <span class="badge" style="background: #e3f2fd; color: #1976d2;">♻️</span>
+          {% endif %}
+          {% if wish.target_date %}
+          <small class="muted">{{ wish.target_date.strftime('%d.%m.%Y') }}</small>
+          {% elif wish.target_month %}
+          <small class="muted">весь месяц</small>
+          {% endif %}
+        </div>
+        <div class="dash-item-actions">
+          <a href="/wishes/{{ wish.wish_id }}/edit" style="font-size: 18px; text-decoration: none; color: #6c757d;">⚙️</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  <p style="margin-top: 8px;"><a href="/wishes">Все хотелки &rarr;</a></p>
+</div>
+{% endif %}
 {% endblock %}

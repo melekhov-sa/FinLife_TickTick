@@ -25,9 +25,10 @@
     <div class="form-row">
       <label>Тип</label>
       {% set current_kind = form_kind if mode == 'new' and form_kind is defined else (tmpl.kind if mode == 'edit' else 'EXPENSE') %}
-      <select name="kind">
+      <select name="kind" id="kindSelect" onchange="toggleDestinationWallet()">
         <option value="EXPENSE" {% if current_kind == "EXPENSE" %}selected{% endif %}>Расход</option>
         <option value="INCOME" {% if current_kind == "INCOME" %}selected{% endif %}>Доход</option>
+        <option value="TRANSFER" {% if current_kind == "TRANSFER" %}selected{% endif %}>Перевод</option>
       </select>
     </div>
 
@@ -39,13 +40,28 @@
     </div>
 
     <div class="form-row">
-      <label>Кошелёк</label>
+      <label id="walletLabel">Кошелёк</label>
       <select name="wallet_id" required>
         <option value="">— Выбрать —</option>
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}"
           {% if mode == "new" and form_wallet_id is defined and form_wallet_id == w.wallet_id %}selected
           {% elif mode == "edit" and tmpl.wallet_id == w.wallet_id %}selected
+          {% endif %}>
+          {{ w.title }} ({{ w.currency }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row" id="destinationWalletRow" style="display: none;">
+      <label>Кошелёк назначения</label>
+      <select name="destination_wallet_id">
+        <option value="">— Выбрать —</option>
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}"
+          {% if mode == "new" and form_destination_wallet_id is defined and form_destination_wallet_id == w.wallet_id %}selected
+          {% elif mode == "edit" and tmpl.destination_wallet_id == w.wallet_id %}selected
           {% endif %}>
           {{ w.title }} ({{ w.currency }})
         </option>
@@ -169,9 +185,25 @@ function toggleRecurrenceFields() {
     if (label) label.textContent = 'Начать с';
   }
 }
+
+function toggleDestinationWallet() {
+  var kind = document.getElementById('kindSelect').value;
+  var destRow = document.getElementById('destinationWalletRow');
+  var walletLabel = document.getElementById('walletLabel');
+
+  if (kind === 'TRANSFER') {
+    if (destRow) destRow.style.display = '';
+    if (walletLabel) walletLabel.textContent = 'Кошелёк источника';
+  } else {
+    if (destRow) destRow.style.display = 'none';
+    if (walletLabel) walletLabel.textContent = 'Кошелёк';
+  }
+}
+
 // Initialize on page load
 {% if mode == "new" %}
 toggleRecurrenceFields();
 {% endif %}
+toggleDestinationWallet();
 </script>
 {% endblock %}

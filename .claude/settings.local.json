@@ -56,7 +56,9 @@
       "Bash(DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\" c:/Projects/FinLife_TickTick/.venv/Scripts/python.exe -m alembic upgrade head:*)",
       "Bash(alembic upgrade:*)",
       "Bash(source:*)",
-      "Bash(export DATABASE_URL:*)"
+      "Bash(export DATABASE_URL:*)",
+      "Bash(export DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\")",
+      "Bash(alembic revision:*)"
     ]
   }
 }

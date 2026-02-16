@@ -132,6 +132,9 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     fin = svc.get_financial_summary(user_id, today)
     current_month = f"{MONTH_NAMES_RU[today.month]} {today.year}"
 
+    # 5. Wishes this month
+    wishes_this_month = svc.get_wishes_this_month(user_id, today)
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -149,6 +152,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "income": fin["income"],
         "expense": fin["expense"],
         "difference": fin["difference"],
+        # Wishes
+        "wishes_this_month": wishes_this_month,
     })
 
 
@@ -1672,6 +1677,7 @@ def planned_op_create(
     kind: str = Form(...),
     amount: str = Form(...),
     wallet_id: int | None = Form(None),
+    destination_wallet_id: int | None = Form(None),
     category_id: int | None = Form(None),
     freq: str = Form(...),
     interval: int = Form(1),
@@ -1687,8 +1693,8 @@ def planned_op_create(
         CreateOperationTemplateUseCase(db).execute(
             account_id=user_id, title=title, freq=freq, interval=interval,
             start_date=start_date, kind=kind, amount=amount,
-            wallet_id=wallet_id, category_id=category_id,
-            note=note.strip() or None,
+            wallet_id=wallet_id, destination_wallet_id=destination_wallet_id,
+            category_id=category_id, note=note.strip() or None,
             by_monthday=by_monthday, actor_user_id=user_id,
         )
         return RedirectResponse("/planned-ops", status_code=302)
@@ -1709,8 +1715,8 @@ def planned_op_create(
             "today": date.today(),
             "error": str(e),
             "form_title": title, "form_kind": kind, "form_amount": amount,
-            "form_wallet_id": wallet_id, "form_category_id": category_id,
-            "form_freq": freq, "form_interval": interval,
+            "form_wallet_id": wallet_id, "form_destination_wallet_id": destination_wallet_id,
+            "form_category_id": category_id, "form_freq": freq, "form_interval": interval,
             "form_start_date": start_date, "form_by_monthday": by_monthday,
             "form_note": note,
         })
@@ -1767,6 +1773,7 @@ def planned_op_update(
     kind: str = Form(...),
     amount: str = Form(...),
     wallet_id: int | None = Form(None),
+    destination_wallet_id: int | None = Form(None),
     category_id: int | None = Form(None),
     note: str = Form(""),
     is_archived: str = Form(""),
@@ -1804,6 +1811,7 @@ def planned_op_update(
             kind=kind,
             amount=amount,
             wallet_id=wallet_id,
+            destination_wallet_id=destination_wallet_id,
             category_id=category_id,
             note=note.strip() or None,
         )
@@ -2641,8 +2649,8 @@ def event_create(
     end_date: str = Form(""),
     end_time: str = Form(""),
     recurrence_type: str = Form(""),
-    rec_month: int | None = Form(None),
-    rec_day: int | None = Form(None),
+    rec_month: str = Form(""),
+    rec_day: str = Form(""),
     rec_weekdays: list[str] = Form([]),
     rec_interval: int = Form(1),
     rec_start_date: str = Form(""),
@@ -2652,13 +2660,17 @@ def event_create(
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
 
+    # Convert string inputs to int for validation
+    rec_month_int = int(rec_month) if rec_month else None
+    rec_day_int = int(rec_day) if rec_day else None
+
     error = validate_event_form(
         event_type=event_type,
         title=title,
         recurrence_type=recurrence_type,
         start_date=start_date,
-        rec_month=rec_month,
-        rec_day=rec_day,
+        rec_month=rec_month_int,
+        rec_day=rec_day_int,
         rec_weekdays=rec_weekdays or None,
         rec_interval=rec_interval,
         rec_start_date=rec_start_date,
@@ -2697,12 +2709,12 @@ def event_create(
 
             if recurrence_type == "yearly":
                 freq = "YEARLY"
-                by_month = rec_month
-                by_monthday_for_year = rec_day
-                rule_start_date = f"{today.year}-{rec_month:02d}-{rec_day:02d}"
+                by_month = rec_month_int
+                by_monthday_for_year = rec_day_int
+                rule_start_date = f"{today.year}-{rec_month_int:02d}-{rec_day_int:02d}"
             elif recurrence_type == "monthly":
                 freq = "MONTHLY"
-                by_monthday = rec_day
+                by_monthday = rec_day_int
                 rule_start_date = today.isoformat()
             elif recurrence_type == "weekly":
                 freq = "WEEKLY"
@@ -2787,8 +2799,8 @@ def event_update(
     end_date: str = Form(""),
     end_time: str = Form(""),
     recurrence_type: str = Form(""),
-    rec_month: int | None = Form(None),
-    rec_day: int | None = Form(None),
+    rec_month: str = Form(""),
+    rec_day: str = Form(""),
     rec_weekdays: list[str] = Form([]),
     rec_interval: int = Form(1),
     rec_start_date: str = Form(""),
@@ -2797,6 +2809,10 @@ def event_update(
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
+
+    # Convert string inputs to int for validation
+    rec_month_int = int(rec_month) if rec_month else None
+    rec_day_int = int(rec_day) if rec_day else None
 
     ev = db.query(CalendarEventModel).filter(
         CalendarEventModel.event_id == event_id,
@@ -2830,12 +2846,12 @@ def event_update(
 
             if recurrence_type == "yearly":
                 freq = "YEARLY"
-                by_month = rec_month
-                by_monthday_for_year = rec_day
-                rule_start_date = f"{today.year}-{rec_month:02d}-{rec_day:02d}"
+                by_month = rec_month_int
+                by_monthday_for_year = rec_day_int
+                rule_start_date = f"{today.year}-{rec_month_int:02d}-{rec_day_int:02d}"
             elif recurrence_type == "monthly":
                 freq = "MONTHLY"
-                by_monthday = rec_day
+                by_monthday = rec_day_int
                 rule_start_date = today.isoformat()
             elif recurrence_type == "weekly":
                 freq = "WEEKLY"
@@ -3365,7 +3381,10 @@ def wishes_list(
 
     # Parse status filter (can be comma-separated)
     statuses = None
-    if status and status != "all":
+    if status == "active":
+        # Active = not done and not canceled
+        statuses = ["IDEA", "CONSIDERING", "PLANNED"]
+    elif status and status != "all":
         statuses = [s.strip() for s in status.split(",")]
 
     service = WishesService(db)

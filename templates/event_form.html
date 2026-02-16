@@ -114,12 +114,31 @@
       <div id="rec-yearly" {% if current_rec_type != "yearly" %}style="display:none"{% endif %}>
         <div style="display: flex; gap: 12px;">
           <div class="form-row" style="flex: 1;">
-            <label>Месяц (1-12)</label>
-            <input name="rec_month" type="number" min="1" max="12" style="max-width: 100px;"
-                   value="{% if mode == 'edit' and rule and rule.by_month %}{{ rule.by_month }}{% elif form_rec_month is defined and form_rec_month %}{{ form_rec_month }}{% endif %}">
+            <label>Месяц</label>
+            <select name="rec_month" style="max-width: 200px;">
+              <option value="">— выберите —</option>
+              {% set current_month = none %}
+              {% if mode == 'edit' and rule and rule.by_month %}
+                {% set current_month = rule.by_month %}
+              {% elif form_rec_month is defined and form_rec_month %}
+                {% set current_month = form_rec_month %}
+              {% endif %}
+              <option value="1" {% if current_month == 1 %}selected{% endif %}>Январь</option>
+              <option value="2" {% if current_month == 2 %}selected{% endif %}>Февраль</option>
+              <option value="3" {% if current_month == 3 %}selected{% endif %}>Март</option>
+              <option value="4" {% if current_month == 4 %}selected{% endif %}>Апрель</option>
+              <option value="5" {% if current_month == 5 %}selected{% endif %}>Май</option>
+              <option value="6" {% if current_month == 6 %}selected{% endif %}>Июнь</option>
+              <option value="7" {% if current_month == 7 %}selected{% endif %}>Июль</option>
+              <option value="8" {% if current_month == 8 %}selected{% endif %}>Август</option>
+              <option value="9" {% if current_month == 9 %}selected{% endif %}>Сентябрь</option>
+              <option value="10" {% if current_month == 10 %}selected{% endif %}>Октябрь</option>
+              <option value="11" {% if current_month == 11 %}selected{% endif %}>Ноябрь</option>
+              <option value="12" {% if current_month == 12 %}selected{% endif %}>Декабрь</option>
+            </select>
           </div>
           <div class="form-row" style="flex: 1;">
-            <label>День (1-31)</label>
+            <label>День</label>
             <input name="rec_day" type="number" min="1" max="31" style="max-width: 100px;"
                    value="{% if mode == 'edit' and rule and rule.by_monthday_for_year %}{{ rule.by_monthday_for_year }}{% elif form_rec_day is defined and form_rec_day %}{{ form_rec_day }}{% endif %}">
           </div>

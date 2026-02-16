@@ -354,13 +354,16 @@ class ListCategoriesService:
             search_pattern = f"%{search_query.strip()}%"
             query = query.filter(CategoryInfo.title.ilike(search_pattern))
 
-        # Sort: system first, then by title
+        # Sort: system first, then by parent hierarchy
         query = query.order_by(
             CategoryInfo.is_system.desc(),
             CategoryInfo.title.asc()
         )
 
-        categories = query.all()
+        all_categories = query.all()
+
+        # Build hierarchical list: parents first, then children
+        categories = self._build_hierarchical_list(all_categories)
 
         # Calculate counts for tabs
         expense_active_count = self.db.query(func.count(CategoryInfo.category_id)).filter(
@@ -382,3 +385,34 @@ class ListCategoriesService:
                 "income_active": income_active_count
             }
         }
+
+    def _build_hierarchical_list(self, all_categories: list) -> list:
+        """Build hierarchical list of categories: parents, then children."""
+        # Separate parents and children
+        parents = []
+        children_by_parent = {}
+
+        for cat in all_categories:
+            if cat.parent_id is None:
+                parents.append(cat)
+            else:
+                if cat.parent_id not in children_by_parent:
+                    children_by_parent[cat.parent_id] = []
+                children_by_parent[cat.parent_id].append(cat)
+
+        # Build result: parent, then its children
+        result = []
+        for parent in parents:
+            result.append(parent)
+            if parent.category_id in children_by_parent:
+                # Add children sorted by title
+                children = sorted(children_by_parent[parent.category_id], key=lambda c: c.title)
+                result.extend(children)
+
+        # Add orphaned children (whose parent is not in the list)
+        all_parent_ids = {p.category_id for p in parents}
+        for parent_id, children in children_by_parent.items():
+            if parent_id not in all_parent_ids:
+                result.extend(sorted(children, key=lambda c: c.title))
+
+        return result

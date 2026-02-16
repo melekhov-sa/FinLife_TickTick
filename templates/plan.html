@@ -82,7 +82,7 @@
     <div style="flex: 1; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
       <!-- Type icon -->
       <span class="plan-item-icon">
-        {% if item.kind == "event" %}&#128198;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% elif item.kind == "habit" %}&#128170;{% endif %}
+        {% if item.kind == "event" %}&#128198;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% elif item.kind == "habit" %}&#128170;{% elif item.kind == "wish" %}&#11088;{% endif %}
       </span>
 
       <!-- Category emoji -->
@@ -106,6 +106,19 @@
       </span>
       {% if item.meta.current_streak > 0 %}
       <small class="muted">&#128293; {{ item.meta.current_streak }} дн.</small>
+      {% endif %}
+      {% endif %}
+
+      {% if item.kind == "wish" %}
+      <span class="badge">{{ item.meta.status_label }}</span>
+      {% if item.meta.amount_formatted %}
+      <span class="badge">{{ item.meta.amount_formatted }} руб.</span>
+      {% endif %}
+      {% if item.meta.is_recurring %}
+      <span class="badge" style="background: #e3f2fd; color: #1976d2;">♻️ повтор</span>
+      {% endif %}
+      {% if item.meta.target_month %}
+      <small class="muted">весь месяц</small>
       {% endif %}
       {% endif %}
 
@@ -151,6 +164,11 @@
           <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
           <button type="submit" style="font-size: 12px; padding: 4px 10px; background: #28a745;">&#10003;</button>
         </form>
+        {% endif %}
+
+        {% if item.kind == "wish" %}
+        <a href="/wishes/{{ item.meta.wish_id }}/edit"
+           style="font-size: 12px; padding: 4px 10px; display: inline-block; text-decoration: none; border: 1px solid #666; border-radius: 4px; color: #666; background: #fff;">⚙️</a>
         {% endif %}
 
         {% if item.kind == "event" %}

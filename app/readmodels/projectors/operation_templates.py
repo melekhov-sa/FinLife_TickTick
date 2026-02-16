@@ -43,6 +43,7 @@ class OperationTemplatesProjector(BaseProjector):
             amount=Decimal(str(payload["amount"])),
             note=payload.get("note"),
             wallet_id=payload.get("wallet_id"),
+            destination_wallet_id=payload.get("destination_wallet_id"),
             category_id=payload.get("category_id"),
             work_category_id=payload.get("work_category_id"),
         )
@@ -56,8 +57,8 @@ class OperationTemplatesProjector(BaseProjector):
         ).first()
         if not tmpl:
             return
-        for key in ("title", "note", "kind", "wallet_id", "category_id",
-                     "work_category_id", "is_archived"):
+        for key in ("title", "note", "kind", "wallet_id", "destination_wallet_id",
+                     "category_id", "work_category_id", "is_archived"):
             if key in payload:
                 setattr(tmpl, key, payload[key])
         if "amount" in payload:

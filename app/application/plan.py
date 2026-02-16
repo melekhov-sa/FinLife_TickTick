@@ -16,7 +16,7 @@ from app.infrastructure.db.models import (
     HabitModel, HabitOccurrence,
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
-    WorkCategory,
+    WorkCategory, WishModel,
 )
 
 
@@ -24,7 +24,7 @@ from app.infrastructure.db.models import (
 # Constants
 # ---------------------------------------------------------------------------
 
-KIND_SORT = {"event": 1, "task": 2, "task_occ": 2, "planned_op": 3, "habit": 4}
+KIND_SORT = {"event": 1, "task": 2, "task_occ": 2, "planned_op": 3, "habit": 4, "wish": 5}
 _TIME_MAX = time(23, 59, 59)
 
 WEEKDAY_SHORT = {0: "Пн", 1: "Вт", 2: "Ср", 3: "Чт", 4: "Пт", 5: "Сб", 6: "Вс"}
@@ -63,6 +63,7 @@ def build_plan_view(
     items.extend(_query_event_occurrences(db, account_id, today, tab, date_from, date_to, wc_map))
     items.extend(_query_operation_occurrences(db, account_id, today, tab, date_from, date_to, wc_map))
     items.extend(_query_habit_occurrences(db, account_id, today, tab, wc_map))
+    items.extend(_query_wishes(db, account_id, today, tab, date_from, date_to))
 
     # Summary (always computed from "active" perspective)
     summary = _compute_summary(db, account_id, today, wc_map)
@@ -714,6 +715,102 @@ def _sort_key(item: dict) -> tuple:
     kind_order = KIND_SORT.get(item["kind"], 9)
     t = item["time"] if item["time"] is not None else _TIME_MAX
     return (kind_order, t, item["title"])
+
+
+# ---------------------------------------------------------------------------
+# Query: Wishes
+# ---------------------------------------------------------------------------
+
+def _query_wishes(
+    db: Session, account_id: int, today: date,
+    tab: str, date_from: date, date_to: date,
+) -> list[dict]:
+    """Load wishes matching the date range."""
+    items: list[dict] = []
+
+    if tab != "active":
+        return items  # Wishes only shown in active tab
+
+    # Active statuses
+    active_statuses = ["IDEA", "CONSIDERING", "PLANNED"]
+
+    # Query wishes with target_date in range
+    wishes_by_date = db.query(WishModel).filter(
+        WishModel.account_id == account_id,
+        WishModel.status.in_(active_statuses),
+        WishModel.target_date != None,  # noqa: E711
+        WishModel.target_date >= date_from,
+        WishModel.target_date <= date_to,
+    ).all()
+
+    for wish in wishes_by_date:
+        items.append(_wish_to_item(wish, wish.target_date))
+
+    # Query wishes with target_month matching any month in the range
+    # Get unique months in the range
+    months_in_range = set()
+    current = date_from
+    while current <= date_to:
+        months_in_range.add(current.strftime("%Y-%m"))
+        # Move to next month
+        if current.month == 12:
+            current = date(current.year + 1, 1, 1)
+        else:
+            current = date(current.year, current.month + 1, 1)
+
+    wishes_by_month = db.query(WishModel).filter(
+        WishModel.account_id == account_id,
+        WishModel.status.in_(active_statuses),
+        WishModel.target_month != None,  # noqa: E711
+        WishModel.target_month.in_(list(months_in_range)),
+    ).all()
+
+    for wish in wishes_by_month:
+        # Use first day of target month as display date
+        year, month = map(int, wish.target_month.split("-"))
+        display_date = date(year, month, 1)
+        items.append(_wish_to_item(wish, display_date))
+
+    return items
+
+
+def _wish_to_item(wish: WishModel, display_date: date) -> dict:
+    """Convert wish to plan item."""
+    wish_type_emoji = {
+        "PURCHASE": "💰",
+        "EVENT": "🎉",
+        "PLACE": "🌍",
+        "OTHER": "📝",
+    }
+
+    wish_status_label = {
+        "IDEA": "💡 Идея",
+        "CONSIDERING": "🤔 Думаю",
+        "PLANNED": "📅 Запланировано",
+    }
+
+    return {
+        "kind": "wish",
+        "id": wish.wish_id,
+        "title": wish.title,
+        "date": display_date,
+        "time": None,
+        "is_done": False,
+        "is_overdue": False,
+        "status": wish.status,
+        "category_emoji": wish_type_emoji.get(wish.wish_type, "📝"),
+        "category_title": None,
+        "meta": {
+            "wish_id": wish.wish_id,
+            "wish_type": wish.wish_type,
+            "status_label": wish_status_label.get(wish.status, wish.status),
+            "estimated_amount": wish.estimated_amount,
+            "amount_formatted": "{:,.2f}".format(wish.estimated_amount).replace(",", " ") if wish.estimated_amount else None,
+            "is_recurring": wish.is_recurring,
+            "target_date": wish.target_date,
+            "target_month": wish.target_month,
+        },
+    }
 
 
 def _group_by_date(items: list[dict], today: date) -> list[dict]:
