@@ -139,8 +139,8 @@
           </div>
           <div class="form-row" style="flex: 1;">
             <label>День</label>
-            <input name="rec_day" type="number" min="1" max="31" style="max-width: 100px;"
-                   value="{% if mode == 'edit' and rule and rule.by_monthday_for_year %}{{ rule.by_monthday_for_year }}{% elif form_rec_day is defined and form_rec_day %}{{ form_rec_day }}{% endif %}">
+            <input name="rec_day_yearly" type="number" min="1" max="31" style="max-width: 100px;"
+                   value="{% if mode == 'edit' and rule and rule.by_monthday_for_year %}{{ rule.by_monthday_for_year }}{% elif form_rec_day_yearly is defined and form_rec_day_yearly %}{{ form_rec_day_yearly }}{% endif %}">
           </div>
         </div>
       </div>
@@ -191,6 +191,16 @@
                    value="{% if mode == 'edit' and rule and current_rec_type == 'interval' %}{{ rule.start_date.isoformat() }}{% elif form_rec_start_date is defined %}{{ form_rec_start_date }}{% endif %}">
           </div>
         </div>
+      </div>
+
+      <!-- Until date for recurring events -->
+      <div class="form-row">
+        <label>Действует до</label>
+        <input name="until_date" type="date"
+               value="{% if mode == 'edit' and rule and rule.until_date %}{{ rule.until_date.isoformat() }}{% elif form_until_date is defined and form_until_date %}{{ form_until_date }}{% endif %}">
+        <small class="muted" style="display: block; margin-top: 4px;">
+          Оставьте пустым для бессрочного действия
+        </small>
       </div>
     </div>
 

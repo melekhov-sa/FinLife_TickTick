@@ -45,6 +45,8 @@ class TransactionsFeedProjector(BaseProjector):
             category_id=payload.get("category_id"),
             from_wallet_id=payload.get("from_wallet_id"),
             to_wallet_id=payload.get("to_wallet_id"),
+            from_goal_id=payload.get("from_goal_id"),
+            to_goal_id=payload.get("to_goal_id"),
             description=payload.get("description", ""),
             occurred_at=datetime.fromisoformat(payload["occurred_at"])
         )

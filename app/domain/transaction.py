@@ -119,7 +119,9 @@ class Transaction:
         amount: Decimal,
         currency: str,
         description: str,
-        occurred_at: datetime
+        occurred_at: datetime,
+        from_goal_id: Optional[int] = None,
+        to_goal_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Создать событие transaction_created (TRANSFER)
@@ -133,11 +135,13 @@ class Transaction:
             currency: Валюта
             description: Описание
             occurred_at: Дата операции
+            from_goal_id: ID цели-источника (обязательно если from_wallet — SAVINGS)
+            to_goal_id: ID цели-назначения (обязательно если to_wallet — SAVINGS)
 
         Returns:
             Event payload для сохранения в event_log
         """
-        return {
+        payload = {
             "transaction_id": transaction_id,
             "account_id": account_id,
             "operation_type": "TRANSFER",
@@ -148,3 +152,8 @@ class Transaction:
             "description": description,
             "occurred_at": occurred_at.isoformat()
         }
+        if from_goal_id is not None:
+            payload["from_goal_id"] = from_goal_id
+        if to_goal_id is not None:
+            payload["to_goal_id"] = to_goal_id
+        return payload

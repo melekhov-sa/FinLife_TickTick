@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ goal.title }} — Цели — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <a href="/goals" style="text-decoration: none; color: #007AFF; font-size: 14px;">&larr; Все цели</a>
+</div>
+
+<div class="card">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+    <h2 style="margin: 0;">{{ goal.title }}</h2>
+    {% if goal.is_system %}
+      <span class="badge">Системная</span>
+    {% endif %}
+    {% if not goal.is_system %}
+      <a href="/goals/{{ goal.goal_id }}/edit" style="font-size: 13px; color: #007AFF;">Редактировать</a>
+    {% endif %}
+  </div>
+
+  {% if goal.target_amount %}
+    <div style="margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 6px;">
+        <span style="font-weight: 600;">{{ format_money(fact, goal.currency) }}</span>
+        <span class="muted">из {{ format_money(goal.target_amount, goal.currency) }}</span>
+      </div>
+      <div class="plan-progress" style="height: 10px;">
+        <div class="plan-progress-fill" style="width: {{ [percent, 100] | min }}%;{% if percent >= 100 %} background: #007AFF;{% endif %}"></div>
+      </div>
+      <div style="font-size: 13px; margin-top: 6px; text-align: right;" class="muted">{{ percent }}%</div>
+    </div>
+  {% else %}
+    <div style="font-size: 28px; font-weight: 700; margin-bottom: 16px;">
+      {{ format_money(fact, goal.currency) }}
+    </div>
+  {% endif %}
+</div>
+
+{% if wallet_breakdown %}
+<div class="card">
+  <h3 style="margin-top: 0;">По кошелькам</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Кошелёк</th>
+        <th class="text-right">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wb in wallet_breakdown %}
+      <tr>
+        <td>{{ wb.wallet_title }}</td>
+        <td class="text-right" style="font-weight: 600;">{{ format_money2(wb.amount, goal.currency) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if history %}
+<div class="card">
+  <h3 style="margin-top: 0;">История операций</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Тип</th>
+        <th>Описание</th>
+        <th class="text-right">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td class="muted" style="font-size: 13px; white-space: nowrap;">{{ h.occurred_at.strftime('%d.%m.%Y') }}</td>
+        <td>
+          {% if h.direction == 'in' %}
+            <span class="badge badge-income">Пополнение</span>
+          {% elif h.direction == 'out' %}
+            <span class="badge badge-expense">Снятие</span>
+          {% else %}
+            <span class="badge badge-transfer">Перевод</span>
+          {% endif %}
+        </td>
+        <td>
+          {{ h.description }}
+          <div class="muted" style="font-size: 12px;">
+            {% if h.direction == 'in' %}
+              {{ h.from_wallet_title }} &rarr; {{ h.to_wallet_title }}
+            {% elif h.direction == 'out' %}
+              {{ h.from_wallet_title }} &rarr; {{ h.to_wallet_title }}
+            {% else %}
+              {{ h.from_wallet_title }} &rarr; {{ h.to_wallet_title }}
+            {% endif %}
+          </div>
+        </td>
+        <td class="text-right" style="font-weight: 600; white-space: nowrap;">
+          {% if h.direction == 'in' %}
+            <span class="positive">+{{ format_money2(h.amount, goal.currency) }}</span>
+          {% elif h.direction == 'out' %}
+            <span class="negative">-{{ format_money2(h.amount, goal.currency) }}</span>
+          {% else %}
+            {{ format_money2(h.amount, goal.currency) }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">Нет операций по этой цели</p>
+</div>
+{% endif %}
+{% endblock %}

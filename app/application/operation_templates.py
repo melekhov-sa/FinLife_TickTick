@@ -419,17 +419,12 @@ class ConfirmOperationOccurrenceUseCase:
                 actor_user_id=actor_user_id,
             )
         elif tmpl.kind == "TRANSFER":
-            dest_wallet = self.db.query(WalletBalance).filter(
-                WalletBalance.wallet_id == tmpl.destination_wallet_id
-            ).first()
-            dest_currency = dest_wallet.currency if dest_wallet else currency
             transaction_id = tx_uc.execute_transfer(
                 account_id=account_id,
                 from_wallet_id=wallet_id,
                 to_wallet_id=tmpl.destination_wallet_id,
                 amount=amount,
-                from_currency=currency,
-                to_currency=dest_currency,
+                currency=currency,
                 description=description,
                 actor_user_id=actor_user_id,
             )

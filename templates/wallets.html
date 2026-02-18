@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Кошельки - FinLife{% endblock %}
 
-{% macro fmt2(val) %}{{ "{:,.2f}".format(val).replace(",", " ") }}{% endmacro %}
-
 {% block content %}
 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
   <h1 style="margin: 0;">Кошельки</h1>
@@ -13,24 +11,27 @@
   <div class="error-card">{{ error }}</div>
 {% endif %}
 
-<!-- Summary cards by wallet type -->
+<!-- Summary cards by wallet type + currency -->
+{% set type_labels = {"REGULAR": "Обычные", "CREDIT": "Кредитные", "SAVINGS": "Накопления"} %}
+{% if summary %}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+  {% for s in summary %}
+  {% if s.wallet_type == 'SAVINGS' %}
+  <a href="/goals" class="card" style="padding: 16px; text-decoration: none; color: inherit; display: block;">
+    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">{{ type_labels.get(s.wallet_type, s.wallet_type) }}{% if s.currency != 'RUB' %} ({{ s.currency }}){% endif %} &rarr;</div>
+    <div style="font-size: 20px; font-weight: 600;">{{ format_money2(s.total, s.currency) }}</div>
+    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ s.count }} шт.</div>
+  </a>
+  {% else %}
   <div class="card" style="padding: 16px;">
-    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Обычные кошельки</div>
-    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.REGULAR.total) }} ₽</div>
-    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.REGULAR.count }} шт.</div>
+    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">{{ type_labels.get(s.wallet_type, s.wallet_type) }}{% if s.currency != 'RUB' %} ({{ s.currency }}){% endif %}</div>
+    <div style="font-size: 20px; font-weight: 600;">{{ format_money2(s.total, s.currency) }}</div>
+    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ s.count }} шт.</div>
   </div>
-  <div class="card" style="padding: 16px;">
-    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Кредитные</div>
-    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.CREDIT.total) }} ₽</div>
-    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.CREDIT.count }} шт.</div>
-  </div>
-  <div class="card" style="padding: 16px;">
-    <div class="muted" style="font-size: 13px; margin-bottom: 4px;">Накопления</div>
-    <div style="font-size: 20px; font-weight: 600;">{{ fmt2(summary.SAVINGS.total) }} ₽</div>
-    <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ summary.SAVINGS.count }} шт.</div>
-  </div>
+  {% endif %}
+  {% endfor %}
 </div>
+{% endif %}
 
 {% set active_wallet_data = wallet_data | rejectattr('wallet.is_archived') | list %}
 {% set archived_wallet_data = wallet_data | selectattr('wallet.is_archived') | list %}
@@ -63,12 +64,12 @@
             {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
             {% else %}{{ wallet.wallet_type }}{% endif %}
           </td>
-          <td>{{ wallet.currency }}</td>
+          <td>{{ currency_label(wallet.currency) }}</td>
           <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
-            {{ fmt2(wallet.balance) }}
+            {{ format_money2(wallet.balance, wallet.currency) }}
           </td>
           <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
-            {% if wd.delta_30d|float > 0 %}+{% endif %}{{ fmt2(wd.delta_30d) }}
+            {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
           </td>
           <td>{{ wd.operations_count_30d }}</td>
           <td class="muted" style="font-size: 12px;">
@@ -134,12 +135,12 @@
           {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
           {% else %}{{ wallet.wallet_type }}{% endif %}
         </td>
-        <td>{{ wallet.currency }}</td>
+        <td>{{ currency_label(wallet.currency) }}</td>
         <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
-          {{ fmt2(wallet.balance) }}
+          {{ format_money2(wallet.balance, wallet.currency) }}
         </td>
         <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
-          {% if wd.delta_30d|float > 0 %}+{% endif %}{{ fmt2(wd.delta_30d) }}
+          {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
         </td>
         <td>{{ wd.operations_count_30d }}</td>
         <td class="muted" style="font-size: 12px;">

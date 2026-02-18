@@ -30,6 +30,8 @@
       left: 0;
       bottom: 0;
       z-index: 100;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .sidebar-logo {
       padding: 24px 20px 16px;
@@ -392,20 +394,21 @@
     .sidebar-toggle {
       display: none;
       position: fixed;
-      top: 12px;
-      left: 12px;
+      top: calc(12px + env(safe-area-inset-top, 0px));
+      left: calc(12px + env(safe-area-inset-left, 0px));
       z-index: 200;
       background: #2c3e50;
       color: white;
       border: none;
       border-radius: 6px;
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       font-size: 22px;
       line-height: 1;
       cursor: pointer;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .sidebar-overlay {
       display: none;
@@ -429,7 +432,7 @@
       .sidebar-overlay.open { display: block; }
       .main-content {
         margin-left: 0;
-        padding: 60px 16px 24px;
+        padding: calc(60px + env(safe-area-inset-top, 0px)) 16px 24px;
         padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
       }
       h1 { font-size: 22px; }
@@ -483,7 +486,7 @@
     /* ===== SMALL PHONE ===== */
     @media (max-width: 380px) {
       .stats-grid { grid-template-columns: 1fr; }
-      .main-content { padding: 56px 10px 16px; }
+      .main-content { padding: calc(56px + env(safe-area-inset-top, 0px)) 10px 16px; }
       .card { padding: 12px; }
     }
   </style>
@@ -497,6 +500,7 @@
       <nav class="sidebar-nav">
         <a href="/"><span class="nav-icon">&#9776;</span>Dashboard</a>
         <a href="/wallets"><span class="nav-icon">&#128179;</span>Кошельки</a>
+        <a href="/goals"><span class="nav-icon">&#127919;</span>Цели</a>
         <a href="/categories"><span class="nav-icon">&#128209;</span>Статьи</a>
         <a href="/transactions"><span class="nav-icon">&#128196;</span>Операции</a>
         <a href="/budget"><span class="nav-icon">&#128202;</span>Бюджет</a>

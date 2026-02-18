@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Цели — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+  <h1 style="margin: 0;">Цели</h1>
+  <a href="/goals/new" class="btn" style="font-size: 13px;">+ Новая цель</a>
+</div>
+
+{% if error %}
+  <div class="error-card">{{ error }}</div>
+{% endif %}
+
+{% if goals %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+  {% for g in goals %}
+  <a href="/goals/{{ g.goal.goal_id }}" class="card" style="text-decoration: none; color: inherit; padding: 20px; transition: box-shadow 0.15s;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <div style="font-size: 17px; font-weight: 600;">{{ g.goal.title }}</div>
+      {% if g.goal.is_system %}
+        <span class="badge">Системная</span>
+      {% endif %}
+    </div>
+
+    {% if g.goal.target_amount %}
+      <div style="margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px;">
+          <span>{{ format_money(g.fact, g.goal.currency) }}</span>
+          <span class="muted">из {{ format_money(g.goal.target_amount, g.goal.currency) }}</span>
+        </div>
+        <div class="plan-progress" style="height: 8px;">
+          <div class="plan-progress-fill" style="width: {{ [g.percent, 100] | min }}%;{% if g.percent >= 100 %} background: #007AFF;{% endif %}"></div>
+        </div>
+        <div style="font-size: 12px; margin-top: 4px; text-align: right;" class="muted">{{ g.percent }}%</div>
+      </div>
+    {% else %}
+      <div style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+        {{ format_money(g.fact, g.goal.currency) }}
+      </div>
+    {% endif %}
+
+    <div class="muted" style="font-size: 12px;">
+      {{ g.goal.currency }}
+      {% if g.wallet_count > 0 %} &middot; {{ g.wallet_count }} кош.{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">Нет активных целей. Создайте первую цель для начала накоплений.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,7 @@
 """
 Wallet use cases - business logic for wallet operations
 """
+import re
 import uuid
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import WalletBalance
 from app.domain.wallet import Wallet, WALLET_TYPE_REGULAR, WALLET_TYPE_CREDIT, WALLET_TYPE_SAVINGS
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
+from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
 
 
 class WalletValidationError(ValueError):
@@ -61,6 +63,12 @@ class CreateWalletUseCase:
                 f"Неверный тип кошелька: {wallet_type}. Используйте REGULAR, CREDIT или SAVINGS"
             )
 
+        # Валидация кода валюты: строго 3 заглавные латинские буквы
+        if not re.fullmatch(r"[A-Z]{3}", currency):
+            raise WalletValidationError(
+                f"Неверный код валюты: «{currency}». Используйте 3 заглавные буквы (например RUB, USD, EUR)"
+            )
+
         # Валидация начального баланса в зависимости от типа кошелька
         balance_decimal = Decimal(initial_balance)
 
@@ -101,10 +109,19 @@ class CreateWalletUseCase:
             idempotency_key=f"wallet-create-{account_id}-{wallet_id}"
         )
 
+        # Для SAVINGS кошельков — создать системную цель 'Без цели' (если нет)
+        if wallet_type == WALLET_TYPE_SAVINGS:
+            from app.application.goals import EnsureSystemGoalUseCase
+            EnsureSystemGoalUseCase(self.db).execute(
+                account_id=account_id,
+                currency=currency,
+                actor_user_id=actor_user_id
+            )
+
         self.db.commit()
 
         # Запускаем projector для обновления read model
-        self._run_projectors(account_id)
+        self._run_projectors(account_id, wallet_type)
 
         return wallet_id
 
@@ -130,10 +147,15 @@ class CreateWalletUseCase:
 
         return max_id_from_events + 1
 
-    def _run_projectors(self, account_id: int):
+    def _run_projectors(self, account_id: int, wallet_type: str = "REGULAR"):
         """Запустить projectors для обновления read models"""
         projector = WalletBalancesProjector(self.db)
         projector.run(account_id, event_types=["wallet_created"])
+        if wallet_type == WALLET_TYPE_SAVINGS:
+            GoalWalletBalancesProjector(self.db).run(
+                account_id,
+                event_types=["wallet_created"]
+            )
 
 
 class RenameWalletUseCase:

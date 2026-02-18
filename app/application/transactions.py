@@ -1,17 +1,20 @@
 """
 Transaction use cases - business logic for transaction operations
 """
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+
+MSK = timezone(timedelta(hours=3))
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.infrastructure.eventlog.repository import EventLogRepository
-from app.infrastructure.db.models import TransactionFeed, WalletBalance
+from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance
 from app.domain.transaction import Transaction
 from app.domain.wallet import WALLET_TYPE_SAVINGS
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
 from app.readmodels.projectors.transactions_feed import TransactionsFeedProjector
+from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
 
 
 class TransactionValidationError(ValueError):
@@ -74,7 +77,7 @@ class CreateTransactionUseCase:
             raise TransactionValidationError("Нельзя создавать операции с архивированным кошельком")
 
         transaction_id = self._generate_transaction_id()
-        occurred_at = occurred_at or datetime.utcnow()
+        occurred_at = occurred_at or datetime.now(MSK)
 
         event_payload = Transaction.create_income(
             account_id=account_id,
@@ -152,7 +155,7 @@ class CreateTransactionUseCase:
             )
 
         transaction_id = self._generate_transaction_id()
-        occurred_at = occurred_at or datetime.utcnow()
+        occurred_at = occurred_at or datetime.now(MSK)
 
         event_payload = Transaction.create_expense(
             account_id=account_id,
@@ -188,7 +191,9 @@ class CreateTransactionUseCase:
         currency: str,
         description: str,
         occurred_at: datetime | None = None,
-        actor_user_id: int | None = None
+        actor_user_id: int | None = None,
+        from_goal_id: int | None = None,
+        to_goal_id: int | None = None
     ) -> int:
         """
         Создать TRANSFER (перевод между кошельками)
@@ -202,6 +207,8 @@ class CreateTransactionUseCase:
             description: Описание операции
             occurred_at: Дата операции (default=now)
             actor_user_id: Кто создал
+            from_goal_id: ID цели-источника (обязательно если from_wallet — SAVINGS)
+            to_goal_id: ID цели-назначения (обязательно если to_wallet — SAVINGS)
 
         Returns:
             transaction_id: ID созданной транзакции
@@ -232,12 +239,73 @@ class CreateTransactionUseCase:
         # Проверка валюты
         if from_wallet.currency != to_wallet.currency:
             raise TransactionValidationError(
-                f"Перевод между разными валютами запрещён: "
-                f"{from_wallet.currency} → {to_wallet.currency}"
+                "Перевод между кошельками в разных валютах пока не поддерживается."
             )
 
+        # --- SAVINGS goal validation ---
+        from_is_savings = from_wallet.wallet_type == WALLET_TYPE_SAVINGS
+        to_is_savings = to_wallet.wallet_type == WALLET_TYPE_SAVINGS
+
+        if from_is_savings and from_goal_id is None:
+            raise TransactionValidationError(
+                "Для вывода из накопительного кошелька необходимо указать цель (from_goal_id)"
+            )
+        if to_is_savings and to_goal_id is None:
+            raise TransactionValidationError(
+                "Для пополнения накопительного кошелька необходимо указать цель (to_goal_id)"
+            )
+
+        # Validate from_goal
+        if from_goal_id is not None:
+            if not from_is_savings:
+                raise TransactionValidationError(
+                    "from_goal_id можно указать только для накопительного кошелька"
+                )
+            from_goal = self.db.query(GoalInfo).filter(
+                GoalInfo.goal_id == from_goal_id,
+                GoalInfo.account_id == account_id
+            ).first()
+            if not from_goal:
+                raise TransactionValidationError(f"Цель #{from_goal_id} не найдена")
+            if from_goal.is_archived:
+                raise TransactionValidationError(f"Цель «{from_goal.title}» архивирована")
+            if from_goal.currency != from_wallet.currency:
+                raise TransactionValidationError(
+                    f"Валюта цели ({from_goal.currency}) не совпадает с валютой кошелька ({from_wallet.currency})"
+                )
+            # Check sufficient goal balance
+            gwb = self.db.query(GoalWalletBalance).filter(
+                GoalWalletBalance.goal_id == from_goal_id,
+                GoalWalletBalance.wallet_id == from_wallet_id
+            ).first()
+            goal_balance = gwb.amount if gwb else Decimal("0")
+            if goal_balance < amount:
+                raise TransactionValidationError(
+                    f"Недостаточно средств в цели «{from_goal.title}»: "
+                    f"доступно {goal_balance}, запрошено {amount}"
+                )
+
+        # Validate to_goal
+        if to_goal_id is not None:
+            if not to_is_savings:
+                raise TransactionValidationError(
+                    "to_goal_id можно указать только для накопительного кошелька"
+                )
+            to_goal = self.db.query(GoalInfo).filter(
+                GoalInfo.goal_id == to_goal_id,
+                GoalInfo.account_id == account_id
+            ).first()
+            if not to_goal:
+                raise TransactionValidationError(f"Цель #{to_goal_id} не найдена")
+            if to_goal.is_archived:
+                raise TransactionValidationError(f"Цель «{to_goal.title}» архивирована")
+            if to_goal.currency != to_wallet.currency:
+                raise TransactionValidationError(
+                    f"Валюта цели ({to_goal.currency}) не совпадает с валютой кошелька ({to_wallet.currency})"
+                )
+
         transaction_id = self._generate_transaction_id()
-        occurred_at = occurred_at or datetime.utcnow()
+        occurred_at = occurred_at or datetime.now(MSK)
 
         event_payload = Transaction.create_transfer(
             account_id=account_id,
@@ -247,7 +315,9 @@ class CreateTransactionUseCase:
             amount=amount,
             currency=currency,
             description=description,
-            occurred_at=occurred_at
+            occurred_at=occurred_at,
+            from_goal_id=from_goal_id,
+            to_goal_id=to_goal_id
         )
 
         self.event_repo.append_event(
@@ -269,7 +339,7 @@ class CreateTransactionUseCase:
         return max_id + 1
 
     def _run_projectors(self, account_id: int):
-        """Запустить оба projector'а: балансы + лента"""
+        """Запустить projector'ы: балансы + лента + цели"""
         WalletBalancesProjector(self.db).run(
             account_id,
             event_types=["transaction_created"]
@@ -277,4 +347,8 @@ class CreateTransactionUseCase:
         TransactionsFeedProjector(self.db).run(
             account_id,
             event_types=["transaction_created"]
+        )
+        GoalWalletBalancesProjector(self.db).run(
+            account_id,
+            event_types=["transaction_created", "wallet_created"]
         )

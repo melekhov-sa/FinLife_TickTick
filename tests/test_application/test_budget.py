@@ -6,10 +6,14 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.infrastructure.db.models import (
-    BudgetMonth, BudgetLine, CategoryInfo, TransactionFeed,
+    BudgetMonth, BudgetLine, BudgetPlanTemplate, CategoryInfo, TransactionFeed,
 )
 from app.application.budget import (
     EnsureBudgetMonthUseCase, SetBudgetLineUseCase, SaveBudgetPlanUseCase,
+    CopyBudgetPlanUseCase, CopyManualPlanForwardUseCase,
+    SaveAsTemplateUseCase, ApplyTemplateToPeriodUseCase,
+    has_template, has_previous_period_plan, get_previous_period,
+    CreateBudgetVariantUseCase,
     BudgetValidationError, build_budget_view,
 )
 
@@ -416,3 +420,797 @@ class TestBuildBudgetView:
         # February should have no fact
         salary = next(l for l in view["income_lines"] if l["category_id"] == 1)
         assert salary["fact"] == Decimal("0")
+
+
+# ===========================================================================
+# Budget Variant — granularity restrictions
+# ===========================================================================
+
+
+class TestAllowedGranularities:
+    """Unit tests for get_allowed_granularities and clamp_granularity."""
+
+    def test_base_month_allows_month_and_year(self):
+        from app.application.budget import get_allowed_granularities
+        assert get_allowed_granularities("MONTH") == ["month", "year"]
+
+    def test_base_week_allows_week_month_year(self):
+        from app.application.budget import get_allowed_granularities
+        assert get_allowed_granularities("WEEK") == ["week", "month", "year"]
+
+    def test_base_day_allows_all(self):
+        from app.application.budget import get_allowed_granularities
+        assert get_allowed_granularities("DAY") == ["day", "week", "month", "year"]
+
+    def test_base_year_allows_year_only(self):
+        from app.application.budget import get_allowed_granularities
+        assert get_allowed_granularities("YEAR") == ["year"]
+
+    def test_unknown_base_defaults_to_month(self):
+        from app.application.budget import get_allowed_granularities
+        assert get_allowed_granularities("INVALID") == ["month", "year"]
+
+    def test_clamp_finer_grain_to_base(self):
+        from app.application.budget import clamp_granularity
+        assert clamp_granularity("day", "MONTH") == "month"
+        assert clamp_granularity("week", "MONTH") == "month"
+
+    def test_clamp_allowed_grain_unchanged(self):
+        from app.application.budget import clamp_granularity
+        assert clamp_granularity("month", "MONTH") == "month"
+        assert clamp_granularity("year", "MONTH") == "year"
+
+    def test_clamp_case_insensitive(self):
+        from app.application.budget import clamp_granularity
+        assert clamp_granularity("YEAR", "month") == "year"
+        assert clamp_granularity("Month", "MONTH") == "month"
+
+
+class TestCreateBudgetVariant:
+    """Tests for CreateBudgetVariantUseCase."""
+
+    def test_creates_variant(self, db_session, sample_account_id):
+        from app.application.budget import CreateBudgetVariantUseCase
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id,
+            name="Тестовый бюджет",
+            base_granularity="MONTH",
+        )
+        assert variant.account_id == sample_account_id
+        assert variant.name == "Тестовый бюджет"
+        assert variant.base_granularity == "MONTH"
+        assert variant.is_archived is False
+        assert variant.week_starts_on == 1
+
+    def test_empty_name_raises(self, db_session, sample_account_id):
+        from app.application.budget import CreateBudgetVariantUseCase, BudgetValidationError
+        import pytest
+        with pytest.raises(BudgetValidationError):
+            CreateBudgetVariantUseCase(db_session).execute(
+                account_id=sample_account_id, name="",
+            )
+
+    def test_invalid_granularity_raises(self, db_session, sample_account_id):
+        from app.application.budget import CreateBudgetVariantUseCase, BudgetValidationError
+        import pytest
+        with pytest.raises(BudgetValidationError):
+            CreateBudgetVariantUseCase(db_session).execute(
+                account_id=sample_account_id, name="Test", base_granularity="INVALID",
+            )
+
+    def test_multiple_variants_allowed(self, db_session, sample_account_id):
+        from app.application.budget import CreateBudgetVariantUseCase
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Бюджет 1",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Бюджет 2",
+        )
+        assert v1.id != v2.id
+
+
+class TestAttachBudgetData:
+    """Tests for AttachBudgetDataUseCase."""
+
+    def test_attach_orphans(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, AttachBudgetDataUseCase,
+            EnsureBudgetMonthUseCase,
+        )
+        # Create a budget month without variant
+        bm_id = EnsureBudgetMonthUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+        )
+        # Create a variant
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        # Attach orphans
+        count = AttachBudgetDataUseCase(db_session).execute(
+            account_id=sample_account_id, variant_id=variant.id,
+        )
+        assert count == 1
+        from app.infrastructure.db.models import BudgetMonth
+        bm = db_session.query(BudgetMonth).filter(BudgetMonth.id == bm_id).first()
+        assert bm.budget_variant_id == variant.id
+
+    def test_no_orphans(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, AttachBudgetDataUseCase,
+        )
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        count = AttachBudgetDataUseCase(db_session).execute(
+            account_id=sample_account_id, variant_id=variant.id,
+        )
+        assert count == 0
+
+
+class TestGetActiveVariant:
+    """Tests for get_active_variant helper."""
+
+    def test_returns_none_when_no_variants(self, db_session, sample_account_id):
+        from app.application.budget import get_active_variant
+        assert get_active_variant(db_session, sample_account_id) is None
+
+    def test_returns_first_non_archived(self, db_session, sample_account_id):
+        from app.application.budget import get_active_variant, CreateBudgetVariantUseCase
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="First",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Second",
+        )
+        db_session.flush()
+        result = get_active_variant(db_session, sample_account_id)
+        assert result.id == v1.id  # first by created_at
+
+    def test_by_id(self, db_session, sample_account_id):
+        from app.application.budget import get_active_variant, CreateBudgetVariantUseCase
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="First",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Second",
+        )
+        db_session.flush()
+        result = get_active_variant(db_session, sample_account_id, variant_id=v2.id)
+        assert result.id == v2.id
+
+
+class TestArchiveBudgetVariant:
+    """Tests for ArchiveBudgetVariantUseCase."""
+
+    def test_archive_variant(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, ArchiveBudgetVariantUseCase,
+        )
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="First",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Second",
+        )
+        db_session.flush()
+        ArchiveBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, variant_id=v1.id,
+        )
+        assert v1.is_archived is True
+        assert v2.is_archived is False
+
+    def test_cannot_archive_last_active(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, ArchiveBudgetVariantUseCase,
+            BudgetValidationError,
+        )
+        import pytest
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Only",
+        )
+        db_session.flush()
+        with pytest.raises(BudgetValidationError):
+            ArchiveBudgetVariantUseCase(db_session).execute(
+                account_id=sample_account_id, variant_id=v1.id,
+            )
+
+    def test_cannot_archive_already_archived(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, ArchiveBudgetVariantUseCase,
+            BudgetValidationError,
+        )
+        import pytest
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="First",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Second",
+        )
+        db_session.flush()
+        ArchiveBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, variant_id=v1.id,
+        )
+        with pytest.raises(BudgetValidationError):
+            ArchiveBudgetVariantUseCase(db_session).execute(
+                account_id=sample_account_id, variant_id=v1.id,
+            )
+
+    def test_archived_not_in_active_variant(self, db_session, sample_account_id):
+        from app.application.budget import (
+            CreateBudgetVariantUseCase, ArchiveBudgetVariantUseCase,
+            get_active_variant,
+        )
+        v1 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="First",
+        )
+        v2 = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Second",
+        )
+        db_session.flush()
+        ArchiveBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, variant_id=v1.id,
+        )
+        # get_active_variant without id should return v2 (only remaining active)
+        result = get_active_variant(db_session, sample_account_id)
+        assert result.id == v2.id
+
+
+class TestCopyBudgetPlan:
+    """Tests for CopyBudgetPlanUseCase."""
+
+    def test_copy_plan_from_previous_month(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create source month with lines
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[
+                {"category_id": 1, "kind": "INCOME", "plan_amount": "100000"},
+                {"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"},
+            ],
+            budget_variant_id=variant.id,
+        )
+
+        # Copy to next month
+        count = CopyBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            to_year=2026, to_month=2,
+            budget_variant_id=variant.id,
+        )
+
+        assert count == 2
+
+        # Verify target lines
+        target_bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 2,
+        ).first()
+        assert target_bm is not None
+
+        target_lines = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == target_bm.id,
+        ).all()
+        amounts = {(l.category_id, l.kind): l.plan_amount for l in target_lines}
+        assert amounts[(1, "INCOME")] == Decimal("100000")
+        assert amounts[(3, "EXPENSE")] == Decimal("50000")
+
+    def test_copy_no_source_returns_zero(self, db_session, sample_account_id):
+        count = CopyBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2025, from_month=12,
+            to_year=2026, to_month=1,
+        )
+        assert count == 0
+
+    def test_copy_overwrites_existing(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create source
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Create target with different value
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "30000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Copy overwrites
+        CopyBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            to_year=2026, to_month=2,
+            budget_variant_id=variant.id,
+        )
+
+        target_bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 2,
+        ).first()
+        line = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == target_bm.id,
+            BudgetLine.category_id == 3,
+        ).first()
+        assert line.plan_amount == Decimal("50000")
+
+
+class TestSaveAsTemplate:
+    """Tests for SaveAsTemplateUseCase."""
+
+    def test_save_template(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create a period with plan
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[
+                {"category_id": 1, "kind": "INCOME", "plan_amount": "100000"},
+                {"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"},
+            ],
+            budget_variant_id=variant.id,
+        )
+
+        # Save as template
+        count = SaveAsTemplateUseCase(db_session).execute(
+            account_id=sample_account_id,
+            year=2026, month=1,
+            budget_variant_id=variant.id,
+        )
+        assert count == 2
+
+        # Verify template
+        tpls = db_session.query(BudgetPlanTemplate).filter(
+            BudgetPlanTemplate.budget_variant_id == variant.id,
+        ).all()
+        assert len(tpls) == 2
+        amounts = {(t.category_id, t.kind): t.default_planned_amount for t in tpls}
+        assert amounts[(1, "INCOME")] == Decimal("100000")
+        assert amounts[(3, "EXPENSE")] == Decimal("50000")
+
+    def test_save_template_replaces_old(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create period 1
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "100000"}],
+            budget_variant_id=variant.id,
+        )
+        SaveAsTemplateUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            budget_variant_id=variant.id,
+        )
+
+        # Create period 2 with different amounts
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "75000"}],
+            budget_variant_id=variant.id,
+        )
+        SaveAsTemplateUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            budget_variant_id=variant.id,
+        )
+
+        # Template should only have period 2 lines
+        tpls = db_session.query(BudgetPlanTemplate).filter(
+            BudgetPlanTemplate.budget_variant_id == variant.id,
+        ).all()
+        assert len(tpls) == 1
+        assert tpls[0].category_id == 3
+        assert tpls[0].default_planned_amount == Decimal("75000")
+
+    def test_has_template(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        assert has_template(db_session, sample_account_id, variant.id) is False
+
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "100000"}],
+            budget_variant_id=variant.id,
+        )
+        SaveAsTemplateUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            budget_variant_id=variant.id,
+        )
+
+        assert has_template(db_session, sample_account_id, variant.id) is True
+
+
+class TestApplyTemplate:
+    """Tests for ApplyTemplateToPeriodUseCase."""
+
+    def test_apply_template(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create and save template
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[
+                {"category_id": 1, "kind": "INCOME", "plan_amount": "120000"},
+                {"category_id": 3, "kind": "EXPENSE", "plan_amount": "45000"},
+            ],
+            budget_variant_id=variant.id,
+        )
+        SaveAsTemplateUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            budget_variant_id=variant.id,
+        )
+
+        # Apply to new period
+        count = ApplyTemplateToPeriodUseCase(db_session).execute(
+            account_id=sample_account_id,
+            year=2026, month=3,
+            budget_variant_id=variant.id,
+        )
+        assert count == 2
+
+        # Verify target lines
+        target_bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 3,
+        ).first()
+        lines = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == target_bm.id,
+        ).all()
+        amounts = {(l.category_id, l.kind): l.plan_amount for l in lines}
+        assert amounts[(1, "INCOME")] == Decimal("120000")
+        assert amounts[(3, "EXPENSE")] == Decimal("45000")
+
+    def test_apply_no_template_returns_zero(self, db_session, sample_account_id):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        count = ApplyTemplateToPeriodUseCase(db_session).execute(
+            account_id=sample_account_id,
+            year=2026, month=1,
+            budget_variant_id=variant.id,
+        )
+        assert count == 0
+
+
+class TestGetPreviousPeriod:
+    """Tests for get_previous_period helper."""
+
+    def test_normal_month(self):
+        assert get_previous_period(2026, 5) == (2026, 4)
+
+    def test_january_wraps_to_december(self):
+        assert get_previous_period(2026, 1) == (2025, 12)
+
+    def test_has_previous_period_plan(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # No previous plan
+        assert has_previous_period_plan(
+            db_session, sample_account_id, 2026, 2, variant.id,
+        ) is False
+
+        # Create plan for January
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "100000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Now previous plan exists
+        assert has_previous_period_plan(
+            db_session, sample_account_id, 2026, 2, variant.id,
+        ) is True
+
+
+class TestBatchSavePlanOptimized:
+    """Tests for the batch-optimized SaveBudgetPlanUseCase."""
+
+    def test_batch_save_creates_lines(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[
+                {"category_id": 1, "kind": "INCOME", "plan_amount": "100000"},
+                {"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"},
+                {"category_id": 4, "kind": "EXPENSE", "plan_amount": "20000"},
+            ],
+            budget_variant_id=variant.id,
+        )
+
+        bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 1,
+        ).first()
+        lines = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == bm.id,
+        ).all()
+        assert len(lines) == 3
+
+    def test_batch_save_updates_existing(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # First save
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "100000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Second save with updated amount
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "150000"}],
+            budget_variant_id=variant.id,
+        )
+
+        bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 1,
+        ).first()
+        line = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == bm.id,
+            BudgetLine.category_id == 1,
+        ).first()
+        assert line.plan_amount == Decimal("150000")
+
+    def test_batch_save_skips_zero_no_existing(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "0"}],
+            budget_variant_id=variant.id,
+        )
+
+        bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 1,
+        ).first()
+        # Month is created but no line should exist
+        if bm:
+            lines = db_session.query(BudgetLine).filter(
+                BudgetLine.budget_month_id == bm.id,
+            ).all()
+            assert len(lines) == 0
+
+
+class TestCopyManualPlanForward:
+    """Tests for CopyManualPlanForwardUseCase."""
+
+    def test_copy_forward_3_periods(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Create source plan for January
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[
+                {"category_id": 1, "kind": "INCOME", "plan_amount": "100000"},
+                {"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"},
+            ],
+            budget_variant_id=variant.id,
+        )
+
+        # Copy forward 3 periods
+        count = CopyManualPlanForwardUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            periods_ahead=3,
+            budget_variant_id=variant.id,
+        )
+        assert count == 6  # 2 lines * 3 periods
+
+        # Verify Feb, Mar, Apr have the plan
+        for m in [2, 3, 4]:
+            bm = db_session.query(BudgetMonth).filter(
+                BudgetMonth.account_id == sample_account_id,
+                BudgetMonth.year == 2026,
+                BudgetMonth.month == m,
+            ).first()
+            assert bm is not None
+            lines = db_session.query(BudgetLine).filter(
+                BudgetLine.budget_month_id == bm.id,
+            ).all()
+            amounts = {(l.category_id, l.kind): l.plan_amount for l in lines}
+            assert amounts[(1, "INCOME")] == Decimal("100000")
+            assert amounts[(3, "EXPENSE")] == Decimal("50000")
+
+    def test_skip_filled_by_default(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Source: Jan
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Target Feb already has a different value
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "30000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Copy forward 1 period (to Feb) — should skip because filled
+        count = CopyManualPlanForwardUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            periods_ahead=1,
+            budget_variant_id=variant.id,
+            overwrite=False,
+        )
+        assert count == 0  # skipped
+
+        # Feb should still have 30000
+        bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 2,
+        ).first()
+        line = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == bm.id,
+            BudgetLine.category_id == 3,
+        ).first()
+        assert line.plan_amount == Decimal("30000")
+
+    def test_overwrite_mode(self, db_session, sample_account_id, setup_categories):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Source: Jan
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=1,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "50000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Target Feb
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            lines=[{"category_id": 3, "kind": "EXPENSE", "plan_amount": "30000"}],
+            budget_variant_id=variant.id,
+        )
+
+        # Copy forward with overwrite=True
+        count = CopyManualPlanForwardUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            periods_ahead=1,
+            budget_variant_id=variant.id,
+            overwrite=True,
+        )
+        assert count == 1
+
+        # Feb should now have 50000
+        bm = db_session.query(BudgetMonth).filter(
+            BudgetMonth.account_id == sample_account_id,
+            BudgetMonth.year == 2026,
+            BudgetMonth.month == 2,
+        ).first()
+        line = db_session.query(BudgetLine).filter(
+            BudgetLine.budget_month_id == bm.id,
+            BudgetLine.category_id == 3,
+        ).first()
+        assert line.plan_amount == Decimal("50000")
+
+    def test_invalid_periods_ahead(self, db_session, sample_account_id):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        import pytest
+        with pytest.raises(BudgetValidationError):
+            CopyManualPlanForwardUseCase(db_session).execute(
+                account_id=sample_account_id,
+                from_year=2026, from_month=1,
+                periods_ahead=0,
+                budget_variant_id=variant.id,
+            )
+        with pytest.raises(BudgetValidationError):
+            CopyManualPlanForwardUseCase(db_session).execute(
+                account_id=sample_account_id,
+                from_year=2026, from_month=1,
+                periods_ahead=25,
+                budget_variant_id=variant.id,
+            )
+
+    def test_no_source_plan_returns_zero(self, db_session, sample_account_id):
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        count = CopyManualPlanForwardUseCase(db_session).execute(
+            account_id=sample_account_id,
+            from_year=2026, from_month=1,
+            periods_ahead=3,
+            budget_variant_id=variant.id,
+        )
+        assert count == 0
+
+
+class TestMatrixPlanBreakdown:
+    """Tests for plan_manual/plan_planned breakdown in matrix cells."""
+
+    def test_cell_has_plan_breakdown(self, db_session, sample_account_id, setup_categories):
+        from app.application.budget_matrix import BudgetMatrixService
+        variant = CreateBudgetVariantUseCase(db_session).execute(
+            account_id=sample_account_id, name="Main",
+        )
+        db_session.flush()
+
+        # Set manual plan
+        SaveBudgetPlanUseCase(db_session).execute(
+            account_id=sample_account_id, year=2026, month=2,
+            lines=[{"category_id": 1, "kind": "INCOME", "plan_amount": "100000"}],
+            budget_variant_id=variant.id,
+        )
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=sample_account_id,
+            grain="month",
+            range_count=1,
+            anchor_year=2026,
+            anchor_month=2,
+            budget_variant_id=variant.id,
+        )
+
+        # Find the income row for category 1
+        row = next(r for r in view["income_rows"] if r["category_id"] == 1)
+        cell = row["cells"][0]
+        assert "plan_manual" in cell
+        assert "plan_planned" in cell
+        assert cell["plan_manual"] == Decimal("100000")
+        assert cell["plan_planned"] == Decimal("0")
+        assert cell["plan"] == Decimal("100000")

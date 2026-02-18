@@ -16,6 +16,7 @@ class Budget:
         budget_month_id: int,
         year: int,
         month: int,
+        budget_variant_id: int | None = None,
     ) -> Dict[str, Any]:
         """
         Create budget_month_created event payload.
@@ -25,6 +26,7 @@ class Budget:
             "account_id": account_id,
             "year": year,
             "month": month,
+            "budget_variant_id": budget_variant_id,
             "created_at": datetime.utcnow().isoformat(),
         }
 

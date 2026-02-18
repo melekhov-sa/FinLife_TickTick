@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'edit' %}Редактировать цель{% else %}Новая цель{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == 'edit' %}Редактировать цель{% else %}Новая цель{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  <form method="POST">
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" value="{{ goal.title if goal else '' }}" placeholder="Например: Отпуск" required>
+    </div>
+    {% if mode == 'new' %}
+    <div class="form-row">
+      <label>Валюта</label>
+      <select name="currency" required>
+        <option value="RUB"{% if not goal or (goal and goal.currency == 'RUB') %} selected{% endif %}>RUB</option>
+        <option value="USD"{% if goal and goal.currency == 'USD' %} selected{% endif %}>USD</option>
+        <option value="EUR"{% if goal and goal.currency == 'EUR' %} selected{% endif %}>EUR</option>
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-row">
+      <label>Плановая сумма <span class="muted">(необязательно)</span></label>
+      <input name="target_amount" type="number" step="0.01" min="0"
+             value="{{ goal.target_amount if goal and goal.target_amount else '' }}"
+             placeholder="Оставьте пустым если без цели">
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      <button type="submit">{% if mode == 'edit' %}Сохранить{% else %}Создать{% endif %}</button>
+      <a href="/goals" class="btn secondary" style="text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

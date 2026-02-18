@@ -7,30 +7,34 @@
 <h1>Операции</h1>
 
 <!-- KPI -->
+{% for cur, kpi in kpi_by_currency.items() %}
 <div class="stats-grid">
   <div class="stat-card">
-    <div class="stat-label">ДОХОДЫ</div>
-    <div class="stat-value positive">{{ fmt(kpi_income) }}</div>
+    <div class="stat-label">ДОХОДЫ{% if kpi_by_currency|length > 1 %} ({{ currency_label(cur) }}){% endif %}</div>
+    <div class="stat-value positive">{{ format_money(kpi.income, cur) }}</div>
     <div class="stat-sublabel">на странице</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">РАСХОДЫ</div>
-    <div class="stat-value negative">{{ fmt(kpi_expense) }}</div>
+    <div class="stat-label">РАСХОДЫ{% if kpi_by_currency|length > 1 %} ({{ currency_label(cur) }}){% endif %}</div>
+    <div class="stat-value negative">{{ format_money(kpi.expense, cur) }}</div>
     <div class="stat-sublabel">на странице</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">РАЗНИЦА</div>
-    <div class="stat-value {% if kpi_income - kpi_expense >= 0 %}positive{% else %}negative{% endif %}">
-      {% if kpi_income - kpi_expense > 0 %}+{% endif %}{{ fmt(kpi_income - kpi_expense) }}
+    <div class="stat-label">РАЗНИЦА{% if kpi_by_currency|length > 1 %} ({{ currency_label(cur) }}){% endif %}</div>
+    <div class="stat-value {% if kpi.difference >= 0 %}positive{% else %}negative{% endif %}">
+      {% if kpi.difference > 0 %}+{% endif %}{{ format_money(kpi.difference, cur) }}
     </div>
     <div class="stat-sublabel">доход &minus; расход</div>
   </div>
+  {% if loop.first %}
   <div class="stat-card">
     <div class="stat-label">ВСЕГО</div>
     <div class="stat-value">{{ total_count }}</div>
     <div class="stat-sublabel">операций</div>
   </div>
+  {% endif %}
 </div>
+{% endfor %}
 
 <!-- Добавить операцию (collapsible) -->
 <details class="card">
@@ -212,7 +216,7 @@
             {% endif %}
           </td>
           <td style="text-align: right; white-space: nowrap;" class="{% if tx.operation_type == 'INCOME' %}positive{% elif tx.operation_type == 'EXPENSE' %}negative{% endif %}">
-            {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ fmt(tx.amount) }} {{ tx.currency }}
+            {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ format_money(tx.amount, tx.currency) }}
           </td>
           <td>{{ tx.description }}</td>
         </tr>

@@ -97,7 +97,7 @@ class WalletBalance(Base):
     account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="RUB")
     wallet_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="REGULAR")  # REGULAR, CREDIT, SAVINGS
     balance: Mapped[Decimal] = mapped_column(
         Numeric(precision=20, scale=2),
@@ -165,6 +165,10 @@ class TransactionFeed(Base):
     # For TRANSFER
     from_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     to_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+    # For TRANSFER with goals (SAVINGS wallets)
+    from_goal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    to_goal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     occurred_at: Mapped[DateTime] = mapped_column(
@@ -497,12 +501,38 @@ class EventFilterPresetModel(Base):
 # ============================================================================
 
 
+class BudgetVariant(Base):
+    """Read model: Budget variant — defines base granularity for budget planning"""
+    __tablename__ = "budget_variants"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    base_granularity: Mapped[str] = mapped_column(String(16), nullable=False, server_default="MONTH")  # DAY/WEEK/MONTH/YEAR
+    week_starts_on: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")  # 1=Monday (ISO)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, server_default="'Europe/Moscow'")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index('ix_budget_variant_account_archived', 'account_id', 'is_archived'),
+    )
+
+
 class BudgetMonth(Base):
     """Read model: Budget month header (built by BudgetProjector)"""
     __tablename__ = "budget_months"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    budget_variant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # -> budget_variants
 
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     month: Mapped[int] = mapped_column(Integer, nullable=False)  # 1..12
@@ -546,6 +576,34 @@ class BudgetLine(Base):
     __table_args__ = (
         UniqueConstraint('budget_month_id', 'category_id', 'kind', name='uq_budget_line'),
         Index('ix_budget_line_month', 'budget_month_id'),
+    )
+
+
+class BudgetPlanTemplate(Base):
+    """Read model: Budget plan template — default amounts for a variant"""
+    __tablename__ = "budget_plan_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    budget_variant_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> budget_variants
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    category_id: Mapped[int] = mapped_column(Integer, nullable=False)  # -> categories
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # INCOME / EXPENSE
+    default_planned_amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=20, scale=2), nullable=False, server_default="0"
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('budget_variant_id', 'category_id', 'kind', name='uq_budget_plan_template'),
+        Index('ix_budget_plan_template_variant', 'budget_variant_id'),
     )
 
 
@@ -615,6 +673,85 @@ class WishModel(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
+    )
+
+
+# ============================================================================
+# Goals (Savings Goals) Read Models
+# ============================================================================
+
+
+class GoalInfo(Base):
+    """Read model: Savings goals (built by GoalsProjector)"""
+    __tablename__ = "goals"
+
+    goal_id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    target_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+
+
+class GoalWalletBalance(Base):
+    """Read model: Goal x Wallet balance (built by GoalWalletBalancesProjector)"""
+    __tablename__ = "goal_wallet_balances"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    wallet_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=20, scale=2), nullable=False, server_default="0"
+    )
+
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('goal_id', 'wallet_id', name='uq_goal_wallet'),
+        Index('ix_goal_wallet_account', 'account_id', 'goal_id'),
+    )
+
+
+class BudgetGoalPlan(Base):
+    """Read model: Budget savings plan per goal per month (built by BudgetProjector)"""
+    __tablename__ = "budget_goal_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    budget_month_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> budget_months
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> goals
+
+    plan_amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=20, scale=2), nullable=False, server_default="0"
+    )
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('budget_month_id', 'goal_id', name='uq_budget_goal_plan'),
+        Index('ix_budget_goal_plan_month', 'budget_month_id'),
     )
 
 

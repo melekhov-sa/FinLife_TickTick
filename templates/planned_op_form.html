@@ -69,16 +69,16 @@
       </select>
     </div>
 
-    <div class="form-row">
+    <div class="form-row" id="categoryRow">
       <label>Категория</label>
-      <select name="category_id" required>
+      <select name="category_id" id="categorySelect">
         <option value="">— Выбрать —</option>
         {% for c in fin_categories %}
-        <option value="{{ c.category_id }}"
+        <option value="{{ c.category_id }}" data-type="{{ c.category_type }}"
           {% if mode == "new" and form_category_id is defined and form_category_id == c.category_id %}selected
           {% elif mode == "edit" and tmpl.category_id == c.category_id %}selected
           {% endif %}>
-          {{ c.title }} ({{ c.category_type }})
+          {{ c.title }}
         </option>
         {% endfor %}
       </select>
@@ -123,6 +123,15 @@
              value="{{ form_start_date if form_start_date is defined and form_start_date else today.isoformat() }}"
              required>
     </div>
+
+    <div class="form-row" id="activeUntilRow" style="display: none;">
+      <label>Действует до</label>
+      <input name="active_until" type="date"
+             value="{{ form_active_until if form_active_until is defined and form_active_until else '' }}">
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Оставьте пустым для бессрочного действия
+      </small>
+    </div>
     {% endif %}
 
     {% if mode == "edit" %}
@@ -133,6 +142,15 @@
       <input type="text" disabled value="{% if rule.freq == 'MONTHLY' %}Ежемесячно{% elif rule.freq == 'WEEKLY' %}Еженедельно{% elif rule.freq == 'DAILY' %}Ежедневно{% elif rule.freq == 'YEARLY' %}Ежегодно{% else %}{{ rule.freq }}{% endif %}{% if rule.interval > 1 %} (каждые {{ rule.interval }}){% endif %}{% if rule.by_monthday %}, день {{ rule.by_monthday }}{% endif %}">
     </div>
     {% endif %}
+
+    <div class="form-row">
+      <label>Действует до</label>
+      <input name="active_until" type="date"
+             value="{{ tmpl.active_until.isoformat() if tmpl.active_until else '' }}">
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Оставьте пустым для бессрочного действия
+      </small>
+    </div>
 
     {% if has_confirmed %}
     <div style="background: #e8f0fe; border: 1px solid #c4d8f5; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
@@ -177,11 +195,14 @@ function toggleRecurrenceFields() {
   var freq = document.getElementById('freqSelect').value;
   var recFields = document.getElementById('recurrenceFields');
   var label = document.getElementById('startDateLabel');
+  var activeUntilRow = document.getElementById('activeUntilRow');
   if (freq === 'ONETIME') {
     if (recFields) recFields.style.display = 'none';
+    if (activeUntilRow) activeUntilRow.style.display = 'none';
     if (label) label.textContent = 'Дата операции';
   } else {
     if (recFields) recFields.style.display = 'flex';
+    if (activeUntilRow) activeUntilRow.style.display = '';
     if (label) label.textContent = 'Начать с';
   }
 }
@@ -190,13 +211,41 @@ function toggleDestinationWallet() {
   var kind = document.getElementById('kindSelect').value;
   var destRow = document.getElementById('destinationWalletRow');
   var walletLabel = document.getElementById('walletLabel');
+  var categoryRow = document.getElementById('categoryRow');
+  var categorySelect = document.getElementById('categorySelect');
 
   if (kind === 'TRANSFER') {
     if (destRow) destRow.style.display = '';
     if (walletLabel) walletLabel.textContent = 'Кошелёк источника';
+    if (categoryRow) categoryRow.style.display = 'none';
+    if (categorySelect) categorySelect.removeAttribute('required');
   } else {
     if (destRow) destRow.style.display = 'none';
     if (walletLabel) walletLabel.textContent = 'Кошелёк';
+    if (categoryRow) categoryRow.style.display = '';
+    if (categorySelect) categorySelect.setAttribute('required', '');
+  }
+
+  // Filter categories by kind
+  if (categorySelect) {
+    var filterType = kind === 'INCOME' ? 'INCOME' : 'EXPENSE';
+    var selectedVal = categorySelect.value;
+    var options = categorySelect.querySelectorAll('option[data-type]');
+    var hasSelected = false;
+    options.forEach(function(opt) {
+      if (kind === 'TRANSFER') {
+        opt.style.display = '';
+      } else if (opt.getAttribute('data-type') === filterType) {
+        opt.style.display = '';
+        if (opt.value === selectedVal) hasSelected = true;
+      } else {
+        opt.style.display = 'none';
+        if (opt.value === selectedVal) opt.selected = false;
+      }
+    });
+    if (!hasSelected && kind !== 'TRANSFER') {
+      categorySelect.value = '';
+    }
   }
 }
 

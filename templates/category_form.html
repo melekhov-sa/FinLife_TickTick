@@ -33,6 +33,23 @@
       </small>
     </div>
 
+    <div class="form-row">
+      <label>Родительская категория</label>
+      <select name="parent_id">
+        <option value="0">— Нет (корневая) —</option>
+        {% for pc in parent_candidates|default([]) %}
+        <option value="{{ pc.category_id }}"
+          {% if mode == 'edit' and category.parent_id == pc.category_id %}selected
+          {% elif mode == 'new' and form_parent_id is defined and form_parent_id == pc.category_id %}selected
+          {% endif %}
+        >{{ pc.title }}</option>
+        {% endfor %}
+      </select>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Выберите родительскую категорию для создания иерархии
+      </small>
+    </div>
+
     {% if mode == "edit" %}
     <div class="form-row">
       <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">

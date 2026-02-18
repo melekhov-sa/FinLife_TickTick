@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Новый вариант бюджета — FinLife{% endblock %}
+
+{% block content %}
+<h1>Новый вариант бюджета</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  <form method="POST" action="/budget/variants/new">
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="name" required placeholder="Например: Основной бюджет" autofocus>
+    </div>
+
+    <div class="form-row">
+      <label>Базовая гранулярность</label>
+      <select name="base_granularity">
+        {% for key, label in granularity_labels.items() %}
+        <option value="{{ key.upper() }}" {% if key == "month" %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <small style="color: #888; margin-top: 4px; display: block;">
+        Определяет минимальный период для планирования. Ручной план вводится на уровне месяца (при базе "Месяц").
+      </small>
+    </div>
+
+    {% if has_orphans %}
+    <div class="form-row">
+      <label>
+        <input type="checkbox" name="attach_orphans" checked>
+        Привязать существующие данные бюджета к этому варианту
+      </label>
+      <small style="color: #888; margin-top: 4px; display: block;">
+        У вас есть данные бюджета без привязки к варианту. Отметьте, чтобы включить их в этот вариант.
+      </small>
+    </div>
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="submit">Создать</button>
+      <a href="/budget" class="button secondary">Отмена</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

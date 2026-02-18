@@ -23,6 +23,7 @@ from app.infrastructure.db.models import (
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
 )
+from app.utils.money import format_money
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
 
@@ -44,6 +45,7 @@ class DashboardService:
             progress: {total, done, left}  — only today items (overdue excluded from total)
         """
         wc_map = self._load_wc_map(account_id)
+        wcur_map = self._load_wallet_currency_map(account_id)
 
         overdue: list[dict] = []
         active: list[dict] = []
@@ -56,7 +58,7 @@ class DashboardService:
         self._collect_task_occurrences(account_id, today, wc_map, overdue, active, done)
 
         # --- Planned operations ---
-        self._collect_operation_occurrences(account_id, today, wc_map, overdue, active, done)
+        self._collect_operation_occurrences(account_id, today, wc_map, wcur_map, overdue, active, done)
 
         # --- Events (today only, no overdue concept) ---
         self._collect_events_today(account_id, today, wc_map, active)
@@ -194,7 +196,7 @@ class DashboardService:
     # --- Planned operations ---
 
     def _collect_operation_occurrences(
-        self, account_id: int, today: date, wc_map: dict,
+        self, account_id: int, today: date, wc_map: dict, wcur_map: dict,
         overdue: list, active: list, done: list,
     ):
         tmpl_cache: dict[int, OperationTemplateModel] = {}
@@ -215,7 +217,7 @@ class DashboardService:
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
-                overdue.append(self._op_occ_item(occ, tmpl, wc_map, is_overdue=True))
+                overdue.append(self._op_occ_item(occ, tmpl, wc_map, wcur_map, is_overdue=True))
 
         # Active today
         rows = self.db.query(OperationOccurrence).filter(
@@ -226,7 +228,7 @@ class DashboardService:
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
-                active.append(self._op_occ_item(occ, tmpl, wc_map, is_overdue=False))
+                active.append(self._op_occ_item(occ, tmpl, wc_map, wcur_map, is_overdue=False))
 
         # Done today
         rows = self.db.query(OperationOccurrence).filter(
@@ -237,10 +239,12 @@ class DashboardService:
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl:
-                done.append(self._op_occ_item(occ, tmpl, wc_map, is_overdue=False, is_done=True))
+                done.append(self._op_occ_item(occ, tmpl, wc_map, wcur_map, is_overdue=False, is_done=True))
 
     def _op_occ_item(self, occ: OperationOccurrence, tmpl: OperationTemplateModel,
-                     wc_map: dict, is_overdue: bool = False, is_done: bool = False) -> dict:
+                     wc_map: dict, wcur_map: dict,
+                     is_overdue: bool = False, is_done: bool = False) -> dict:
+        currency = self._wallet_currency(wcur_map, tmpl.wallet_id)
         return {
             "kind": "planned_op",
             "id": occ.id,
@@ -255,7 +259,7 @@ class DashboardService:
                 "op_kind": tmpl.kind,
                 "op_kind_label": OP_KIND_LABEL.get(tmpl.kind, tmpl.kind),
                 "amount": tmpl.amount,
-                "amount_formatted": "{:,.0f}".format(tmpl.amount).replace(",", " "),
+                "amount_formatted": format_money(tmpl.amount, currency),
             },
         }
 
@@ -355,6 +359,7 @@ class DashboardService:
             OperationOccurrence.scheduled_date > today,
         ).order_by(OperationOccurrence.scheduled_date.asc()).limit(limit * 3).all()
 
+        wcur_map = self._load_wallet_currency_map(account_id)
         tmpl_cache: dict[int, OperationTemplateModel] = {}
         result: list[dict] = []
         for occ in rows:
@@ -366,6 +371,7 @@ class DashboardService:
             if not tmpl or tmpl.is_archived:
                 continue
 
+            currency = self._wallet_currency(wcur_map, tmpl.wallet_id)
             result.append({
                 "occurrence_id": occ.id,
                 "template_id": occ.template_id,
@@ -374,7 +380,7 @@ class DashboardService:
                 "kind": tmpl.kind,
                 "kind_label": OP_KIND_LABEL.get(tmpl.kind, tmpl.kind),
                 "amount": tmpl.amount,
-                "amount_formatted": "{:,.0f}".format(tmpl.amount).replace(",", " "),
+                "amount_formatted": format_money(tmpl.amount, currency),
                 "days_until": (occ.scheduled_date - today).days,
             })
             if len(result) >= limit:
@@ -449,7 +455,11 @@ class DashboardService:
     # ------------------------------------------------------------------
 
     def get_financial_summary(self, account_id: int, today: date) -> dict:
-        """Income, expense, difference for current month."""
+        """Income, expense, difference for current month, grouped by currency.
+
+        Returns:
+            {currency: {"income": Decimal, "expense": Decimal, "difference": Decimal}}
+        """
         from datetime import datetime as dt
 
         month_start = dt(today.year, today.month, 1)
@@ -458,25 +468,55 @@ class DashboardService:
         else:
             month_end = dt(today.year, today.month + 1, 1)
 
-        income = self.db.query(func.sum(TransactionFeed.amount)).filter(
+        base_filter = [
             TransactionFeed.account_id == account_id,
+            TransactionFeed.occurred_at >= month_start,
+            TransactionFeed.occurred_at < month_end,
+        ]
+
+        income_rows = self.db.query(
+            TransactionFeed.currency,
+            func.sum(TransactionFeed.amount),
+        ).filter(
+            *base_filter,
             TransactionFeed.operation_type == "INCOME",
-            TransactionFeed.occurred_at >= month_start,
-            TransactionFeed.occurred_at < month_end,
-        ).scalar() or Decimal("0")
+        ).group_by(TransactionFeed.currency).all()
 
-        expense = self.db.query(func.sum(TransactionFeed.amount)).filter(
-            TransactionFeed.account_id == account_id,
+        expense_rows = self.db.query(
+            TransactionFeed.currency,
+            func.sum(TransactionFeed.amount),
+        ).filter(
+            *base_filter,
             TransactionFeed.operation_type == "EXPENSE",
-            TransactionFeed.occurred_at >= month_start,
-            TransactionFeed.occurred_at < month_end,
-        ).scalar() or Decimal("0")
+        ).group_by(TransactionFeed.currency).all()
 
-        return {
-            "income": income,
-            "expense": expense,
-            "difference": income - expense,
-        }
+        # Collect all currencies
+        currencies: set[str] = set()
+        income_map: dict[str, Decimal] = {}
+        expense_map: dict[str, Decimal] = {}
+
+        for cur, total in income_rows:
+            currencies.add(cur)
+            income_map[cur] = total or Decimal("0")
+
+        for cur, total in expense_rows:
+            currencies.add(cur)
+            expense_map[cur] = total or Decimal("0")
+
+        if not currencies:
+            currencies.add("RUB")
+
+        result = {}
+        for cur in sorted(currencies):
+            inc = income_map.get(cur, Decimal("0"))
+            exp = expense_map.get(cur, Decimal("0"))
+            result[cur] = {
+                "income": inc,
+                "expense": exp,
+                "difference": inc - exp,
+            }
+
+        return result
 
     # ------------------------------------------------------------------
     # Helpers
@@ -492,6 +532,18 @@ class DashboardService:
         if cat_id and cat_id in wc_map:
             return wc_map[cat_id].emoji
         return None
+
+    def _load_wallet_currency_map(self, account_id: int) -> dict[int, str]:
+        """wallet_id -> currency"""
+        rows = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.currency
+        ).filter(WalletBalance.account_id == account_id).all()
+        return {wid: cur for wid, cur in rows}
+
+    def _wallet_currency(self, wcur_map: dict[int, str], wallet_id: int | None) -> str:
+        if wallet_id and wallet_id in wcur_map:
+            return wcur_map[wallet_id]
+        return "RUB"
 
     # ------------------------------------------------------------------
     # 5. Wishes this month

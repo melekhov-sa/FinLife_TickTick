@@ -33,6 +33,7 @@ class BudgetProjector(BaseProjector):
         self.db.add(BudgetMonth(
             id=budget_month_id,
             account_id=p["account_id"],
+            budget_variant_id=p.get("budget_variant_id"),
             year=p["year"],
             month=p["month"],
             is_locked=False,

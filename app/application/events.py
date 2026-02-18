@@ -145,6 +145,7 @@ class CreateEventUseCase:
         by_monthday: int | None = None,
         by_month: int | None = None,
         by_monthday_for_year: int | None = None,
+        until_date: str | None = None,
         # For one-time events: auto-create occurrence
         occ_start_date: str | None = None,
         occ_start_time: str | None = None,
@@ -166,6 +167,7 @@ class CreateEventUseCase:
                 freq=freq,
                 interval=interval,
                 start_date=start_date,
+                until_date=until_date,
                 by_weekday=by_weekday,
                 by_monthday=by_monthday,
                 by_month=by_month,

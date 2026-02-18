@@ -3,8 +3,62 @@
 
 {% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
 
+{% macro plan_cell(cell) -%}
+{%- if cell.plan_manual and cell.plan_planned -%}
+<span title="Ручной: {{ fmt(cell.plan_manual) }}, Плановые опер.: {{ fmt(cell.plan_planned) }}">{{ fmt(cell.plan) }}</span>
+{%- elif cell.plan_planned and not cell.plan_manual -%}
+<span title="Плановые опер.: {{ fmt(cell.plan_planned) }}" style="font-style: italic;">{{ fmt(cell.plan) }}</span>
+{%- else -%}
+{{ fmt(cell.plan) }}
+{%- endif -%}
+{%- endmacro %}
+
 {% block content %}
 <h1>Бюджет</h1>
+
+{% if stub %}
+<!-- ============ STUB: no variants ============ -->
+<div class="card" style="text-align: center; padding: 40px 20px;">
+  <p style="font-size: 18px; margin-bottom: 8px;">Нет вариантов бюджета</p>
+  <p style="color: #888; margin-bottom: 20px;">Создайте вариант бюджета, чтобы начать планирование.</p>
+  <a href="/budget/variants/new" class="button" style="font-size: 15px;">Создать вариант бюджета</a>
+</div>
+{% else %}
+
+<!-- Variant header: dropdown + info -->
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    {% set active_variants = [] %}
+    {% for v in all_variants %}{% if not v.is_archived %}{% if active_variants.append(v) %}{% endif %}{% endif %}{% endfor %}
+    {% if active_variants|length > 1 %}
+    <select id="variant-select" onchange="window.location.href='/budget?variant_id='+this.value"
+            style="font-size: 14px; padding: 4px 8px; border-radius: 6px; border: 1px solid #ccc;">
+      {% for v in active_variants %}
+      <option value="{{ v.id }}" {% if variant.id == v.id %}selected{% endif %}>{{ v.name }}</option>
+      {% endfor %}
+    </select>
+    {% else %}
+    <span style="font-size: 14px; font-weight: 600;">{{ variant.name }}</span>
+    {% endif %}
+    <a href="/budget/variants/new" style="font-size: 13px; color: #007AFF; text-decoration: none; white-space: nowrap;">+ Новый</a>
+    {% if active_variants|length > 1 %}
+    <form method="POST" action="/budget/variants/{{ variant.id }}/archive" style="display: inline;">
+      <button type="submit" onclick="return confirm('Архивировать вариант «{{ variant.name }}»?')"
+              style="font-size: 12px; background: none; border: none; color: #999; cursor: pointer; text-decoration: underline;">Архивировать</button>
+    </form>
+    {% endif %}
+  </div>
+  <span style="font-size: 12px; color: #888;">Базовый период: {{ granularity_label }}</span>
+</div>
+
+{% if has_orphans and variant %}
+<div class="card" style="padding: 10px 16px; margin-bottom: 12px; background: #fffbe6; border-left: 3px solid #f5a623;">
+  <span style="font-size: 13px;">Есть данные бюджета без привязки к варианту.</span>
+  <form method="POST" action="/budget/variants/{{ variant.id }}/attach" style="display: inline;">
+    <button type="submit" style="font-size: 13px; margin-left: 8px; background: none; border: none; color: #007AFF; cursor: pointer; text-decoration: underline;">Привязать к "{{ variant.name }}"</button>
+  </form>
+</div>
+{% endif %}
 
 <!-- Grain selector -->
 <div class="grain-selector">
@@ -16,6 +70,7 @@
 <!-- Controls: range_count + anchor -->
 <form class="matrix-controls" method="GET" action="/budget">
   <input type="hidden" name="grain" value="{{ grain }}">
+  <input type="hidden" name="variant_id" value="{{ variant.id }}">
   {% if category_ids_str %}
   <input type="hidden" name="category_ids" value="{{ category_ids_str }}">
   {% endif %}
@@ -48,6 +103,63 @@
   </span>
   <a href="{{ next_url }}">След &rarr;</a>
 </div>
+
+{% if grain == "month" and view.periods|length == 1 %}
+<!-- Plan actions: copy / template -->
+<div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center;">
+  {% if show_copy %}
+  <form method="POST" action="/budget/copy-plan" style="display: inline;">
+    <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+    <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+    <input type="hidden" name="variant_id" value="{{ variant.id }}">
+    <button type="submit" onclick="return confirm('Скопировать план из предыдущего периода? Текущие значения будут перезаписаны.')"
+            style="font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #ccc; background: #f8f8f8; cursor: pointer;">
+      Скопировать из пред. периода
+    </button>
+  </form>
+  {% endif %}
+  <form method="POST" action="/budget/template/save" style="display: inline;">
+    <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+    <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+    <input type="hidden" name="variant_id" value="{{ variant.id }}">
+    <button type="submit" onclick="return confirm('Сохранить текущий план как шаблон? Предыдущий шаблон будет заменён.')"
+            style="font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #ccc; background: #f8f8f8; cursor: pointer;">
+      Сохранить как шаблон
+    </button>
+  </form>
+  {% if show_template %}
+  <form method="POST" action="/budget/template/apply" style="display: inline;">
+    <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+    <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+    <input type="hidden" name="variant_id" value="{{ variant.id }}">
+    <button type="submit" onclick="return confirm('Применить шаблон к текущему периоду? Текущие значения будут перезаписаны.')"
+            style="font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #007AFF; background: #007AFF; color: white; cursor: pointer;">
+      Применить шаблон
+    </button>
+  </form>
+  {% endif %}
+  <details style="display: inline-block; vertical-align: middle;">
+    <summary style="font-size: 12px; cursor: pointer; color: #007AFF; list-style: none; text-decoration: underline;">
+      Копировать на будущие периоды
+    </summary>
+    <form method="POST" action="/budget/copy-forward"
+          style="margin-top: 6px; padding: 8px 12px; background: #f8f8f8; border-radius: 6px; border: 1px solid #ddd; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+      <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+      <input type="hidden" name="variant_id" value="{{ variant.id }}">
+      <label style="font-size: 12px;">Периодов:</label>
+      <input name="periods_ahead" type="number" min="1" max="24" value="3" style="width: 50px; font-size: 12px;">
+      <label style="font-size: 12px;">
+        <input type="checkbox" name="overwrite" style="vertical-align: middle;"> Перезаписать
+      </label>
+      <button type="submit" onclick="return confirm('Скопировать ручной план на будущие периоды?')"
+              style="font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer;">
+        Копировать
+      </button>
+    </form>
+  </details>
+</div>
+{% endif %}
 
 <!-- Category filter -->
 <details class="filter-panel">
@@ -99,10 +211,10 @@
         <tr>
           <td class="sticky-col">{{ row.title }}</td>
           {% for cell in row.cells %}
-          <td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell) }}</td>
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmt(cell.fact) }}</td>
           {% endfor %}
-          <td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>
+          <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
           <td class="text-right total-cell {% if row.total.deviation > 0 %}positive{% elif row.total.deviation < 0 %}negative{% endif %}">{{ fmt(row.total.fact) }}</td>
         </tr>
         {% endfor %}
@@ -133,6 +245,27 @@
       </tbody>
     </table>
   </div>
+  {% if grain == "month" and view.periods|length == 1 %}
+  <details style="margin-top: 12px;">
+    <summary style="cursor: pointer; font-size: 13px; color: #007AFF;">Изменить план доходов</summary>
+    <form method="POST" action="/budget/save" style="margin-top: 8px;">
+      <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+      <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+      <input type="hidden" name="variant_id" value="{{ variant.id }}">
+      {% for row in view.income_rows %}
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <input type="hidden" name="category_id" value="{{ row.category_id }}">
+        <input type="hidden" name="kind" value="{{ row.kind }}">
+        <label style="min-width: 150px; font-size: 13px;">{{ row.title }}</label>
+        <input name="plan_amount" type="number" step="1" min="0"
+               value="{{ row.cells[0].plan_manual|int if row.cells[0].plan_manual else '' }}"
+               placeholder="0" style="width: 100px; font-size: 13px;">
+      </div>
+      {% endfor %}
+      <button type="submit" style="margin-top: 4px; font-size: 13px;">Сохранить</button>
+    </form>
+  </details>
+  {% endif %}
 </div>
 
 <!-- ============ EXPENSE MATRIX ============ -->
@@ -163,10 +296,10 @@
         <tr>
           <td class="sticky-col">{{ row.title }}</td>
           {% for cell in row.cells %}
-          <td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell) }}</td>
           <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}">{{ fmt(cell.fact) }}</td>
           {% endfor %}
-          <td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>
+          <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
           <td class="text-right total-cell {% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}">{{ fmt(row.total.fact) }}</td>
         </tr>
         {% endfor %}
@@ -197,7 +330,102 @@
       </tbody>
     </table>
   </div>
+  {% if grain == "month" and view.periods|length == 1 %}
+  <details style="margin-top: 12px;">
+    <summary style="cursor: pointer; font-size: 13px; color: #007AFF;">Изменить план расходов</summary>
+    <form method="POST" action="/budget/save" style="margin-top: 8px;">
+      <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+      <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+      <input type="hidden" name="variant_id" value="{{ variant.id }}">
+      {% for row in view.expense_rows %}
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <input type="hidden" name="category_id" value="{{ row.category_id }}">
+        <input type="hidden" name="kind" value="{{ row.kind }}">
+        <label style="min-width: 150px; font-size: 13px;">{{ row.title }}</label>
+        <input name="plan_amount" type="number" step="1" min="0"
+               value="{{ row.cells[0].plan_manual|int if row.cells[0].plan_manual else '' }}"
+               placeholder="0" style="width: 100px; font-size: 13px;">
+      </div>
+      {% endfor %}
+      <button type="submit" style="margin-top: 4px; font-size: 13px;">Сохранить</button>
+    </form>
+  </details>
+  {% endif %}
 </div>
+
+<!-- ============ ОТЛОЖИТЬ (savings goals) ============ -->
+{% if view.goal_rows %}
+<div class="card">
+  <div class="budget-section-title">Отложить</div>
+  <div class="matrix-scroll-wrapper">
+    <table class="budget-table matrix-table">
+      <thead>
+        <tr>
+          <th class="sticky-col">Цель</th>
+          {% for p in view.periods %}
+          <th colspan="2" class="period-header">{{ p.short_label }}</th>
+          {% endfor %}
+          <th colspan="2" class="period-header total-header">Итого</th>
+        </tr>
+        <tr>
+          <th class="sticky-col"></th>
+          {% for p in view.periods %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+          {% endfor %}
+          <th class="sub-header period-border">План</th>
+          <th class="sub-header">Факт</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.goal_rows %}
+        <tr>
+          <td class="sticky-col">
+            <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
+          </td>
+          {% for cell in row.cells %}
+          <td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>
+          <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt(row.total.fact) }}</td>
+        </tr>
+        {% endfor %}
+        <!-- ИТОГО отложить -->
+        <tr class="budget-total-row">
+          <td class="sticky-col">ИТОГО отложить</td>
+          {% for cell in view.goal_totals.cells %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% endfor %}
+          <td class="text-right total-cell period-border">{{ fmt(view.goal_totals.total.plan) }}</td>
+          <td class="text-right total-cell">{{ fmt(view.goal_totals.total.fact) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% if grain == "month" and view.periods|length == 1 %}
+  <details style="margin-top: 12px;">
+    <summary style="cursor: pointer; font-size: 13px; color: #007AFF;">Изменить план</summary>
+    <form method="POST" action="/budget/goals/save" style="margin-top: 8px;">
+      <input type="hidden" name="year" value="{{ view.periods[0].year }}">
+      <input type="hidden" name="month" value="{{ view.periods[0].month }}">
+      <input type="hidden" name="variant_id" value="{{ variant.id }}">
+      {% for row in view.goal_rows %}
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <input type="hidden" name="goal_id" value="{{ row.goal_id }}">
+        <label style="min-width: 120px; font-size: 13px;">{{ row.title }}</label>
+        <input name="goal_plan_amount" type="number" step="1" min="0"
+               value="{{ row.cells[0].plan|int if row.cells[0].plan else '' }}"
+               placeholder="0" style="width: 100px; font-size: 13px;">
+      </div>
+      {% endfor %}
+      <button type="submit" style="margin-top: 4px; font-size: 13px;">Сохранить</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- ============ RESULT ============ -->
 <div class="card">
@@ -262,4 +490,5 @@ function applyFilter() {
   window.location.href = url.toString();
 }
 </script>
+{% endif %}
 {% endblock %}

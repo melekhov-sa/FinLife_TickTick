@@ -313,3 +313,53 @@ class TestCategoryFilter:
         cat_ids = [r["category_id"] for r in view["expense_rows"]]
         assert 3 in cat_ids
         assert 4 not in cat_ids
+
+
+class TestYearAggregation:
+    """Test that YEAR grain aggregates monthly plans when base=MONTH."""
+
+    def test_year_view_sums_monthly_plans(self, db_session, setup_categories):
+        """With base_granularity=MONTH and grain=year, monthly plans are summed."""
+        svc = BudgetMatrixService(db_session)
+
+        # Create plans for Jan, Feb, Mar 2026
+        for m in (1, 2, 3):
+            mid = EnsureBudgetMonthUseCase(db_session).execute(ACCOUNT, 2026, m)
+            SetBudgetLineUseCase(db_session).execute(ACCOUNT, mid, 1, "INCOME", "10000")
+            SetBudgetLineUseCase(db_session).execute(ACCOUNT, mid, 3, "EXPENSE", "5000")
+
+        view = svc.build(
+            account_id=ACCOUNT,
+            grain="year",
+            range_count=1,
+            anchor_year=2026,
+            base_granularity="MONTH",
+        )
+
+        # Income row for cat 1: plan should be 10000 * 3 = 30000
+        income_row = next(r for r in view["income_rows"] if r["category_id"] == 1)
+        assert income_row["cells"][0]["plan"] == Decimal("30000")
+        assert income_row["total"]["plan"] == Decimal("30000")
+
+        # Expense row for cat 3: plan should be 5000 * 3 = 15000
+        expense_row = next(r for r in view["expense_rows"] if r["category_id"] == 3)
+        assert expense_row["cells"][0]["plan"] == Decimal("15000")
+
+    def test_year_view_without_base_has_no_plan(self, db_session, setup_categories):
+        """With base_granularity=YEAR (no monthly plans), plan should be zero."""
+        svc = BudgetMatrixService(db_session)
+
+        mid = EnsureBudgetMonthUseCase(db_session).execute(ACCOUNT, 2026, 1)
+        SetBudgetLineUseCase(db_session).execute(ACCOUNT, mid, 1, "INCOME", "10000")
+
+        view = svc.build(
+            account_id=ACCOUNT,
+            grain="year",
+            range_count=1,
+            anchor_year=2026,
+            base_granularity="YEAR",
+        )
+
+        # With base=YEAR, monthly plans are NOT loaded (has_manual=False)
+        income_row = next(r for r in view["income_rows"] if r["category_id"] == 1)
+        assert income_row["cells"][0]["plan"] == Decimal("0")

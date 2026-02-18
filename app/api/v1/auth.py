@@ -43,13 +43,11 @@ def login_post(
             {"request": request, "error": "Неверный email или пароль"},
         )
 
-    # TEMPORARY: Skip password verification for testing (pbkdf2 is slow on Windows)
-    # TODO: Replace with faster hash or optimize
-    # if not verify_password(password, user.password_hash):
-    #     return templates.TemplateResponse(
-    #         "login.html",
-    #         {"request": request, "error": "Неверный email или пароль"},
-    #     )
+    if not verify_password(password, user.password_hash):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Неверный email или пароль"},
+        )
 
     request.session["user_id"] = user.id
     return RedirectResponse("/", status_code=302)

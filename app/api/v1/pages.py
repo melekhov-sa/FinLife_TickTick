@@ -20,6 +20,7 @@ from app.infrastructure.db.models import (
     CalendarEventModel, EventOccurrenceModel, EventFilterPresetModel,
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
     ContactModel, WishModel,
+    GoalInfo, GoalWalletBalance,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -57,9 +58,17 @@ from app.application.events import (
 )
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase, UpdateRecurrenceRuleUseCase
 from app.application.budget import (
-    EnsureBudgetMonthUseCase, SaveBudgetPlanUseCase, build_budget_view,
-    BudgetViewService, swap_budget_position,
-    BudgetMonth,
+    EnsureBudgetMonthUseCase,
+    CreateBudgetVariantUseCase, AttachBudgetDataUseCase, ArchiveBudgetVariantUseCase,
+    get_active_variant, get_all_variants, has_orphan_budget_data,
+    SaveBudgetPlanUseCase, SaveGoalPlansUseCase,
+    CopyBudgetPlanUseCase, CopyManualPlanForwardUseCase,
+    SaveAsTemplateUseCase, ApplyTemplateToPeriodUseCase,
+    has_template, has_previous_period_plan, get_previous_period,
+    build_budget_view, BudgetViewService, swap_budget_position,
+    BudgetMonth, BudgetVariant, BudgetValidationError,
+    get_allowed_granularities, clamp_granularity,
+    GRANULARITY_LABELS,
 )
 from app.application.budget_matrix import BudgetMatrixService, RANGE_LIMITS
 from app.application.plan import build_plan_view
@@ -83,6 +92,7 @@ from app.application.wishes import (
     WishValidationError,
 )
 from app.application.wishes_service import WishesService
+from app.application.goals import CreateGoalUseCase, UpdateGoalUseCase, GoalValidationError
 from app.utils.validation import validate_and_normalize_amount
 
 
@@ -91,6 +101,12 @@ router = APIRouter(tags=["pages"])
 # Templates
 templates_dir = Path(__file__).parent.parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
+
+# Register money formatting globals for all templates
+from app.utils.money import format_money, format_money2, currency_label
+templates.env.globals["format_money"] = format_money
+templates.env.globals["format_money2"] = format_money2
+templates.env.globals["currency_label"] = currency_label
 
 
 # === Dashboard ===
@@ -147,11 +163,9 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "upcoming_payments": upcoming_payments,
         # Habit heatmap
         "habit_heatmap": habit_heatmap,
-        # Financial
+        # Financial (grouped by currency)
         "current_month": current_month,
-        "income": fin["income"],
-        "expense": fin["expense"],
-        "difference": fin["difference"],
+        "fin_by_currency": fin,
         # Wishes
         "wishes_this_month": wishes_this_month,
     })
@@ -221,20 +235,28 @@ def wallets_page(request: Request, db: Session = Depends(get_db)):
             "delta_30d": balance_change
         })
 
-    # Calculate summary by wallet type
-    summary = {
-        "REGULAR": {"count": 0, "total": Decimal("0")},
-        "CREDIT": {"count": 0, "total": Decimal("0")},
-        "SAVINGS": {"count": 0, "total": Decimal("0")}
-    }
+    # Calculate summary by wallet type + currency
+    _summary_map: dict[tuple, dict] = {}
+    _type_order = {"REGULAR": 0, "CREDIT": 1, "SAVINGS": 2}
 
     for wd in wallet_data:
         w = wd["wallet"]
         if not w.is_archived:
-            wtype = w.wallet_type
-            if wtype in summary:
-                summary[wtype]["count"] += 1
-                summary[wtype]["total"] += w.balance
+            key = (w.wallet_type, w.currency)
+            if key not in _summary_map:
+                _summary_map[key] = {
+                    "wallet_type": w.wallet_type,
+                    "currency": w.currency,
+                    "count": 0,
+                    "total": Decimal("0"),
+                }
+            _summary_map[key]["count"] += 1
+            _summary_map[key]["total"] += w.balance
+
+    summary = sorted(
+        _summary_map.values(),
+        key=lambda s: (_type_order.get(s["wallet_type"], 9), s["currency"]),
+    )
 
     return templates.TemplateResponse("wallets.html", {
         "request": request,
@@ -406,6 +428,275 @@ def unarchive_wallet_form(
         })
 
 
+# === Goals ===
+
+
+@router.get("/goals", response_class=HTMLResponse)
+def goals_list_page(request: Request, db: Session = Depends(get_db)):
+    """Страница списка целей"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    # Load all active goals
+    all_goals = db.query(GoalInfo).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False
+    ).order_by(GoalInfo.is_system.asc(), GoalInfo.updated_at.desc()).all()
+
+    # Aggregate goal balances in ONE query (no N+1)
+    goal_ids = [g.goal_id for g in all_goals]
+    gwb_agg = {}
+    wallet_counts = {}
+    if goal_ids:
+        rows = (
+            db.query(
+                GoalWalletBalance.goal_id,
+                func.sum(GoalWalletBalance.amount).label("total"),
+                func.count(GoalWalletBalance.wallet_id).label("cnt"),
+            )
+            .filter(GoalWalletBalance.goal_id.in_(goal_ids))
+            .group_by(GoalWalletBalance.goal_id)
+            .all()
+        )
+        for row in rows:
+            gwb_agg[row.goal_id] = row.total or Decimal("0")
+            wallet_counts[row.goal_id] = row.cnt
+
+    goals = []
+    for g in all_goals:
+        fact = gwb_agg.get(g.goal_id, Decimal("0"))
+        percent = 0
+        if g.target_amount and g.target_amount > 0:
+            percent = int(fact * 100 / g.target_amount)
+        goals.append({
+            "goal": g,
+            "fact": fact,
+            "percent": percent,
+            "wallet_count": wallet_counts.get(g.goal_id, 0),
+        })
+
+    return templates.TemplateResponse("goals_list.html", {
+        "request": request,
+        "goals": goals,
+    })
+
+
+@router.get("/goals/new", response_class=HTMLResponse)
+def goal_new_page(request: Request):
+    """Форма создания цели"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("goal_form.html", {
+        "request": request,
+        "mode": "new",
+        "goal": None,
+    })
+
+
+@router.post("/goals/new", response_class=HTMLResponse)
+def goal_new_submit(
+    request: Request,
+    title: str = Form(...),
+    currency: str = Form("RUB"),
+    target_amount: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Создать цель"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+    ta = target_amount.strip() or None
+
+    try:
+        goal_id = CreateGoalUseCase(db).execute(
+            account_id=user_id,
+            title=title,
+            currency=currency,
+            target_amount=ta,
+            actor_user_id=user_id,
+        )
+        return RedirectResponse(f"/goals/{goal_id}", status_code=302)
+    except (GoalValidationError, Exception) as e:
+        db.rollback()
+        return templates.TemplateResponse("goal_form.html", {
+            "request": request,
+            "mode": "new",
+            "goal": None,
+            "error": str(e),
+        })
+
+
+@router.get("/goals/{goal_id}", response_class=HTMLResponse)
+def goal_detail_page(
+    request: Request,
+    goal_id: int,
+    db: Session = Depends(get_db),
+):
+    """Страница детали цели"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    goal = db.query(GoalInfo).filter(
+        GoalInfo.goal_id == goal_id,
+        GoalInfo.account_id == user_id,
+    ).first()
+
+    if not goal:
+        return RedirectResponse("/goals", status_code=302)
+
+    # Wallet breakdown
+    gwb_rows = (
+        db.query(GoalWalletBalance, WalletBalance.title.label("wallet_title"))
+        .join(WalletBalance, WalletBalance.wallet_id == GoalWalletBalance.wallet_id)
+        .filter(
+            GoalWalletBalance.goal_id == goal_id,
+            GoalWalletBalance.amount != 0,
+        )
+        .order_by(GoalWalletBalance.amount.desc())
+        .all()
+    )
+
+    wallet_breakdown = []
+    fact = Decimal("0")
+    for gwb, wallet_title in gwb_rows:
+        wallet_breakdown.append({
+            "wallet_title": wallet_title,
+            "amount": gwb.amount,
+        })
+        fact += gwb.amount
+
+    percent = 0
+    if goal.target_amount and goal.target_amount > 0:
+        percent = int(fact * 100 / goal.target_amount)
+
+    # Goal history — transfers involving this goal
+    history_txs = (
+        db.query(TransactionFeed)
+        .filter(
+            TransactionFeed.account_id == user_id,
+            or_(
+                TransactionFeed.from_goal_id == goal_id,
+                TransactionFeed.to_goal_id == goal_id,
+            ),
+        )
+        .order_by(TransactionFeed.occurred_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Build wallet title map for history
+    wallet_ids = set()
+    for tx in history_txs:
+        if tx.from_wallet_id:
+            wallet_ids.add(tx.from_wallet_id)
+        if tx.to_wallet_id:
+            wallet_ids.add(tx.to_wallet_id)
+
+    wallet_map = {}
+    if wallet_ids:
+        for w in db.query(WalletBalance).filter(WalletBalance.wallet_id.in_(wallet_ids)).all():
+            wallet_map[w.wallet_id] = w.title
+
+    history = []
+    for tx in history_txs:
+        # Determine direction
+        if tx.to_goal_id == goal_id and tx.from_goal_id == goal_id:
+            direction = "transfer"
+        elif tx.to_goal_id == goal_id:
+            direction = "in"
+        else:
+            direction = "out"
+
+        history.append({
+            "occurred_at": tx.occurred_at,
+            "direction": direction,
+            "description": tx.description,
+            "amount": tx.amount,
+            "from_wallet_title": wallet_map.get(tx.from_wallet_id, "?"),
+            "to_wallet_title": wallet_map.get(tx.to_wallet_id, "?"),
+        })
+
+    return templates.TemplateResponse("goal_detail.html", {
+        "request": request,
+        "goal": goal,
+        "fact": fact,
+        "percent": percent,
+        "wallet_breakdown": wallet_breakdown,
+        "history": history,
+    })
+
+
+@router.get("/goals/{goal_id}/edit", response_class=HTMLResponse)
+def goal_edit_page(
+    request: Request,
+    goal_id: int,
+    db: Session = Depends(get_db),
+):
+    """Форма редактирования цели"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    goal = db.query(GoalInfo).filter(
+        GoalInfo.goal_id == goal_id,
+        GoalInfo.account_id == user_id,
+    ).first()
+
+    if not goal or goal.is_system:
+        return RedirectResponse("/goals", status_code=302)
+
+    return templates.TemplateResponse("goal_form.html", {
+        "request": request,
+        "mode": "edit",
+        "goal": goal,
+    })
+
+
+@router.post("/goals/{goal_id}/edit", response_class=HTMLResponse)
+def goal_edit_submit(
+    request: Request,
+    goal_id: int,
+    title: str = Form(...),
+    target_amount: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Обновить цель"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+    ta = target_amount.strip() or None
+
+    try:
+        UpdateGoalUseCase(db).execute(
+            goal_id=goal_id,
+            account_id=user_id,
+            title=title,
+            target_amount=ta,
+            actor_user_id=user_id,
+        )
+        return RedirectResponse(f"/goals/{goal_id}", status_code=302)
+    except (GoalValidationError, Exception) as e:
+        db.rollback()
+        goal = db.query(GoalInfo).filter(
+            GoalInfo.goal_id == goal_id,
+            GoalInfo.account_id == user_id,
+        ).first()
+        return templates.TemplateResponse("goal_form.html", {
+            "request": request,
+            "mode": "edit",
+            "goal": goal,
+            "error": str(e),
+        })
+
+
 # === Transactions ===
 
 TX_PAGE_SIZE = 25
@@ -505,13 +796,22 @@ def transactions_page(
         TransactionFeed.occurred_at.desc()
     ).offset((page - 1) * TX_PAGE_SIZE).limit(TX_PAGE_SIZE).all()
 
-    # KPI по текущему фильтру
-    kpi_income = sum(
-        (t.amount for t in transactions if t.operation_type == "INCOME"), Decimal("0")
-    )
-    kpi_expense = sum(
-        (t.amount for t in transactions if t.operation_type == "EXPENSE"), Decimal("0")
-    )
+    # KPI по текущему фильтру — группировка по валюте
+    _kpi: dict[str, dict] = {}
+    for t in transactions:
+        cur = t.currency
+        if cur not in _kpi:
+            _kpi[cur] = {"income": Decimal("0"), "expense": Decimal("0")}
+        if t.operation_type == "INCOME":
+            _kpi[cur]["income"] += t.amount
+        elif t.operation_type == "EXPENSE":
+            _kpi[cur]["expense"] += t.amount
+    kpi_by_currency = {
+        cur: {**vals, "difference": vals["income"] - vals["expense"]}
+        for cur, vals in sorted(_kpi.items())
+    }
+    if not kpi_by_currency:
+        kpi_by_currency = {"RUB": {"income": Decimal("0"), "expense": Decimal("0"), "difference": Decimal("0")}}
 
     # Строка query-параметров для пагинации (без page)
     filter_parts = []
@@ -576,8 +876,7 @@ def transactions_page(
         "date_from": date_from,
         "date_to": date_to,
         "search": search,
-        "kpi_income": kpi_income,
-        "kpi_expense": kpi_expense,
+        "kpi_by_currency": kpi_by_currency,
         "sub_category_map": sub_category_map,
     })
 
@@ -770,10 +1069,20 @@ def category_new_page(
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
 
+    user_id = request.session["user_id"]
+    category_type = "EXPENSE" if kind == "expense" else "INCOME"
+    parent_candidates = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.category_type == category_type,
+        CategoryInfo.is_archived == False,
+        CategoryInfo.parent_id == None,
+    ).order_by(CategoryInfo.title).all()
+
     return templates.TemplateResponse("category_form.html", {
         "request": request,
         "mode": "new",
-        "kind": kind
+        "kind": kind,
+        "parent_candidates": parent_candidates,
     })
 
 
@@ -782,6 +1091,7 @@ def create_category_handler(
     request: Request,
     title: str = Form(...),
     kind: str = Form(...),
+    parent_id: int | None = Form(None),
     db: Session = Depends(get_db)
 ):
     """Обработка формы создания категории"""
@@ -799,23 +1109,36 @@ def create_category_handler(
         else:
             raise ValueError("Неверный тип категории")
 
+        # parent_id=0 means "no parent" from the form select
+        if parent_id is not None and parent_id <= 0:
+            parent_id = None
+
         use_case = CreateCategoryUseCase(db)
         use_case.execute(
             account_id=user_id,
             title=title,
             category_type=category_type,
-            parent_id=None,  # No hierarchy in UI
+            parent_id=parent_id,
             is_system=False,
             actor_user_id=user_id
         )
         return RedirectResponse(f"/categories?kind={kind}", status_code=302)
     except Exception as e:
         db.rollback()
+        category_type = "EXPENSE" if kind == "expense" else "INCOME"
+        parent_candidates = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.category_type == category_type,
+            CategoryInfo.is_archived == False,
+            CategoryInfo.parent_id == None,
+        ).order_by(CategoryInfo.title).all()
         return templates.TemplateResponse("category_form.html", {
             "request": request,
             "mode": "new",
             "kind": kind,
             "form_title": title,
+            "form_parent_id": parent_id,
+            "parent_candidates": parent_candidates,
             "error": str(e)
         })
 
@@ -845,11 +1168,20 @@ def category_edit_page(
 
     kind = "expense" if category.category_type == "EXPENSE" else "income"
 
+    parent_candidates = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.category_type == category.category_type,
+        CategoryInfo.is_archived == False,
+        CategoryInfo.parent_id == None,
+        CategoryInfo.category_id != category_id,
+    ).order_by(CategoryInfo.title).all()
+
     return templates.TemplateResponse("category_form.html", {
         "request": request,
         "mode": "edit",
         "category": category,
-        "kind": kind
+        "kind": kind,
+        "parent_candidates": parent_candidates,
     })
 
 
@@ -858,6 +1190,7 @@ def update_category_handler(
     request: Request,
     category_id: int,
     title: str = Form(...),
+    parent_id: int | None = Form(None),
     is_archived: bool = Form(False),
     db: Session = Depends(get_db)
 ):
@@ -879,13 +1212,17 @@ def update_category_handler(
 
         kind = "expense" if category.category_type == "EXPENSE" else "income"
 
-        # Update title
+        # parent_id=0 means "no parent" from the form select
+        if parent_id is not None and parent_id <= 0:
+            parent_id = None
+
+        # Update title and parent
         use_case = UpdateCategoryUseCase(db)
         use_case.execute(
             category_id=category_id,
             account_id=user_id,
             title=title,
-            parent_id=...,  # Don't change parent_id
+            parent_id=parent_id,
             actor_user_id=user_id
         )
 
@@ -917,11 +1254,19 @@ def update_category_handler(
         if not category:
             return RedirectResponse("/categories?error=" + str(e), status_code=302)
         kind = "expense" if category.category_type == "EXPENSE" else "income"
+        parent_candidates = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.category_type == category.category_type,
+            CategoryInfo.is_archived == False,
+            CategoryInfo.parent_id == None,
+            CategoryInfo.category_id != category_id,
+        ).order_by(CategoryInfo.title).all()
         return templates.TemplateResponse("category_form.html", {
             "request": request,
             "mode": "edit",
             "category": category,
             "kind": kind,
+            "parent_candidates": parent_candidates,
             "error": str(e)
         })
 
@@ -1284,6 +1629,7 @@ def create_task_form(
     weekday_SU: str = Form(""),
     category_id: int | None = Form(None),
     note: str = Form(""),
+    active_until: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -1327,6 +1673,7 @@ def create_task_form(
                 start_date=start_date.strip(), note=note.strip() or None, category_id=category_id,
                 by_weekday=by_weekday, by_monthday=by_monthday if freq == "MONTHLY" else None,
                 actor_user_id=user_id,
+                active_until=active_until.strip() or None,
             )
         else:
             # One-off task — ignore recurring fields
@@ -1453,6 +1800,7 @@ def create_habit_form(
     category_id: int | None = Form(None),
     level: int = Form(1),
     note: str = Form(""),
+    active_until: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -1471,6 +1819,7 @@ def create_habit_form(
             start_date=start_date, note=note.strip() or None, category_id=category_id,
             by_weekday=by_weekday, by_monthday=by_monthday if freq == "MONTHLY" else None,
             level=level, actor_user_id=user_id,
+            active_until=active_until.strip() or None,
         )
     except (HabitValidationError, Exception) as e:
         db.rollback()
@@ -1684,6 +2033,7 @@ def planned_op_create(
     start_date: str = Form(...),
     by_monthday: int | None = Form(None),
     note: str = Form(""),
+    active_until: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -1696,6 +2046,7 @@ def planned_op_create(
             wallet_id=wallet_id, destination_wallet_id=destination_wallet_id,
             category_id=category_id, note=note.strip() or None,
             by_monthday=by_monthday, actor_user_id=user_id,
+            active_until=active_until.strip() or None,
         )
         return RedirectResponse("/planned-ops", status_code=302)
     except (OperationTemplateValidationError, Exception) as e:
@@ -1718,7 +2069,7 @@ def planned_op_create(
             "form_wallet_id": wallet_id, "form_destination_wallet_id": destination_wallet_id,
             "form_category_id": category_id, "form_freq": freq, "form_interval": interval,
             "form_start_date": start_date, "form_by_monthday": by_monthday,
-            "form_note": note,
+            "form_note": note, "form_active_until": active_until,
         })
 
 
@@ -1776,6 +2127,7 @@ def planned_op_update(
     destination_wallet_id: int | None = Form(None),
     category_id: int | None = Form(None),
     note: str = Form(""),
+    active_until: str = Form(""),
     is_archived: str = Form(""),
     version_from_date: str = Form(""),
     db: Session = Depends(get_db),
@@ -1814,6 +2166,7 @@ def planned_op_update(
             destination_wallet_id=destination_wallet_id,
             category_id=category_id,
             note=note.strip() or None,
+            active_until=active_until.strip() or None,
         )
 
         # Reload after update
@@ -2651,9 +3004,11 @@ def event_create(
     recurrence_type: str = Form(""),
     rec_month: str = Form(""),
     rec_day: str = Form(""),
+    rec_day_yearly: str = Form(""),
     rec_weekdays: list[str] = Form([]),
     rec_interval: int = Form(1),
     rec_start_date: str = Form(""),
+    until_date: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -2662,7 +3017,9 @@ def event_create(
 
     # Convert string inputs to int for validation
     rec_month_int = int(rec_month) if rec_month else None
-    rec_day_int = int(rec_day) if rec_day else None
+    # For yearly events use rec_day_yearly, for monthly use rec_day
+    effective_rec_day = rec_day_yearly if recurrence_type == "yearly" else rec_day
+    rec_day_int = int(effective_rec_day) if effective_rec_day else None
 
     error = validate_event_form(
         event_type=event_type,
@@ -2685,8 +3042,10 @@ def event_create(
             "form_event_type": event_type, "form_start_date": start_date, "form_start_time": start_time,
             "form_end_date": end_date, "form_end_time": end_time,
             "form_recurrence_type": recurrence_type, "form_rec_month": rec_month,
-            "form_rec_day": rec_day, "form_rec_weekdays": rec_weekdays,
+            "form_rec_day": rec_day, "form_rec_day_yearly": rec_day_yearly,
+            "form_rec_weekdays": rec_weekdays,
             "form_rec_interval": rec_interval, "form_rec_start_date": rec_start_date,
+            "form_until_date": until_date,
         })
 
     try:
@@ -2731,6 +3090,7 @@ def event_create(
                 freq=freq, interval=interval, start_date=rule_start_date,
                 by_weekday=by_weekday, by_monthday=by_monthday,
                 by_month=by_month, by_monthday_for_year=by_monthday_for_year,
+                until_date=until_date.strip() or None,
                 actor_user_id=user_id,
             )
     except Exception:
@@ -2801,9 +3161,11 @@ def event_update(
     recurrence_type: str = Form(""),
     rec_month: str = Form(""),
     rec_day: str = Form(""),
+    rec_day_yearly: str = Form(""),
     rec_weekdays: list[str] = Form([]),
     rec_interval: int = Form(1),
     rec_start_date: str = Form(""),
+    until_date: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -2812,7 +3174,9 @@ def event_update(
 
     # Convert string inputs to int for validation
     rec_month_int = int(rec_month) if rec_month else None
-    rec_day_int = int(rec_day) if rec_day else None
+    # For yearly events use rec_day_yearly, for monthly use rec_day
+    effective_rec_day = rec_day_yearly if recurrence_type == "yearly" else rec_day
+    rec_day_int = int(effective_rec_day) if effective_rec_day else None
 
     ev = db.query(CalendarEventModel).filter(
         CalendarEventModel.event_id == event_id,
@@ -2873,6 +3237,7 @@ def event_update(
                         freq=freq, interval=interval, start_date=rule_start_date,
                         by_weekday=by_weekday, by_monthday=by_monthday,
                         by_month=by_month, by_monthday_for_year=by_monthday_for_year,
+                        until_date=until_date.strip() or None,
                         actor_user_id=user_id,
                     )
                     rebuild_event_occurrences(db, event_id, user_id, today)
@@ -2882,6 +3247,7 @@ def event_update(
                         start_date=rule_start_date, by_weekday=by_weekday,
                         by_monthday=by_monthday, by_month=by_month,
                         by_monthday_for_year=by_monthday_for_year,
+                        until_date=until_date.strip() or None,
                         actor_user_id=user_id,
                     )
                     UpdateEventUseCase(db).execute(
@@ -2990,6 +3356,7 @@ def _budget_matrix_nav_urls(
 @router.get("/budget", response_class=HTMLResponse)
 def budget_page(
     request: Request,
+    variant_id: int | None = None,
     grain: str = "month",
     year: int | None = None,
     month: int | None = None,
@@ -3004,8 +3371,38 @@ def budget_page(
 
     user_id = request.session["user_id"]
 
-    if grain not in ("day", "week", "month", "year"):
-        grain = "month"
+    # Variant selection: URL param → session → first non-archived → stub
+    resolved_variant_id = variant_id
+    if resolved_variant_id is None:
+        resolved_variant_id = request.session.get("active_variant_id")
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=resolved_variant_id)
+
+    # If requested variant is archived or belongs to another account, fallback
+    if variant is not None and variant.is_archived:
+        variant = get_active_variant(db, account_id=user_id, variant_id=None)
+
+    all_variants = get_all_variants(db, account_id=user_id)
+    has_orphans = has_orphan_budget_data(db, account_id=user_id)
+
+    if variant is None:
+        # No active variants — show stub screen
+        request.session.pop("active_variant_id", None)
+        return templates.TemplateResponse("budget.html", {
+            "request": request,
+            "stub": True,
+            "all_variants": all_variants,
+            "has_orphans": has_orphans,
+        })
+
+    # Persist active variant in session
+    request.session["active_variant_id"] = variant.id
+
+    base_gran = variant.base_granularity.lower()
+
+    # Enforce granularity restrictions: only base and coarser allowed
+    allowed = get_allowed_granularities(variant.base_granularity)
+    grain = clamp_granularity(grain, variant.base_granularity)
 
     max_rc = RANGE_LIMITS.get(grain, 12)
     range_count = max(1, min(range_count, max_rc))
@@ -3053,6 +3450,7 @@ def budget_page(
             EnsureBudgetMonthUseCase(db).execute(
                 account_id=user_id, year=p["year"], month=p["month"],
                 actor_user_id=user_id,
+                budget_variant_id=variant.id,
             )
 
     # Build matrix view
@@ -3064,26 +3462,46 @@ def budget_page(
         anchor_year=year,
         anchor_month=month,
         category_ids=selected_ids,
+        base_granularity=variant.base_granularity,
+        budget_variant_id=variant.id,
     )
 
+    variant_qs = f"&variant_id={variant.id}"
     cat_filter_qs = f"&category_ids={category_ids}" if category_ids.strip() else ""
     rc_qs = f"&range_count={range_count}"
 
     prev_url, next_url = _budget_matrix_nav_urls(
-        grain, range_count, year, month, date_param, cat_filter_qs,
+        grain, range_count, year, month, date_param, variant_qs + cat_filter_qs,
     )
 
-    # Grain selector URLs
+    # Grain selector — only allowed granularities
+    all_grain_urls = {
+        "day": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{variant_qs}{cat_filter_qs}",
+        "week": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{variant_qs}{cat_filter_qs}",
+        "month": f"/budget?grain=month&year={year}&month={month}{rc_qs}{variant_qs}{cat_filter_qs}",
+        "year": f"/budget?grain=year&year={year}{rc_qs}{variant_qs}{cat_filter_qs}",
+    }
     grains = [
-        {"value": "day", "label": "День", "url": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{cat_filter_qs}"},
-        {"value": "week", "label": "Неделя", "url": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{cat_filter_qs}"},
-        {"value": "month", "label": "Месяц", "url": f"/budget?grain=month&year={year}&month={month}{rc_qs}{cat_filter_qs}"},
-        {"value": "year", "label": "Год", "url": f"/budget?grain=year&year={year}{rc_qs}{cat_filter_qs}"},
+        {"value": g, "label": GRANULARITY_LABELS[g], "url": all_grain_urls[g]}
+        for g in allowed
     ]
+
+    # Template / copy helpers (only for single-month view)
+    show_copy = False
+    show_template = False
+    if grain == "month" and range_count == 1:
+        show_copy = has_previous_period_plan(
+            db, user_id, year, month, budget_variant_id=variant.id,
+        )
+        show_template = has_template(db, user_id, budget_variant_id=variant.id)
 
     return templates.TemplateResponse("budget.html", {
         "request": request,
+        "stub": False,
         "view": view,
+        "variant": variant,
+        "all_variants": all_variants,
+        "has_orphans": has_orphans,
         "grain": grain,
         "grains": grains,
         "range_count": range_count,
@@ -3095,7 +3513,106 @@ def budget_page(
         "anchor_year": year,
         "anchor_month": month,
         "anchor_date": date_param.isoformat() if date_param else "",
+        "base_granularity": base_gran,
+        "granularity_label": GRANULARITY_LABELS.get(base_gran, base_gran),
+        "show_copy": show_copy,
+        "show_template": show_template,
     })
+
+
+@router.get("/budget/variants/new", response_class=HTMLResponse)
+def budget_variant_form(request: Request, db: Session = Depends(get_db)):
+    """Form to create a new budget variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+    has_orphans = has_orphan_budget_data(db, account_id=user_id)
+
+    return templates.TemplateResponse("budget_variant_form.html", {
+        "request": request,
+        "has_orphans": has_orphans,
+        "error": None,
+        "granularity_labels": GRANULARITY_LABELS,
+    })
+
+
+@router.post("/budget/variants/new", response_class=HTMLResponse)
+def budget_variant_create(request: Request, db: Session = Depends(get_db)):
+    """Create a new budget variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    name = form_data.get("name", "").strip()
+    base_granularity = form_data.get("base_granularity", "MONTH").strip().upper()
+    attach_orphans = form_data.get("attach_orphans") == "on"
+
+    try:
+        variant = CreateBudgetVariantUseCase(db).execute(
+            account_id=user_id,
+            name=name,
+            base_granularity=base_granularity,
+        )
+        if attach_orphans:
+            AttachBudgetDataUseCase(db).execute(
+                account_id=user_id,
+                variant_id=variant.id,
+            )
+        db.commit()
+        return RedirectResponse(f"/budget?variant_id={variant.id}", status_code=302)
+    except BudgetValidationError as e:
+        has_orphans = has_orphan_budget_data(db, account_id=user_id)
+        return templates.TemplateResponse("budget_variant_form.html", {
+            "request": request,
+            "has_orphans": has_orphans,
+            "error": str(e),
+            "granularity_labels": GRANULARITY_LABELS,
+        })
+
+
+@router.post("/budget/variants/{vid}/attach", response_class=HTMLResponse)
+def budget_variant_attach(request: Request, vid: int, db: Session = Depends(get_db)):
+    """Attach orphan budget_months to a variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    variant = db.query(BudgetVariant).filter(
+        BudgetVariant.id == vid,
+        BudgetVariant.account_id == user_id,
+    ).first()
+    if variant:
+        AttachBudgetDataUseCase(db).execute(account_id=user_id, variant_id=variant.id)
+        db.commit()
+
+    return RedirectResponse(f"/budget?variant_id={vid}", status_code=302)
+
+
+@router.post("/budget/variants/{vid}/archive", response_class=HTMLResponse)
+def budget_variant_archive(request: Request, vid: int, db: Session = Depends(get_db)):
+    """Archive a budget variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        ArchiveBudgetVariantUseCase(db).execute(account_id=user_id, variant_id=vid)
+        db.commit()
+        # Clear session variant so it falls back to another active one
+        request.session.pop("active_variant_id", None)
+    except BudgetValidationError:
+        pass
+
+    return RedirectResponse("/budget", status_code=302)
 
 
 @router.post("/budget/save", response_class=HTMLResponse)
@@ -3117,6 +3634,11 @@ def save_budget_form(
 
     year = int(form_data.get("year", datetime.now().year))
     month = int(form_data.get("month", datetime.now().month))
+
+    # Resolve variant — from form or session
+    vid_str = form_data.get("variant_id", "")
+    vid = int(vid_str) if vid_str.strip() else request.session.get("active_variant_id")
+    variant = get_active_variant(db, account_id=user_id, variant_id=vid) if vid else None
 
     # Collect lines from form: category_id[], kind[], plan_amount[]
     category_ids = form_data.getlist("category_id")
@@ -3147,11 +3669,68 @@ def save_budget_form(
             month=month,
             lines=lines,
             actor_user_id=user_id,
+            budget_variant_id=variant.id if variant else None,
         )
     except Exception:
         db.rollback()
 
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}", status_code=302)
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+
+
+@router.post("/budget/goals/save", response_class=HTMLResponse)
+def save_goal_plans_form(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Save goal savings plan (batch form submission)."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    year = int(form_data.get("year", datetime.now().year))
+    month = int(form_data.get("month", datetime.now().month))
+
+    # Resolve variant — from form or session
+    vid_str = form_data.get("variant_id", "")
+    vid = int(vid_str) if vid_str.strip() else request.session.get("active_variant_id")
+    variant = get_active_variant(db, account_id=user_id, variant_id=vid) if vid else None
+
+    goal_ids = form_data.getlist("goal_id")
+    plan_amounts = form_data.getlist("goal_plan_amount")
+
+    goal_plans = []
+    for i in range(len(goal_ids)):
+        try:
+            goal_id = int(goal_ids[i])
+            amount = plan_amounts[i] if i < len(plan_amounts) else "0"
+            amount = amount.strip().replace(",", ".") if amount else "0"
+            if not amount:
+                amount = "0"
+            goal_plans.append({"goal_id": goal_id, "plan_amount": amount})
+        except (ValueError, IndexError):
+            continue
+
+    try:
+        SaveGoalPlansUseCase(db).execute(
+            account_id=user_id,
+            year=year,
+            month=month,
+            goal_plans=goal_plans,
+            actor_user_id=user_id,
+            budget_variant_id=variant.id if variant else None,
+        )
+    except Exception:
+        db.rollback()
+
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
 
 
 @router.post("/budget/order/move")
@@ -3162,6 +3741,7 @@ def move_budget_category_order(
     direction: str = Form(...),
     year: int = Form(...),
     month: int = Form(...),
+    variant_id: int | None = Form(None),
     db: Session = Depends(get_db),
 ):
     """Move a budget category up or down in the ordering."""
@@ -3170,17 +3750,155 @@ def move_budget_category_order(
 
     user_id = request.session["user_id"]
 
-    budget_month = db.query(BudgetMonth).filter(
+    # Resolve variant
+    vid = variant_id or request.session.get("active_variant_id")
+    variant = get_active_variant(db, account_id=user_id, variant_id=vid) if vid else None
+
+    q = db.query(BudgetMonth).filter(
         BudgetMonth.account_id == user_id,
         BudgetMonth.year == year,
         BudgetMonth.month == month,
-    ).first()
+    )
+    if variant:
+        q = q.filter(BudgetMonth.budget_variant_id == variant.id)
+    budget_month = q.first()
 
     if budget_month:
         swap_budget_position(db, budget_month.id, category_id, kind, direction)
         db.commit()
 
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}", status_code=302)
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+
+
+@router.post("/budget/copy-plan")
+def copy_budget_plan(
+    request: Request,
+    year: int = Form(...),
+    month: int = Form(...),
+    variant_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Copy plan from previous period to current period."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+    prev_year, prev_month = get_previous_period(year, month)
+
+    try:
+        CopyBudgetPlanUseCase(db).execute(
+            account_id=user_id,
+            from_year=prev_year,
+            from_month=prev_month,
+            to_year=year,
+            to_month=month,
+            budget_variant_id=variant_id,
+            actor_user_id=user_id,
+        )
+    except Exception:
+        db.rollback()
+
+    return RedirectResponse(
+        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        status_code=302,
+    )
+
+
+@router.post("/budget/template/save")
+def save_budget_template(
+    request: Request,
+    year: int = Form(...),
+    month: int = Form(...),
+    variant_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Save current period's plan as template for the variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        SaveAsTemplateUseCase(db).execute(
+            account_id=user_id,
+            year=year,
+            month=month,
+            budget_variant_id=variant_id,
+        )
+    except Exception:
+        db.rollback()
+
+    return RedirectResponse(
+        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        status_code=302,
+    )
+
+
+@router.post("/budget/template/apply")
+def apply_budget_template(
+    request: Request,
+    year: int = Form(...),
+    month: int = Form(...),
+    variant_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Apply variant's template to the current period."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        ApplyTemplateToPeriodUseCase(db).execute(
+            account_id=user_id,
+            year=year,
+            month=month,
+            budget_variant_id=variant_id,
+            actor_user_id=user_id,
+        )
+    except Exception:
+        db.rollback()
+
+    return RedirectResponse(
+        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        status_code=302,
+    )
+
+
+@router.post("/budget/copy-forward")
+def copy_manual_plan_forward(
+    request: Request,
+    year: int = Form(...),
+    month: int = Form(...),
+    variant_id: int = Form(...),
+    periods_ahead: int = Form(3),
+    overwrite: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Copy manual plan from current period to N future periods."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        CopyManualPlanForwardUseCase(db).execute(
+            account_id=user_id,
+            from_year=year,
+            from_month=month,
+            periods_ahead=max(1, min(periods_ahead, 24)),
+            budget_variant_id=variant_id,
+            overwrite=overwrite == "on",
+            actor_user_id=user_id,
+        )
+    except Exception:
+        db.rollback()
+
+    return RedirectResponse(
+        f"/budget?grain=month&year={year}&month={month}&variant_id={variant_id}",
+        status_code=302,
+    )
 
 
 # === Plan (aggregated timeline) ===
