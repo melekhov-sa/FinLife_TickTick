@@ -60,18 +60,38 @@
 
     <div class="form-row" id="fromWalletField" style="display:none;">
       <label>Из кошелька</label>
-      <select name="from_wallet_id" disabled>
+      <select name="from_wallet_id" id="fromWalletSelect" disabled onchange="updateGoalFields()">
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
         {% endfor %}
       </select>
     </div>
 
+    <div class="form-row" id="fromGoalField" style="display:none;">
+      <label>Из цели</label>
+      <select name="from_goal_id" id="fromGoalSelect">
+        <option value="">— Выберите цель —</option>
+        {% for g in goals %}
+        <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
     <div class="form-row" id="toWalletField" style="display:none;">
       <label>В кошелёк</label>
-      <select name="to_wallet_id" disabled>
+      <select name="to_wallet_id" id="toWalletSelect" disabled onchange="updateGoalFields()">
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row" id="toGoalField" style="display:none;">
+      <label>В цель</label>
+      <select name="to_goal_id" id="toGoalSelect">
+        <option value="">— Выберите цель —</option>
+        {% for g in goals %}
+        <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
         {% endfor %}
       </select>
     </div>
@@ -251,6 +271,33 @@
 
 <script>
 var subCategoryMap = {{ sub_category_map | tojson }};
+var walletTypeMap = {{ wallet_type_map | tojson }};
+
+function updateGoalFields() {
+  var fromSel = document.getElementById('fromWalletSelect');
+  var toSel = document.getElementById('toWalletSelect');
+  var fromGoalField = document.getElementById('fromGoalField');
+  var toGoalField = document.getElementById('toGoalField');
+  var fromGoalSel = document.getElementById('fromGoalSelect');
+  var toGoalSel = document.getElementById('toGoalSelect');
+
+  var fromType = walletTypeMap[fromSel.value] || '';
+  var toType = walletTypeMap[toSel.value] || '';
+
+  if (fromType === 'SAVINGS') {
+    fromGoalField.style.display = 'block';
+  } else {
+    fromGoalField.style.display = 'none';
+    fromGoalSel.value = '';
+  }
+
+  if (toType === 'SAVINGS') {
+    toGoalField.style.display = 'block';
+  } else {
+    toGoalField.style.display = 'none';
+    toGoalSel.value = '';
+  }
+}
 
 function filterCategories(opType) {
   var sel = document.getElementById('categorySelect');
@@ -277,6 +324,7 @@ function updateFormFields() {
     toWalletField.style.display = 'block';
     toWalletField.querySelector('select').disabled = false;
     categoryField.style.display = 'none';
+    updateGoalFields();
   } else {
     walletField.style.display = 'block';
     walletField.querySelector('select').disabled = false;
@@ -285,6 +333,10 @@ function updateFormFields() {
     toWalletField.style.display = 'none';
     toWalletField.querySelector('select').disabled = true;
     categoryField.style.display = 'block';
+    document.getElementById('fromGoalField').style.display = 'none';
+    document.getElementById('toGoalField').style.display = 'none';
+    document.getElementById('fromGoalSelect').value = '';
+    document.getElementById('toGoalSelect').value = '';
   }
   filterCategories(type);
   updateSubscriptionBlock();

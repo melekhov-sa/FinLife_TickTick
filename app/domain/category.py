@@ -15,6 +15,9 @@ CATEGORY_TYPE_EXPENSE = "EXPENSE"
 SYSTEM_INCOME_CATEGORIES = ["Прочие доходы"]
 SYSTEM_EXPENSE_CATEGORIES = ["Прочие расходы"]
 
+# Special system category for credit repayment (REGULAR → CREDIT transfers)
+SYSTEM_CREDIT_REPAYMENT_TITLE = "Погашение кредитов"
+
 
 class Category:
     """

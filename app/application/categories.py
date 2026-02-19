@@ -13,7 +13,8 @@ from app.domain.category import (
     CATEGORY_TYPE_INCOME,
     CATEGORY_TYPE_EXPENSE,
     SYSTEM_INCOME_CATEGORIES,
-    SYSTEM_EXPENSE_CATEGORIES
+    SYSTEM_EXPENSE_CATEGORIES,
+    SYSTEM_CREDIT_REPAYMENT_TITLE,
 )
 from app.readmodels.projectors.categories import CategoriesProjector
 
@@ -64,6 +65,21 @@ class EnsureSystemCategoriesUseCase:
                     is_system=True,
                     actor_user_id=actor_user_id
                 )
+
+        # Погашение кредитов (EXPENSE type for plan storage, fact from transfers)
+        existing = self.db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == account_id,
+            CategoryInfo.title == SYSTEM_CREDIT_REPAYMENT_TITLE,
+            CategoryInfo.is_system == True,
+        ).first()
+        if not existing:
+            self.create_use_case.execute(
+                account_id=account_id,
+                title=SYSTEM_CREDIT_REPAYMENT_TITLE,
+                category_type=CATEGORY_TYPE_EXPENSE,
+                is_system=True,
+                actor_user_id=actor_user_id,
+            )
 
 
 class CreateCategoryUseCase:

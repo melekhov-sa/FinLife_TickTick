@@ -17,6 +17,7 @@ from app.infrastructure.db.models import (
     GoalInfo, WalletBalance,
 )
 from app.application.budget import MONTH_NAMES, VALID_GRAINS, DAY_NAMES_SHORT, GRANULARITY_ORDER
+from app.domain.category import SYSTEM_CREDIT_REPAYMENT_TITLE
 
 SHORT_MONTH_NAMES = {
     1: "Янв", 2: "Фев", 3: "Мар", 4: "Апр", 5: "Май", 6: "Июн",
@@ -50,9 +51,9 @@ class BudgetMatrixService:
         anchor_date: date_type | None = None,
         anchor_year: int | None = None,
         anchor_month: int | None = None,
-        category_ids: List[int] | None = None,
         base_granularity: str = "MONTH",
         budget_variant_id: int | None = None,
+        hidden_category_ids: set | None = None,
     ) -> Dict[str, Any]:
         if grain not in VALID_GRAINS:
             grain = "month"
@@ -84,17 +85,21 @@ class BudgetMatrixService:
         active_income = [c for c in all_categories if c.category_type == "INCOME" and not c.is_archived and not c.is_system]
         active_expense = [c for c in all_categories if c.category_type == "EXPENSE" and not c.is_archived and not c.is_system]
 
-        if category_ids:
-            filter_set = set(category_ids)
-            active_income = [c for c in active_income if c.category_id in filter_set]
-            active_expense = [c for c in active_expense if c.category_id in filter_set]
+        if hidden_category_ids:
+            active_income = [c for c in active_income if c.category_id not in hidden_category_ids]
+            active_expense = [c for c in active_expense if c.category_id not in hidden_category_ids]
 
         system_other_income_id = None
         system_other_expense_id = None
+        system_credit_repayment_id = None
         for c in all_categories:
-            if c.is_system and c.category_type == "INCOME":
+            if not c.is_system:
+                continue
+            if c.category_type == "INCOME":
                 system_other_income_id = c.category_id
-            if c.is_system and c.category_type == "EXPENSE":
+            elif c.title == SYSTEM_CREDIT_REPAYMENT_TITLE:
+                system_credit_repayment_id = c.category_id
+            elif c.category_type == "EXPENSE":
                 system_other_expense_id = c.category_id
 
         # --- Data aggregation (single query per source) ---
@@ -107,9 +112,10 @@ class BudgetMatrixService:
         base_lower = base_granularity.lower()
         has_manual = base_lower == "month"  # manual plans exist at month level
         if has_manual:
-            manual_map = self._load_manual_plans_ranged(account_id, periods, budget_variant_id)
+            manual_map, note_map = self._load_manual_plans_ranged(account_id, periods, budget_variant_id)
         else:
             manual_map = {}
+            note_map = {}
 
         n = len(periods)
 
@@ -130,9 +136,10 @@ class BudgetMatrixService:
                 pp = planned_map.get(key_p, _ZERO)
                 plan = (pm + pp) if has_manual else pp
                 fact = fact_map.get(key_f, _ZERO)
+                note = note_map.get(key_p, "")
                 cells.append({
                     "plan": plan, "plan_manual": pm, "plan_planned": pp,
-                    "fact": fact, "deviation": fact - plan,
+                    "fact": fact, "deviation": fact - plan, "note": note,
                 })
                 total_plan += plan
                 total_plan_manual += pm
@@ -145,6 +152,8 @@ class BudgetMatrixService:
                 "title": cat.title,
                 "is_system": cat.is_system,
                 "kind": kind,
+                "parent_id": cat.parent_id,
+                "depth": 0 if (cat.parent_id is None or (hidden_category_ids and cat.parent_id in hidden_category_ids)) else 1,
                 "cells": cells,
                 "total": {
                     "plan": total_plan, "plan_manual": total_plan_manual,
@@ -153,8 +162,33 @@ class BudgetMatrixService:
                 },
             }
 
-        income_rows = [_build_row(c, "INCOME") for c in sorted(active_income, key=lambda c: (c.sort_order, c.title))]
-        expense_rows = [_build_row(c, "EXPENSE") for c in sorted(active_expense, key=lambda c: (c.sort_order, c.title))]
+        def _sort_hierarchically(categories):
+            parents = []
+            children_by_parent = {}
+            for cat in categories:
+                if cat.parent_id is None:
+                    parents.append(cat)
+                else:
+                    children_by_parent.setdefault(cat.parent_id, []).append(cat)
+            parents.sort(key=lambda c: (c.sort_order, c.title))
+            result = []
+            parent_ids = {p.category_id for p in parents}
+            for parent in parents:
+                result.append(parent)
+                if parent.category_id in children_by_parent:
+                    children = sorted(children_by_parent[parent.category_id], key=lambda c: (c.sort_order, c.title))
+                    result.extend(children)
+            for pid, children in children_by_parent.items():
+                if pid not in parent_ids:
+                    result.extend(sorted(children, key=lambda c: (c.sort_order, c.title)))
+            return result
+
+        income_rows = [_build_row(c, "INCOME") for c in _sort_hierarchically(active_income)]
+        expense_rows = [_build_row(c, "EXPENSE") for c in _sort_hierarchically(active_expense)]
+
+        # --- Parent aggregation: parent plan = sum(children), parent fact = own + children ---
+        self._apply_parent_aggregation(income_rows, n)
+        self._apply_parent_aggregation(expense_rows, n)
 
         # --- "Прочие" (uncategorized/system) ---
         other_income = self._build_other_row(
@@ -184,11 +218,11 @@ class BudgetMatrixService:
         # --- Goals (savings) section ---
         goal_rows, goal_totals = self._build_goal_section(account_id, periods, n, has_manual, base_granularity, budget_variant_id)
 
-        # All active categories for filter UI
-        all_active_cats = [
-            {"category_id": c.category_id, "title": c.title, "category_type": c.category_type}
-            for c in all_categories if not c.is_archived
-        ]
+        # --- Credit repayment section ---
+        credit_row, credit_totals = self._build_credit_section(
+            account_id, periods, n, has_manual, manual_map, note_map,
+            system_credit_repayment_id, hidden_category_ids,
+        )
 
         return {
             "grain": grain,
@@ -203,8 +237,8 @@ class BudgetMatrixService:
             "result": {"cells": result_cells, "total": result_total},
             "goal_rows": goal_rows,
             "goal_totals": goal_totals,
-            "all_categories": all_active_cats,
-            "selected_category_ids": category_ids or [],
+            "credit_row": credit_row,
+            "credit_totals": credit_totals,
         }
 
     # ------------------------------------------------------------------
@@ -400,14 +434,13 @@ class BudgetMatrixService:
     def _load_manual_plans_ranged(
         self, account_id: int, periods: List[Dict],
         budget_variant_id: int | None = None,
-    ) -> Dict[Tuple, Decimal]:
-        """Load monthly budget plans and map them into period buckets.
+    ) -> Tuple[Dict[Tuple, Decimal], Dict[Tuple, str]]:
+        """Load monthly budget plans and notes, mapped into period buckets.
 
-        Works for any view grain: for MONTH view it's 1:1,
-        for YEAR view it aggregates all months within the year range.
+        Returns (plan_map, note_map).
         """
         if not periods:
-            return {}
+            return {}, {}
 
         # Find the global month range spanned by all periods
         global_start = periods[0]["range_start"]
@@ -439,7 +472,7 @@ class BudgetMatrixService:
                     break
 
         if not bm_to_periods:
-            return {}
+            return {}, {}
 
         lines = (
             self.db.query(BudgetLine)
@@ -448,11 +481,14 @@ class BudgetMatrixService:
         )
 
         result: Dict[Tuple, Decimal] = {}
+        notes: Dict[Tuple, str] = {}
         for line in lines:
             for period_idx in bm_to_periods.get(line.budget_month_id, []):
                 key = (line.category_id, line.kind, period_idx)
                 result[key] = result.get(key, _ZERO) + line.plan_amount
-        return result
+                if line.note:
+                    notes[key] = line.note
+        return result, notes
 
     # ------------------------------------------------------------------
     # Row helpers
@@ -500,19 +536,60 @@ class BudgetMatrixService:
         }
 
     @staticmethod
+    def _apply_parent_aggregation(rows: List[Dict], n: int) -> None:
+        """Aggregate parent rows: plan = sum(children plans), fact = own + children facts.
+
+        Parent rows that have children in the list become group headers.
+        Children are marked is_child=True and excluded from section totals.
+        """
+        row_by_id = {r["category_id"]: r for r in rows}
+        children_by_parent: Dict[int, List[Dict]] = {}
+        for r in rows:
+            if r["parent_id"] is not None and r["parent_id"] in row_by_id:
+                children_by_parent.setdefault(r["parent_id"], []).append(r)
+
+        for parent_id, children in children_by_parent.items():
+            parent_row = row_by_id[parent_id]
+            parent_row["is_group"] = True
+            for child in children:
+                child["is_child"] = True
+
+            for i in range(n):
+                own_fact = parent_row["cells"][i]["fact"]
+                child_plan = sum(ch["cells"][i]["plan"] for ch in children)
+                child_pm = sum(ch["cells"][i]["plan_manual"] for ch in children)
+                child_pp = sum(ch["cells"][i]["plan_planned"] for ch in children)
+                child_fact = sum(ch["cells"][i]["fact"] for ch in children)
+                agg_fact = own_fact + child_fact
+                parent_row["cells"][i]["plan"] = child_plan
+                parent_row["cells"][i]["plan_manual"] = child_pm
+                parent_row["cells"][i]["plan_planned"] = child_pp
+                parent_row["cells"][i]["fact"] = agg_fact
+                parent_row["cells"][i]["deviation"] = agg_fact - child_plan
+
+            # Update totals
+            parent_row["total"]["plan"] = sum(parent_row["cells"][i]["plan"] for i in range(n))
+            parent_row["total"]["plan_manual"] = sum(parent_row["cells"][i]["plan_manual"] for i in range(n))
+            parent_row["total"]["plan_planned"] = sum(parent_row["cells"][i]["plan_planned"] for i in range(n))
+            parent_row["total"]["fact"] = sum(parent_row["cells"][i]["fact"] for i in range(n))
+            parent_row["total"]["deviation"] = parent_row["total"]["fact"] - parent_row["total"]["plan"]
+
+    @staticmethod
     def _sum_section(
         rows: List[Dict], other: Dict, n: int,
     ) -> Dict[str, Any]:
+        # Exclude is_child rows to avoid double counting with parent groups
+        summed = [r for r in rows if not r.get("is_child")]
         cells = []
         total_plan = _ZERO
         total_pm = _ZERO
         total_pp = _ZERO
         total_fact = _ZERO
         for i in range(n):
-            p = sum((r["cells"][i]["plan"] for r in rows), _ZERO) + other["cells"][i]["plan"]
-            pm = sum((r["cells"][i]["plan_manual"] for r in rows), _ZERO) + other["cells"][i]["plan_manual"]
-            pp = sum((r["cells"][i]["plan_planned"] for r in rows), _ZERO) + other["cells"][i]["plan_planned"]
-            f = sum((r["cells"][i]["fact"] for r in rows), _ZERO) + other["cells"][i]["fact"]
+            p = sum((r["cells"][i]["plan"] for r in summed), _ZERO) + other["cells"][i]["plan"]
+            pm = sum((r["cells"][i]["plan_manual"] for r in summed), _ZERO) + other["cells"][i]["plan_manual"]
+            pp = sum((r["cells"][i]["plan_planned"] for r in summed), _ZERO) + other["cells"][i]["plan_planned"]
+            f = sum((r["cells"][i]["fact"] for r in summed), _ZERO) + other["cells"][i]["fact"]
             cells.append({"plan": p, "plan_manual": pm, "plan_planned": pp, "fact": f, "deviation": f - p})
             total_plan += p
             total_pm += pm
@@ -707,4 +784,131 @@ class BudgetMatrixService:
             for period_idx in bm_to_periods.get(plan.budget_month_id, []):
                 key = (plan.goal_id, period_idx)
                 result[key] = result.get(key, _ZERO) + plan.plan_amount
+        return result
+
+    # ------------------------------------------------------------------
+    # Credit repayment section (REGULAR → CREDIT transfers)
+    # ------------------------------------------------------------------
+
+    def _build_credit_section(
+        self,
+        account_id: int,
+        periods: List[Dict],
+        n: int,
+        has_manual: bool,
+        manual_map: Dict[Tuple, Decimal],
+        note_map: Dict[Tuple, str],
+        system_credit_id: int | None,
+        hidden_category_ids: set | None,
+    ) -> Tuple[Dict | None, Dict]:
+        """Build credit repayment row and totals."""
+        empty_totals = {
+            "cells": [_zero_cell() for _ in range(n)],
+            "total": {"plan": _ZERO, "fact": _ZERO, "deviation": _ZERO},
+        }
+
+        if system_credit_id is None:
+            return None, empty_totals
+
+        if hidden_category_ids and system_credit_id in hidden_category_ids:
+            return None, empty_totals
+
+        # Aggregate fact: REGULAR → CREDIT transfers
+        credit_fact = self._aggregate_credit_fact_bucketed(account_id, periods)
+
+        cells = []
+        total_plan = _ZERO
+        total_plan_manual = _ZERO
+        total_fact = _ZERO
+        for i in range(n):
+            key = (system_credit_id, "EXPENSE", i)
+            pm = manual_map.get(key, _ZERO) if has_manual else _ZERO
+            fact = credit_fact.get(i, _ZERO)
+            plan = pm
+            note = note_map.get(key, "") if has_manual else ""
+            cells.append({
+                "plan": plan, "plan_manual": pm, "plan_planned": _ZERO,
+                "fact": fact, "deviation": fact - plan, "note": note,
+            })
+            total_plan += plan
+            total_plan_manual += pm
+            total_fact += fact
+
+        row = {
+            "category_id": system_credit_id,
+            "title": SYSTEM_CREDIT_REPAYMENT_TITLE,
+            "kind": "EXPENSE",
+            "is_system": True,
+            "cells": cells,
+            "total": {
+                "plan": total_plan, "plan_manual": total_plan_manual,
+                "plan_planned": _ZERO,
+                "fact": total_fact, "deviation": total_fact - total_plan,
+            },
+        }
+
+        totals = {
+            "cells": [dict(c) for c in cells],
+            "total": dict(row["total"]),
+        }
+
+        return row, totals
+
+    def _aggregate_credit_fact_bucketed(
+        self, account_id: int, periods: List[Dict],
+    ) -> Dict[int, Decimal]:
+        """Aggregate REGULAR→CREDIT transfers by period index.
+
+        Counts transfers FROM REGULAR wallets TO CREDIT wallets.
+        """
+        if not periods:
+            return {}
+
+        global_start = periods[0]["range_start"]
+        global_end = periods[-1]["range_end"]
+        dt_start = datetime(global_start.year, global_start.month, global_start.day)
+        dt_end = datetime(global_end.year, global_end.month, global_end.day)
+
+        whens = []
+        for p in periods:
+            s = p["range_start"]
+            e = p["range_end"]
+            cond = and_(
+                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
+                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+            )
+            whens.append((cond, literal(p["index"])))
+
+        period_col = case(*whens, else_=literal(-1)).label("period_idx")
+
+        from_wallet = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("from_w")
+        to_wallet = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("to_w")
+
+        rows = (
+            self.db.query(
+                period_col,
+                func.sum(TransactionFeed.amount).label("total"),
+            )
+            .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
+            .join(to_wallet, TransactionFeed.to_wallet_id == to_wallet.c.wallet_id)
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type == "TRANSFER",
+                from_wallet.c.wallet_type == "REGULAR",
+                to_wallet.c.wallet_type == "CREDIT",
+                TransactionFeed.occurred_at >= dt_start,
+                TransactionFeed.occurred_at < dt_end,
+            )
+            .group_by(period_col)
+            .all()
+        )
+
+        result: Dict[int, Decimal] = {}
+        for row in rows:
+            if row.period_idx >= 0:
+                result[row.period_idx] = row.total or _ZERO
         return result

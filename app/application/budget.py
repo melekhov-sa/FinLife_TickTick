@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import (
     BudgetMonth, BudgetLine, BudgetGoalPlan, BudgetVariant, BudgetPlanTemplate,
+    BudgetVariantHiddenCategory,
     CategoryInfo, TransactionFeed,
     OperationTemplateModel, OperationOccurrence, GoalInfo,
 )
@@ -1168,3 +1169,25 @@ def swap_budget_position(
     current.position, neighbor.position = neighbor.position, current.position
     db.flush()
     return True
+
+
+# ---------------------------------------------------------------------------
+# Category visibility per variant
+# ---------------------------------------------------------------------------
+
+def get_hidden_category_ids(db: Session, variant_id: int) -> set:
+    """Return set of category IDs hidden for this budget variant."""
+    rows = db.query(BudgetVariantHiddenCategory.category_id).filter(
+        BudgetVariantHiddenCategory.variant_id == variant_id,
+    ).all()
+    return {r.category_id for r in rows}
+
+
+def save_hidden_category_ids(db: Session, variant_id: int, hidden_ids: set) -> None:
+    """Replace all hidden category records for a variant."""
+    db.query(BudgetVariantHiddenCategory).filter(
+        BudgetVariantHiddenCategory.variant_id == variant_id,
+    ).delete()
+    for cat_id in hidden_ids:
+        db.add(BudgetVariantHiddenCategory(variant_id=variant_id, category_id=cat_id))
+    db.flush()

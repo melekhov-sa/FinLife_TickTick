@@ -607,6 +607,22 @@ class BudgetPlanTemplate(Base):
     )
 
 
+class BudgetVariantHiddenCategory(Base):
+    """Join table: categories hidden from a budget variant's matrix view.
+
+    Presence of a row means the category is HIDDEN.
+    Absence = visible (default: all visible).
+    """
+    __tablename__ = "budget_variant_hidden_categories"
+
+    variant_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+    category_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+
+    __table_args__ = (
+        Index('ix_bvhc_variant', 'variant_id'),
+    )
+
+
 # ============================================================================
 # Subscriptions Models
 # ============================================================================

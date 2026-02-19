@@ -21,6 +21,7 @@ from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
     ContactModel, WishModel,
     GoalInfo, GoalWalletBalance,
+    BudgetLine,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -69,6 +70,7 @@ from app.application.budget import (
     BudgetMonth, BudgetVariant, BudgetValidationError,
     get_allowed_granularities, clamp_granularity,
     GRANULARITY_LABELS,
+    get_hidden_category_ids, save_hidden_category_ids,
 )
 from app.application.budget_matrix import BudgetMatrixService, RANGE_LIMITS
 from app.application.plan import build_plan_view
@@ -858,6 +860,15 @@ def transactions_page(
             "members": [{"id": m.id, "name": m_contacts[m.contact_id].name if m.contact_id in m_contacts else "?"} for m in members],
         }
 
+    # Goals for transfer form (savings wallets require goal selection)
+    goals = db.query(GoalInfo).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False,
+    ).all()
+
+    # Wallet type map for JS (to know which wallets are SAVINGS)
+    wallet_type_map = {w.wallet_id: w.wallet_type for w in wallets}
+
     return templates.TemplateResponse("transactions.html", {
         "request": request,
         "wallets": wallets,
@@ -878,6 +889,8 @@ def transactions_page(
         "search": search,
         "kpi_by_currency": kpi_by_currency,
         "sub_category_map": sub_category_map,
+        "goals": goals,
+        "wallet_type_map": wallet_type_map,
     })
 
 
@@ -890,6 +903,8 @@ def create_transaction_form(
     wallet_id: int | None = Form(None),
     from_wallet_id: int | None = Form(None),
     to_wallet_id: int | None = Form(None),
+    from_goal_id: int | None = Form(None),
+    to_goal_id: int | None = Form(None),
     category_id: int | None = Form(None),
     occurred_at: str = Form(""),
     # Subscription coverage fields (optional)
@@ -996,6 +1011,8 @@ def create_transaction_form(
                 description=description,
                 occurred_at=tx_occurred_at,
                 actor_user_id=user_id,
+                from_goal_id=from_goal_id or None,
+                to_goal_id=to_goal_id or None,
             )
         else:
             raise ValueError("Invalid operation_type")
@@ -3093,8 +3110,22 @@ def event_create(
                 until_date=until_date.strip() or None,
                 actor_user_id=user_id,
             )
-    except Exception:
+    except Exception as e:
         db.rollback()
+        categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+        ).order_by(WorkCategory.title).all()
+        return templates.TemplateResponse("event_form.html", {
+            "request": request, "mode": "new", "categories": categories, "error": str(e),
+            "form_title": title, "form_category_id": category_id, "form_description": description,
+            "form_event_type": event_type, "form_start_date": start_date, "form_start_time": start_time,
+            "form_end_date": end_date, "form_end_time": end_time,
+            "form_recurrence_type": recurrence_type, "form_rec_month": rec_month,
+            "form_rec_day": rec_day, "form_rec_day_yearly": rec_day_yearly,
+            "form_rec_weekdays": rec_weekdays,
+            "form_rec_interval": rec_interval, "form_rec_start_date": rec_start_date,
+            "form_until_date": until_date,
+        })
     return RedirectResponse("/events", status_code=302)
 
 
@@ -3362,7 +3393,6 @@ def budget_page(
     month: int | None = None,
     date: str | None = None,
     range_count: int = 3,
-    category_ids: str = "",
     db: Session = Depends(get_db),
 ):
     """Budget page — multi-period matrix view."""
@@ -3429,16 +3459,6 @@ def budget_page(
     if date_param is None:
         date_param = date_cls.today()
 
-    # Parse category filter
-    selected_ids = None
-    if category_ids.strip():
-        try:
-            selected_ids = [int(x.strip()) for x in category_ids.split(",") if x.strip()]
-        except ValueError:
-            selected_ids = None
-    if selected_ids is not None and len(selected_ids) == 0:
-        selected_ids = None
-
     # Ensure system categories
     EnsureSystemCategoriesUseCase(db).execute(account_id=user_id, actor_user_id=user_id)
 
@@ -3453,6 +3473,9 @@ def budget_page(
                 budget_variant_id=variant.id,
             )
 
+    # Load hidden categories for this variant
+    hidden_category_ids = get_hidden_category_ids(db, variant.id)
+
     # Build matrix view
     view = BudgetMatrixService(db).build(
         account_id=user_id,
@@ -3461,39 +3484,63 @@ def budget_page(
         anchor_date=date_param if grain in ("day", "week") else None,
         anchor_year=year,
         anchor_month=month,
-        category_ids=selected_ids,
         base_granularity=variant.base_granularity,
         budget_variant_id=variant.id,
+        hidden_category_ids=hidden_category_ids,
     )
 
+    # All active non-system categories for the visibility filter UI
+    all_filter_cats = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+        CategoryInfo.is_system == False,
+    ).order_by(CategoryInfo.sort_order, CategoryInfo.title).all()
+
+    def _tree_sort(cats):
+        parents = [c for c in cats if c.parent_id is None]
+        children_map = {}
+        for c in cats:
+            if c.parent_id is not None:
+                children_map.setdefault(c.parent_id, []).append(c)
+        result = []
+        for p in parents:
+            result.append(p)
+            result.extend(children_map.get(p.category_id, []))
+        # orphans
+        parent_ids = {p.category_id for p in parents}
+        for pid, children in children_map.items():
+            if pid not in parent_ids:
+                result.extend(children)
+        return result
+
+    filter_income_cats = _tree_sort([c for c in all_filter_cats if c.category_type == "INCOME"])
+    filter_expense_cats = _tree_sort([c for c in all_filter_cats if c.category_type == "EXPENSE"])
+
+    # Credit repayment system category (for filter panel visibility toggle)
+    credit_repay_cat = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_system == True,
+        CategoryInfo.title == "Погашение кредитов",
+    ).first()
+
     variant_qs = f"&variant_id={variant.id}"
-    cat_filter_qs = f"&category_ids={category_ids}" if category_ids.strip() else ""
     rc_qs = f"&range_count={range_count}"
 
     prev_url, next_url = _budget_matrix_nav_urls(
-        grain, range_count, year, month, date_param, variant_qs + cat_filter_qs,
+        grain, range_count, year, month, date_param, variant_qs,
     )
 
     # Grain selector — only allowed granularities
     all_grain_urls = {
-        "day": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{variant_qs}{cat_filter_qs}",
-        "week": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{variant_qs}{cat_filter_qs}",
-        "month": f"/budget?grain=month&year={year}&month={month}{rc_qs}{variant_qs}{cat_filter_qs}",
-        "year": f"/budget?grain=year&year={year}{rc_qs}{variant_qs}{cat_filter_qs}",
+        "day": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{variant_qs}",
+        "week": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{variant_qs}",
+        "month": f"/budget?grain=month&year={year}&month={month}{rc_qs}{variant_qs}",
+        "year": f"/budget?grain=year&year={year}{rc_qs}{variant_qs}",
     }
     grains = [
         {"value": g, "label": GRANULARITY_LABELS[g], "url": all_grain_urls[g]}
         for g in allowed
     ]
-
-    # Template / copy helpers (only for single-month view)
-    show_copy = False
-    show_template = False
-    if grain == "month" and range_count == 1:
-        show_copy = has_previous_period_plan(
-            db, user_id, year, month, budget_variant_id=variant.id,
-        )
-        show_template = has_template(db, user_id, budget_variant_id=variant.id)
 
     return templates.TemplateResponse("budget.html", {
         "request": request,
@@ -3508,15 +3555,16 @@ def budget_page(
         "max_range": max_rc,
         "prev_url": prev_url,
         "next_url": next_url,
-        "selected_category_ids": selected_ids or [],
-        "category_ids_str": category_ids.strip(),
         "anchor_year": year,
         "anchor_month": month,
         "anchor_date": date_param.isoformat() if date_param else "",
         "base_granularity": base_gran,
         "granularity_label": GRANULARITY_LABELS.get(base_gran, base_gran),
-        "show_copy": show_copy,
-        "show_template": show_template,
+        "show_plan": grain == base_gran,
+        "filter_income_cats": filter_income_cats,
+        "filter_expense_cats": filter_expense_cats,
+        "credit_repay_cat": credit_repay_cat,
+        "hidden_category_ids": hidden_category_ids,
     })
 
 
@@ -3731,6 +3779,241 @@ def save_goal_plans_form(
 
     qs = f"&variant_id={variant.id}" if variant else ""
     return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+
+
+@router.post("/budget/visibility/save")
+def save_category_visibility(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Save category visibility settings for a budget variant."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    vid_str = form_data.get("variant_id", "")
+    vid = int(vid_str) if vid_str.strip() else request.session.get("active_variant_id")
+    variant = get_active_variant(db, account_id=user_id, variant_id=vid) if vid else None
+
+    if not variant:
+        return RedirectResponse("/budget", status_code=302)
+
+    # Collect visible category IDs from checkboxes
+    visible_ids = set()
+    for v in form_data.getlist("visible_category_id"):
+        try:
+            visible_ids.add(int(v))
+        except (ValueError, TypeError):
+            continue
+
+    # All active non-system category IDs → hidden = all - visible
+    all_active = db.query(CategoryInfo.category_id).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+        CategoryInfo.is_system == False,
+    ).all()
+    all_active_ids = {r.category_id for r in all_active}
+
+    # Also include credit repayment system category (hideable)
+    credit_cat = db.query(CategoryInfo.category_id).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_system == True,
+        CategoryInfo.title == "Погашение кредитов",
+    ).scalar()
+    if credit_cat:
+        all_active_ids.add(credit_cat)
+
+    hidden_ids = all_active_ids - visible_ids
+
+    save_hidden_category_ids(db, variant.id, hidden_ids)
+    db.commit()
+
+    # Redirect back preserving current view params
+    grain = form_data.get("grain", "month")
+    year_val = form_data.get("year", "")
+    month_val = form_data.get("month", "")
+    date_val = form_data.get("date", "")
+    range_count = form_data.get("range_count", "3")
+
+    qs = f"variant_id={variant.id}&grain={grain}&range_count={range_count}"
+    if grain in ("day", "week") and date_val:
+        qs += f"&date={date_val}"
+    else:
+        if year_val:
+            qs += f"&year={year_val}"
+        if month_val:
+            qs += f"&month={month_val}"
+
+    return RedirectResponse(f"/budget?{qs}", status_code=302)
+
+
+@router.get("/budget/plan/edit", response_class=HTMLResponse)
+def budget_plan_edit_page(
+    request: Request,
+    category_id: int,
+    year: int,
+    month: int,
+    variant_id: int,
+    kind: str = "EXPENSE",
+    db: Session = Depends(get_db),
+):
+    """Per-cell budget plan editing page."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+    if not variant:
+        return RedirectResponse("/budget", status_code=302)
+
+    category = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id,
+    ).first()
+    if not category:
+        return RedirectResponse("/budget", status_code=302)
+
+    # Ensure budget month exists
+    bm_id = EnsureBudgetMonthUseCase(db).execute(
+        account_id=user_id, year=year, month=month,
+        actor_user_id=user_id, budget_variant_id=variant.id,
+    )
+
+    # Load existing plan line
+    bl = db.query(BudgetLine).filter(
+        BudgetLine.budget_month_id == bm_id,
+        BudgetLine.category_id == category_id,
+        BudgetLine.kind == kind,
+    ).first()
+
+    plan_manual = bl.plan_amount if bl else Decimal("0")
+    note = bl.note if bl else ""
+
+    # Compute date range for the month
+    range_start = date(year, month, 1)
+    if month == 12:
+        range_end = date(year + 1, 1, 1)
+    else:
+        range_end = date(year, month + 1, 1)
+
+    # Sum of planned operations for this category + period
+    plan_planned = (
+        db.query(func.sum(OperationTemplateModel.amount))
+        .join(OperationOccurrence, OperationOccurrence.template_id == OperationTemplateModel.template_id)
+        .filter(
+            OperationTemplateModel.account_id == user_id,
+            OperationTemplateModel.category_id == category_id,
+            OperationTemplateModel.kind == kind,
+            OperationOccurrence.scheduled_date >= range_start,
+            OperationOccurrence.scheduled_date < range_end,
+            OperationOccurrence.status != "SKIPPED",
+        )
+        .scalar()
+    ) or Decimal("0")
+
+    # Individual planned operations for the table
+    planned_ops = (
+        db.query(
+            OperationTemplateModel.title,
+            OperationTemplateModel.amount,
+            OperationOccurrence.scheduled_date,
+            OperationOccurrence.status,
+            RecurrenceRuleModel.freq,
+            RecurrenceRuleModel.interval,
+        )
+        .join(OperationOccurrence, OperationOccurrence.template_id == OperationTemplateModel.template_id)
+        .outerjoin(RecurrenceRuleModel, RecurrenceRuleModel.rule_id == OperationTemplateModel.rule_id)
+        .filter(
+            OperationTemplateModel.account_id == user_id,
+            OperationTemplateModel.category_id == category_id,
+            OperationTemplateModel.kind == kind,
+            OperationOccurrence.scheduled_date >= range_start,
+            OperationOccurrence.scheduled_date < range_end,
+            OperationOccurrence.status != "SKIPPED",
+        )
+        .order_by(OperationOccurrence.scheduled_date)
+        .all()
+    )
+
+    period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
+    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+
+    return templates.TemplateResponse("budget_plan_edit.html", {
+        "request": request,
+        "category": category,
+        "kind": kind,
+        "year": year,
+        "month": month,
+        "variant_id": variant.id,
+        "variant": variant,
+        "period_label": period_label,
+        "plan_manual": plan_manual,
+        "plan_planned": plan_planned,
+        "plan_total": plan_manual + plan_planned,
+        "note": note or "",
+        "planned_ops": planned_ops,
+        "back_url": back_url,
+        "freq_labels": OP_FREQ_LABELS,
+        "month_label": MONTH_NAMES_RU.get(month, str(month)),
+    })
+
+
+@router.post("/budget/plan/save-single", response_class=HTMLResponse)
+def save_budget_plan_single(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Save a single budget plan line (amount + note)."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    category_id = int(form_data.get("category_id", 0))
+    kind = form_data.get("kind", "EXPENSE")
+    year = int(form_data.get("year", datetime.now().year))
+    month = int(form_data.get("month", datetime.now().month))
+    variant_id = int(form_data.get("variant_id", 0))
+    plan_amount = form_data.get("plan_amount", "0").strip().replace(",", ".") or "0"
+    note = form_data.get("note", "").strip() or None
+    copy_forward = form_data.get("copy_forward") == "1"
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+
+    lines = [{"category_id": category_id, "kind": kind, "plan_amount": plan_amount, "note": note}]
+
+    # Months to save: current month + optionally remaining months of the year
+    months_to_save = [month]
+    if copy_forward:
+        months_to_save.extend(range(month + 1, 13))
+
+    try:
+        for m in months_to_save:
+            SaveBudgetPlanUseCase(db).execute(
+                account_id=user_id,
+                year=year,
+                month=m,
+                lines=lines,
+                actor_user_id=user_id,
+                budget_variant_id=variant.id if variant else None,
+            )
+    except Exception:
+        db.rollback()
+
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
 
 
 @router.post("/budget/order/move")

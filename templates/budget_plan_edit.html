@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}План: {{ category.title }} — {{ period_label }}{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+
+{% block content %}
+<div style="margin-bottom: 12px;">
+  <a href="{{ back_url }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; Назад к бюджету</a>
+</div>
+
+<div class="card">
+  <div style="margin-bottom: 16px;">
+    <span style="font-size: 18px; font-weight: 700;">{{ category.title }}</span>
+    <span class="badge">{% if kind == "INCOME" %}Доход{% else %}Расход{% endif %}</span>
+    <div style="font-size: 14px; color: #888; margin-top: 4px;">{{ period_label }}</div>
+  </div>
+
+  <!-- Plan breakdown -->
+  <div style="background: #f8f9fa; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+      <span>Ручной план:</span>
+      <span style="font-weight: 600;">{{ fmt(plan_manual) }}</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+      <span>Плановые операции:</span>
+      <span style="font-weight: 600; font-style: italic;">{{ fmt(plan_planned) }}</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 4px; font-weight: 700;">
+      <span>Итого план:</span>
+      <span>{{ fmt(plan_total) }}</span>
+    </div>
+  </div>
+
+  <!-- Edit form -->
+  <form method="POST" action="/budget/plan/save-single">
+    <input type="hidden" name="category_id" value="{{ category.category_id }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="variant_id" value="{{ variant_id }}">
+
+    <div class="form-row">
+      <label>Ручной план</label>
+      <input name="plan_amount" type="number" step="1" min="0"
+             value="{{ plan_manual|int if plan_manual else '' }}"
+             placeholder="0" style="max-width: 200px;">
+    </div>
+
+    <div class="form-row">
+      <label>Комментарий</label>
+      <textarea name="note" rows="3" placeholder="Пояснение к сумме..."
+                style="max-width: 400px;">{{ note }}</textarea>
+    </div>
+
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+        <input type="checkbox" name="copy_forward" value="1" style="width: auto; max-width: none;">
+        Копировать на следующие периоды ({{ month_label }} — Декабрь {{ year }})
+      </label>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      <button type="submit">Сохранить</button>
+      <a href="{{ back_url }}" class="btn" style="background: #6c757d; text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+
+{% if planned_ops %}
+<div class="card">
+  <div style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">Плановые операции</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th class="text-right">Сумма</th>
+        <th>Дата</th>
+        <th>Частота</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for op in planned_ops %}
+      <tr>
+        <td>{{ op.title }}</td>
+        <td class="text-right">{{ fmt(op.amount) }}</td>
+        <td>{{ op.scheduled_date.strftime("%d.%m.%Y") }}</td>
+        <td>{{ freq_labels.get(op.freq, op.freq or "") }}{% if op.interval and op.interval > 1 %} (x{{ op.interval }}){% endif %}</td>
+        <td>
+          {% if op.status == "DONE" %}
+          <span style="color: #28a745;">Подтв.</span>
+          {% elif op.status == "ACTIVE" %}
+          <span style="color: #666;">Ожидание</span>
+          {% else %}
+          {{ op.status }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}
