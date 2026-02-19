@@ -1,0 +1,155 @@
+/*
+ * FinLife — Design System Themes
+ * ================================
+ * 3 themes × 2 modes = 6 theme definitions.
+ * All structural colors are defined as CSS custom properties on :root.
+ *
+ * Token reference:
+ *   --bg-page           page / body background
+ *   --bg-card           card / panel background
+ *   --bg-sidebar        sidebar background (always dark)
+ *   --bg-input          form input / select background
+ *   --bg-table-header   table <th> background
+ *   --text-primary      main body text
+ *   --text-secondary    muted / secondary text
+ *   --border-color      border / divider
+ *   --shadow-card       card box-shadow value
+ *   --accent            primary accent (buttons, links, active)
+ *   --accent-hover      accent on hover
+ *   --accent-fg         text color on accent background
+ *   --income            positive / income amounts
+ *   --expense           negative / expense amounts
+ *   --transfer          transfer operation color
+ *   --sidebar-active-border  active sidebar item left border
+ *
+ * Adding a new theme:
+ *   1. Add two blocks below: {name}-light and {name}-dark.
+ *   2. Add the theme key to VALID_THEMES in app/api/v1/pages.py.
+ *   3. Add a preview card to templates/profile.html.
+ */
+
+/* ================================================================
+   1. GRAPHITE & EMERALD  — строгий fintech
+   ================================================================ */
+
+:root[data-theme="graphite-emerald-light"] {
+  --bg-page:             #F6F8FB;
+  --bg-card:             #FFFFFF;
+  --bg-sidebar:          #1F2937;
+  --bg-input:            #FFFFFF;
+  --bg-table-header:     #F9FAFB;
+  --text-primary:        #111827;
+  --text-secondary:      #6B7280;
+  --border-color:        #E5E7EB;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.10);
+  --accent:              #1E7F4F;
+  --accent-hover:        #166A40;
+  --accent-fg:           #FFFFFF;
+  --income:              #15803D;
+  --expense:             #B91C1C;
+  --transfer:            #1D4ED8;
+  --sidebar-active-border: rgba(16, 185, 129, 0.85);
+}
+
+:root[data-theme="graphite-emerald-dark"] {
+  --bg-page:             #111827;
+  --bg-card:             #1F2937;
+  --bg-sidebar:          #0F172A;
+  --bg-input:            #111827;
+  --bg-table-header:     #1F2937;
+  --text-primary:        #F3F4F6;
+  --text-secondary:      #9CA3AF;
+  --border-color:        #374151;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.45);
+  --accent:              #10B981;
+  --accent-hover:        #059669;
+  --accent-fg:           #FFFFFF;
+  --income:              #34D399;
+  --expense:             #F87171;
+  --transfer:            #60A5FA;
+  --sidebar-active-border: rgba(16, 185, 129, 0.85);
+}
+
+/* ================================================================
+   2. DEEP BLUE  — финансовый синий
+   ================================================================ */
+
+:root[data-theme="deep-blue-light"] {
+  --bg-page:             #EEF2FF;
+  --bg-card:             #FFFFFF;
+  --bg-sidebar:          #1E3A5F;
+  --bg-input:            #FFFFFF;
+  --bg-table-header:     #EEF2FF;
+  --text-primary:        #0F172A;
+  --text-secondary:      #64748B;
+  --border-color:        #C7D2FE;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.10);
+  --accent:              #1D4ED8;
+  --accent-hover:        #1E40AF;
+  --accent-fg:           #FFFFFF;
+  --income:              #047857;
+  --expense:             #B91C1C;
+  --transfer:            #7C3AED;
+  --sidebar-active-border: rgba(96, 165, 250, 0.85);
+}
+
+:root[data-theme="deep-blue-dark"] {
+  --bg-page:             #0C1A2E;
+  --bg-card:             #112240;
+  --bg-sidebar:          #061226;
+  --bg-input:            #0C1A2E;
+  --bg-table-header:     #0F1F36;
+  --text-primary:        #E2E8F0;
+  --text-secondary:      #94A3B8;
+  --border-color:        #1E3A5F;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.55);
+  --accent:              #3B82F6;
+  --accent-hover:        #2563EB;
+  --accent-fg:           #FFFFFF;
+  --income:              #34D399;
+  --expense:             #F87171;
+  --transfer:            #A78BFA;
+  --sidebar-active-border: rgba(96, 165, 250, 0.85);
+}
+
+/* ================================================================
+   3. ARCHITECT NEUTRAL  — тёплый минимализм
+   ================================================================ */
+
+:root[data-theme="architect-neutral-light"] {
+  --bg-page:             #FAF9F7;
+  --bg-card:             #FFFFFF;
+  --bg-sidebar:          #292524;
+  --bg-input:            #FFFFFF;
+  --bg-table-header:     #F5F4F2;
+  --text-primary:        #1C1917;
+  --text-secondary:      #78716C;
+  --border-color:        #E7E5E4;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.08);
+  --accent:              #92400E;
+  --accent-hover:        #78350F;
+  --accent-fg:           #FFFFFF;
+  --income:              #166534;
+  --expense:             #991B1B;
+  --transfer:            #1D4ED8;
+  --sidebar-active-border: rgba(217, 119, 6, 0.85);
+}
+
+:root[data-theme="architect-neutral-dark"] {
+  --bg-page:             #1C1917;
+  --bg-card:             #292524;
+  --bg-sidebar:          #0C0A09;
+  --bg-input:            #1C1917;
+  --bg-table-header:     #292524;
+  --text-primary:        #FAFAF9;
+  --text-secondary:      #A8A29E;
+  --border-color:        #44403C;
+  --shadow-card:         0 1px 3px rgba(0, 0, 0, 0.55);
+  --accent:              #D97706;
+  --accent-hover:        #B45309;
+  --accent-fg:           #FFFFFF;
+  --income:              #4ADE80;
+  --expense:             #FCA5A5;
+  --transfer:            #93C5FD;
+  --sidebar-active-border: rgba(217, 119, 6, 0.85);
+}

@@ -1,0 +1,130 @@
+{#
+  Sidebar partial — templates/partials/sidebar.html
+  Included by base.html via {% include "partials/sidebar.html" %}
+
+  current_page(request) is a Jinja2 global function (registered in pages.py)
+  that maps request.url.path → a page-key string.
+  All active-state logic is plain string comparison: no computations in Jinja.
+#}
+{% set cp = current_page(request) %}
+{% set in_finance = cp in ['wallets', 'transactions', 'categories', 'goals', 'subscriptions'] %}
+{% set in_tasks   = cp in ['tasks', 'habits', 'events', 'wishes', 'task-categories'] %}
+{% set in_system  = cp in ['contacts', 'profile'] %}
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">FinLife</div>
+
+  <nav class="sidebar-nav">
+
+    {# ── Primary screens (always visible, no collapse) ── #}
+    <div class="nav-primary-group">
+      <a href="/" class="nav-link nav-primary{% if cp == 'dashboard' %} active{% endif %}">
+        <span class="nav-icon">◉</span>Dashboard
+      </a>
+      <a href="/plan" class="nav-link nav-primary{% if cp == 'plan' %} active{% endif %}">
+        <span class="nav-icon">☰</span>План
+      </a>
+      <a href="/budget" class="nav-link nav-primary{% if cp == 'budget' %} active{% endif %}">
+        <span class="nav-icon">◈</span>Бюджет
+      </a>
+    </div>
+
+    <div class="nav-sep"></div>
+
+    {# ── ФИНАНСЫ (open by default) ── #}
+    <details class="nav-group" id="grp-finance"
+      {% if in_finance %}data-force-open="true"{% endif %}
+      open>
+      <summary class="nav-group-hdr">
+        <span class="nav-group-label">Финансы</span>
+        <span class="nav-chevron">&#9658;</span>
+      </summary>
+      <div class="nav-group-body">
+        <a href="/wallets"
+           class="nav-link{% if cp == 'wallets' %} active{% endif %}">
+          <span class="nav-icon">○</span>Деньги
+        </a>
+        <a href="/transactions"
+           class="nav-link{% if cp == 'transactions' %} active{% endif %}">
+          <span class="nav-icon">↕</span>Операции
+        </a>
+        <a href="/categories"
+           class="nav-link{% if cp == 'categories' %} active{% endif %}">
+          <span class="nav-icon">≡</span>Фин. категории
+        </a>
+        <a href="/goals"
+           class="nav-link{% if cp == 'goals' %} active{% endif %}">
+          <span class="nav-icon">◎</span>Цели
+        </a>
+        <a href="/subscriptions"
+           class="nav-link{% if cp == 'subscriptions' %} active{% endif %}">
+          <span class="nav-icon">↺</span>Подписки
+        </a>
+      </div>
+    </details>
+
+    <div class="nav-sep"></div>
+
+    {# ── ДЕЛА (open by default) ── #}
+    <details class="nav-group" id="grp-tasks"
+      {% if in_tasks %}data-force-open="true"{% endif %}
+      open>
+      <summary class="nav-group-hdr">
+        <span class="nav-group-label">Дела</span>
+        <span class="nav-chevron">&#9658;</span>
+      </summary>
+      <div class="nav-group-body">
+        <a href="/tasks"
+           class="nav-link{% if cp == 'tasks' %} active{% endif %}">
+          <span class="nav-icon">☐</span>Задачи
+        </a>
+        <a href="/habits"
+           class="nav-link{% if cp == 'habits' %} active{% endif %}">
+          <span class="nav-icon">↻</span>Привычки
+        </a>
+        <a href="/events"
+           class="nav-link{% if cp == 'events' %} active{% endif %}">
+          <span class="nav-icon">○</span>События
+        </a>
+        <a href="/wishes"
+           class="nav-link{% if cp == 'wishes' %} active{% endif %}">
+          <span class="nav-icon">☆</span>Хотелки
+        </a>
+        <a href="/task-categories"
+           class="nav-link{% if cp == 'task-categories' %} active{% endif %}">
+          <span class="nav-icon">≡</span>Категории дел
+        </a>
+      </div>
+    </details>
+
+    <div class="nav-sep"></div>
+
+    {# ── СИСТЕМА (collapsed by default) ── #}
+    <details class="nav-group" id="grp-system"
+      {% if in_system %}data-force-open="true" open{% endif %}>
+      <summary class="nav-group-hdr">
+        <span class="nav-group-label">Система</span>
+        <span class="nav-chevron">&#9658;</span>
+      </summary>
+      <div class="nav-group-body">
+        <a href="/contacts"
+           class="nav-link{% if cp == 'contacts' %} active{% endif %}">
+          <span class="nav-icon">◉</span>Контакты
+        </a>
+        <a href="/profile"
+           class="nav-link{% if cp == 'profile' %} active{% endif %}">
+          <span class="nav-icon">◌</span>Профиль
+        </a>
+      </div>
+    </details>
+
+  </nav>
+
+  <div class="sidebar-bottom">
+    <button id="themeToggle" onclick="toggleTheme()" class="sidebar-theme-btn">
+      <span id="themeIcon" style="font-size:15px;">🌙</span>
+      <span id="themeLabel">Тёмная тема</span>
+    </button>
+    <a href="/logout" class="sidebar-logout">&#8594; Выход</a>
+  </div>
+</aside>

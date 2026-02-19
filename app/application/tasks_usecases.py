@@ -6,6 +6,8 @@ from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import TaskModel, EventLog
 from app.domain.task import Task
 from app.readmodels.projectors.tasks import TasksProjector
+from app.readmodels.projectors.xp import XpProjector
+from app.readmodels.projectors.activity import ActivityProjector
 
 
 class TaskValidationError(ValueError):
@@ -74,6 +76,8 @@ class CompleteTaskUseCase:
         )
         self.db.commit()
         TasksProjector(self.db).run(account_id, event_types=["task_completed"])
+        XpProjector(self.db).run(account_id, event_types=["task_completed"])
+        ActivityProjector(self.db).run(account_id, event_types=["task_completed"])
 
 
 class ArchiveTaskUseCase:

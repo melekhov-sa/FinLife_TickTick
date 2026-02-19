@@ -3,273 +3,619 @@
 
 {% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
 
+{% block extra_head %}<style>
+/* ── Dashboard v2 grid ── */
+.dash-v2-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+.dash-col-left,
+.dash-col-center,
+.dash-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── dash-card component ── */
+.dash-card {
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.dash-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+}
+
+/* ── Skeleton placeholders ── */
+.skel {
+  background: var(--border-color);
+  border-radius: 6px;
+  opacity: 0.45;
+  display: block;
+}
+.skel-lg  { height: 32px; margin-bottom: 10px; }
+.skel-md  { height: 14px; margin-bottom: 8px;  }
+.skel-sm  { height: 10px; margin-bottom: 6px;  }
+.w-30 { width: 30%; }
+.w-40 { width: 40%; }
+.w-60 { width: 60%; }
+.w-70 { width: 70%; }
+.w-80 { width: 80%; }
+
+/* ── Remove max-width on dashboard ── */
+.main-content { max-width: none; }
+
+/* ── Finance state card (#dash-fin-state) ── */
+.fs-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.fs-row:last-of-type { border-bottom: none; }
+.fs-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+a.fs-label:hover { color: var(--text-primary); }
+.fs-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.fs-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.fs-delta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.fs-delta--up   { color: #2e7d32; }
+.fs-delta--down { color: #c62828; }
+.fs-delta--zero { color: var(--text-secondary); }
+.fs-monthly {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px solid var(--border-color);
+}
+.fs-net-row {
+  padding: 0;
+  border-bottom: none;
+}
+.fs-net {
+  font-size: 17px;
+  font-weight: 700;
+}
+.fs-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── Progress bar (shared) ── */
+.progress {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+/* ── Level card (#dash-level) ── */
+a.dash-card-link {
+  text-decoration: none;
+  display: block;
+}
+.lv-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lv-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.lv-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.lv-progress { margin-bottom: 8px; }
+.lv-xp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+.lv-xp-main {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.lv-xp-next {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.lv-month {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Activity card (#dash-activity) ── */
+.act-index {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.act-num {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.act-denom {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-left: 1px;
+}
+.act-trend {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.act-trend--up   { color: #2e7d32; }
+.act-trend--down { color: #c62828; }
+.act-trend--zero { color: var(--text-secondary); }
+.act-trend-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+.act-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tablet: left+center side-by-side, right below ── */
+@media (max-width: 1199px) {
+  .dash-v2-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-col-right {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .dash-col-right > .dash-card {
+    flex: 1 1 240px;
+  }
+}
+
+/* ── Mobile: single column ── */
+@media (max-width: 767px) {
+  .dash-v2-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-col-right {
+    grid-column: 1;
+    flex-direction: column;
+  }
+  .dash-col-right > .dash-card {
+    flex: none;
+  }
+}
+
+/* ── Focus card (#dash-focus) ── */
+.focus-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--border-color);
+}
+.focus-item:last-child { border-bottom: none; }
+.focus-item-label { flex: 1; font-size: 14px; line-height: 1.3; }
+.focus-item-date  { font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+.focus-item--overdue .focus-item-label { color: #c62828; }
+.focus-all-done { text-align: center; padding: 20px 0; color: var(--text-secondary); font-size: 14px; }
+.focus-overflow { font-size: 12px; color: var(--text-secondary); margin-top: 6px; margin-bottom: 0; }
+
+/* ── Feed card (#dash-feed) ── */
+.feed-day { margin-bottom: 14px; }
+.feed-day:last-child { margin-bottom: 0; }
+.feed-day-header {
+  font-size: 11px; font-weight: 700; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);
+}
+.feed-event { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.feed-event-time  { font-size: 12px; color: var(--text-secondary);
+                    font-variant-numeric: tabular-nums; min-width: 34px; flex-shrink: 0; }
+.feed-event-icon  { font-size: 13px; flex-shrink: 0; }
+.feed-event-title { flex: 1; font-size: 13px; }
+.feed-event-amount { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.feed-event-amount--income   { color: #2e7d32; }
+.feed-event-amount--expense  { color: #c62828; }
+.feed-event-amount--transfer { color: var(--text-secondary); }
+</style>{% endblock %}
+
 {% block content %}
-<h1>Главная</h1>
-
-<!-- ============ СЕГОДНЯ ============ -->
-<div class="card">
-  <div class="dash-section-title">
-    Сегодня
-    <span class="muted" style="font-weight: 400; font-size: 14px; margin-left: 8px;">{{ today.strftime('%d.%m.%Y') }}</span>
-  </div>
-
-  <!-- Progress bar -->
-  {% if progress.total > 0 %}
-  <div class="dash-progress-row">
-    <span>{{ progress.done }} из {{ progress.total }}</span>
-    {% set pct = (progress.done / progress.total * 100) | int if progress.total > 0 else 0 %}
-    <div class="dash-progress-bar">
-      <div class="dash-progress-fill" style="width: {{ pct }}%;"></div>
-    </div>
-    <span class="muted">{{ pct }}%</span>
-  </div>
-  {% endif %}
-
-  <!-- Overdue items -->
-  {% if overdue_items %}
-  <div class="dash-group">
-    <div class="dash-group-label negative">Просрочено ({{ overdue_items|length }})</div>
-    {% for item in overdue_items %}
-    <div class="dash-item dash-item-overdue">
-      <div class="dash-item-left">
-        {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}
-        <span>{{ item.title }}</span>
-        {% if item.kind == "planned_op" %}
-        <span class="badge">{{ item.meta.op_kind_label }} {{ item.meta.amount_formatted }}</span>
-        {% endif %}
-        <small class="negative">({{ item.date.strftime('%d.%m') }})</small>
-      </div>
-      <div class="dash-item-actions">
-        {% if item.kind == "task" %}
-        <form method="POST" action="/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
-        </form>
-        {% elif item.kind == "task_occ" %}
-        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
-        </form>
-        {% elif item.kind == "planned_op" %}
-        <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2F"
-           class="dash-btn-link">&#10003;</a>
-        <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <!-- Active items -->
-  {% if active_items %}
-  <div class="dash-group">
-    <div class="dash-group-label">Активные ({{ active_items|length }})</div>
-    {% for item in active_items %}
-    <div class="dash-item">
-      <div class="dash-item-left">
-        {% if item.kind == "event" %}&#128198;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% elif item.kind == "habit" %}&#128170;{% endif %}
-        {% if item.category_emoji %}{{ item.category_emoji }}{% endif %}
-        <span>{{ item.title }}</span>
-
-        {% if item.kind == "planned_op" %}
-        <span class="badge">{{ item.meta.op_kind_label }} {{ item.meta.amount_formatted }}</span>
-        {% endif %}
-
-        {% if item.kind == "habit" and item.meta.current_streak > 0 %}
-        <small class="muted">&#128293; {{ item.meta.current_streak }} дн.</small>
-        {% endif %}
-
-        {% if item.time %}
-        <small class="muted">{{ item.time.strftime('%H:%M') }}</small>
-        {% endif %}
-      </div>
-      <div class="dash-item-actions">
-        {% if item.kind == "task" %}
-        <form method="POST" action="/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
-        </form>
-        {% elif item.kind == "task_occ" %}
-        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px;">&#10003;</button>
-        </form>
-        {% elif item.kind == "planned_op" %}
-        <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2F"
-           class="dash-btn-link">&#10003;</a>
-        <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8212;</button>
-        </form>
-        {% elif item.kind == "habit" %}
-        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" style="font-size: 12px; padding: 4px 10px; background: #28a745;">&#10003;</button>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <!-- Done items -->
-  {% if done_items %}
-  <div class="dash-group">
-    <div class="dash-group-label positive">Сделано ({{ done_items|length }})</div>
-    {% for item in done_items %}
-    <div class="dash-item dash-item-done">
-      <div class="dash-item-left">
-        {% if item.kind == "habit" %}&#128170;{% elif item.kind in ("task", "task_occ") %}&#9745;{% elif item.kind == "planned_op" %}&#128197;{% endif %}
-        <s class="muted">{{ item.title }}</s>
-      </div>
-      <div class="dash-item-actions">
-        {% if item.kind == "habit" %}
-        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">&#8634;</button>
-        </form>
-        {% endif %}
-        <span class="positive" style="font-size: 18px;">&#10003;</span>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if not overdue_items and not active_items and not done_items %}
-  <p class="muted" style="text-align: center; padding: 16px 0;">Нет дел на сегодня</p>
-  {% endif %}
-
-  <p style="margin-top: 8px;"><a href="/plan">Открыть план &rarr;</a></p>
-</div>
-
-<!-- ============ БЛИЖАЙШИЕ ПЛАТЕЖИ ============ -->
-{% if upcoming_payments %}
-<div class="card">
-  <div class="dash-section-title">Ближайшие платежи</div>
-  {% for pay in upcoming_payments %}
-  <div class="dash-item">
-    <div class="dash-item-left">
-      &#128197;
-      <span>{{ pay.title }}</span>
-      <span class="badge {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
-        {{ pay.kind_label }} {{ pay.amount_formatted }}
-      </span>
-      <small class="muted">через {{ pay.days_until }} дн. ({{ pay.scheduled_date.strftime('%d.%m') }})</small>
-    </div>
-  </div>
-  {% endfor %}
-  <p style="margin-top: 8px;"><a href="/planned-operations">Все плановые &rarr;</a></p>
-</div>
-{% endif %}
-
-<!-- ============ АКТИВНОСТЬ ПРИВЫЧЕК ============ -->
-{% if habit_heatmap %}
-<div class="card">
-  <div class="dash-section-title">Активность привычек</div>
-  <div class="dash-heatmap">
-    {% for cell in habit_heatmap %}
-    <div class="dash-heatmap-cell dash-heatmap-level-{{ cell.level }}"
-         title="{{ cell.date.strftime('%d.%m') }}: {{ cell.done_count }}/{{ cell.due_count }}">
-      <span class="dash-heatmap-day">{{ cell.date.strftime('%d') }}</span>
-    </div>
-    {% endfor %}
-  </div>
-  <div class="dash-heatmap-legend">
-    <span class="muted" style="font-size: 12px;">0%</span>
-    <div class="dash-heatmap-cell dash-heatmap-level-0" style="width:14px;height:14px;"></div>
-    <div class="dash-heatmap-cell dash-heatmap-level-1" style="width:14px;height:14px;"></div>
-    <div class="dash-heatmap-cell dash-heatmap-level-2" style="width:14px;height:14px;"></div>
-    <div class="dash-heatmap-cell dash-heatmap-level-3" style="width:14px;height:14px;"></div>
-    <div class="dash-heatmap-cell dash-heatmap-level-4" style="width:14px;height:14px;"></div>
-    <span class="muted" style="font-size: 12px;">100%</span>
-  </div>
-  <p style="margin-top: 8px;"><a href="/habits">Все привычки &rarr;</a></p>
-</div>
-{% endif %}
-
-<!-- ============ ФИНАНСЫ ============ -->
-<div class="card">
-  <div class="dash-section-title">{{ current_month }}</div>
-  {% for cur, data in fin_by_currency.items() %}
-  <div class="financial-result" {% if not loop.first %}style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;"{% endif %}>
-    {% if fin_by_currency|length > 1 %}
-    <div style="font-size: 13px; font-weight: 600; margin-bottom: 4px;">{{ currency_label(cur) }}</div>
-    {% endif %}
-    <div class="fr-item">
-      <span class="fr-label">Доходы</span>
-      <span class="fr-value positive">+{{ format_money(data.income, cur) }}</span>
-    </div>
-    <div class="fr-item">
-      <span class="fr-label">Расходы</span>
-      <span class="fr-value negative">-{{ format_money(data.expense, cur) }}</span>
-    </div>
-    <div class="fr-item fr-total">
-      <span class="fr-label">Разница</span>
-      <span class="fr-value {% if data.difference >= 0 %}positive{% else %}negative{% endif %}">
-        {% if data.difference > 0 %}+{% endif %}{{ format_money(data.difference, cur) }}
-      </span>
-    </div>
-  </div>
-  {% endfor %}
-  <p style="margin-top: 8px;"><a href="/budget">Бюджет &rarr;</a></p>
-</div>
-
-<!-- ============ ХОТЕЛКИ В ЭТОМ МЕСЯЦЕ ============ -->
 {% set wish_type_labels = {
     'PURCHASE': '💰 Покупки',
     'EVENT': '🎉 События',
     'PLACE': '🌍 Места',
     'OTHER': '📝 Другое'
 } %}
-
 {% set wish_status_labels = {
     'IDEA': '💡',
     'CONSIDERING': '🤔',
     'PLANNED': '📅'
 } %}
-
 {% set has_wishes = wishes_this_month.PURCHASE or wishes_this_month.EVENT or wishes_this_month.PLACE or wishes_this_month.OTHER %}
 
-{% if has_wishes %}
-<div class="card">
-  <div class="dash-section-title">Хотелки в {{ current_month }}</div>
+<h1 style="margin-bottom: 0;">
+  Главная
+  <span class="muted" style="font-weight: 400; font-size: 16px; margin-left: 8px;">{{ today.strftime('%d.%m.%Y') }}</span>
+</h1>
 
-  {% for wish_type in ['PURCHASE', 'EVENT', 'PLACE', 'OTHER'] %}
-    {% set wishes = wishes_this_month[wish_type] %}
-    {% if wishes %}
-    <div class="dash-group" style="margin-bottom: 12px;">
-      <div class="dash-group-label">{{ wish_type_labels[wish_type] }} ({{ wishes|length }})</div>
-      {% for wish in wishes %}
-      <div class="dash-item" style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
-        <div class="dash-item-left">
-          {{ wish_status_labels.get(wish.status, '') }}
-          <span>{{ wish.title }}</span>
-          {% if wish.estimated_amount %}
-          <span class="badge" style="background: #e8f5e9; color: #2e7d32;">{{ "{:,.2f}".format(wish.estimated_amount).replace(',', ' ') }} руб.</span>
-          {% endif %}
-          {% if wish.is_recurring %}
-          <span class="badge" style="background: #e3f2fd; color: #1976d2;">♻️</span>
-          {% endif %}
-          {% if wish.target_date %}
-          <small class="muted">{{ wish.target_date.strftime('%d.%m.%Y') }}</small>
-          {% elif wish.target_month %}
-          <small class="muted">весь месяц</small>
-          {% endif %}
-        </div>
-        <div class="dash-item-actions">
-          <a href="/wishes/{{ wish.wish_id }}/edit" style="font-size: 18px; text-decoration: none; color: #6c757d;">⚙️</a>
+<div class="dash-v2-grid">
+
+  {# ══════════════════ LEFT COLUMN ══════════════════ #}
+  <div class="dash-col-left">
+
+    {# ── Финансовое состояние ── #}
+    <div class="dash-card" id="dash-fin-state">
+      <div class="dash-card-title">Финансовое состояние</div>
+
+      {# ── Обычные кошельки ── #}
+      <div class="fs-row">
+        <a href="/wallets" class="fs-label">Обычные кошельки</a>
+        <div class="fs-right">
+          <span class="fs-amount">{{ format_money(fin_state.regular_total, "RUB") }}</span>
+          <span class="fs-delta fs-delta--{{ fin_state.regular_delta_sign }}">
+            {%- if fin_state.regular_delta_sign == "up" -%}
+              ▲ +{{ fin_state.regular_delta_fmt }}
+            {%- elif fin_state.regular_delta_sign == "down" -%}
+              ▼ −{{ fin_state.regular_delta_fmt }}
+            {%- else -%}
+              • 0
+            {%- endif -%}
+          </span>
         </div>
       </div>
+
+      {# ── Кредиты ── #}
+      <div class="fs-row">
+        <a href="/wallets" class="fs-label">Кредиты</a>
+        <div class="fs-right">
+          <span class="fs-amount">{{ format_money(fin_state.credit_total, "RUB") }}</span>
+          <span class="fs-delta fs-delta--{{ fin_state.credit_delta_sign }}">
+            {%- if fin_state.credit_delta_sign == "up" -%}
+              ▲ +{{ fin_state.credit_delta_fmt }}
+            {%- elif fin_state.credit_delta_sign == "down" -%}
+              ▼ −{{ fin_state.credit_delta_fmt }}
+            {%- else -%}
+              • 0
+            {%- endif -%}
+          </span>
+        </div>
+      </div>
+
+      {# ── Накопления ── #}
+      <div class="fs-row">
+        <a href="/goals" class="fs-label">Накопления</a>
+        <div class="fs-right">
+          <span class="fs-amount">{{ format_money(fin_state.savings_total, "RUB") }}</span>
+          <span class="fs-delta fs-delta--{{ fin_state.savings_delta_sign }}">
+            {%- if fin_state.savings_delta_sign == "up" -%}
+              ▲ +{{ fin_state.savings_delta_fmt }}
+            {%- elif fin_state.savings_delta_sign == "down" -%}
+              ▼ −{{ fin_state.savings_delta_fmt }}
+            {%- else -%}
+              • 0
+            {%- endif -%}
+          </span>
+        </div>
+      </div>
+
+      {# ── Финансовый результат месяца ── #}
+      <div class="fs-monthly">
+        <div class="fs-row fs-net-row">
+          <span class="fs-label">Результат — {{ current_month }}</span>
+          <span class="fs-amount fs-net {% if fin_state.month_net >= 0 %}positive{% else %}negative{% endif %}">
+            {%- if fin_state.month_net > 0 %}+{% endif -%}
+            {{ format_money(fin_state.month_net, "RUB") }}
+          </span>
+        </div>
+        <div class="fs-sub">
+          Доход: {{ format_money(fin_state.month_income, "RUB") }}&nbsp;•&nbsp;Расход: {{ format_money(fin_state.month_expense, "RUB") }}
+        </div>
+      </div>
+
+      <p style="margin-top:12px;margin-bottom:0;">
+        <a href="/wallets" style="font-size:12px;">Кошельки &rarr;</a>
+        &nbsp;&nbsp;
+        <a href="/budget" style="font-size:12px;">Бюджет &rarr;</a>
+      </p>
+    </div>
+
+    {# ── Уровень ── #}
+    <div class="dash-card" id="dash-level">
+      <div class="dash-card-title">Уровень</div>
+      <a href="/profile" class="dash-card-link">
+        <div class="lv-main">
+          <span class="lv-num">{{ dash_xp.level }}</span>
+          <span class="lv-title">{{ dash_xp.level_title }}</span>
+        </div>
+        <div class="lv-progress">
+          <div class="progress">
+            <div class="progress__fill" style="width: {{ dash_xp.percent_progress }}%;"></div>
+          </div>
+        </div>
+        <div class="lv-xp-row">
+          <span class="lv-xp-main">{{ dash_xp.current_level_xp }} / {{ dash_xp.total_level_target }} XP</span>
+          <span class="lv-xp-next">−{{ dash_xp.xp_to_next_level }} XP</span>
+        </div>
+        {% if dash_xp.xp_this_month > 0 %}
+        <div class="lv-month">Этот месяц: {{ dash_xp.xp_this_month }} XP</div>
+        {% endif %}
+      </a>
+    </div>
+
+    {# ── Индекс активности ── #}
+    <div class="dash-card" id="dash-activity">
+      <div class="dash-card-title">Активность</div>
+      <a href="/profile" class="dash-card-link">
+        <div class="act-index">
+          <span class="act-num">{{ dash_activity.activity_index }}</span>
+          <span class="act-denom"> / 100</span>
+        </div>
+        <div class="act-trend act-trend--{{ dash_activity.trend_sign }}">
+          {%- if dash_activity.trend_sign == "up" -%}▲ +{{ dash_activity.trend_abs }}
+          {%- elif dash_activity.trend_sign == "down" -%}▼ −{{ dash_activity.trend_abs }}
+          {%- else -%}• 0{%- endif -%}
+          <span class="act-trend-label"> за неделю</span>
+        </div>
+        <div class="act-sub">7д: {{ dash_activity.points_7d }} • пред: {{ dash_activity.points_prev_7d }}</div>
+      </a>
+    </div>
+
+  </div>{# ── end LEFT ── #}
+
+
+  {# ══════════════════ CENTER COLUMN ══════════════════ #}
+  <div class="dash-col-center">
+
+    {# ── Фокус дня ── #}
+    <div class="dash-card" id="dash-focus">
+      <div class="dash-card-title">Фокус дня</div>
+      {% set has_focus = focus_overdue or focus_tasks or focus_habits %}
+
+      {# Просроченные задачи #}
+      {% for item in focus_overdue %}
+      <div class="focus-item focus-item--overdue">
+        <span class="focus-item-date">{{ item.date.strftime('%d.%m') }} &#9650;</span>
+        <span class="focus-item-label">
+          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
+        </span>
+        {% if item.kind == "task" %}
+        <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+        </form>
+        {% elif item.kind == "task_occ" %}
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+        </form>
+        {% endif %}
+      </div>
       {% endfor %}
+
+      {# Активные задачи сегодня #}
+      {% for item in focus_tasks %}
+      <div class="focus-item">
+        <span class="focus-item-label">
+          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
+        </span>
+        {% if item.kind == "task" %}
+        <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+        </form>
+        {% elif item.kind == "task_occ" %}
+        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if focus_tasks_overflow %}
+      <p class="focus-overflow"><a href="/tasks">Показать все задачи &rarr;</a></p>
+      {% endif %}
+
+      {# Активные привычки сегодня #}
+      {% for item in focus_habits %}
+      <div class="focus-item">
+        <span class="focus-item-label">
+          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
+          {% if item.meta.current_streak > 0 %}
+          <small class="muted">&#128293; {{ item.meta.current_streak }}д</small>
+          {% endif %}
+        </span>
+        <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
+          <input type="hidden" name="redirect" value="/">
+          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+        </form>
+      </div>
+      {% endfor %}
+      {% if focus_habits_overflow %}
+      <p class="focus-overflow"><a href="/habits">Показать все привычки &rarr;</a></p>
+      {% endif %}
+
+      {% if not has_focus %}
+      <div class="focus-all-done">Сегодня всё выполнено &#10003;</div>
+      {% endif %}
+
+      <p style="margin-top:10px;margin-bottom:0;font-size:12px;">
+        <a href="/plan">Открыть план &rarr;</a>
+      </p>
+    </div>
+
+    {# ── Лента событий ── #}
+    <div class="dash-card" id="dash-feed">
+      <div class="dash-card-title">Лента</div>
+      {% if feed_groups %}
+      {% for group in feed_groups %}
+      <div class="feed-day">
+        <div class="feed-day-header">{{ group.label }}</div>
+        {% for item in group.events %}
+        <div class="feed-event">
+          <span class="feed-event-time">{{ item.time_str }}</span>
+          <span class="feed-event-icon">{{ item.icon }}</span>
+          <span class="feed-event-title">{{ item.title }}</span>
+          {% if item.amount_fmt %}
+          <span class="feed-event-amount feed-event-amount--{{ item.amount_sign }}">{{ item.amount_fmt }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="muted" style="text-align:center;padding:16px 0;font-size:13px;">Нет событий за 7 дней</p>
+      {% endif %}
+    </div>
+
+    {# ── Хотелки в этом месяце ── #}
+    {% if has_wishes %}
+    <div class="dash-card">
+      <div class="dash-card-title">Хотелки — {{ current_month }}</div>
+      {% for wish_type in ['PURCHASE', 'EVENT', 'PLACE', 'OTHER'] %}
+        {% set wishes = wishes_this_month[wish_type] %}
+        {% if wishes %}
+        <div class="dash-group" style="margin-bottom:12px;">
+          <div class="dash-group-label">{{ wish_type_labels[wish_type] }} ({{ wishes|length }})</div>
+          {% for wish in wishes %}
+          <div class="dash-item" style="padding:8px 0;border-bottom:1px solid var(--border-color);">
+            <div class="dash-item-left">
+              {{ wish_status_labels.get(wish.status, '') }}
+              <span>{{ wish.title }}</span>
+              {% if wish.estimated_amount %}
+              <span class="badge" style="background:#e8f5e9;color:#2e7d32;">
+                {{ "{:,.2f}".format(wish.estimated_amount).replace(',', ' ') }} руб.
+              </span>
+              {% endif %}
+              {% if wish.is_recurring %}
+              <span class="badge" style="background:#e3f2fd;color:#1976d2;">♻️</span>
+              {% endif %}
+              {% if wish.target_date %}
+              <small class="muted">{{ wish.target_date.strftime('%d.%m.%Y') }}</small>
+              {% elif wish.target_month %}
+              <small class="muted">весь месяц</small>
+              {% endif %}
+            </div>
+            <div class="dash-item-actions">
+              <a href="/wishes/{{ wish.wish_id }}/edit"
+                 style="font-size:18px;text-decoration:none;color:var(--text-secondary);">⚙️</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/wishes" style="font-size:12px;">Все хотелки &rarr;</a>
+      </p>
     </div>
     {% endif %}
-  {% endfor %}
 
-  <p style="margin-top: 8px;"><a href="/wishes">Все хотелки &rarr;</a></p>
-</div>
-{% endif %}
+  </div>{# ── end CENTER ── #}
+
+
+  {# ══════════════════ RIGHT COLUMN ══════════════════ #}
+  <div class="dash-col-right">
+
+    {# ── Ближайшие платежи ── #}
+    <div class="dash-card" id="dash-upcoming">
+      <div class="dash-card-title">Ближайшие платежи</div>
+      {% if upcoming_payments %}
+      {% for pay in upcoming_payments %}
+      <div class="dash-item" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div class="dash-item-left">
+          &#128197;
+          <span>{{ pay.title }}</span>
+          <span class="badge {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
+            {{ pay.kind_label }} {{ pay.amount_formatted }}
+          </span>
+        </div>
+        <small class="muted" style="font-size:11px;padding-left:22px;">
+          через {{ pay.days_until }} дн. ({{ pay.scheduled_date.strftime('%d.%m') }})
+        </small>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/planned-operations" style="font-size:12px;">Все плановые &rarr;</a>
+      </p>
+      {% else %}
+      <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет ближайших платежей</p>
+      {% endif %}
+    </div>
+
+    {# ── Прогноз (заглушка) ── #}
+    <div class="dash-card" id="dash-forecast">
+      <div class="dash-card-title">Прогноз</div>
+      <span class="skel skel-lg w-70"></span>
+      <span class="skel skel-md w-60"></span>
+      <span class="skel skel-sm w-40"></span>
+      <span class="skel skel-sm w-30"></span>
+    </div>
+
+    {# ── Цели (заглушка) ── #}
+    <div class="dash-card" id="dash-goals">
+      <div class="dash-card-title">Цели</div>
+      <span class="skel skel-lg w-60"></span>
+      <span class="skel skel-md w-80"></span>
+      <span class="skel skel-sm w-40"></span>
+      <p style="margin-top:10px;margin-bottom:0;">
+        <a href="/goals" style="font-size:12px;">Все цели &rarr;</a>
+      </p>
+    </div>
+
+  </div>{# ── end RIGHT ── #}
+
+</div>{# ── end dash-v2-grid ── #}
 {% endblock %}

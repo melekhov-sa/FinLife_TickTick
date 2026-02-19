@@ -58,7 +58,28 @@
       "Bash(source:*)",
       "Bash(export DATABASE_URL:*)",
       "Bash(export DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\")",
-      "Bash(alembic revision:*)"
+      "Bash(alembic revision:*)",
+      "Bash(DATABASE_URL=postgresql://finlife:finlife_password_change_me@localhost:5432/finlife .venv/Scripts/alembic.exe upgrade:*)",
+      "Bash(DATABASE_URL=postgresql://finlife:finlife_password_change_me@localhost:5432/finlife .venv/Scripts/alembic.exe:*)",
+      "Bash(\"c:/Projects/FinLife_TickTick/.venv/Scripts/pytest.exe\" \"c:/Projects/FinLife_TickTick/tests/test_projectors/test_xp_projector.py\" -v --tb=short)",
+      "Bash(\"c:/Projects/FinLife_TickTick/.venv/Scripts/pytest.exe\" \"c:/Projects/FinLife_TickTick/tests/test_projectors/\" -v --tb=short)",
+      "Bash(\"c:/Projects/FinLife_TickTick/.venv/Scripts/pytest.exe\":*)",
+      "Bash(\"c:/Projects/FinLife_TickTick/.venv/Scripts/pytest.exe\" \"c:/Projects/FinLife_TickTick/tests/test_application/test_xp_history.py\" -v --tb=short)",
+      "Bash(\"c:/Projects/FinLife_TickTick/.venv/Scripts/pytest.exe\" \"c:/Projects/FinLife_TickTick/tests/test_projectors/\" \"c:/Projects/FinLife_TickTick/tests/test_application/test_profile.py\" \"c:/Projects/FinLife_TickTick/tests/test_application/test_xp_history.py\" -q --tb=short)",
+      "Bash(set:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(/c/Projects/FinLife_TickTick/ProjectsFinLife_TickTick.venv/Scripts/python.exe -m pytest tests/test_application/test_dashboard.py::TestFinStateSummary -v --tb=short)",
+      "Bash(/c/Projects/FinLife_TickTick/ProjectsFinLife_TickTick.venv/Scripts/pip.exe install:*)",
+      "Bash(\"/c/Users/melek/AppData/Local/Programs/Python/Python312/python.exe\" --version)",
+      "Bash(\"C:/Users/melek/AppData/Local/Programs/Python/Python311/python.exe\" --version)",
+      "Bash(\"C:/Users/melek/AppData/Local/Programs/Python/Python311/python.exe\" -m pytest --version)",
+      "Bash(cmd //c \"dir C:\\\\Projects\\\\FinLife_TickTick\\\\Scripts 2>&1\")",
+      "Bash(cmd //c \"dir /b C:\\\\Projects\\\\FinLife_TickTick 2>&1\")",
+      "Bash(cmd //c \"dir /b C:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts 2>&1\")",
+      "Bash(cmd //c \"C:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\pytest.exe:*)",
+      "Bash(exit:*)",
+      "Bash(git config:*)"
     ]
   }
 }

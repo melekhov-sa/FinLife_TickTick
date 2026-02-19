@@ -52,6 +52,12 @@ def create_app() -> FastAPI:
         secret_key=settings.SECRET_KEY
     )
 
+    # Static files (themes.css, etc.)
+    from fastapi.staticfiles import StaticFiles
+    import os as _os
+    _static_dir = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "static")
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
     # Routers - API first, then SSR pages
     app.include_router(wallets.router)
     app.include_router(categories.router)

@@ -45,6 +45,29 @@
   <a href="/plan?tab={{ tab }}&range=90" {% if range_days == 90 %}class="active"{% endif %}>90 дней</a>
 </div>
 
+<!-- Сделано сегодня (active tab) -->
+{% if tab == "active" and done_today %}
+<div class="card" style="padding: 16px 24px;">
+  <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+    <span class="positive">&#10003;</span> Сделано сегодня
+    <span class="badge" style="background: #d4edda; color: #155724; margin-left: 4px;">{{ done_today|length }}</span>
+  </div>
+  {% for item in done_today %}
+  <div style="display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border-color, #f0f0f0);">
+    <span style="color: #28a745; font-size: 14px;">&#10003;</span>
+    <span class="plan-item-icon" style="font-size: 13px;">
+      {% if item.kind == "habit" %}&#128170;{% elif item.kind in ("task", "task_occ") %}&#9745;{% endif %}
+    </span>
+    {% if item.category_emoji %}<span>{{ item.category_emoji }}</span>{% endif %}
+    <span class="muted" style="font-size: 13px; flex: 1;">{{ item.title }}</span>
+    {% if item.is_early %}
+    <span class="badge" style="background: #fff3cd; color: #856404; font-size: 11px;">⚡ раньше срока</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Today progress bar (active tab, if there are items) -->
 {% if tab == "active" and today_progress.total > 0 %}
 <div class="card" style="padding: 16px 24px;">

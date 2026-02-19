@@ -26,6 +26,9 @@ class User(Base):
         nullable=False
     )
 
+    # UI theme: "{name}-{mode}", e.g. "graphite-emerald-light"
+    theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
 
 class EventLog(Base):
     """
@@ -105,6 +108,7 @@ class WalletBalance(Base):
         server_default="0"
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    folder_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Dynamics fields for wallets list
     balance_30d_ago: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
@@ -117,6 +121,20 @@ class WalletBalance(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
+    )
+
+
+class WalletFolder(Base):
+    """Simple organisational folders for grouping wallets (plain CRUD, not event-sourced)."""
+    __tablename__ = "wallet_folders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    wallet_type: Mapped[str] = mapped_column(String(32), nullable=False)  # REGULAR, CREDIT, SAVINGS
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
 
@@ -874,4 +892,53 @@ class SubscriptionCoverageModel(Base):
     __table_args__ = (
         UniqueConstraint('transaction_id', name='uq_coverage_transaction'),
         Index('ix_coverage_sub_payer', 'subscription_id', 'payer_type', 'member_id'),
+    )
+
+
+# ============================================================================
+# XP / Gamification
+# ============================================================================
+
+
+class UserXpState(Base):
+    """Read model: User XP and level state (built by XpProjector)."""
+    __tablename__ = "user_xp_state"
+
+    user_id: Mapped[int] = mapped_column(primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    total_xp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    current_level_xp: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    xp_to_next_level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="100")
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class XpEvent(Base):
+    """Read model: Individual XP award record (idempotency + history)."""
+    __tablename__ = "xp_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    source_event_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    xp_amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class UserActivityDaily(Base):
+    """Read model: daily activity aggregation per user (built by ActivityProjector)."""
+    __tablename__ = "user_activity_daily"
+
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+    day_date: Mapped[date_type] = mapped_column(Date, nullable=False, primary_key=True)
+    ops_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    tasks_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    habits_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    goals_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    points: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

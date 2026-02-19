@@ -9,6 +9,7 @@ from app.infrastructure.db.models import (
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
     TransactionFeed, RecurrenceRuleModel, WorkCategory,
+    WalletBalance,
 )
 from app.application.dashboard import DashboardService
 
@@ -542,3 +543,185 @@ class TestIntegrationMixed:
         upcoming = svc.get_upcoming_payments(ACCOUNT, TODAY)
         assert len(upcoming) == 1
         assert upcoming[0]["title"] == "Internet"
+
+
+# ======================================================================
+# get_fin_state_summary
+# ======================================================================
+
+_WALLET_NOW = datetime(2025, 1, 1, 0, 0)  # fixed timestamp for wallet created_at
+
+
+def _add_wallet(db, wallet_id, wallet_type="REGULAR", balance="10000",
+                currency="RUB", is_archived=False, account_id=ACCOUNT):
+    w = WalletBalance(
+        wallet_id=wallet_id,
+        account_id=account_id,
+        title=f"Wallet {wallet_id}",
+        currency=currency,
+        wallet_type=wallet_type,
+        balance=Decimal(str(balance)),
+        is_archived=is_archived,
+        created_at=_WALLET_NOW,
+        updated_at=_WALLET_NOW,
+    )
+    db.add(w)
+    db.flush()
+    return w
+
+
+def _add_transfer(db, tx_id, amount, occurred_at, from_wallet_id, to_wallet_id,
+                  account_id=ACCOUNT, currency="RUB"):
+    db.add(TransactionFeed(
+        transaction_id=tx_id,
+        account_id=account_id,
+        operation_type="TRANSFER",
+        amount=Decimal(str(amount)),
+        currency=currency,
+        from_wallet_id=from_wallet_id,
+        to_wallet_id=to_wallet_id,
+        description="transfer",
+        occurred_at=occurred_at,
+    ))
+    db.flush()
+
+
+class TestFinStateSummary:
+
+    def test_empty_no_wallets(self, db_session):
+        """No wallets → all zeros, all signs 'zero'."""
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_total"] == 0
+        assert result["credit_total"]  == 0
+        assert result["savings_total"] == 0
+        assert result["regular_delta_sign"] == "zero"
+        assert result["credit_delta_sign"]  == "zero"
+        assert result["savings_delta_sign"] == "zero"
+        assert result["month_income"]  == 0
+        assert result["month_expense"] == 0
+        assert result["month_net"]     == 0
+
+    def test_wallet_totals_by_type(self, db_session):
+        """Totals grouped correctly by wallet_type."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR",  balance="50000")
+        _add_wallet(db_session, 2, wallet_type="REGULAR",  balance="30000")
+        _add_wallet(db_session, 3, wallet_type="CREDIT",   balance="-15000")
+        _add_wallet(db_session, 4, wallet_type="SAVINGS",  balance="100000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_total"] == 80000
+        assert result["credit_total"]  == -15000
+        assert result["savings_total"] == 100000
+
+    def test_archived_wallets_excluded(self, db_session):
+        """Archived wallets must not appear in totals."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+        _add_wallet(db_session, 2, wallet_type="REGULAR", balance="20000", is_archived=True)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_total"] == 50000
+
+    def test_non_rub_wallets_excluded(self, db_session):
+        """Non-RUB wallets not included in totals."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000", currency="RUB")
+        _add_wallet(db_session, 2, wallet_type="REGULAR", balance="1000",  currency="USD")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_total"] == 50000
+
+    def test_delta_30d_income_sign_up(self, db_session):
+        """INCOME in last 30d → delta sign 'up', abs equals income amount."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="60000")
+        _add_tx(db_session, 1, "INCOME", 10000,
+                datetime(2026, 2, 5, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_sign"] == "up"
+        assert result["regular_delta_abs"]  == 10000
+
+    def test_delta_30d_expense_sign_down(self, db_session):
+        """EXPENSE in last 30d → delta sign 'down', abs equals expense amount."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="40000")
+        _add_tx(db_session, 1, "EXPENSE", 5000,
+                datetime(2026, 2, 10, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_sign"] == "down"
+        assert result["regular_delta_abs"]  == 5000
+
+    def test_delta_30d_balanced_is_zero(self, db_session):
+        """Equal income and expense → 'zero' delta."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+        _add_tx(db_session, 1, "INCOME",  10000, datetime(2026, 2, 5, 10, 0), wallet_id=1)
+        _add_tx(db_session, 2, "EXPENSE", 10000, datetime(2026, 2, 6, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_sign"] == "zero"
+        assert result["regular_delta_abs"]  == 0
+
+    def test_delta_30d_transfer_between_types(self, db_session):
+        """Transfer from REGULAR→SAVINGS: REGULAR delta ↓, SAVINGS delta ↑."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="40000")
+        _add_wallet(db_session, 2, wallet_type="SAVINGS", balance="60000")
+        _add_transfer(db_session, 1, 10000,
+                      datetime(2026, 2, 10, 10, 0),
+                      from_wallet_id=1, to_wallet_id=2)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_sign"] == "down"
+        assert result["regular_delta_abs"]  == 10000
+        assert result["savings_delta_sign"] == "up"
+        assert result["savings_delta_abs"]  == 10000
+
+    def test_delta_30d_old_transactions_excluded(self, db_session):
+        """Transactions older than 30 days from TODAY do not count."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+        # TODAY = 2026-02-14; window_start = 2026-01-15; this is before the window:
+        _add_tx(db_session, 1, "INCOME", 99999,
+                datetime(2026, 1, 10, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_sign"] == "zero"
+        assert result["regular_delta_abs"]  == 0
+
+    def test_month_income_expense_and_net(self, db_session):
+        """Monthly aggregates include current month only."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="100000")
+        # Current month (Feb 2026)
+        _add_tx(db_session, 1, "INCOME",  80000, datetime(2026, 2, 1,  10, 0), wallet_id=1)
+        _add_tx(db_session, 2, "EXPENSE", 30000, datetime(2026, 2, 10, 10, 0), wallet_id=1)
+        # Previous month — must NOT count
+        _add_tx(db_session, 3, "INCOME",  99999, datetime(2026, 1, 31, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["month_income"]  == 80000
+        assert result["month_expense"] == 30000
+        assert result["month_net"]     == 50000
+
+    def test_transfers_not_in_monthly(self, db_session):
+        """TRANSFER operations are excluded from monthly income/expense."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+        _add_wallet(db_session, 2, wallet_type="SAVINGS",  balance="10000")
+        _add_transfer(db_session, 1, 5000,
+                      datetime(2026, 2, 5, 10, 0),
+                      from_wallet_id=1, to_wallet_id=2)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["month_income"]  == 0
+        assert result["month_expense"] == 0
+
+    def test_delta_fmt_uses_space_separator(self, db_session):
+        """delta_fmt uses a regular space as thousands separator."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="60000")
+        _add_tx(db_session, 1, "INCOME", 15000,
+                datetime(2026, 2, 5, 10, 0), wallet_id=1)
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_fmt"] == "15 000"
+
+    def test_delta_fmt_zero_is_zero(self, db_session):
+        """delta_fmt for zero delta is '0'."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["regular_delta_fmt"] == "0"

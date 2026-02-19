@@ -9,6 +9,8 @@ from app.domain.habit import Habit
 from app.domain.habit_occurrence import HabitOccurrenceEvent
 from app.domain.recurrence import rule_spec_from_db, generate_occurrence_dates
 from app.readmodels.projectors.habits import HabitsProjector
+from app.readmodels.projectors.xp import XpProjector
+from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 
 TOGGLE_WINDOW_DAYS = 14
@@ -183,6 +185,9 @@ class ToggleHabitOccurrenceUseCase:
         )
         self.db.commit()
         HabitsProjector(self.db).run(account_id, event_types=[event_type])
+        if event_type == "habit_occurrence_completed":
+            XpProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+            ActivityProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
         return new_status
 
 
@@ -210,6 +215,8 @@ class CompleteHabitOccurrenceUseCase:
         )
         self.db.commit()
         HabitsProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+        XpProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+        ActivityProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
 
 
 class SkipHabitOccurrenceUseCase:

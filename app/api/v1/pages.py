@@ -3,9 +3,9 @@ SSR pages - server-side rendered HTML pages
 """
 from pathlib import Path
 from decimal import Decimal
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +13,8 @@ from sqlalchemy import func, or_
 
 from app.api.deps import get_db, require_user
 from app.infrastructure.db.models import (
-    WalletBalance, CategoryInfo, TransactionFeed,
+    User,
+    WalletBalance, WalletFolder, CategoryInfo, TransactionFeed,
     WorkCategory, TaskModel, HabitModel, HabitOccurrence,
     TaskTemplateModel, TaskOccurrence,
     OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel,
@@ -97,6 +98,11 @@ from app.application.wishes import (
 )
 from app.application.wishes_service import WishesService
 from app.application.goals import CreateGoalUseCase, UpdateGoalUseCase, GoalValidationError
+from app.application.xp import XpService
+from app.application.activity import ActivityReadService
+from app.application.profile import ProfileService, get_level_title
+from app.application.xp_history import XpHistoryService, XP_REASON_FILTER_OPTIONS
+from app.readmodels.projectors.xp import preview_task_xp
 from app.utils.validation import validate_and_normalize_amount
 
 
@@ -111,6 +117,70 @@ from app.utils.money import format_money, format_money2, currency_label
 templates.env.globals["format_money"] = format_money
 templates.env.globals["format_money2"] = format_money2
 templates.env.globals["currency_label"] = currency_label
+
+
+def _resolve_current_page(request: Request) -> str:
+    """Map request URL path to a sidebar page-key string.
+
+    Used as a Jinja2 global: {{ current_page(request) }}
+    The sidebar partial calls it once and does only equality comparisons.
+    """
+    path = request.url.path
+    if path in ("/", ""):
+        return "dashboard"
+    _PREFIX_MAP = [
+        ("/wallets",          "wallets"),
+        ("/goals",            "goals"),
+        ("/categories",       "categories"),
+        ("/transactions",     "transactions"),
+        ("/budget",           "budget"),
+        ("/plan",             "plan"),
+        ("/tasks",            "tasks"),
+        ("/habits",           "habits"),
+        ("/planned-ops",      "planned-ops"),
+        ("/wishes",           "wishes"),
+        ("/subscriptions",    "subscriptions"),
+        ("/contacts",         "contacts"),
+        ("/events",           "events"),
+        ("/task-categories",  "task-categories"),
+        ("/profile",          "profile"),
+    ]
+    for prefix, key in _PREFIX_MAP:
+        if path == prefix or path.startswith(prefix + "/"):
+            return key
+    return ""
+
+
+templates.env.globals["current_page"] = _resolve_current_page
+
+
+# ---------------------------------------------------------------------------
+# Theme system
+# ---------------------------------------------------------------------------
+
+VALID_THEMES: frozenset[str] = frozenset({
+    "graphite-emerald-light",
+    "graphite-emerald-dark",
+    "deep-blue-light",
+    "deep-blue-dark",
+    "architect-neutral-light",
+    "architect-neutral-dark",
+})
+
+_DEFAULT_THEME = "graphite-emerald-light"
+
+
+def _get_user_theme(request: Request) -> str:
+    """Return the current user's theme from the session (Jinja2 global).
+
+    Falls back to the default light theme if the session is empty or contains
+    an unrecognised value (e.g. the old 'dark' key from the previous system).
+    """
+    theme = request.session.get("user_theme", _DEFAULT_THEME)
+    return theme if theme in VALID_THEMES else _DEFAULT_THEME
+
+
+templates.env.globals["user_theme"] = _get_user_theme
 
 
 # === Dashboard ===
@@ -142,34 +212,92 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     # 1. Today block
     today_block = svc.get_today_block(user_id, today)
 
+    # 9. Focus data for #dash-focus (tasks + habits only, max 5 each)
+    _FOCUS_MAX = 5
+    _overdue_all = today_block["overdue"]
+    _active_all = today_block["active"]
+    focus_overdue = [i for i in _overdue_all if i["kind"] in ("task", "task_occ")]
+    focus_tasks_all = [i for i in _active_all if i["kind"] in ("task", "task_occ")]
+    focus_habits_all = [i for i in _active_all if i["kind"] == "habit"]
+    focus_tasks = focus_tasks_all[:_FOCUS_MAX]
+    focus_habits = focus_habits_all[:_FOCUS_MAX]
+    focus_tasks_overflow = len(focus_tasks_all) > _FOCUS_MAX
+    focus_habits_overflow = len(focus_habits_all) > _FOCUS_MAX
+
     # 2. Upcoming payments
     upcoming_payments = svc.get_upcoming_payments(user_id, today, limit=3)
 
     # 3. Habit heatmap (15 days, 3 rows x 5 cols)
     habit_heatmap = svc.get_habit_heatmap(user_id, today, days=15)
 
-    # 4. Financial summary
+    # 4. Financial summary (legacy grouped view, kept for compatibility)
     fin = svc.get_financial_summary(user_id, today)
     current_month = f"{MONTH_NAMES_RU[today.month]} {today.year}"
 
     # 5. Wishes this month
     wishes_this_month = svc.get_wishes_this_month(user_id, today)
 
+    # 6. Finance state summary (wallet totals + Δ30d + monthly result)
+    fin_state = svc.get_fin_state_summary(user_id, today)
+
+    # 7. XP summary for #dash-level
+    _xp = XpService(db).get_xp_profile(user_id)
+    dash_xp = {
+        "level":            _xp["level"],
+        "level_title":      get_level_title(_xp["level"]),
+        "current_level_xp": _xp["current_level_xp"],
+        "xp_to_next_level": _xp["xp_to_next_level"],
+        "total_level_target": _xp["current_level_xp"] + _xp["xp_to_next_level"],
+        "percent_progress": _xp["percent_progress"],   # already 0–100
+        "xp_this_month":    _xp["xp_this_month"],
+    }
+
+    # 8. Activity summary for #dash-activity
+    MSK = timezone(timedelta(hours=3))
+    today_msk = datetime.now(MSK).date()
+    _act = ActivityReadService(db).get_activity_summary(user_id, today_msk)
+    _td = _act["trend_delta"]
+    dash_activity = {
+        "activity_index":  _act["activity_index"],
+        "trend_delta":     _td,
+        "trend_sign":      "up" if _td > 0 else ("down" if _td < 0 else "zero"),
+        "trend_abs":       abs(_td),
+        "points_7d":       _act["points_7d"],
+        "points_prev_7d":  _act["points_prev_7d"],
+    }
+
+    # 10. Event feed for #dash-feed (today_msk already defined in step 8)
+    feed_groups = svc.get_dashboard_feed(user_id, today_msk)
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
-        # Today block
+        # Today block (kept for backward-compat; new template uses focus_* vars)
         "overdue_items": today_block["overdue"],
         "active_items": today_block["active"],
         "done_items": today_block["done"],
         "progress": today_block["progress"],
+        # Focus data for #dash-focus
+        "focus_overdue": focus_overdue,
+        "focus_tasks": focus_tasks,
+        "focus_habits": focus_habits,
+        "focus_tasks_overflow": focus_tasks_overflow,
+        "focus_habits_overflow": focus_habits_overflow,
+        # Event feed for #dash-feed
+        "feed_groups": feed_groups,
         # Upcoming payments
         "upcoming_payments": upcoming_payments,
         # Habit heatmap
         "habit_heatmap": habit_heatmap,
-        # Financial (grouped by currency)
+        # Financial summary (month name for headings)
         "current_month": current_month,
         "fin_by_currency": fin,
+        # Finance state card (wallet totals by type + Δ30d + monthly result)
+        "fin_state": fin_state,
+        # XP level card
+        "dash_xp": dash_xp,
+        # Activity index card
+        "dash_activity": dash_activity,
         # Wishes
         "wishes_this_month": wishes_this_month,
     })
@@ -188,6 +316,10 @@ def wallets_page(request: Request, db: Session = Depends(get_db)):
     wallets = db.query(WalletBalance).filter(
         WalletBalance.account_id == user_id
     ).all()
+
+    folders = db.query(WalletFolder).filter(
+        WalletFolder.account_id == user_id
+    ).order_by(WalletFolder.position, WalletFolder.id).all()
 
     # Calculate dynamics for each wallet
     thirty_days_ago = datetime.now() - timedelta(days=30)
@@ -262,10 +394,47 @@ def wallets_page(request: Request, db: Session = Depends(get_db)):
         key=lambda s: (_type_order.get(s["wallet_type"], 9), s["currency"]),
     )
 
+    # Group active wallets by folder
+    folder_map = {f.id: f for f in folders}
+    _folder_groups: dict[int, list] = {}  # folder_id -> [wd]
+    ungrouped_wallets = []
+    for wd in wallet_data:
+        if wd["wallet"].is_archived:
+            continue
+        fid = wd["wallet"].folder_id
+        if fid and fid in folder_map:
+            _folder_groups.setdefault(fid, []).append(wd)
+        else:
+            ungrouped_wallets.append(wd)
+
+    # Build ordered list of folder groups with aggregate stats
+    grouped_wallets = []
+    for fid in sorted(_folder_groups.keys(), key=lambda x: (folder_map[x].position, x)):
+        wds = _folder_groups[fid]
+        currencies = {wd["wallet"].currency for wd in wds}
+        same_currency = len(currencies) == 1
+        currency = list(currencies)[0] if same_currency else None
+        total_balance = sum(wd["wallet"].balance for wd in wds) if same_currency else None
+        total_delta_30d = sum(wd["delta_30d"] for wd in wds) if same_currency else None
+        total_ops_30d = sum(wd["operations_count_30d"] for wd in wds)
+        last_ops = [wd["wallet"].last_operation_at for wd in wds if wd["wallet"].last_operation_at]
+        grouped_wallets.append({
+            "folder": folder_map[fid],
+            "wallets": wds,
+            "currency": currency,
+            "total_balance": total_balance,
+            "total_delta_30d": total_delta_30d,
+            "total_ops_30d": total_ops_30d,
+            "last_op_at": max(last_ops) if last_ops else None,
+        })
+
     return templates.TemplateResponse("wallets.html", {
         "request": request,
         "wallet_data": wallet_data,
-        "summary": summary
+        "summary": summary,
+        "folders": folders,
+        "grouped_wallets": grouped_wallets,
+        "ungrouped_wallets": ungrouped_wallets,
     })
 
 
@@ -430,6 +599,106 @@ def unarchive_wallet_form(
             "wallets": wallets,
             "error": str(e)
         })
+
+
+# === Wallet Folders ===
+
+@router.post("/wallets/folders/create", response_class=HTMLResponse)
+def create_wallet_folder(
+    request: Request,
+    title: str = Form(...),
+    wallet_type: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Создать папку для кошельков"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    title = title.strip()
+    if not title:
+        return RedirectResponse("/wallets?error=Название+папки+не+может+быть+пустым", status_code=302)
+    if wallet_type not in ("REGULAR", "CREDIT", "SAVINGS"):
+        return RedirectResponse("/wallets?error=Неверный+тип+кошелька", status_code=302)
+    folder = WalletFolder(account_id=user_id, title=title, wallet_type=wallet_type)
+    db.add(folder)
+    db.commit()
+    return RedirectResponse("/wallets", status_code=302)
+
+
+@router.post("/wallets/folders/{folder_id}/rename", response_class=HTMLResponse)
+def rename_wallet_folder(
+    request: Request,
+    folder_id: int,
+    title: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Переименовать папку кошельков"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    folder = db.query(WalletFolder).filter(
+        WalletFolder.id == folder_id, WalletFolder.account_id == user_id
+    ).first()
+    if folder:
+        title = title.strip()
+        if title:
+            folder.title = title
+            db.commit()
+    return RedirectResponse("/wallets", status_code=302)
+
+
+@router.post("/wallets/folders/{folder_id}/delete", response_class=HTMLResponse)
+def delete_wallet_folder(
+    request: Request,
+    folder_id: int,
+    db: Session = Depends(get_db)
+):
+    """Удалить папку (кошельки перемещаются в «Без папки»)"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    folder = db.query(WalletFolder).filter(
+        WalletFolder.id == folder_id, WalletFolder.account_id == user_id
+    ).first()
+    if folder:
+        # Unassign wallets from this folder
+        db.query(WalletBalance).filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.folder_id == folder_id
+        ).update({"folder_id": None})
+        db.delete(folder)
+        db.commit()
+    return RedirectResponse("/wallets", status_code=302)
+
+
+@router.post("/wallets/{wallet_id}/set-folder", response_class=HTMLResponse)
+def set_wallet_folder(
+    request: Request,
+    wallet_id: int,
+    folder_id: int = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Назначить кошелёк в папку (folder_id=0 означает «без папки»)"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    wallet = db.query(WalletBalance).filter(
+        WalletBalance.wallet_id == wallet_id,
+        WalletBalance.account_id == user_id
+    ).first()
+    if wallet:
+        if folder_id > 0:
+            # Validate folder belongs to user and matches wallet type
+            folder = db.query(WalletFolder).filter(
+                WalletFolder.id == folder_id, WalletFolder.account_id == user_id
+            ).first()
+            if folder and folder.wallet_type == wallet.wallet_type:
+                wallet.folder_id = folder.id
+            # else: type mismatch or not found — ignore silently
+        else:
+            wallet.folder_id = None
+        db.commit()
+    return RedirectResponse("/wallets", status_code=302)
 
 
 # === Goals ===
@@ -1050,6 +1319,7 @@ def create_transaction_form(
                 end_date=cov_end,
             )
 
+        request.session["flash"] = {"message": "🎉 +5 XP"}
         return RedirectResponse("/transactions", status_code=302)
     except Exception as e:
         db.rollback()
@@ -1728,8 +1998,15 @@ def create_task_form(
 def complete_task_form(request: Request, task_id: int, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
     try:
-        CompleteTaskUseCase(db).execute(task_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+        task = db.query(TaskModel).filter(
+            TaskModel.task_id == task_id, TaskModel.account_id == user_id
+        ).first()
+        today_msk = datetime.now(timezone(timedelta(hours=3))).date()
+        xp_delta = preview_task_xp(task.due_date if task else None, today_msk)
+        CompleteTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id)
+        request.session["flash"] = {"message": f"🎉 +{xp_delta} XP"}
     except Exception:
         db.rollback()
     return RedirectResponse("/tasks", status_code=302)
@@ -1754,6 +2031,7 @@ def complete_task_occurrence_form(request: Request, occurrence_id: int, db: Sess
         return RedirectResponse("/login", status_code=302)
     try:
         CompleteTaskOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+        request.session["flash"] = {"message": "🎉 +10 XP"}
     except Exception:
         db.rollback()
     return RedirectResponse("/tasks", status_code=302)
@@ -1908,6 +2186,7 @@ def complete_habit_occurrence_form(request: Request, occurrence_id: int, db: Ses
         return RedirectResponse("/login", status_code=302)
     try:
         CompleteHabitOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+        request.session["flash"] = {"message": "🎉 +3 XP"}
     except Exception:
         db.rollback()
     return RedirectResponse("/habits", status_code=302)
@@ -3407,11 +3686,11 @@ def _budget_matrix_nav_urls(
 def budget_page(
     request: Request,
     variant_id: int | None = None,
-    grain: str = "month",
+    grain: str | None = None,
     year: int | None = None,
     month: int | None = None,
     date: str | None = None,
-    range_count: int = 3,
+    range_count: int | None = None,
     db: Session = Depends(get_db),
 ):
     """Budget page — multi-period matrix view."""
@@ -3419,6 +3698,12 @@ def budget_page(
         return RedirectResponse("/login", status_code=302)
 
     user_id = request.session["user_id"]
+
+    # Load grain/range_count from session if not provided in URL
+    if grain is None:
+        grain = request.session.get("budget_grain", "month")
+    if range_count is None:
+        range_count = int(request.session.get("budget_range_count", 3))
 
     # Variant selection: URL param → session → first non-archived → stub
     resolved_variant_id = variant_id
@@ -3455,6 +3740,10 @@ def budget_page(
 
     max_rc = RANGE_LIMITS.get(grain, 12)
     range_count = max(1, min(range_count, max_rc))
+
+    # Persist validated settings to session
+    request.session["budget_grain"] = grain
+    request.session["budget_range_count"] = range_count
 
     now = datetime.now()
 
@@ -4568,8 +4857,15 @@ def plan_page(
 def plan_complete_task(request: Request, task_id: int, redirect: str = Form("/plan"), db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
     try:
-        CompleteTaskUseCase(db).execute(task_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+        task = db.query(TaskModel).filter(
+            TaskModel.task_id == task_id, TaskModel.account_id == user_id
+        ).first()
+        today_msk = datetime.now(timezone(timedelta(hours=3))).date()
+        xp_delta = preview_task_xp(task.due_date if task else None, today_msk)
+        CompleteTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id)
+        request.session["flash"] = {"message": f"🎉 +{xp_delta} XP"}
     except Exception:
         db.rollback()
     return RedirectResponse(redirect, status_code=302)
@@ -4592,6 +4888,7 @@ def plan_complete_task_occ(request: Request, occurrence_id: int, redirect: str =
         return RedirectResponse("/login", status_code=302)
     try:
         CompleteTaskOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+        request.session["flash"] = {"message": "🎉 +10 XP"}
     except Exception:
         db.rollback()
     return RedirectResponse(redirect, status_code=302)
@@ -4934,3 +5231,155 @@ def update_wish_handler(
         return RedirectResponse("/wishes", status_code=302)
     except (WishValidationError, ValueError) as e:
         return RedirectResponse(f"/wishes/{wish_id}/edit?error={str(e)}", status_code=302)
+
+
+# --- XP / Profile ---
+
+@router.get("/profile", response_class=HTMLResponse)
+def profile_page(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    data = ProfileService(db).get_profile_data(user_id)
+
+    # Expose theme_base / theme_mode for the Оформление picker
+    current_theme = _get_user_theme(request)
+    _parts = current_theme.rsplit("-", 1)
+    data["current_theme"] = current_theme
+    data["theme_base"] = _parts[0]
+    data["theme_mode"] = _parts[1] if len(_parts) == 2 else "light"
+
+    return templates.TemplateResponse("profile.html", {
+        "request": request,
+        **data,
+    })
+
+
+@router.get("/profile/xp-history", response_class=HTMLResponse)
+def xp_history_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    page: int = 1,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    min_xp: int | None = None,
+    reason: str | None = None,
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    # Parse optional date strings (YYYY-MM-DD from <input type="date">)
+    from datetime import date as _date
+    from_date_val: _date | None = None
+    to_date_val: _date | None = None
+    try:
+        if from_date:
+            from_date_val = _date.fromisoformat(from_date)
+    except ValueError:
+        from_date_val = None
+    try:
+        if to_date:
+            to_date_val = _date.fromisoformat(to_date)
+    except ValueError:
+        to_date_val = None
+
+    page_size = 20
+    items, total, total_pages = XpHistoryService(db).list_paginated(
+        user_id=user_id,
+        page=page,
+        page_size=page_size,
+        from_date=from_date_val,
+        to_date=to_date_val,
+        min_xp=min_xp,
+        reason=reason or None,
+    )
+
+    return templates.TemplateResponse("profile_xp_history.html", {
+        "request": request,
+        "items": items,
+        "total": total,
+        "page": page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "from_date": from_date or "",
+        "to_date": to_date or "",
+        "min_xp": min_xp or "",
+        "reason": reason or "",
+        "reason_options": XP_REASON_FILTER_OPTIONS,
+    })
+
+
+@router.get("/profile/xp")
+def get_xp_profile(
+    request: Request,
+    db: Session = Depends(get_db),
+    account_id: int = Depends(require_user),
+):
+    profile = XpService(db).get_xp_profile(account_id)
+    return JSONResponse(content=profile)
+
+
+@router.get("/profile/activity")
+def get_activity_profile(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    user_id = request.session["user_id"]
+    today_msk = datetime.now(timezone(timedelta(hours=3))).date()
+    summary = ActivityReadService(db).get_activity_summary(user_id, today_msk)
+    return JSONResponse(content=summary)
+
+
+@router.post("/flash/clear")
+def flash_clear(request: Request):
+    """Clear the session flash (called by client JS after showing the toast)."""
+    request.session.pop("flash", None)
+    return JSONResponse({"ok": True})
+
+
+@router.post("/profile/theme")
+def set_profile_theme(
+    request: Request,
+    theme: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Save the user's UI theme preference (called by JS — no page reload)."""
+    if not require_user(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    if theme not in VALID_THEMES:
+        return JSONResponse({"error": "invalid theme"}, status_code=400)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.theme = theme
+        db.commit()
+
+    request.session["user_theme"] = theme
+    return JSONResponse({"ok": True, "theme": theme})
+
+
+@router.post("/profile/save-theme")
+def save_profile_theme_form(
+    request: Request,
+    theme: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Form-submit endpoint: saves theme and redirects back to /profile."""
+    if "user_id" not in request.session:
+        return RedirectResponse("/login", status_code=302)
+    if theme not in VALID_THEMES:
+        return RedirectResponse("/profile", status_code=302)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.theme = theme
+        db.commit()
+
+    request.session["user_theme"] = theme
+    return RedirectResponse("/profile", status_code=302)

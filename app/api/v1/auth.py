@@ -50,6 +50,8 @@ def login_post(
         )
 
     request.session["user_id"] = user.id
+    # Restore saved theme (fallback to default if not set)
+    request.session["user_theme"] = user.theme or "graphite-emerald-light"
     return RedirectResponse("/", status_code=302)
 
 

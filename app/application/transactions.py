@@ -15,6 +15,8 @@ from app.domain.wallet import WALLET_TYPE_SAVINGS
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
 from app.readmodels.projectors.transactions_feed import TransactionsFeedProjector
 from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
+from app.readmodels.projectors.xp import XpProjector
+from app.readmodels.projectors.activity import ActivityProjector
 
 
 class TransactionValidationError(ValueError):
@@ -351,4 +353,12 @@ class CreateTransactionUseCase:
         GoalWalletBalancesProjector(self.db).run(
             account_id,
             event_types=["transaction_created", "wallet_created"]
+        )
+        XpProjector(self.db).run(
+            account_id,
+            event_types=["transaction_created"]
+        )
+        ActivityProjector(self.db).run(
+            account_id,
+            event_types=["transaction_created"]
         )

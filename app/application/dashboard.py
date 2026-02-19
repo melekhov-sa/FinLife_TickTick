@@ -22,6 +22,7 @@ from app.infrastructure.db.models import (
     CalendarEventModel, EventOccurrenceModel,
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
+    EventLog,
 )
 from app.utils.money import format_money
 
@@ -546,7 +547,276 @@ class DashboardService:
         return "RUB"
 
     # ------------------------------------------------------------------
-    # 5. Wishes this month
+    # 5. Finance state summary (wallet totals + Δ30d + monthly result)
+    # ------------------------------------------------------------------
+
+    def get_fin_state_summary(self, account_id: int, today: date) -> dict:
+        """
+        Wallet balance totals by type (REGULAR / CREDIT / SAVINGS) for RUB wallets,
+        net balance change over the last 30 days, and monthly income / expense.
+
+        Δ30d is derived from TransactionFeed: the sum of all INCOME, EXPENSE, and
+        TRANSFER entries touching each wallet set within the rolling 30-day window.
+
+        Returns a flat dict with pre-computed sign / abs / fmt fields so Jinja
+        contains zero arithmetic.
+        """
+        from datetime import datetime as dt, timedelta
+
+        # ── Wallet totals (RUB, non-archived) ──
+        wallets = self.db.query(WalletBalance).filter(
+            WalletBalance.account_id == account_id,
+            WalletBalance.is_archived == False,  # noqa: E712
+            WalletBalance.currency == "RUB",
+        ).all()
+
+        def _ids_and_total(wtype: str):
+            ws = [w for w in wallets if w.wallet_type == wtype]
+            total = sum(w.balance for w in ws) if ws else Decimal("0")
+            return {w.wallet_id for w in ws}, int(total)
+
+        regular_ids, regular_total = _ids_and_total("REGULAR")
+        credit_ids,  credit_total  = _ids_and_total("CREDIT")
+        savings_ids, savings_total = _ids_and_total("SAVINGS")
+
+        # ── Δ30d: net balance change via TransactionFeed ──
+        window_start = dt(today.year, today.month, today.day) - timedelta(days=30)
+        window_end   = dt(today.year, today.month, today.day) + timedelta(days=1)
+
+        def _net_30d(wallet_ids: set) -> int:
+            if not wallet_ids:
+                return 0
+            ids = list(wallet_ids)
+            base = [
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.occurred_at >= window_start,
+                TransactionFeed.occurred_at < window_end,
+            ]
+            inc = self.db.query(
+                func.coalesce(func.sum(TransactionFeed.amount), 0)
+            ).filter(*base,
+                     TransactionFeed.operation_type == "INCOME",
+                     TransactionFeed.wallet_id.in_(ids)).scalar() or Decimal("0")
+
+            exp = self.db.query(
+                func.coalesce(func.sum(TransactionFeed.amount), 0)
+            ).filter(*base,
+                     TransactionFeed.operation_type == "EXPENSE",
+                     TransactionFeed.wallet_id.in_(ids)).scalar() or Decimal("0")
+
+            t_in = self.db.query(
+                func.coalesce(func.sum(TransactionFeed.amount), 0)
+            ).filter(*base,
+                     TransactionFeed.operation_type == "TRANSFER",
+                     TransactionFeed.to_wallet_id.in_(ids)).scalar() or Decimal("0")
+
+            t_out = self.db.query(
+                func.coalesce(func.sum(TransactionFeed.amount), 0)
+            ).filter(*base,
+                     TransactionFeed.operation_type == "TRANSFER",
+                     TransactionFeed.from_wallet_id.in_(ids)).scalar() or Decimal("0")
+
+            return int(inc - exp + t_in - t_out)
+
+        regular_delta = _net_30d(regular_ids)
+        credit_delta  = _net_30d(credit_ids)
+        savings_delta = _net_30d(savings_ids)
+
+        # ── Monthly income / expense (RUB) ──
+        month_start = dt(today.year, today.month, 1)
+        if today.month == 12:
+            month_end = dt(today.year + 1, 1, 1)
+        else:
+            month_end = dt(today.year, today.month + 1, 1)
+
+        m_base = [
+            TransactionFeed.account_id == account_id,
+            TransactionFeed.currency == "RUB",
+            TransactionFeed.occurred_at >= month_start,
+            TransactionFeed.occurred_at < month_end,
+        ]
+        month_income = int(self.db.query(
+            func.coalesce(func.sum(TransactionFeed.amount), 0)
+        ).filter(*m_base, TransactionFeed.operation_type == "INCOME").scalar() or 0)
+
+        month_expense = int(self.db.query(
+            func.coalesce(func.sum(TransactionFeed.amount), 0)
+        ).filter(*m_base, TransactionFeed.operation_type == "EXPENSE").scalar() or 0)
+
+        # ── Helpers ──
+        def _sign_abs(delta: int):
+            if delta > 0:
+                return "up", delta
+            if delta < 0:
+                return "down", abs(delta)
+            return "zero", 0
+
+        def _fmt_int(n: int) -> str:
+            return f"{n:,}".replace(",", " ")
+
+        r_sign, r_abs = _sign_abs(regular_delta)
+        c_sign, c_abs = _sign_abs(credit_delta)
+        s_sign, s_abs = _sign_abs(savings_delta)
+
+        return {
+            "regular_total":      regular_total,
+            "credit_total":       credit_total,
+            "savings_total":      savings_total,
+            "regular_delta_sign": r_sign,
+            "regular_delta_abs":  r_abs,
+            "regular_delta_fmt":  _fmt_int(r_abs),
+            "credit_delta_sign":  c_sign,
+            "credit_delta_abs":   c_abs,
+            "credit_delta_fmt":   _fmt_int(c_abs),
+            "savings_delta_sign": s_sign,
+            "savings_delta_abs":  s_abs,
+            "savings_delta_fmt":  _fmt_int(s_abs),
+            "month_income":       month_income,
+            "month_expense":      month_expense,
+            "month_net":          month_income - month_expense,
+        }
+
+    # ------------------------------------------------------------------
+    # 6. Dashboard event feed (last 7 MSK days, max 30 items, grouped by date)
+    # ------------------------------------------------------------------
+
+    _FEED_EVENT_TYPES = [
+        "task_completed", "task_occurrence_completed",
+        "habit_occurrence_completed", "goal_achieved",
+    ]
+    _OP_ICONS = {"INCOME": "💰", "EXPENSE": "💸", "TRANSFER": "🔄"}
+
+    def get_dashboard_feed(self, account_id: int, today_msk: date) -> list[dict]:
+        """
+        Unified activity feed for the last 7 MSK calendar days.
+
+        Sources:
+          - EventLog: task/habit/goal completion events
+          - TransactionFeed: all financial operations
+
+        Returns a list of day-groups, newest first:
+          [{"label": "Сегодня"|"Вчера"|"DD.MM", "date": date, "items": [...]}, ...]
+
+        Each item has: kind, icon, title, occurred_at, time_str, amount_fmt, amount_sign.
+        """
+        from datetime import datetime as dt, timezone
+        MSK = timezone(timedelta(hours=3))
+        window_start = dt(
+            today_msk.year, today_msk.month, today_msk.day, tzinfo=MSK
+        ) - timedelta(days=6)
+
+        # 1. EventLog: task / habit / goal completions
+        ev_rows = self.db.query(EventLog).filter(
+            EventLog.account_id == account_id,
+            EventLog.event_type.in_(self._FEED_EVENT_TYPES),
+            EventLog.occurred_at >= window_start,
+        ).order_by(EventLog.occurred_at.desc()).limit(50).all()
+
+        # 2. TransactionFeed: financial operations
+        tx_rows = self.db.query(TransactionFeed).filter(
+            TransactionFeed.account_id == account_id,
+            TransactionFeed.occurred_at >= window_start,
+        ).order_by(TransactionFeed.occurred_at.desc()).limit(50).all()
+
+        # Batch-load titles for EventLog items
+        task_ids: set[int] = set()
+        tmpl_ids: set[int] = set()
+        habit_ids: set[int] = set()
+        for ev in ev_rows:
+            p = ev.payload_json or {}
+            if ev.event_type == "task_completed" and p.get("task_id"):
+                task_ids.add(int(p["task_id"]))
+            elif ev.event_type == "task_occurrence_completed" and p.get("template_id"):
+                tmpl_ids.add(int(p["template_id"]))
+            elif ev.event_type == "habit_occurrence_completed" and p.get("habit_id"):
+                habit_ids.add(int(p["habit_id"]))
+
+        task_titles = (
+            {t.task_id: t.title for t in self.db.query(TaskModel)
+             .filter(TaskModel.task_id.in_(task_ids)).all()}
+            if task_ids else {}
+        )
+        tmpl_titles = (
+            {t.template_id: t.title for t in self.db.query(TaskTemplateModel)
+             .filter(TaskTemplateModel.template_id.in_(tmpl_ids)).all()}
+            if tmpl_ids else {}
+        )
+        habit_titles = (
+            {h.habit_id: h.title for h in self.db.query(HabitModel)
+             .filter(HabitModel.habit_id.in_(habit_ids)).all()}
+            if habit_ids else {}
+        )
+
+        # Build unified item list
+        items: list[dict] = []
+
+        for ev in ev_rows:
+            p = ev.payload_json or {}
+            if ev.event_type == "task_completed":
+                title = task_titles.get(int(p.get("task_id", 0)), "Задача")
+                icon = "✅"
+            elif ev.event_type == "task_occurrence_completed":
+                title = tmpl_titles.get(int(p.get("template_id", 0)), "Задача")
+                icon = "✅"
+            elif ev.event_type == "habit_occurrence_completed":
+                title = habit_titles.get(int(p.get("habit_id", 0)), "Привычка")
+                icon = "💪"
+            else:  # goal_achieved
+                title = "Достигнута цель"
+                icon = "🏆"
+            items.append({
+                "kind": "event",
+                "icon": icon,
+                "title": title,
+                "occurred_at": ev.occurred_at,
+                "amount_fmt": None,
+                "amount_sign": None,
+            })
+
+        for tx in tx_rows:
+            desc = tx.description.strip() if tx.description else ""
+            title = desc or (
+                "Доход" if tx.operation_type == "INCOME"
+                else "Расход" if tx.operation_type == "EXPENSE"
+                else "Перевод"
+            )
+            items.append({
+                "kind": "transaction",
+                "icon": self._OP_ICONS.get(tx.operation_type, "💳"),
+                "title": title,
+                "occurred_at": tx.occurred_at,
+                "amount_fmt": format_money(tx.amount, tx.currency),
+                "amount_sign": (
+                    "income" if tx.operation_type == "INCOME"
+                    else "expense" if tx.operation_type == "EXPENSE"
+                    else "transfer"
+                ),
+            })
+
+        # Sort combined list desc, cap at 30
+        items.sort(key=lambda x: x["occurred_at"], reverse=True)
+        items = items[:30]
+
+        # Group by MSK date
+        yesterday = today_msk - timedelta(days=1)
+        groups: dict[date, dict] = {}
+        for item in items:
+            day = item["occurred_at"].astimezone(MSK).date()
+            item["time_str"] = item["occurred_at"].astimezone(MSK).strftime("%H:%M")
+            if day not in groups:
+                if day == today_msk:
+                    label = "Сегодня"
+                elif day == yesterday:
+                    label = "Вчера"
+                else:
+                    label = day.strftime("%d.%m")
+                groups[day] = {"label": label, "date": day, "events": []}
+            groups[day]["events"].append(item)
+
+        return sorted(groups.values(), key=lambda g: g["date"], reverse=True)
+
+    # ------------------------------------------------------------------
+    # 7. Wishes this month
     # ------------------------------------------------------------------
 
     def get_wishes_this_month(self, account_id: int, today: date) -> dict:

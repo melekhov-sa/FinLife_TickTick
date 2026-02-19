@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+{% block title %}Профиль — FinLife{% endblock %}
+
+{% block content %}
+<style>
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 860px;
+  }
+  @media (max-width: 640px) {
+    .profile-grid { grid-template-columns: 1fr; }
+  }
+  .xp-bar-track {
+    background: #e9ecef;
+    border-radius: 6px;
+    height: 10px;
+    overflow: hidden;
+    margin: 10px 0 6px;
+  }
+  .xp-bar-fill {
+    background: #007AFF;
+    height: 100%;
+    border-radius: 6px;
+  }
+  .xp-stat-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color, #f0f0f0);
+  }
+  .xp-stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .xp-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: #888; font-weight: 600; }
+  .xp-stat-val { font-size: 15px; font-weight: 700; }
+  .xp-earn-list { list-style: none; margin: 0; padding: 0; }
+  .xp-earn-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    font-size: 13px;
+  }
+  .xp-earn-list li:last-child { border-bottom: none; }
+  .xp-earn-amount {
+    font-weight: 700;
+    color: #007AFF;
+    min-width: 64px;
+    white-space: nowrap;
+  }
+  .profile-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    font-size: 14px;
+  }
+  .profile-meta-row:last-child { border-bottom: none; }
+  .profile-meta-label { color: #888; font-size: 13px; }
+  .profile-meta-val { font-weight: 600; }
+
+  .xp-event-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    font-size: 13px;
+  }
+  .xp-event-row:last-child { border-bottom: none; }
+  .xp-event-date { color: #888; white-space: nowrap; min-width: 118px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .xp-event-desc { flex: 1; }
+  .xp-event-amount { font-weight: 700; color: #007AFF; white-space: nowrap; }
+
+  .activity-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-label { color: #888; font-size: 12px; min-width: 140px; }
+  .activity-val { font-weight: 600; }
+  .activity-index-bar-track { background: #e9ecef; border-radius: 6px; height: 8px; overflow: hidden; margin: 6px 0 4px; flex: 1; min-width: 80px; }
+  .activity-index-bar-fill { background: #34c759; height: 100%; border-radius: 6px; transition: width 0.3s; }
+  .trend-up { color: #34c759; font-weight: 700; }
+  .trend-down { color: #ff3b30; font-weight: 700; }
+  .trend-flat { color: #888; }
+  [data-theme$="-dark"] .activity-row { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .activity-label { color: #8b949e; }
+  [data-theme$="-dark"] .activity-index-bar-track { background: #21262d; }
+
+  .xp-analytics-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .xp-analytics-table th { padding: 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: #888; font-weight: 600; border-bottom: 1px solid #eee; text-align: left; }
+  .xp-analytics-table td { padding: 3px 8px; border-bottom: 1px solid #f4f4f4; }
+  .xp-analytics-table .xp-zero td { color: #bbb; }
+  .xp-analytics-table .xp-pos { font-weight: 700; color: #007AFF; }
+  .xp-analytics-table .xp-total-row td { font-weight: 700; border-top: 2px solid #ddd; border-bottom: none; padding-top: 6px; }
+
+  /* Dark theme */
+  [data-theme$="-dark"] .xp-bar-track { background: #21262d; }
+  [data-theme$="-dark"] .xp-stat-label { color: #8b949e; }
+  [data-theme$="-dark"] .xp-earn-list li { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .profile-meta-row { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .profile-meta-label { color: #8b949e; }
+  [data-theme$="-dark"] .xp-stat-row { border-top-color: #21262d; }
+  [data-theme$="-dark"] .xp-event-row { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .xp-event-date { color: #8b949e; }
+  [data-theme$="-dark"] .xp-analytics-table th { color: #8b949e; border-bottom-color: #30363d; }
+  [data-theme$="-dark"] .xp-analytics-table td { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .xp-analytics-table .xp-zero td { color: #484f58; }
+  [data-theme$="-dark"] .xp-analytics-table .xp-total-row td { border-top-color: #30363d; }
+
+  /* Theme picker cards */
+  .theme-card {
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px;
+    width: 170px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    user-select: none;
+  }
+  .theme-card:hover { transform: translateY(-2px); }
+  .theme-card-active {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  @media (max-width: 640px) {
+    .theme-card { width: calc(50% - 6px); }
+  }
+</style>
+
+<h1 style="margin-bottom: 20px;">Профиль</h1>
+
+<div class="profile-grid">
+
+  {# ── Left column: account info ── #}
+  <div class="card">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 14px;">Аккаунт</div>
+    <div class="profile-meta-row">
+      <span class="profile-meta-label">E-mail</span>
+      <span class="profile-meta-val">{{ email }}</span>
+    </div>
+    <div class="profile-meta-row">
+      <span class="profile-meta-label">Дата регистрации</span>
+      <span class="profile-meta-val">{{ registration_date }}</span>
+    </div>
+    <div class="profile-meta-row">
+      <span class="profile-meta-label">Дней в системе</span>
+      <span class="profile-meta-val">{{ days_in_system }}</span>
+    </div>
+  </div>
+
+  {# ── Right column: XP card ── #}
+  <div class="card">
+    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
+      <span style="font-size: 18px; font-weight: 700;">Уровень {{ xp.level }}</span>
+      <span class="muted" style="font-size: 14px;">{{ level_title }}</span>
+    </div>
+
+    <div style="font-size: 13px; color: #555; margin-bottom: 2px;">
+      XP: {{ xp.current_level_xp }} / {{ xp.current_level_xp + xp.xp_to_next_level }}
+    </div>
+
+    <div class="xp-bar-track">
+      <div class="xp-bar-fill" style="width: {{ xp.percent_progress }}%;"></div>
+    </div>
+
+    <div style="font-size: 12px;" class="muted">
+      До следующего уровня: {{ xp.xp_to_next_level }} XP
+    </div>
+
+    <div class="xp-stat-row">
+      <div class="xp-stat-item">
+        <span class="xp-stat-label">Этот месяц</span>
+        <span class="xp-stat-val">{{ xp.xp_this_month }} XP</span>
+      </div>
+      <div class="xp-stat-item">
+        <span class="xp-stat-label">Всего</span>
+        <span class="xp-stat-val">{{ xp.total_xp }} XP</span>
+      </div>
+      <div class="xp-stat-item">
+        <span class="xp-stat-label">Рекорд месяца</span>
+        <span class="xp-stat-val">{{ xp.xp_record_month }} XP</span>
+      </div>
+    </div>
+  </div>
+
+  {# ── Activity Index ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 860px;">
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">Активность</div>
+
+    {# Index bar #}
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
+      <span style="font-size: 22px; font-weight: 700;">{{ activity.activity_index }}</span>
+      <span class="muted" style="font-size: 13px;">/ 100</span>
+      <div class="activity-index-bar-track">
+        <div class="activity-index-bar-fill" style="width: {{ activity.activity_index }}%;"></div>
+      </div>
+    </div>
+
+    {# Trend #}
+    <div style="font-size: 13px; margin-bottom: 10px;">
+      {% if activity.trend_delta > 0 %}
+      <span class="trend-up">▲ +{{ activity.trend_delta }}</span> по сравнению с прошлой неделей
+      {% elif activity.trend_delta < 0 %}
+      <span class="trend-down">▼ {{ activity.trend_delta }}</span> по сравнению с прошлой неделей
+      {% else %}
+      <span class="trend-flat">— без изменений</span> по сравнению с прошлой неделей
+      {% endif %}
+    </div>
+
+    {# Stats rows #}
+    <div class="activity-row">
+      <span class="activity-label">7 дней / пред. 7 дней</span>
+      <span class="activity-val">{{ activity.points_7d }} очков</span>
+      <span class="muted" style="font-size: 12px;">/ {{ activity.points_prev_7d }} очков</span>
+    </div>
+    <div class="activity-row">
+      <span class="activity-label">30 дней / в среднем</span>
+      <span class="activity-val">{{ activity.points_30d_total }} очков</span>
+      <span class="muted" style="font-size: 12px;">/ {{ activity.points_30d_avg }} в день</span>
+    </div>
+    {% if activity.best_day_date_30d %}
+    <div class="activity-row">
+      <span class="activity-label">Лучший день (30 дней)</span>
+      <span class="activity-val">{{ activity.best_day_date_30d }} — {{ activity.best_day_points_30d }} очков</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Recent XP events ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 860px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+      <span style="font-weight: 600; font-size: 14px;">Последние XP-события</span>
+      <a href="/profile/xp-history" style="font-size: 12px; color: #007AFF; text-decoration: none;">Смотреть всю историю →</a>
+    </div>
+    {% if recent_xp_events %}
+      {% for ev in recent_xp_events %}
+      <div class="xp-event-row">
+        <span class="xp-event-date">{{ ev.created_at }}</span>
+        <span class="xp-event-desc">{{ ev.description }}</span>
+        <span class="xp-event-amount">+{{ ev.xp_amount }} XP</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="muted" style="font-size: 13px; padding: 8px 0;">XP-событий пока нет. Закройте задачу или выполните привычку!</div>
+    {% endif %}
+  </div>
+
+  {# ── Daily XP breakdown ── #}
+  <div class="card" style="grid-column: 1 / 2;">
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">
+      XP по дням — {{ current_month_label }}
+    </div>
+    <div style="overflow-y: auto; max-height: 340px;">
+      <table class="xp-analytics-table">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th style="text-align: right;">XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in daily_xp %}
+          <tr class="{% if d.xp == 0 %}xp-zero{% endif %}">
+            <td>{{ d.date_str }}</td>
+            <td style="text-align: right;" class="{% if d.xp > 0 %}xp-pos{% endif %}">
+              {% if d.xp > 0 %}+{{ d.xp }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="xp-total-row">
+            <td>Итого</td>
+            <td style="text-align: right;" class="xp-pos">+{{ daily_xp_total }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Monthly XP summary ── #}
+  <div class="card" style="grid-column: 2 / 3; align-self: start;">
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">Динамика XP по месяцам</div>
+    <table class="xp-analytics-table">
+      <thead>
+        <tr>
+          <th>Месяц</th>
+          <th style="text-align: right;">XP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mo in monthly_xp %}
+        <tr class="{% if mo.xp == 0 %}xp-zero{% endif %}">
+          <td>{{ mo.month_name }} {{ mo.year }}</td>
+          <td style="text-align: right;" class="{% if mo.xp > 0 %}xp-pos{% endif %}">
+            {% if mo.xp > 0 %}+{{ mo.xp }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── How to earn XP ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 420px;">
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">Как получить XP</div>
+    <ul class="xp-earn-list">
+      <li>
+        <span class="xp-earn-amount">+10 XP</span>
+        <span>закрытие задачи</span>
+      </li>
+      <li>
+        <span class="xp-earn-amount">+2 XP</span>
+        <span>бонус за досрочное закрытие (до срока)</span>
+      </li>
+      <li>
+        <span class="xp-earn-amount">+3 XP</span>
+        <span>выполнение привычки</span>
+      </li>
+      <li>
+        <span class="xp-earn-amount">+200 XP</span>
+        <span>достижение денежной цели</span>
+      </li>
+      <li>
+        <span class="xp-earn-amount">+5 XP</span>
+        <span>добавление операции</span>
+      </li>
+    </ul>
+  </div>
+
+  {# ── Оформление (theme picker) ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 860px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 16px;">Оформление</div>
+
+    <form method="POST" action="/profile/save-theme">
+      <input type="hidden" name="theme" id="selectedTheme" value="{{ current_theme }}">
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary); margin-bottom: 10px;">Тема</div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+
+        {# graphite-emerald #}
+        <div class="theme-card{% if theme_base == 'graphite-emerald' %} theme-card-active{% endif %}"
+             data-base="graphite-emerald"
+             onclick="pickThemeBase('graphite-emerald')">
+          <div style="display: flex; height: 64px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
+            <div style="width: 38%; background: #1E3A3F;"></div>
+            <div style="flex: 1; background: #F6F8FB; padding: 5px 4px;">
+              <div style="height: 5px; background: #1E7F4F; border-radius: 2px; margin-bottom: 4px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.12); border-radius: 2px; margin-bottom: 3px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.07); border-radius: 2px;"></div>
+            </div>
+          </div>
+          <div style="font-size: 13px; font-weight: 600;">Строгий Fintech</div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">graphite-emerald</div>
+        </div>
+
+        {# deep-blue #}
+        <div class="theme-card{% if theme_base == 'deep-blue' %} theme-card-active{% endif %}"
+             data-base="deep-blue"
+             onclick="pickThemeBase('deep-blue')">
+          <div style="display: flex; height: 64px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
+            <div style="width: 38%; background: #1E3A5F;"></div>
+            <div style="flex: 1; background: #EEF2FF; padding: 5px 4px;">
+              <div style="height: 5px; background: #1D4ED8; border-radius: 2px; margin-bottom: 4px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.12); border-radius: 2px; margin-bottom: 3px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.07); border-radius: 2px;"></div>
+            </div>
+          </div>
+          <div style="font-size: 13px; font-weight: 600;">Финансовый синий</div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">deep-blue</div>
+        </div>
+
+        {# architect-neutral #}
+        <div class="theme-card{% if theme_base == 'architect-neutral' %} theme-card-active{% endif %}"
+             data-base="architect-neutral"
+             onclick="pickThemeBase('architect-neutral')">
+          <div style="display: flex; height: 64px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
+            <div style="width: 38%; background: #292524;"></div>
+            <div style="flex: 1; background: #FAF9F7; padding: 5px 4px;">
+              <div style="height: 5px; background: #92400E; border-radius: 2px; margin-bottom: 4px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.12); border-radius: 2px; margin-bottom: 3px;"></div>
+              <div style="height: 3px; background: rgba(0,0,0,0.07); border-radius: 2px;"></div>
+            </div>
+          </div>
+          <div style="font-size: 13px; font-weight: 600;">Тёплый минимализм</div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">architect-neutral</div>
+        </div>
+
+      </div>
+
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary); margin-bottom: 10px;">Режим</div>
+      <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+        <button type="button" id="modeBtnLight" onclick="pickThemeMode('light')"
+                style="font-size: 13px; padding: 6px 16px; min-height: unset;{% if theme_mode != 'light' %} background: var(--bg-table-header); color: var(--text-primary);{% endif %}">
+          ☀️ Светлая
+        </button>
+        <button type="button" id="modeBtnDark" onclick="pickThemeMode('dark')"
+                style="font-size: 13px; padding: 6px 16px; min-height: unset;{% if theme_mode != 'dark' %} background: var(--bg-table-header); color: var(--text-primary);{% endif %}">
+          🌙 Тёмная
+        </button>
+      </div>
+
+      <button type="submit" style="font-size: 14px; padding: 8px 24px; min-height: unset;">
+        Сохранить оформление
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  var _cb = '{{ theme_base }}';
+  var _cm = '{{ theme_mode }}';
+
+  function _updateHidden() {
+    var inp = document.getElementById('selectedTheme');
+    if (inp) inp.value = _cb + '-' + _cm;
+  }
+
+  function _syncModeButtons() {
+    var lBtn = document.getElementById('modeBtnLight');
+    var dBtn = document.getElementById('modeBtnDark');
+    if (!lBtn || !dBtn) return;
+    var isDark = _cm === 'dark';
+    lBtn.style.background = !isDark ? '' : 'var(--bg-table-header)';
+    lBtn.style.color = !isDark ? '' : 'var(--text-primary)';
+    dBtn.style.background = isDark ? '' : 'var(--bg-table-header)';
+    dBtn.style.color = isDark ? '' : 'var(--text-primary)';
+  }
+
+  window.pickThemeBase = function(base) {
+    _cb = base;
+    var theme = base + '-' + _cm;
+    document.documentElement.setAttribute('data-theme', theme);
+    if (typeof _updateThemeBtn === 'function') _updateThemeBtn();
+    _updateHidden();
+    document.querySelectorAll('.theme-card').forEach(function(el) {
+      el.classList.toggle('theme-card-active', el.dataset.base === base);
+    });
+  };
+
+  window.pickThemeMode = function(mode) {
+    _cm = mode;
+    var theme = _cb + '-' + mode;
+    document.documentElement.setAttribute('data-theme', theme);
+    if (typeof _updateThemeBtn === 'function') _updateThemeBtn();
+    _updateHidden();
+    _syncModeButtons();
+  };
+})();
+</script>
+{% endblock %}

@@ -7,6 +7,8 @@ from app.infrastructure.db.models import TaskTemplateModel, TaskOccurrence, Even
 from app.domain.task_template import TaskTemplate
 from app.domain.task_occurrence import TaskOccurrenceEvent
 from app.readmodels.projectors.task_templates import TaskTemplatesProjector
+from app.readmodels.projectors.xp import XpProjector
+from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 
 
@@ -107,6 +109,8 @@ class CompleteTaskOccurrenceUseCase:
         )
         self.db.commit()
         TaskTemplatesProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
+        XpProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
+        ActivityProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
 
 
 class SkipTaskOccurrenceUseCase:

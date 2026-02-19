@@ -74,6 +74,9 @@ def build_plan_view(
     # Group by date
     day_groups = _group_by_date(items, today)
 
+    # Completed today (shown on active tab as a motivation section)
+    done_today = _query_done_today(db, account_id, today, wc_map)
+
     return {
         "tab": tab,
         "range_days": range_days,
@@ -81,6 +84,7 @@ def build_plan_view(
         "summary": summary,
         "today_progress": today_progress,
         "day_groups": day_groups,
+        "done_today": done_today,
     }
 
 
@@ -519,6 +523,67 @@ def _habit_occ_to_item(occ: HabitOccurrence, habit: HabitModel, wc_map: dict) ->
             "current_streak": habit.current_streak,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Completed today — for motivation section on active tab
+# ---------------------------------------------------------------------------
+
+def _query_done_today(db: Session, account_id: int, today: date, wc_map: dict) -> list[dict]:
+    """Fetch all items completed today with is_early flag."""
+    items: list[dict] = []
+
+    # One-off tasks completed today
+    for t in db.query(TaskModel).filter(
+        TaskModel.account_id == account_id,
+        TaskModel.status == "DONE",
+        func.date(TaskModel.completed_at) == today,
+    ).all():
+        item = _task_to_item(t, today, wc_map)
+        item["is_early"] = bool(
+            t.completed_at and t.due_date and t.completed_at.date() < t.due_date
+        )
+        items.append(item)
+
+    # Recurring task occurrences completed today
+    tmpl_cache: dict[int, TaskTemplateModel] = {}
+    for occ in db.query(TaskOccurrence).filter(
+        TaskOccurrence.account_id == account_id,
+        TaskOccurrence.status == "DONE",
+        func.date(TaskOccurrence.completed_at) == today,
+    ).all():
+        if occ.template_id not in tmpl_cache:
+            tmpl_cache[occ.template_id] = db.query(TaskTemplateModel).filter(
+                TaskTemplateModel.template_id == occ.template_id
+            ).first()
+        tmpl = tmpl_cache[occ.template_id]
+        if tmpl and not tmpl.is_archived:
+            item = _task_occ_to_item(occ, tmpl, today, wc_map)
+            item["is_early"] = bool(
+                occ.completed_at and occ.completed_at.date() < occ.scheduled_date
+            )
+            items.append(item)
+
+    # Habit occurrences completed today
+    habit_cache: dict[int, HabitModel] = {}
+    for occ in db.query(HabitOccurrence).filter(
+        HabitOccurrence.account_id == account_id,
+        HabitOccurrence.scheduled_date == today,
+        HabitOccurrence.status == "DONE",
+    ).all():
+        if occ.habit_id not in habit_cache:
+            habit_cache[occ.habit_id] = db.query(HabitModel).filter(
+                HabitModel.habit_id == occ.habit_id
+            ).first()
+        habit = habit_cache[occ.habit_id]
+        if habit and not habit.is_archived:
+            item = _habit_occ_to_item(occ, habit, wc_map)
+            item["is_early"] = False
+            items.append(item)
+
+    # Sort: early items first, then by title
+    items.sort(key=lambda x: (not x["is_early"], x["title"]))
+    return items
 
 
 # ---------------------------------------------------------------------------

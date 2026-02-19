@@ -17,6 +17,7 @@
 {%- if cell.get('note') %}<span title="{{ cell.get('note') }}" style="cursor: help; font-size: 9px; vertical-align: super; color: #f5a623; margin-left: 1px;">●</span>{% endif -%}
 {%- endmacro %}
 
+{% block extra_head %}<style>.main-content { max-width: none; }</style>{% endblock %}
 {% block content %}
 <h1>Бюджет</h1>
 
