@@ -623,6 +623,38 @@ class BudgetVariantHiddenCategory(Base):
     )
 
 
+class BudgetVariantHiddenGoal(Base):
+    """Join table: goals hidden from a budget variant's matrix view.
+
+    Presence of a row means the goal is HIDDEN.
+    Absence = visible (default: all visible).
+    """
+    __tablename__ = "budget_variant_hidden_goals"
+
+    variant_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+
+    __table_args__ = (
+        Index('ix_bvhg_variant', 'variant_id'),
+    )
+
+
+class BudgetVariantHiddenWithdrawalGoal(Base):
+    """Join table: goals hidden from the 'withdrawal' section of a budget variant's matrix view.
+
+    Presence of a row means the goal is HIDDEN in 'Взять из отложенного'.
+    Absence = visible (default: all visible).
+    """
+    __tablename__ = "budget_variant_hidden_withdrawal_goals"
+
+    variant_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True)
+
+    __table_args__ = (
+        Index('ix_bvhwg_variant', 'variant_id'),
+    )
+
+
 # ============================================================================
 # Subscriptions Models
 # ============================================================================
@@ -757,6 +789,7 @@ class BudgetGoalPlan(Base):
     plan_amount: Mapped[Decimal] = mapped_column(
         Numeric(precision=20, scale=2), nullable=False, server_default="0"
     )
+    note: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -768,6 +801,33 @@ class BudgetGoalPlan(Base):
     __table_args__ = (
         UniqueConstraint('budget_month_id', 'goal_id', name='uq_budget_goal_plan'),
         Index('ix_budget_goal_plan_month', 'budget_month_id'),
+    )
+
+
+class BudgetGoalWithdrawalPlan(Base):
+    """Read model: Budget withdrawal plan per goal per month ('Взять из отложенного')."""
+    __tablename__ = "budget_goal_withdrawal_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    budget_month_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    plan_amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=20, scale=2), nullable=False, server_default="0"
+    )
+    note: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('budget_month_id', 'goal_id', name='uq_budget_goal_withdrawal_plan'),
+        Index('ix_bgwp_month', 'budget_month_id'),
     )
 
 

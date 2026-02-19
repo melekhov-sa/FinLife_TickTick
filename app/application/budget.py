@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import (
-    BudgetMonth, BudgetLine, BudgetGoalPlan, BudgetVariant, BudgetPlanTemplate,
-    BudgetVariantHiddenCategory,
+    BudgetMonth, BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan, BudgetVariant, BudgetPlanTemplate,
+    BudgetVariantHiddenCategory, BudgetVariantHiddenGoal, BudgetVariantHiddenWithdrawalGoal,
     CategoryInfo, TransactionFeed,
     OperationTemplateModel, OperationOccurrence, GoalInfo,
 )
@@ -382,7 +382,7 @@ class SaveGoalPlansUseCase:
     ) -> None:
         """
         Args:
-            goal_plans: list of {"goal_id": int, "plan_amount": str}
+            goal_plans: list of {"goal_id": int, "plan_amount": str, "note": str|None}
         """
         # Ensure month exists
         ensure_uc = EnsureBudgetMonthUseCase(self.db)
@@ -394,6 +394,7 @@ class SaveGoalPlansUseCase:
         for gp in goal_plans:
             goal_id = gp["goal_id"]
             plan_amount = Decimal(gp.get("plan_amount", "0"))
+            note = gp.get("note")
             if plan_amount < 0:
                 raise BudgetValidationError("plan_amount must be >= 0")
 
@@ -415,16 +416,79 @@ class SaveGoalPlansUseCase:
 
             if existing:
                 existing.plan_amount = plan_amount
+                existing.note = note
             else:
-                if plan_amount == 0:
+                if plan_amount == 0 and not note:
                     continue
                 new_plan = BudgetGoalPlan(
                     budget_month_id=budget_month_id,
                     account_id=account_id,
                     goal_id=goal_id,
                     plan_amount=plan_amount,
+                    note=note,
                 )
                 self.db.add(new_plan)
+
+        self.db.commit()
+
+
+class SaveGoalWithdrawalPlansUseCase:
+    """Batch-save goal withdrawal plan amounts ('Взять из отложенного') for a given month."""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(
+        self,
+        account_id: int,
+        year: int,
+        month: int,
+        goal_plans: List[Dict[str, Any]],
+        actor_user_id: int | None = None,
+        budget_variant_id: int | None = None,
+    ) -> None:
+        """
+        Args:
+            goal_plans: list of {"goal_id": int, "plan_amount": str, "note": str|None}
+        """
+        ensure_uc = EnsureBudgetMonthUseCase(self.db)
+        budget_month_id = ensure_uc.execute(
+            account_id, year, month, actor_user_id,
+            budget_variant_id=budget_variant_id,
+        )
+
+        for gp in goal_plans:
+            goal_id = gp["goal_id"]
+            plan_amount = Decimal(gp.get("plan_amount", "0"))
+            note = gp.get("note")
+            if plan_amount < 0:
+                raise BudgetValidationError("plan_amount must be >= 0")
+
+            goal = self.db.query(GoalInfo).filter(
+                GoalInfo.goal_id == goal_id,
+                GoalInfo.account_id == account_id,
+            ).first()
+            if not goal or goal.is_system or goal.is_archived:
+                continue
+
+            existing = self.db.query(BudgetGoalWithdrawalPlan).filter(
+                BudgetGoalWithdrawalPlan.budget_month_id == budget_month_id,
+                BudgetGoalWithdrawalPlan.goal_id == goal_id,
+            ).first()
+
+            if existing:
+                existing.plan_amount = plan_amount
+                existing.note = note
+            else:
+                if plan_amount == 0 and not note:
+                    continue
+                self.db.add(BudgetGoalWithdrawalPlan(
+                    budget_month_id=budget_month_id,
+                    account_id=account_id,
+                    goal_id=goal_id,
+                    plan_amount=plan_amount,
+                    note=note,
+                ))
 
         self.db.commit()
 
@@ -1190,4 +1254,47 @@ def save_hidden_category_ids(db: Session, variant_id: int, hidden_ids: set) -> N
     ).delete()
     for cat_id in hidden_ids:
         db.add(BudgetVariantHiddenCategory(variant_id=variant_id, category_id=cat_id))
+    db.flush()
+
+
+# ---------------------------------------------------------------------------
+# Goal visibility per variant
+# ---------------------------------------------------------------------------
+
+def get_hidden_goal_ids(db: Session, variant_id: int) -> set:
+    """Return set of goal IDs hidden for this budget variant."""
+    rows = db.query(BudgetVariantHiddenGoal.goal_id).filter(
+        BudgetVariantHiddenGoal.variant_id == variant_id,
+    ).all()
+    return {r.goal_id for r in rows}
+
+
+def save_hidden_goal_ids(db: Session, variant_id: int, hidden_ids: set) -> None:
+    """Replace all hidden goal records for a variant."""
+    db.query(BudgetVariantHiddenGoal).filter(
+        BudgetVariantHiddenGoal.variant_id == variant_id,
+    ).delete()
+    for goal_id in hidden_ids:
+        db.add(BudgetVariantHiddenGoal(variant_id=variant_id, goal_id=goal_id))
+    db.flush()
+
+
+# Withdrawal goal visibility per variant
+# ---------------------------------------------------------------------------
+
+def get_hidden_withdrawal_goal_ids(db: Session, variant_id: int) -> set:
+    """Return set of goal IDs hidden in the 'Взять из отложенного' section."""
+    rows = db.query(BudgetVariantHiddenWithdrawalGoal.goal_id).filter(
+        BudgetVariantHiddenWithdrawalGoal.variant_id == variant_id,
+    ).all()
+    return {r.goal_id for r in rows}
+
+
+def save_hidden_withdrawal_goal_ids(db: Session, variant_id: int, hidden_ids: set) -> None:
+    """Replace all hidden withdrawal goal records for a variant."""
+    db.query(BudgetVariantHiddenWithdrawalGoal).filter(
+        BudgetVariantHiddenWithdrawalGoal.variant_id == variant_id,
+    ).delete()
+    for goal_id in hidden_ids:
+        db.add(BudgetVariantHiddenWithdrawalGoal(variant_id=variant_id, goal_id=goal_id))
     db.flush()

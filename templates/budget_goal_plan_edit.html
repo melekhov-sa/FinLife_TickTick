@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}План: {{ goal.title }} — {{ period_label }}{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+
+{% block content %}
+<div style="margin-bottom: 12px;">
+  <a href="{{ back_url }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; Назад к бюджету</a>
+</div>
+
+<div class="card">
+  <div style="margin-bottom: 16px;">
+    <span style="font-size: 18px; font-weight: 700;">{{ goal.title }}</span>
+    <span class="badge">Отложить</span>
+    <div style="font-size: 14px; color: #888; margin-top: 4px;">{{ period_label }}</div>
+  </div>
+
+  <!-- Edit form -->
+  <form method="POST" action="/budget/goals/plan/save-single">
+    <input type="hidden" name="goal_id" value="{{ goal.goal_id }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="variant_id" value="{{ variant_id }}">
+
+    <div class="form-row">
+      <label>План</label>
+      <input name="plan_amount" type="number" step="1" min="0"
+             value="{{ plan_amount|int if plan_amount else '' }}"
+             placeholder="0" style="max-width: 200px;">
+    </div>
+
+    <div class="form-row">
+      <label>Комментарий</label>
+      <textarea name="note" rows="3" placeholder="Пояснение к сумме..."
+                style="max-width: 400px;">{{ note }}</textarea>
+    </div>
+
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer;">
+        <input type="checkbox" name="copy_forward" value="1" style="width: auto; max-width: none;">
+        Копировать на следующие периоды ({{ month_label }} &mdash; Декабрь {{ year }})
+      </label>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      <button type="submit">Сохранить</button>
+      <a href="{{ back_url }}" class="btn" style="background: #6c757d; text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

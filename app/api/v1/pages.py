@@ -21,7 +21,7 @@ from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
     ContactModel, WishModel,
     GoalInfo, GoalWalletBalance,
-    BudgetLine,
+    BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -62,7 +62,7 @@ from app.application.budget import (
     EnsureBudgetMonthUseCase,
     CreateBudgetVariantUseCase, AttachBudgetDataUseCase, ArchiveBudgetVariantUseCase,
     get_active_variant, get_all_variants, has_orphan_budget_data,
-    SaveBudgetPlanUseCase, SaveGoalPlansUseCase,
+    SaveBudgetPlanUseCase, SaveGoalPlansUseCase, SaveGoalWithdrawalPlansUseCase,
     CopyBudgetPlanUseCase, CopyManualPlanForwardUseCase,
     SaveAsTemplateUseCase, ApplyTemplateToPeriodUseCase,
     has_template, has_previous_period_plan, get_previous_period,
@@ -71,6 +71,8 @@ from app.application.budget import (
     get_allowed_granularities, clamp_granularity,
     GRANULARITY_LABELS,
     get_hidden_category_ids, save_hidden_category_ids,
+    get_hidden_goal_ids, save_hidden_goal_ids,
+    get_hidden_withdrawal_goal_ids, save_hidden_withdrawal_goal_ids,
 )
 from app.application.budget_matrix import BudgetMatrixService, RANGE_LIMITS
 from app.application.plan import build_plan_view
@@ -869,6 +871,20 @@ def transactions_page(
     # Wallet type map for JS (to know which wallets are SAVINGS)
     wallet_type_map = {w.wallet_id: w.wallet_type for w in wallets}
 
+    # Balance maps for JS hints in the form
+    wallet_balance_map = {
+        w.wallet_id: {"balance": float(w.balance), "currency": w.currency}
+        for w in wallets
+    }
+    goal_currency_map = {g.goal_id: g.currency for g in goals}
+    _goal_bal_rows = (
+        db.query(GoalWalletBalance.goal_id, func.sum(GoalWalletBalance.amount).label("total"))
+        .filter(GoalWalletBalance.account_id == user_id)
+        .group_by(GoalWalletBalance.goal_id)
+        .all()
+    )
+    goal_balance_map = {row.goal_id: float(row.total) for row in _goal_bal_rows}
+
     return templates.TemplateResponse("transactions.html", {
         "request": request,
         "wallets": wallets,
@@ -891,6 +907,9 @@ def transactions_page(
         "sub_category_map": sub_category_map,
         "goals": goals,
         "wallet_type_map": wallet_type_map,
+        "wallet_balance_map": wallet_balance_map,
+        "goal_balance_map": goal_balance_map,
+        "goal_currency_map": goal_currency_map,
     })
 
 
@@ -3473,8 +3492,10 @@ def budget_page(
                 budget_variant_id=variant.id,
             )
 
-    # Load hidden categories for this variant
+    # Load hidden categories and goals for this variant
     hidden_category_ids = get_hidden_category_ids(db, variant.id)
+    hidden_goal_ids = get_hidden_goal_ids(db, variant.id)
+    hidden_withdrawal_goal_ids = get_hidden_withdrawal_goal_ids(db, variant.id)
 
     # Build matrix view
     view = BudgetMatrixService(db).build(
@@ -3487,7 +3508,82 @@ def budget_page(
         base_granularity=variant.base_granularity,
         budget_variant_id=variant.id,
         hidden_category_ids=hidden_category_ids,
+        hidden_goal_ids=hidden_goal_ids,
+        hidden_withdrawal_goal_ids=hidden_withdrawal_goal_ids,
     )
+    # Mark future periods so the template can hide fact columns
+    _today = datetime.today().date()
+    for _p in view["periods"]:
+        _p["is_future"] = _p["range_start"] > _today
+        _p["is_past"] = _p["range_end"] <= _today
+
+    # Compute per-period opening balances on REGULAR wallets
+    _reg_wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id,
+        WalletBalance.wallet_type == "REGULAR",
+        WalletBalance.is_archived == False,
+    ).all()
+    _reg_ids = [w.wallet_id for w in _reg_wallets]
+    _cur_reg_total = sum((w.balance for w in _reg_wallets), Decimal(0))
+
+    _period_balances: list = [None] * len(view["periods"])
+    for _i, _p in enumerate(view["periods"]):
+        if _p["is_past"]:
+            _rs = _p["range_start"]
+            if _reg_ids:
+                _q_inc = db.query(func.coalesce(func.sum(TransactionFeed.amount), 0)).filter(
+                    TransactionFeed.account_id == user_id,
+                    TransactionFeed.operation_type == "INCOME",
+                    TransactionFeed.wallet_id.in_(_reg_ids),
+                    func.date(TransactionFeed.occurred_at) >= _rs,
+                ).scalar()
+                _q_exp = db.query(func.coalesce(func.sum(TransactionFeed.amount), 0)).filter(
+                    TransactionFeed.account_id == user_id,
+                    TransactionFeed.operation_type == "EXPENSE",
+                    TransactionFeed.wallet_id.in_(_reg_ids),
+                    func.date(TransactionFeed.occurred_at) >= _rs,
+                ).scalar()
+                _q_tin = db.query(func.coalesce(func.sum(TransactionFeed.amount), 0)).filter(
+                    TransactionFeed.account_id == user_id,
+                    TransactionFeed.operation_type == "TRANSFER",
+                    TransactionFeed.to_wallet_id.in_(_reg_ids),
+                    func.date(TransactionFeed.occurred_at) >= _rs,
+                ).scalar()
+                _q_tout = db.query(func.coalesce(func.sum(TransactionFeed.amount), 0)).filter(
+                    TransactionFeed.account_id == user_id,
+                    TransactionFeed.operation_type == "TRANSFER",
+                    TransactionFeed.from_wallet_id.in_(_reg_ids),
+                    func.date(TransactionFeed.occurred_at) >= _rs,
+                ).scalar()
+                _net = (Decimal(_q_inc or 0) - Decimal(_q_exp or 0)
+                        + Decimal(_q_tin or 0) - Decimal(_q_tout or 0))
+                _period_balances[_i] = float(_cur_reg_total - _net)
+            else:
+                _period_balances[_i] = 0.0
+        elif not _p["is_future"]:
+            # Current period: current actual balance
+            _period_balances[_i] = float(_cur_reg_total)
+
+    # Future period projections: cumulative from current balance
+    _running = float(_cur_reg_total)
+    for _i, _p in enumerate(view["periods"]):
+        _ic = view["income_totals"]["cells"][_i]
+        _wc = view["withdrawal_totals"]["cells"][_i]
+        _ec = view["expense_totals"]["cells"][_i]
+        _cc = view["credit_totals"]["cells"][_i]
+        _gc = view["goal_totals"]["cells"][_i]
+        _ip = float(_ic["plan"] + _wc["plan"])
+        _if = float(_ic["fact"] + _wc["fact"])
+        _ep = float(_ec["plan"] + _cc["plan"] + _gc["plan"])
+        _ef = float(_ec["fact"] + _cc["fact"] + _gc["fact"])
+        if _p["is_past"]:
+            pass  # Current balance already reflects past transactions
+        elif not _p["is_future"]:
+            # Current period: add remaining planned net to project end-of-period
+            _running += (_ip - _if) - (_ep - _ef)
+        else:
+            _period_balances[_i] = _running
+            _running += _ip - _ep
 
     # All active non-system categories for the visibility filter UI
     all_filter_cats = db.query(CategoryInfo).filter(
@@ -3515,6 +3611,13 @@ def budget_page(
 
     filter_income_cats = _tree_sort([c for c in all_filter_cats if c.category_type == "INCOME"])
     filter_expense_cats = _tree_sort([c for c in all_filter_cats if c.category_type == "EXPENSE"])
+
+    # All active non-system goals for the visibility filter UI
+    filter_goals = db.query(GoalInfo).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False,
+        GoalInfo.is_system == False,
+    ).order_by(GoalInfo.title).all()
 
     # Credit repayment system category (for filter panel visibility toggle)
     credit_repay_cat = db.query(CategoryInfo).filter(
@@ -3563,8 +3666,12 @@ def budget_page(
         "show_plan": grain == base_gran,
         "filter_income_cats": filter_income_cats,
         "filter_expense_cats": filter_expense_cats,
+        "filter_goals": filter_goals,
         "credit_repay_cat": credit_repay_cat,
         "hidden_category_ids": hidden_category_ids,
+        "hidden_goal_ids": hidden_goal_ids,
+        "hidden_withdrawal_goal_ids": hidden_withdrawal_goal_ids,
+        "period_balances": _period_balances,
     })
 
 
@@ -3781,6 +3888,218 @@ def save_goal_plans_form(
     return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
 
 
+@router.get("/budget/goals/plan/edit", response_class=HTMLResponse)
+def budget_goal_plan_edit_page(
+    request: Request,
+    goal_id: int,
+    year: int,
+    month: int,
+    variant_id: int,
+    db: Session = Depends(get_db),
+):
+    """Per-cell goal plan editing page."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+    if not variant:
+        return RedirectResponse("/budget", status_code=302)
+
+    goal = db.query(GoalInfo).filter(
+        GoalInfo.goal_id == goal_id,
+        GoalInfo.account_id == user_id,
+    ).first()
+    if not goal:
+        return RedirectResponse("/budget", status_code=302)
+
+    # Ensure budget month exists
+    bm_id = EnsureBudgetMonthUseCase(db).execute(
+        account_id=user_id, year=year, month=month,
+        actor_user_id=user_id, budget_variant_id=variant.id,
+    )
+
+    # Load existing goal plan
+    gp = db.query(BudgetGoalPlan).filter(
+        BudgetGoalPlan.budget_month_id == bm_id,
+        BudgetGoalPlan.goal_id == goal_id,
+    ).first()
+
+    plan_amount = gp.plan_amount if gp else Decimal("0")
+    note = gp.note if gp else ""
+
+    period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
+    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+
+    return templates.TemplateResponse("budget_goal_plan_edit.html", {
+        "request": request,
+        "goal": goal,
+        "year": year,
+        "month": month,
+        "variant_id": variant.id,
+        "period_label": period_label,
+        "plan_amount": plan_amount,
+        "note": note or "",
+        "back_url": back_url,
+        "month_label": MONTH_NAMES_RU.get(month, str(month)),
+    })
+
+
+@router.post("/budget/goals/plan/save-single", response_class=HTMLResponse)
+def save_goal_plan_single(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Save a single goal plan (amount + note) with optional copy forward."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    goal_id = int(form_data.get("goal_id", 0))
+    year = int(form_data.get("year", datetime.now().year))
+    month = int(form_data.get("month", datetime.now().month))
+    variant_id = int(form_data.get("variant_id", 0))
+    plan_amount = form_data.get("plan_amount", "0").strip().replace(",", ".") or "0"
+    note = form_data.get("note", "").strip() or None
+    copy_forward = form_data.get("copy_forward") == "1"
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+
+    goal_plans = [{"goal_id": goal_id, "plan_amount": plan_amount, "note": note}]
+
+    months_to_save = [month]
+    if copy_forward:
+        months_to_save.extend(range(month + 1, 13))
+
+    try:
+        for m in months_to_save:
+            SaveGoalPlansUseCase(db).execute(
+                account_id=user_id,
+                year=year,
+                month=m,
+                goal_plans=goal_plans,
+                actor_user_id=user_id,
+                budget_variant_id=variant.id if variant else None,
+            )
+    except Exception:
+        db.rollback()
+
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
+
+
+@router.get("/budget/goals/withdrawal/plan/edit", response_class=HTMLResponse)
+def budget_goal_withdrawal_plan_edit_page(
+    request: Request,
+    goal_id: int,
+    year: int,
+    month: int,
+    variant_id: int,
+    db: Session = Depends(get_db),
+):
+    """Per-cell withdrawal plan editing page ('Взять из отложенного')."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+    if not variant:
+        return RedirectResponse("/budget", status_code=302)
+
+    goal = db.query(GoalInfo).filter(
+        GoalInfo.goal_id == goal_id,
+        GoalInfo.account_id == user_id,
+    ).first()
+    if not goal:
+        return RedirectResponse("/budget", status_code=302)
+
+    bm_id = EnsureBudgetMonthUseCase(db).execute(
+        account_id=user_id, year=year, month=month,
+        actor_user_id=user_id, budget_variant_id=variant.id,
+    )
+
+    gp = db.query(BudgetGoalWithdrawalPlan).filter(
+        BudgetGoalWithdrawalPlan.budget_month_id == bm_id,
+        BudgetGoalWithdrawalPlan.goal_id == goal_id,
+    ).first()
+
+    plan_amount = gp.plan_amount if gp else Decimal("0")
+    note = gp.note if gp else ""
+
+    period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
+    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+
+    return templates.TemplateResponse("budget_goal_withdrawal_plan_edit.html", {
+        "request": request,
+        "goal": goal,
+        "year": year,
+        "month": month,
+        "variant_id": variant.id,
+        "period_label": period_label,
+        "plan_amount": plan_amount,
+        "note": note or "",
+        "back_url": back_url,
+        "month_label": MONTH_NAMES_RU.get(month, str(month)),
+    })
+
+
+@router.post("/budget/goals/withdrawal/plan/save-single", response_class=HTMLResponse)
+def save_goal_withdrawal_plan_single(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Save a single goal withdrawal plan (amount + note) with optional copy forward."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    form_data = loop.run_until_complete(request.form())
+    loop.close()
+
+    goal_id = int(form_data.get("goal_id", 0))
+    year = int(form_data.get("year", datetime.now().year))
+    month = int(form_data.get("month", datetime.now().month))
+    variant_id = int(form_data.get("variant_id", 0))
+    plan_amount = form_data.get("plan_amount", "0").strip().replace(",", ".") or "0"
+    note = form_data.get("note", "").strip() or None
+    copy_forward = form_data.get("copy_forward") == "1"
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+
+    goal_plans = [{"goal_id": goal_id, "plan_amount": plan_amount, "note": note}]
+
+    months_to_save = [month]
+    if copy_forward:
+        months_to_save.extend(range(month + 1, 13))
+
+    try:
+        for m in months_to_save:
+            SaveGoalWithdrawalPlansUseCase(db).execute(
+                account_id=user_id,
+                year=year,
+                month=m,
+                goal_plans=goal_plans,
+                actor_user_id=user_id,
+                budget_variant_id=variant.id if variant else None,
+            )
+    except Exception:
+        db.rollback()
+
+    qs = f"&variant_id={variant.id}" if variant else ""
+    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
+
+
 @router.post("/budget/visibility/save")
 def save_category_visibility(
     request: Request,
@@ -3832,6 +4151,36 @@ def save_category_visibility(
     hidden_ids = all_active_ids - visible_ids
 
     save_hidden_category_ids(db, variant.id, hidden_ids)
+
+    # Collect visible goal IDs from checkboxes
+    visible_goal_ids = set()
+    for v in form_data.getlist("visible_goal_id"):
+        try:
+            visible_goal_ids.add(int(v))
+        except (ValueError, TypeError):
+            continue
+
+    all_active_goals = db.query(GoalInfo.goal_id).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False,
+        GoalInfo.is_system == False,
+    ).all()
+    all_active_goal_ids = {r.goal_id for r in all_active_goals}
+    hidden_goal_ids = all_active_goal_ids - visible_goal_ids
+
+    save_hidden_goal_ids(db, variant.id, hidden_goal_ids)
+
+    # Collect visible withdrawal goal IDs from checkboxes
+    visible_withdrawal_goal_ids = set()
+    for v in form_data.getlist("visible_withdrawal_goal_id"):
+        try:
+            visible_withdrawal_goal_ids.add(int(v))
+        except (ValueError, TypeError):
+            continue
+
+    hidden_withdrawal_goal_ids = all_active_goal_ids - visible_withdrawal_goal_ids
+    save_hidden_withdrawal_goal_ids(db, variant.id, hidden_withdrawal_goal_ids)
+
     db.commit()
 
     # Redirect back preserving current view params

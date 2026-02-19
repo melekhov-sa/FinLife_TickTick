@@ -152,6 +152,7 @@
 
         {% if item.kind == "planned_op" %}
         <a href="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/confirm?redirect=%2Fplan%3Ftab%3D{{ tab }}%26range%3D{{ range_days }}"
+           class="action-link"
            style="font-size: 12px; padding: 4px 10px; display: inline-block; text-decoration: none; border: 1px solid #007AFF; border-radius: 4px; color: #007AFF; background: #fff;">&#10003;</a>
         <form method="POST" action="/plan/operation-occurrences/{{ item.meta.occurrence_id }}/skip" style="margin:0;">
           <input type="hidden" name="redirect" value="/plan?tab={{ tab }}&range={{ range_days }}">
@@ -168,6 +169,7 @@
 
         {% if item.kind == "wish" %}
         <a href="/wishes/{{ item.meta.wish_id }}/edit"
+           class="action-link"
            style="font-size: 12px; padding: 4px 10px; display: inline-block; text-decoration: none; border: 1px solid #666; border-radius: 4px; color: #666; background: #fff;">⚙️</a>
         {% endif %}
 

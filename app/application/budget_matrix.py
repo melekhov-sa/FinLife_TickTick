@@ -12,7 +12,7 @@ from sqlalchemy import func, case, and_, literal
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
-    BudgetMonth, BudgetLine, BudgetGoalPlan, CategoryInfo, TransactionFeed,
+    BudgetMonth, BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan, CategoryInfo, TransactionFeed,
     OperationTemplateModel, OperationOccurrence,
     GoalInfo, WalletBalance,
 )
@@ -54,6 +54,8 @@ class BudgetMatrixService:
         base_granularity: str = "MONTH",
         budget_variant_id: int | None = None,
         hidden_category_ids: set | None = None,
+        hidden_goal_ids: set | None = None,
+        hidden_withdrawal_goal_ids: set | None = None,
     ) -> Dict[str, Any]:
         if grain not in VALID_GRAINS:
             grain = "month"
@@ -216,12 +218,19 @@ class BudgetMatrixService:
         }
 
         # --- Goals (savings) section ---
-        goal_rows, goal_totals = self._build_goal_section(account_id, periods, n, has_manual, base_granularity, budget_variant_id)
+        goal_rows, goal_totals = self._build_goal_section(
+            account_id, periods, n, has_manual, base_granularity, budget_variant_id, hidden_goal_ids,
+        )
 
         # --- Credit repayment section ---
         credit_row, credit_totals = self._build_credit_section(
             account_id, periods, n, has_manual, manual_map, note_map,
             system_credit_repayment_id, hidden_category_ids,
+        )
+
+        # --- Withdrawal (SAVINGS→REGULAR) section ---
+        withdrawal_rows, withdrawal_totals = self._build_withdrawal_section(
+            account_id, periods, n, has_manual, budget_variant_id, hidden_withdrawal_goal_ids,
         )
 
         return {
@@ -239,6 +248,8 @@ class BudgetMatrixService:
             "goal_totals": goal_totals,
             "credit_row": credit_row,
             "credit_totals": credit_totals,
+            "withdrawal_rows": withdrawal_rows,
+            "withdrawal_totals": withdrawal_totals,
         }
 
     # ------------------------------------------------------------------
@@ -615,6 +626,7 @@ class BudgetMatrixService:
         has_manual: bool,
         base_granularity: str = "MONTH",
         budget_variant_id: int | None = None,
+        hidden_goal_ids: set | None = None,
     ) -> Tuple[List[Dict], Dict]:
         """Build goal rows and totals for the savings section."""
         # Load active non-system goals
@@ -629,6 +641,9 @@ class BudgetMatrixService:
             .all()
         )
 
+        if hidden_goal_ids:
+            goals = [g for g in goals if g.goal_id not in hidden_goal_ids]
+
         if not goals:
             empty_totals = {
                 "cells": [_zero_cell() for _ in range(n)],
@@ -640,7 +655,10 @@ class BudgetMatrixService:
         goal_fact_map = self._aggregate_goal_fact_bucketed(account_id, periods)
 
         # Load manual goal plans (available when base stores them)
-        goal_plan_map = self._load_goal_plans_ranged(account_id, periods, budget_variant_id) if has_manual else {}
+        if has_manual:
+            goal_plan_map, goal_note_map = self._load_goal_plans_ranged(account_id, periods, budget_variant_id)
+        else:
+            goal_plan_map, goal_note_map = {}, {}
 
         # Build rows
         goal_rows = []
@@ -649,9 +667,11 @@ class BudgetMatrixService:
             total_plan = _ZERO
             total_fact = _ZERO
             for i in range(n):
-                plan = goal_plan_map.get((goal.goal_id, i), _ZERO)
-                fact = goal_fact_map.get((goal.goal_id, i), _ZERO)
-                cells.append({"plan": plan, "fact": fact, "deviation": fact - plan})
+                key = (goal.goal_id, i)
+                plan = goal_plan_map.get(key, _ZERO)
+                fact = goal_fact_map.get(key, _ZERO)
+                note = goal_note_map.get(key, "")
+                cells.append({"plan": plan, "fact": fact, "deviation": fact - plan, "note": note})
                 total_plan += plan
                 total_fact += fact
             goal_rows.append({
@@ -740,10 +760,13 @@ class BudgetMatrixService:
     def _load_goal_plans_ranged(
         self, account_id: int, periods: List[Dict],
         budget_variant_id: int | None = None,
-    ) -> Dict[Tuple, Decimal]:
-        """Load goal plan amounts from budget_goal_plans, aggregated into period buckets."""
+    ) -> Tuple[Dict[Tuple, Decimal], Dict[Tuple, str]]:
+        """Load goal plan amounts and notes from budget_goal_plans, aggregated into period buckets.
+
+        Returns (plan_map, note_map).
+        """
         if not periods:
-            return {}
+            return {}, {}
 
         global_start = periods[0]["range_start"]
         global_end = periods[-1]["range_end"]
@@ -771,7 +794,7 @@ class BudgetMatrixService:
                     break
 
         if not bm_to_periods:
-            return {}
+            return {}, {}
 
         plans = (
             self.db.query(BudgetGoalPlan)
@@ -780,11 +803,14 @@ class BudgetMatrixService:
         )
 
         result: Dict[Tuple, Decimal] = {}
+        notes: Dict[Tuple, str] = {}
         for plan in plans:
             for period_idx in bm_to_periods.get(plan.budget_month_id, []):
                 key = (plan.goal_id, period_idx)
                 result[key] = result.get(key, _ZERO) + plan.plan_amount
-        return result
+                if plan.note:
+                    notes[key] = plan.note
+        return result, notes
 
     # ------------------------------------------------------------------
     # Credit repayment section (REGULAR → CREDIT transfers)
@@ -911,4 +937,205 @@ class BudgetMatrixService:
         for row in rows:
             if row.period_idx >= 0:
                 result[row.period_idx] = row.total or _ZERO
+        return result
+
+    # ------------------------------------------------------------------
+    # Withdrawal (SAVINGS → REGULAR) section
+    # ------------------------------------------------------------------
+
+    def _build_withdrawal_section(
+        self,
+        account_id: int,
+        periods: List[Dict],
+        n: int,
+        has_manual: bool = False,
+        budget_variant_id: int | None = None,
+        hidden_withdrawal_goal_ids: set | None = None,
+    ) -> Tuple[List[Dict], Dict]:
+        """Build 'Взять из отложенного' rows: SAVINGS→REGULAR transfers grouped by from_goal_id."""
+        empty_totals = {
+            "cells": [_zero_cell() for _ in range(n)],
+            "total": {"plan": _ZERO, "plan_manual": _ZERO, "plan_planned": _ZERO, "fact": _ZERO, "deviation": _ZERO},
+        }
+
+        goals = (
+            self.db.query(GoalInfo)
+            .filter(
+                GoalInfo.account_id == account_id,
+                GoalInfo.is_archived == False,
+                GoalInfo.is_system == False,
+            )
+            .order_by(GoalInfo.title)
+            .all()
+        )
+
+        if hidden_withdrawal_goal_ids:
+            goals = [g for g in goals if g.goal_id not in hidden_withdrawal_goal_ids]
+
+        if not goals:
+            return [], empty_totals
+
+        withdrawal_fact_map = self._aggregate_withdrawal_fact_bucketed(account_id, periods)
+
+        if has_manual:
+            withdrawal_plan_map, withdrawal_note_map = self._load_goal_withdrawal_plans_ranged(
+                account_id, periods, budget_variant_id,
+            )
+        else:
+            withdrawal_plan_map, withdrawal_note_map = {}, {}
+
+        rows = []
+        for goal in goals:
+            cells = []
+            total_plan = _ZERO
+            total_plan_manual = _ZERO
+            total_fact = _ZERO
+            for i in range(n):
+                key = (goal.goal_id, i)
+                plan = withdrawal_plan_map.get(key, _ZERO)
+                fact = withdrawal_fact_map.get(key, _ZERO)
+                note = withdrawal_note_map.get(key, "")
+                cells.append({
+                    "plan": plan, "plan_manual": plan, "plan_planned": _ZERO,
+                    "fact": fact, "deviation": fact - plan, "note": note,
+                })
+                total_plan += plan
+                total_plan_manual += plan
+                total_fact += fact
+            rows.append({
+                "goal_id": goal.goal_id,
+                "title": goal.title,
+                "cells": cells,
+                "total": {
+                    "plan": total_plan, "plan_manual": total_plan_manual, "plan_planned": _ZERO,
+                    "fact": total_fact, "deviation": total_fact - total_plan,
+                },
+            })
+
+        totals_cells = []
+        t_plan = _ZERO
+        t_fact = _ZERO
+        for i in range(n):
+            p = sum((r["cells"][i]["plan"] for r in rows), _ZERO)
+            f = sum((r["cells"][i]["fact"] for r in rows), _ZERO)
+            totals_cells.append({"plan": p, "plan_manual": p, "plan_planned": _ZERO, "fact": f, "deviation": f - p})
+            t_plan += p
+            t_fact += f
+
+        return rows, {
+            "cells": totals_cells,
+            "total": {
+                "plan": t_plan, "plan_manual": t_plan, "plan_planned": _ZERO,
+                "fact": t_fact, "deviation": t_fact - t_plan,
+            },
+        }
+
+    def _load_goal_withdrawal_plans_ranged(
+        self, account_id: int, periods: List[Dict],
+        budget_variant_id: int | None = None,
+    ) -> Tuple[Dict[Tuple, Decimal], Dict[Tuple, str]]:
+        """Load goal withdrawal plan amounts and notes, aggregated into period buckets."""
+        if not periods:
+            return {}, {}
+
+        global_start = periods[0]["range_start"]
+        global_end = periods[-1]["range_end"]
+
+        q = (
+            self.db.query(BudgetMonth)
+            .filter(
+                BudgetMonth.account_id == account_id,
+                BudgetMonth.year * 100 + BudgetMonth.month >= global_start.year * 100 + global_start.month,
+                BudgetMonth.year * 100 + BudgetMonth.month <= global_end.year * 100 + global_end.month,
+            )
+        )
+        if budget_variant_id is not None:
+            q = q.filter(BudgetMonth.budget_variant_id == budget_variant_id)
+        budget_months = q.all()
+        if not budget_months:
+            return {}, {}
+
+        bm_to_periods: Dict[int, List[int]] = {}
+        for bm in budget_months:
+            bm_start = date_type(bm.year, bm.month, 1)
+            for p in periods:
+                if p["range_start"] <= bm_start < p["range_end"]:
+                    bm_to_periods.setdefault(bm.id, []).append(p["index"])
+                    break
+
+        if not bm_to_periods:
+            return {}, {}
+
+        plans = (
+            self.db.query(BudgetGoalWithdrawalPlan)
+            .filter(BudgetGoalWithdrawalPlan.budget_month_id.in_(list(bm_to_periods.keys())))
+            .all()
+        )
+
+        result: Dict[Tuple, Decimal] = {}
+        notes: Dict[Tuple, str] = {}
+        for plan in plans:
+            for period_idx in bm_to_periods.get(plan.budget_month_id, []):
+                key = (plan.goal_id, period_idx)
+                result[key] = result.get(key, _ZERO) + plan.plan_amount
+                if plan.note:
+                    notes[key] = plan.note
+        return result, notes
+
+    def _aggregate_withdrawal_fact_bucketed(
+        self, account_id: int, periods: List[Dict],
+    ) -> Dict[Tuple, Decimal]:
+        """Aggregate SAVINGS→REGULAR transfers by (from_goal_id, period_idx)."""
+        if not periods:
+            return {}
+
+        global_start = periods[0]["range_start"]
+        global_end = periods[-1]["range_end"]
+        dt_start = datetime(global_start.year, global_start.month, global_start.day)
+        dt_end = datetime(global_end.year, global_end.month, global_end.day)
+
+        whens = []
+        for p in periods:
+            s = p["range_start"]
+            e = p["range_end"]
+            cond = and_(
+                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
+                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+            )
+            whens.append((cond, literal(p["index"])))
+
+        period_col = case(*whens, else_=literal(-1)).label("period_idx")
+
+        from_wallet = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("from_w")
+        to_wallet = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("to_w")
+
+        rows = (
+            self.db.query(
+                TransactionFeed.from_goal_id,
+                period_col,
+                func.sum(TransactionFeed.amount).label("total"),
+            )
+            .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
+            .join(to_wallet, TransactionFeed.to_wallet_id == to_wallet.c.wallet_id)
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type == "TRANSFER",
+                TransactionFeed.from_goal_id.isnot(None),
+                from_wallet.c.wallet_type == "SAVINGS",
+                to_wallet.c.wallet_type == "REGULAR",
+                TransactionFeed.occurred_at >= dt_start,
+                TransactionFeed.occurred_at < dt_end,
+            )
+            .group_by(TransactionFeed.from_goal_id, period_col)
+            .all()
+        )
+
+        result: Dict[Tuple, Decimal] = {}
+        for row in rows:
+            if row.period_idx >= 0:
+                result[(row.from_goal_id, row.period_idx)] = row.total or _ZERO
         return result

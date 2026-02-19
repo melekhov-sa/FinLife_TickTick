@@ -11,12 +11,13 @@
 {% endif %}
 
 <!-- Toolbar: Tabs + Filters + Actions -->
-<div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+<div class="filter-toolbar" style="padding: 12px; border-radius: 8px; margin-bottom: 16px;">
   <!-- Tabs: Расходы / Доходы -->
   <div style="display: flex; gap: 8px; margin-bottom: 12px;">
     <a href="/categories?kind=expense&status={{ status }}&q={{ q }}"
        style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
-              {% if kind == 'expense' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}">
+              {% if kind == 'expense' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}"
+       {% if kind != 'expense' %}class="tab-link-inactive"{% endif %}>
       Расходы
       {% if kind == 'expense' or kind == 'income' %}
         ({{ counts.expense_active }})
@@ -24,7 +25,8 @@
     </a>
     <a href="/categories?kind=income&status={{ status }}&q={{ q }}"
        style="padding: 6px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;
-              {% if kind == 'income' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}">
+              {% if kind == 'income' %}background: #007AFF; color: white;{% else %}background: white; color: #495057;{% endif %}"
+       {% if kind != 'income' %}class="tab-link-inactive"{% endif %}>
       Доходы
       {% if kind == 'expense' or kind == 'income' %}
         ({{ counts.income_active }})

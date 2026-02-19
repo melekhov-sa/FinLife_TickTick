@@ -10,13 +10,13 @@
 
     {% set error = request.query_params.get('error') %}
     {% if error %}
-    <div style="background: #ffebee; border: 1px solid #ef5350; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; color: #c62828; font-size: 13px;">
+    <div class="notice-error" style="padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;">
         {{ error }}
     </div>
     {% endif %}
 
     <form method="POST" action="{% if mode == 'create' %}/wishes/new{% else %}/wishes/{{ wish.wish_id }}/edit{% endif %}"
-          style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+          class="form-section" style="border-radius: 8px; padding: 20px;">
 
         <!-- Title -->
         <div style="margin-bottom: 16px;">
@@ -124,7 +124,7 @@
                 {% if mode == 'create' %}Создать{% else %}Сохранить{% endif %}
             </button>
             <a href="/wishes"
-               style="background: #f5f5f5; color: #333; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; display: inline-block;">
+               class="btn-cancel" style="padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; display: inline-block;">
                 Отмена
             </a>
         </div>

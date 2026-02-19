@@ -55,7 +55,7 @@
 
     <!-- One-time fields -->
     {% if mode == "edit" and not event.repeat_rule_id and not occurrence %}
-    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+    <div class="notice-warning" style="border-radius: 6px; padding: 12px; margin-bottom: 12px;">
       <strong>Обратите внимание:</strong> Для этого события нет сохраненных дат. Заполните поля ниже и сохраните.
     </div>
     {% endif %}

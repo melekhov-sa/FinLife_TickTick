@@ -20,7 +20,7 @@
     </div>
 
     <!-- Toolbar: filters -->
-    <div style="background: #f5f5f5; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    <div class="filter-toolbar" style="padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <!-- Period filter -->
         <select onchange="updateFilter('period', this.value)" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
             <option value="all" {% if period == 'all' %}selected{% endif %}>Все</option>
@@ -44,6 +44,7 @@
                onkeyup="if(event.key === 'Enter') updateFilter('search', this.value)"
                style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; min-width: 200px;">
         <button onclick="updateFilter('search', document.getElementById('search-input').value)"
+                class="search-btn"
                 style="padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px;">
             🔍
         </button>
@@ -66,7 +67,7 @@
                 <span style="color: #999; font-weight: normal; font-size: 14px;">({{ wishes|length }})</span>
             </h3>
 
-            <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div class="item-card" style="border-radius: 8px; overflow: hidden;">
                 {% for wish in wishes %}
                 <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
                     <div style="flex: 1;">

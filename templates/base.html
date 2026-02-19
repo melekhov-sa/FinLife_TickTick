@@ -6,6 +6,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>{% block title %}FinLife{% endblock %}</title>
+  <script>
+    /* Apply theme BEFORE CSS renders — prevents flash of wrong theme */
+    (function(){
+      if (localStorage.getItem('finlife-theme') === 'dark')
+        document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -489,6 +496,128 @@
       .main-content { padding: calc(56px + env(safe-area-inset-top, 0px)) 10px 16px; }
       .card { padding: 12px; }
     }
+    /* ===== THEME TRANSITION ===== */
+    body, .card, .stat-card, .sidebar, input, select, textarea,
+    table th, table td, .budget-input, .btn-icon, .badge {
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    /* ===== DARK THEME ===== */
+    [data-theme="dark"] body { background: #0d1117; color: #c9d1d9; }
+    [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3 { color: #e6edf3; }
+    [data-theme="dark"] a { color: #58a6ff; }
+    [data-theme="dark"] .sidebar-nav a { color: rgba(255,255,255,0.7); }
+    [data-theme="dark"] .sidebar-nav a:hover, [data-theme="dark"] .sidebar-nav a.active { color: white; }
+    [data-theme="dark"] .sidebar-bottom a { color: rgba(255,255,255,0.5); }
+    /* Cards */
+    [data-theme="dark"] .card { background: #161b22; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    [data-theme="dark"] .stat-card { background: #161b22; }
+    [data-theme="dark"] .stat-card-total { background: #0d1117; }
+    /* Tables */
+    [data-theme="dark"] table th { background: #21262d; color: #8b949e; }
+    [data-theme="dark"] table th, [data-theme="dark"] table td { border-bottom-color: #21262d; }
+    /* Typography helpers */
+    [data-theme="dark"] .muted { color: #8b949e; }
+    [data-theme="dark"] small { color: #8b949e; }
+    [data-theme="dark"] .positive { color: #3fb950; }
+    [data-theme="dark"] .negative { color: #f85149; }
+    /* Forms */
+    [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+      background: #0d1117; border-color: #30363d; color: #c9d1d9;
+    }
+    [data-theme="dark"] input::placeholder { color: #4d5f72; }
+    [data-theme="dark"] label { color: #c9d1d9; }
+    /* Buttons */
+    [data-theme="dark"] button.secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+    [data-theme="dark"] button.secondary:hover { background: #30363d; }
+    [data-theme="dark"] .btn-gear:hover { background: #21262d; color: #c9d1d9; }
+    [data-theme="dark"] .btn-icon { border-color: #30363d; color: #c9d1d9; }
+    [data-theme="dark"] .btn-icon:hover { background: #21262d; }
+    [data-theme="dark"] .filter-actions button { background: #21262d; border-color: #30363d; color: #c9d1d9; }
+    [data-theme="dark"] .filter-actions button:hover { background: #30363d; }
+    [data-theme="dark"] .dash-btn-link { background: #161b22; border-color: #1f6feb; color: #58a6ff; }
+    [data-theme="dark"] .dash-btn-link:hover { background: #1c2f4a; }
+    /* Badges */
+    [data-theme="dark"] .badge { background: #21262d; color: #8b949e; }
+    [data-theme="dark"] .badge-archive { background: #3d1a1a; color: #fca5a5; }
+    [data-theme="dark"] .badge-income { background: #1a4731; color: #3fb950; }
+    [data-theme="dark"] .badge-expense { background: #3d1a1a; color: #f85149; }
+    [data-theme="dark"] .badge-transfer { background: #1a3040; color: #58a6ff; }
+    /* Wallet settings */
+    [data-theme="dark"] .wallet-settings { background: #21262d; border-top-color: #30363d; }
+    /* Error card */
+    [data-theme="dark"] .error-card { background: #3d1a1a; border-color: #f85149; color: #fca5a5; }
+    /* Financial result */
+    [data-theme="dark"] .fr-item { border-bottom-color: #21262d; }
+    /* Heatmap */
+    [data-theme="dark"] .heat-0 { background: #21262d; }
+    [data-theme="dark"] .dash-heatmap-level-0 { background: #21262d; }
+    /* Dashboard */
+    [data-theme="dark"] .dash-progress-bar { background: #21262d; }
+    [data-theme="dark"] .dash-item { border-bottom-color: #21262d; }
+    [data-theme="dark"] .dash-item-overdue { background: #2d1a1a; }
+    [data-theme="dark"] .dash-group-label { color: #8b949e; }
+    /* Plan */
+    [data-theme="dark"] .plan-progress { background: #21262d; }
+    [data-theme="dark"] .plan-item:not(:last-child) { border-bottom-color: #21262d; }
+    [data-theme="dark"] .plan-group-title { color: #8b949e; }
+    [data-theme="dark"] .plan-tabs a { background: #21262d; color: #c9d1d9; }
+    [data-theme="dark"] .plan-tabs a.active { background: #007AFF; color: white; }
+    [data-theme="dark"] .plan-tabs a:hover:not(.active) { background: #30363d; }
+    [data-theme="dark"] .plan-ranges a { background: #21262d; color: #c9d1d9; }
+    [data-theme="dark"] .plan-ranges a.active { background: #007AFF; color: white; }
+    [data-theme="dark"] .plan-ranges a:hover:not(.active) { background: #30363d; }
+    /* Budget */
+    [data-theme="dark"] .budget-table th { background: #21262d; }
+    [data-theme="dark"] .budget-total-row td { background: #21262d; border-top-color: #30363d; }
+    [data-theme="dark"] .budget-input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+    [data-theme="dark"] .budget-section-title { color: #8b949e; }
+    [data-theme="dark"] .grain-selector a { border-color: #30363d; color: #8b949e; }
+    [data-theme="dark"] .grain-selector a:hover { border-color: #8b949e; color: #c9d1d9; }
+    [data-theme="dark"] .grain-selector a.active { background: #007AFF; border-color: #007AFF; color: white; }
+    /* Budget matrix */
+    [data-theme="dark"] .matrix-table .sticky-col { background: #161b22 !important; }
+    [data-theme="dark"] .matrix-table thead .sticky-col { background: #21262d !important; }
+    [data-theme="dark"] .matrix-table .budget-total-row .sticky-col { background: #21262d !important; }
+    [data-theme="dark"] .total-header { background: #21262d; }
+    [data-theme="dark"] .total-cell { background: #1c2128; }
+    [data-theme="dark"] .period-border { border-left-color: #21262d; }
+    [data-theme="dark"] .compact-cell { border-left-color: #21262d; }
+    [data-theme="dark"] .sub-header { color: #8b949e; border-left-color: #21262d; }
+    [data-theme="dark"] .period-header { border-left-color: #21262d; }
+    /* Budget section header rows (need !important to override inline style) */
+    [data-theme="dark"] .budget-section-row { background: #1c2128 !important; }
+    [data-theme="dark"] .budget-section-row td { color: #8b949e !important; }
+    /* Balance hint row */
+    [data-theme="dark"] .balance-hint-row { background: #11182b !important; }
+    /* Category filter */
+    [data-theme="dark"] .filter-panel summary { color: #8b949e; }
+    [data-theme="dark"] .category-checkboxes label:hover { background: #21262d; }
+    /* Event form */
+    [data-theme="dark"] .event-type-toggle > label { background: #161b22; border-color: #30363d; color: #c9d1d9; }
+    [data-theme="dark"] .event-type-toggle > input[type="radio"]:checked + label { border-color: #007AFF; background: #1c2f4a; color: #58a6ff; }
+    [data-theme="dark"] .weekday-checkboxes label { border-color: #30363d; color: #c9d1d9; }
+    /* Pagination */
+    [data-theme="dark"] .pagination a { color: #58a6ff; }
+    [data-theme="dark"] .pagination span { color: #8b949e; }
+    /* Mobile hamburger */
+    [data-theme="dark"] .sidebar-toggle { background: #161b22; }
+    [data-theme="dark"] .sidebar-overlay { background: rgba(0,0,0,0.6); }
+    /* Subscription coverage block */
+    [data-theme="dark"] #subCoverageBlock { background: #0d1117 !important; border-color: #1f6feb !important; }
+    /* Inline-styled element dark overrides (use !important to beat inline styles) */
+    [data-theme="dark"] .filter-toolbar { background: #1c2128 !important; }
+    [data-theme="dark"] .tab-link-inactive { background: #21262d !important; color: #8b949e !important; }
+    [data-theme="dark"] .notice-amber { background: #2d2200 !important; border-color: #6b4800 !important; color: #d4a820 !important; }
+    [data-theme="dark"] .notice-warning { background: #2d2200 !important; border-color: #6b4800 !important; color: #d4a820 !important; }
+    [data-theme="dark"] .notice-error { background: #2d1a1a !important; border-color: #b91c1c !important; color: #fca5a5 !important; }
+    [data-theme="dark"] .item-card { background: #161b22 !important; border-color: #30363d !important; }
+    [data-theme="dark"] .item-card > div { border-bottom-color: #21262d !important; }
+    [data-theme="dark"] .item-card > label { border-bottom-color: #21262d !important; }
+    [data-theme="dark"] .form-section { background: #161b22 !important; border-color: #30363d !important; }
+    [data-theme="dark"] .btn-cancel { background: #21262d !important; color: #c9d1d9 !important; }
+    [data-theme="dark"] .info-section { background: #1c2128 !important; }
+    [data-theme="dark"] .action-link { background: #161b22 !important; }
+    [data-theme="dark"] .search-btn { background: #0d1117 !important; border-color: #30363d !important; color: #c9d1d9 !important; }
   </style>
 </head>
 <body>
@@ -516,6 +645,11 @@
         <a href="/task-categories"><span class="nav-icon">&#127991;</span>Категории дел</a>
       </nav>
       <div class="sidebar-bottom">
+        <button id="themeToggle" onclick="toggleTheme()"
+                style="width:100%;text-align:left;background:none;border:none;border-top:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:10px 20px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:unset;">
+          <span id="themeIcon" style="font-size:15px;">🌙</span>
+          <span id="themeLabel">Тёмная тема</span>
+        </button>
         <a href="/logout">&#8594; Выход</a>
       </div>
     </aside>
@@ -543,6 +677,25 @@
     });
   });
 })();
+
+/* ===== Dark theme toggle ===== */
+function _isDark() {
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+function _updateThemeBtn() {
+  var dark = _isDark();
+  var icon = document.getElementById('themeIcon');
+  var label = document.getElementById('themeLabel');
+  if (icon) icon.textContent = dark ? '☀️' : '🌙';
+  if (label) label.textContent = dark ? 'Светлая тема' : 'Тёмная тема';
+}
+function toggleTheme() {
+  var next = _isDark() ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('finlife-theme', next);
+  _updateThemeBtn();
+}
+_updateThemeBtn();
 </script>
 </body>
 </html>

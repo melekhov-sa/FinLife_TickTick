@@ -16,13 +16,13 @@
         </div>
     </div>
 
-    <div style="background: #fff9e6; border: 1px solid #ffe082; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #666;">
+    <div class="notice-amber" style="padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
         💡 Режим "Закупка" показывает все покупки в статусе "Идея" или "Думаю". Отметьте выполненные галочками и нажмите "Завершить закупку".
     </div>
 
     {% if wishes %}
     <form method="POST" action="/wishes/purchase/complete" id="purchase-form">
-        <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
+        <div class="item-card" style="border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
             {% for wish in wishes %}
             <label style="display: flex; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; align-items: center;">
                 <input type="checkbox" name="wish_{{ wish.wish_id }}" value="1"

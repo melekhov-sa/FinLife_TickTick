@@ -2,6 +2,7 @@
 {% block title %}Бюджет{% endblock %}
 
 {% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+{% macro fmt_dev(val) %}{{ "+" if val > 0 else "" }}{{ fmt(val) }}{% endmacro %}
 
 {% macro plan_cell(cell, link_url=None) -%}
 {%- if link_url %}<a href="{{ link_url }}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed #bbb;">{% endif -%}
@@ -52,7 +53,7 @@
 </div>
 
 {% if has_orphans and variant %}
-<div style="padding: 8px 12px; margin-bottom: 10px; background: #fffbe6; border-left: 3px solid #f5a623; font-size: 13px; border-radius: 4px;">
+<div class="notice-amber" style="padding: 8px 12px; margin-bottom: 10px; border-left: 3px solid #f5a623; font-size: 13px; border-radius: 4px;">
   Есть данные без привязки к варианту.
   <form method="POST" action="/budget/variants/{{ variant.id }}/attach" style="display: inline;">
     <button type="submit" style="font-size: 13px; margin-left: 4px; background: none; border: none; color: #007AFF; cursor: pointer; text-decoration: underline;">Привязать</button>
@@ -100,7 +101,8 @@
 <details class="filter-panel" style="margin-bottom: 12px;">
   <summary>
     Фильтр категорий
-    {% if hidden_category_ids %}<span style="color: #999; font-size: 12px; margin-left: 4px;">(скрыто: {{ hidden_category_ids|length }})</span>{% endif %}
+    {% set total_hidden = hidden_category_ids|length + hidden_goal_ids|length + hidden_withdrawal_goal_ids|length %}
+    {% if total_hidden > 0 %}<span style="color: #999; font-size: 12px; margin-left: 4px;">(скрыто: {{ total_hidden }})</span>{% endif %}
   </summary>
   <form method="POST" action="/budget/visibility/save" class="filter-body">
     <input type="hidden" name="variant_id" value="{{ variant.id }}">
@@ -150,6 +152,38 @@
           {% endfor %}
         </div>
       </div>
+
+      <!-- GOALS: Отложить -->
+      {% if filter_goals %}
+      <div style="flex: 1; min-width: 180px;">
+        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #555; margin-bottom: 4px;">Отложить</div>
+        <div class="category-checkboxes" style="flex-direction: column;">
+          {% for goal in filter_goals %}
+          <label>
+            <input type="checkbox" name="visible_goal_id" value="{{ goal.goal_id }}"
+                   {% if goal.goal_id not in hidden_goal_ids %}checked{% endif %}
+                   style="width: auto; max-width: none;">
+            {{ goal.title }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- GOALS: Взять из отложенного -->
+      <div style="flex: 1; min-width: 180px;">
+        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #555; margin-bottom: 4px;">Взять из отложенного</div>
+        <div class="category-checkboxes" style="flex-direction: column;">
+          {% for goal in filter_goals %}
+          <label>
+            <input type="checkbox" name="visible_withdrawal_goal_id" value="{{ goal.goal_id }}"
+                   {% if goal.goal_id not in hidden_withdrawal_goal_ids %}checked{% endif %}
+                   style="width: auto; max-width: none;">
+            {{ goal.title }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     {% if credit_repay_cat %}
@@ -168,16 +202,16 @@
   </form>
 </details>
 
-<!-- ============ INCOME MATRIX ============ -->
+<!-- ============ UNIFIED BUDGET TABLE ============ -->
 <div class="card">
-  <div class="budget-section-title">Доходы</div>
   <div class="matrix-scroll-wrapper">
     <table class="budget-table matrix-table">
+      {% set _ns = namespace(val=1) %}{% for p in view.periods %}{% if show_plan %}{% if p.is_past %}{% set _ns.val = _ns.val + 2 %}{% elif p.is_future %}{% set _ns.val = _ns.val + 1 %}{% else %}{% set _ns.val = _ns.val + 4 %}{% endif %}{% else %}{% if not p.is_future %}{% set _ns.val = _ns.val + 1 %}{% endif %}{% endif %}{% endfor %}{% set _ns.val = _ns.val + (2 if show_plan else 1) %}{% set n_cols = _ns.val %}
       <thead>
         <tr>
           <th class="sticky-col">Категория</th>
           {% for p in view.periods %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header">{{ p.short_label }}</th>
+          {% if show_plan or not p.is_future %}<th{% if show_plan %} colspan="{{ 1 if p.is_future else (2 if p.is_past else 4) }}"{% endif %} class="period-header">{{ p.short_label }}</th>{% endif %}
           {% endfor %}
           <th{% if show_plan %} colspan="2"{% endif %} class="period-header total-header">Итого</th>
         </tr>
@@ -185,8 +219,13 @@
         <tr>
           <th class="sticky-col"></th>
           {% for p in view.periods %}
+          {% if p.is_past %}
+          <th class="sub-header period-border">Факт</th><th class="sub-header">Откл.</th>
+          {% elif p.is_future %}
           <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
+          {% else %}
+          <th class="sub-header period-border">План</th><th class="sub-header">Факт</th><th class="sub-header">Остаток</th><th class="sub-header">Откл.</th>
+          {% endif %}
           {% endfor %}
           <th class="sub-header period-border">План</th>
           <th class="sub-header">Факт</th>
@@ -194,17 +233,65 @@
         {% endif %}
       </thead>
       <tbody>
+
+        <!-- ── Остаток на начало периода ── -->
+        {% if period_balances %}
+        <tr class="balance-hint-row" style="background: #eef2fb;">
+          <td class="sticky-col" style="font-style: italic; color: #555; font-size: 11px; white-space: nowrap;">Остаток (нач.)</td>
+          {% for pb in period_balances %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td colspan="2" class="text-right compact-cell period-border" style="color: #555; font-size: 12px;">{{ fmt(pb) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border" style="color: #7c90cc; font-style: italic; font-size: 12px;">{{ fmt(pb) }}</td>
+          {% else %}
+          <td colspan="4" class="text-right compact-cell period-border" style="color: #2563d4; font-weight: 600; font-size: 12px;">{{ fmt(pb) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}
+          <td class="text-right compact-cell period-border" style="color: #555; font-size: 12px;">{{ fmt(pb) }}</td>
+          {% endif %}
+          {% endif %}
+          {% endfor %}
+          {% if show_plan %}
+          <td colspan="2" class="total-cell period-border"></td>
+          {% else %}
+          <td class="total-cell period-border"></td>
+          {% endif %}
+        </tr>
+        {% endif %}
+
+        <!-- ── ДОХОДЫ ── -->
+        <tr class="budget-section-row" style="background: #f5f7fa;">
+          <td colspan="{{ n_cols }}" style="padding: 6px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #666;">Доходы</td>
+        </tr>
         {% for row in view.income_rows %}
         <tr{% if row.is_group %} style="font-weight: 600;"{% endif %}>
           <td class="sticky-col">{% if row.depth > 0 %}<span style="display: inline-block; margin-left: 20px; color: #bbb; margin-right: 4px;">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
+          {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmt_dev(cell.deviation) }}</td>
+          {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ view.periods[loop.index0].year ~ "&month=" ~ view.periods[loop.index0].month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
+          {% else %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            if (grain == "month" and not row.is_group) else None
+          ) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmt_dev(cell.deviation) }}</td>
           {% endif %}
-          <td class="text-right compact-cell {% if show_plan %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}
           <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
@@ -219,65 +306,149 @@
         <tr class="muted">
           <td class="sticky-col">Прочие доходы</td>
           {% for cell in oi.cells %}
-          {% if show_plan %}<td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>{% endif %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(oi.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(oi.total.fact) }}</td>
         </tr>
         {% endif %}
-        <!-- ИТОГО доходы -->
+        <!-- ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── -->
+        {% if view.withdrawal_rows %}
+        <tr class="budget-section-row" style="background: #f5f7fa;">
+          <td colspan="{{ n_cols }}" style="padding: 6px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #666;">Взять из отложенного</td>
+        </tr>
+        {% for row in view.withdrawal_rows %}
+        <tr>
+          <td class="sticky-col">
+            <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
+          </td>
+          {% for cell in row.cells %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            if grain == "month" else None
+          ) }}</td>
+          {% else %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            if grain == "month" else None
+          ) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
+          {% endfor %}
+          {% if show_plan %}<td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>{% endif %}
+          <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt(row.total.fact) }}</td>
+        </tr>
+        {% endfor %}
+        <!-- ИТОГО взять из отложенного -->
+        <tr class="budget-total-row">
+          <td class="sticky-col">ИТОГО взять</td>
+          {% for cell in view.withdrawal_totals.cells %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
+          {% endfor %}
+          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.withdrawal_totals.total.plan) }}</td>{% endif %}
+          <td class="text-right total-cell">{{ fmt(view.withdrawal_totals.total.fact) }}</td>
+        </tr>
+        {% endif %}
+
+        <!-- ИТОГО доходы (включая взять из отложенного) -->
         <tr class="budget-total-row">
           <td class="sticky-col">ИТОГО доходы</td>
           {% for cell in view.income_totals.cells %}
-          {% if show_plan %}<td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>{% endif %}
-          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          {% set _p = view.periods[loop.index0] %}
+          {% set _w = view.withdrawal_totals.cells[loop.index0] if view.withdrawal_rows else none %}
+          {% set _plan = cell.plan + (_w.plan if _w else 0) %}
+          {% set _fact = cell.fact + (_w.fact if _w else 0) %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(_fact) }}</td>
+          <td class="text-right compact-cell {% if (_fact - _plan) > 0 %}positive{% elif (_fact - _plan) < 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(_fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(_plan - _fact) }}</td>
+          <td class="text-right compact-cell {% if (_fact - _plan) > 0 %}positive{% elif (_fact - _plan) < 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(_fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.income_totals.total.plan) }}</td>{% endif %}
-          <td class="text-right total-cell">{{ fmt(view.income_totals.total.fact) }}</td>
+          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.income_totals.total.plan + (view.withdrawal_totals.total.plan if view.withdrawal_rows else 0)) }}</td>{% endif %}
+          <td class="text-right total-cell">{{ fmt(view.income_totals.total.fact + (view.withdrawal_totals.total.fact if view.withdrawal_rows else 0)) }}</td>
         </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
 
-<!-- ============ EXPENSE MATRIX ============ -->
-<div class="card">
-  <div class="budget-section-title">Расходы</div>
-  <div class="matrix-scroll-wrapper">
-    <table class="budget-table matrix-table">
-      <thead>
-        <tr>
-          <th class="sticky-col">Категория</th>
-          {% for p in view.periods %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header">{{ p.short_label }}</th>
-          {% endfor %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header total-header">Итого</th>
+        <!-- ── РАСХОДЫ ── -->
+        <tr class="budget-section-row" style="background: #f5f7fa;">
+          <td colspan="{{ n_cols }}" style="padding: 6px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #666;">Расходы</td>
         </tr>
-        {% if show_plan %}
-        <tr>
-          <th class="sticky-col"></th>
-          {% for p in view.periods %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-          {% endfor %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-        </tr>
-        {% endif %}
-      </thead>
-      <tbody>
         {% for row in view.expense_rows %}
         <tr{% if row.is_group %} style="font-weight: 600;"{% endif %}>
           <td class="sticky-col">{% if row.depth > 0 %}<span style="display: inline-block; margin-left: 20px; color: #bbb; margin-right: 4px;">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
+          {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}">{{ fmt_dev(cell.deviation) }}</td>
+          {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ view.periods[loop.index0].year ~ "&month=" ~ view.periods[loop.index0].month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
+          {% else %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            if (grain == "month" and not row.is_group) else None
+          ) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}">{{ fmt_dev(cell.deviation) }}</td>
           {% endif %}
-          <td class="text-right compact-cell {% if show_plan %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}
           <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
@@ -292,112 +463,94 @@
         <tr class="muted">
           <td class="sticky-col">Прочие расходы</td>
           {% for cell in oe.cells %}
-          {% if show_plan %}<td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>{% endif %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) < 0 %}positive{% elif (cell.fact - cell.plan) > 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) < 0 %}positive{% elif (cell.fact - cell.plan) > 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(oe.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(oe.total.fact) }}</td>
         </tr>
         {% endif %}
-        <!-- ИТОГО расходы -->
-        <tr class="budget-total-row">
-          <td class="sticky-col">ИТОГО расходы</td>
-          {% for cell in view.expense_totals.cells %}
-          {% if show_plan %}<td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>{% endif %}
-          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
-          {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.expense_totals.total.plan) }}</td>{% endif %}
-          <td class="text-right total-cell">{{ fmt(view.expense_totals.total.fact) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ============ ПОГАШЕНИЕ КРЕДИТОВ ============ -->
-{% if view.credit_row %}
-<div class="card">
-  <div class="budget-section-title">Погашение кредитов</div>
-  <div class="matrix-scroll-wrapper">
-    <table class="budget-table matrix-table">
-      <thead>
-        <tr>
-          <th class="sticky-col">Категория</th>
-          {% for p in view.periods %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header">{{ p.short_label }}</th>
-          {% endfor %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header total-header">Итого</th>
-        </tr>
-        {% if show_plan %}
-        <tr>
-          <th class="sticky-col"></th>
-          {% for p in view.periods %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-          {% endfor %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-        </tr>
-        {% endif %}
-      </thead>
-      <tbody>
+        <!-- Погашение кредитов (inside expenses) -->
+        {% if view.credit_row %}
         <tr>
           <td class="sticky-col">Погашение кредитов</td>
           {% for cell in view.credit_row.cells %}
+          {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ view.periods[loop.index0].year ~ "&month=" ~ view.periods[loop.index0].month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
+            link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
             if grain == "month" else None
           ) }}</td>
+          {% else %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
+            if grain == "month" else None
+          ) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
           {% endif %}
-          <td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}
           <td class="text-right total-cell period-border">{{ plan_cell(view.credit_row.total) }}</td>
           {% endif %}
           <td class="text-right total-cell {% if view.credit_row.total.fact > 0 %}positive{% endif %}">{{ fmt(view.credit_row.total.fact) }}</td>
         </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
-
-<!-- ============ ОТЛОЖИТЬ (savings goals) ============ -->
-{% if view.goal_rows %}
-<div class="card">
-  <div class="budget-section-title">Отложить</div>
-  <div class="matrix-scroll-wrapper">
-    <table class="budget-table matrix-table">
-      <thead>
-        <tr>
-          <th class="sticky-col">Цель</th>
-          {% for p in view.periods %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header">{{ p.short_label }}</th>
-          {% endfor %}
-          <th{% if show_plan %} colspan="2"{% endif %} class="period-header total-header">Итого</th>
-        </tr>
-        {% if show_plan %}
-        <tr>
-          <th class="sticky-col"></th>
-          {% for p in view.periods %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-          {% endfor %}
-          <th class="sub-header period-border">План</th>
-          <th class="sub-header">Факт</th>
-        </tr>
         {% endif %}
-      </thead>
-      <tbody>
+        <!-- ── ОТЛОЖИТЬ ── -->
+        {% if view.goal_rows %}
+        <tr class="budget-section-row" style="background: #f5f7fa;">
+          <td colspan="{{ n_cols }}" style="padding: 6px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #666;">Отложить</td>
+        </tr>
         {% for row in view.goal_rows %}
         <tr>
           <td class="sticky-col">
             <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
           </td>
           {% for cell in row.cells %}
-          {% if show_plan %}<td class="text-right compact-cell muted period-border">{{ fmt(cell.plan) }}</td>{% endif %}
-          <td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            if grain == "month" else None
+          ) }}</td>
+          {% else %}
+          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            if grain == "month" else None
+          ) }}</td>
+          <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(row.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt(row.total.fact) }}</td>
@@ -407,77 +560,57 @@
         <tr class="budget-total-row">
           <td class="sticky-col">ИТОГО отложить</td>
           {% for cell in view.goal_totals.cells %}
-          {% if show_plan %}<td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>{% endif %}
+          {% set _p = view.periods[loop.index0] %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.goal_totals.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(view.goal_totals.total.fact) }}</td>
         </tr>
-      </tbody>
-    </table>
-  </div>
-  {% if show_plan and grain == "month" and view.periods|length == 1 %}
-  <details style="margin-top: 12px;">
-    <summary style="cursor: pointer; font-size: 13px; color: #007AFF;">Изменить план</summary>
-    <form method="POST" action="/budget/goals/save" style="margin-top: 8px;">
-      <input type="hidden" name="year" value="{{ view.periods[0].year }}">
-      <input type="hidden" name="month" value="{{ view.periods[0].month }}">
-      <input type="hidden" name="variant_id" value="{{ variant.id }}">
-      {% for row in view.goal_rows %}
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-        <input type="hidden" name="goal_id" value="{{ row.goal_id }}">
-        <label style="min-width: 120px; font-size: 13px;">{{ row.title }}</label>
-        <input name="goal_plan_amount" type="number" step="1" min="0"
-               value="{{ row.cells[0].plan|int if row.cells[0].plan else '' }}"
-               placeholder="0" style="width: 100px; font-size: 13px;">
-      </div>
-      {% endfor %}
-      <button type="submit" style="margin-top: 4px; font-size: 13px;">Сохранить</button>
-    </form>
-  </details>
-  {% endif %}
-</div>
-{% endif %}
-
-<!-- ============ RESULT ============ -->
-<div class="card">
-  <div class="budget-section-title">Результат (доходы &minus; расходы)</div>
-  <div class="matrix-scroll-wrapper">
-    <table class="budget-table matrix-table">
-      <thead>
-        <tr>
-          <th class="sticky-col"></th>
-          {% for p in view.periods %}
-          <th class="period-header">{{ p.short_label }}</th>
-          {% endfor %}
-          <th class="period-header total-header">Итого</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if show_plan %}
-        <tr>
-          <td class="sticky-col">План</td>
-          {% for cell in view.result.cells %}
-          <td class="text-right compact-cell period-border {% if cell.plan >= 0 %}positive{% else %}negative{% endif %}">
-            {% if cell.plan > 0 %}+{% endif %}{{ fmt(cell.plan) }}
-          </td>
-          {% endfor %}
-          <td class="text-right total-cell period-border {% if view.result.total.plan >= 0 %}positive{% else %}negative{% endif %}">
-            {% if view.result.total.plan > 0 %}+{% endif %}{{ fmt(view.result.total.plan) }}
-          </td>
-        </tr>
         {% endif %}
-        <tr>
-          <td class="sticky-col">Факт</td>
-          {% for cell in view.result.cells %}
-          <td class="text-right compact-cell period-border {% if cell.fact >= 0 %}positive{% else %}negative{% endif %}">
-            {% if cell.fact > 0 %}+{% endif %}{{ fmt(cell.fact) }}
-          </td>
+
+        <!-- ИТОГО расходы (expense + credit + отложить) -->
+        <tr class="budget-total-row">
+          <td class="sticky-col">ИТОГО расходы</td>
+          {% for cell in view.expense_totals.cells %}
+          {% set _p = view.periods[loop.index0] %}
+          {% set _plan = cell.plan + (view.credit_row.cells[loop.index0].plan if view.credit_row else 0) + (view.goal_totals.cells[loop.index0].plan if view.goal_rows else 0) %}
+          {% set _fact = cell.fact + (view.credit_row.cells[loop.index0].fact if view.credit_row else 0) + (view.goal_totals.cells[loop.index0].fact if view.goal_rows else 0) %}
+          {% if show_plan %}
+          {% if _p.is_past %}
+          <td class="text-right compact-cell period-border">{{ fmt(_fact) }}</td>
+          <td class="text-right compact-cell {% if (_fact - _plan) < 0 %}positive{% elif (_fact - _plan) > 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
+          {% elif _p.is_future %}
+          <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
+          {% else %}
+          <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
+          <td class="text-right compact-cell">{{ fmt(_fact) }}</td>
+          <td class="text-right compact-cell muted">{{ fmt(_plan - _fact) }}</td>
+          <td class="text-right compact-cell {% if (_fact - _plan) < 0 %}positive{% elif (_fact - _plan) > 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
+          {% endif %}
+          {% else %}
+          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(_fact) }}</td>{% endif %}
+          {% endif %}
           {% endfor %}
-          <td class="text-right total-cell period-border {% if view.result.total.fact >= 0 %}positive{% else %}negative{% endif %}">
-            {% if view.result.total.fact > 0 %}+{% endif %}{{ fmt(view.result.total.fact) }}
-          </td>
+          {% if show_plan %}
+          <td class="text-right total-cell period-border">{{ fmt(view.expense_totals.total.plan + (view.credit_row.total.plan if view.credit_row else 0) + (view.goal_totals.total.plan if view.goal_rows else 0)) }}</td>
+          {% endif %}
+          <td class="text-right total-cell">{{ fmt(view.expense_totals.total.fact + (view.credit_row.total.fact if view.credit_row else 0) + (view.goal_totals.total.fact if view.goal_rows else 0)) }}</td>
         </tr>
+
       </tbody>
     </table>
   </div>
@@ -485,7 +618,7 @@
 
 <script>
 function toggleAllVisibility(checked) {
-  document.querySelectorAll('input[name="visible_category_id"]').forEach(function(cb) {
+  document.querySelectorAll('input[name="visible_category_id"], input[name="visible_goal_id"], input[name="visible_withdrawal_goal_id"]').forEach(function(cb) {
     cb.checked = checked;
   });
 }

@@ -51,49 +51,54 @@
 
     <div class="form-row" id="walletField">
       <label>Кошелёк</label>
-      <select name="wallet_id">
+      <select name="wallet_id" id="walletSelect" onchange="updateWalletHint()">
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
         {% endfor %}
       </select>
+      <small id="walletBalanceHint" style="display:none; color:#555; margin-top:3px;"></small>
     </div>
 
     <div class="form-row" id="fromWalletField" style="display:none;">
       <label>Из кошелька</label>
-      <select name="from_wallet_id" id="fromWalletSelect" disabled onchange="updateGoalFields()">
+      <select name="from_wallet_id" id="fromWalletSelect" disabled onchange="updateGoalFields(); updateFromWalletHint();">
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
         {% endfor %}
       </select>
+      <small id="fromWalletBalanceHint" style="display:none; color:#555; margin-top:3px;"></small>
     </div>
 
     <div class="form-row" id="fromGoalField" style="display:none;">
       <label>Из цели</label>
-      <select name="from_goal_id" id="fromGoalSelect">
+      <select name="from_goal_id" id="fromGoalSelect" onchange="updateFromGoalHint()">
         <option value="">— Выберите цель —</option>
         {% for g in goals %}
         <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
         {% endfor %}
       </select>
+      <small id="fromGoalBalanceHint" style="display:none; color:#555; margin-top:3px;"></small>
     </div>
 
     <div class="form-row" id="toWalletField" style="display:none;">
       <label>В кошелёк</label>
-      <select name="to_wallet_id" id="toWalletSelect" disabled onchange="updateGoalFields()">
+      <select name="to_wallet_id" id="toWalletSelect" disabled onchange="updateGoalFields(); updateToWalletHint();">
         {% for w in wallets %}
         <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
         {% endfor %}
       </select>
+      <small id="toWalletBalanceHint" style="display:none; color:#555; margin-top:3px;"></small>
     </div>
 
     <div class="form-row" id="toGoalField" style="display:none;">
       <label>В цель</label>
-      <select name="to_goal_id" id="toGoalSelect">
+      <select name="to_goal_id" id="toGoalSelect" onchange="updateToGoalHint()">
         <option value="">— Выберите цель —</option>
         {% for g in goals %}
         <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
         {% endfor %}
       </select>
+      <small id="toGoalBalanceHint" style="display:none; color:#555; margin-top:3px;"></small>
     </div>
 
     <div class="form-row">
@@ -272,6 +277,51 @@
 <script>
 var subCategoryMap = {{ sub_category_map | tojson }};
 var walletTypeMap = {{ wallet_type_map | tojson }};
+var walletBalanceMap = {{ wallet_balance_map | tojson }};
+var goalBalanceMap = {{ goal_balance_map | tojson }};
+var goalCurrencyMap = {{ goal_currency_map | tojson }};
+
+function fmtBalanceHint(amount, currency) {
+  var n = Math.round(Math.abs(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  var sym = currency === 'RUB' ? '\u20bd' : currency;
+  return 'Баланс: ' + n + '\u00a0' + sym;
+}
+
+function showHint(id, amount, currency) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (amount === undefined || amount === null) { el.style.display = 'none'; return; }
+  el.textContent = fmtBalanceHint(amount, currency);
+  el.style.display = 'block';
+}
+
+function updateWalletHint() {
+  var sel = document.getElementById('walletSelect');
+  var info = walletBalanceMap[sel ? sel.value : ''];
+  showHint('walletBalanceHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+
+function updateFromWalletHint() {
+  var sel = document.getElementById('fromWalletSelect');
+  var info = walletBalanceMap[sel ? sel.value : ''];
+  showHint('fromWalletBalanceHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+
+function updateToWalletHint() {
+  var sel = document.getElementById('toWalletSelect');
+  var info = walletBalanceMap[sel ? sel.value : ''];
+  showHint('toWalletBalanceHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+
+function updateFromGoalHint() {
+  var gid = document.getElementById('fromGoalSelect').value;
+  showHint('fromGoalBalanceHint', gid ? goalBalanceMap[gid] : undefined, gid ? goalCurrencyMap[gid] : '');
+}
+
+function updateToGoalHint() {
+  var gid = document.getElementById('toGoalSelect').value;
+  showHint('toGoalBalanceHint', gid ? goalBalanceMap[gid] : undefined, gid ? goalCurrencyMap[gid] : '');
+}
 
 function updateGoalFields() {
   var fromSel = document.getElementById('fromWalletSelect');
@@ -286,16 +336,20 @@ function updateGoalFields() {
 
   if (fromType === 'SAVINGS') {
     fromGoalField.style.display = 'block';
+    updateFromGoalHint();
   } else {
     fromGoalField.style.display = 'none';
     fromGoalSel.value = '';
+    showHint('fromGoalBalanceHint', undefined, '');
   }
 
   if (toType === 'SAVINGS') {
     toGoalField.style.display = 'block';
+    updateToGoalHint();
   } else {
     toGoalField.style.display = 'none';
     toGoalSel.value = '';
+    showHint('toGoalBalanceHint', undefined, '');
   }
 }
 
@@ -319,24 +373,32 @@ function updateFormFields() {
   if (type === 'TRANSFER') {
     walletField.style.display = 'none';
     walletField.querySelector('select').disabled = true;
+    showHint('walletBalanceHint', undefined, '');
     fromWalletField.style.display = 'block';
     fromWalletField.querySelector('select').disabled = false;
     toWalletField.style.display = 'block';
     toWalletField.querySelector('select').disabled = false;
     categoryField.style.display = 'none';
     updateGoalFields();
+    updateFromWalletHint();
+    updateToWalletHint();
   } else {
     walletField.style.display = 'block';
     walletField.querySelector('select').disabled = false;
     fromWalletField.style.display = 'none';
     fromWalletField.querySelector('select').disabled = true;
+    showHint('fromWalletBalanceHint', undefined, '');
     toWalletField.style.display = 'none';
     toWalletField.querySelector('select').disabled = true;
+    showHint('toWalletBalanceHint', undefined, '');
     categoryField.style.display = 'block';
     document.getElementById('fromGoalField').style.display = 'none';
     document.getElementById('toGoalField').style.display = 'none';
     document.getElementById('fromGoalSelect').value = '';
     document.getElementById('toGoalSelect').value = '';
+    showHint('fromGoalBalanceHint', undefined, '');
+    showHint('toGoalBalanceHint', undefined, '');
+    updateWalletHint();
   }
   filterCategories(type);
   updateSubscriptionBlock();
@@ -376,5 +438,6 @@ function updateSubscriptionBlock() {
 }
 
 filterCategories(document.getElementById('operationType').value);
+updateWalletHint();
 </script>
 {% endblock %}
