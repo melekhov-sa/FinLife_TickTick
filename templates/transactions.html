@@ -37,15 +37,15 @@
 {% endfor %}
 
 <!-- Добавить операцию (collapsible) -->
-<details class="card">
+<details class="card" {% if new_type %}open{% endif %} id="addOpDetails">
   <summary style="cursor: pointer; font-weight: 600; font-size: 16px;">Добавить операцию</summary>
   <form method="POST" action="/transactions/create" style="margin-top: 12px;">
     <div class="form-row">
       <label>Тип операции</label>
       <select name="operation_type" id="operationType" required onchange="updateFormFields()">
-        <option value="INCOME">Доход</option>
-        <option value="EXPENSE" selected>Расход</option>
-        <option value="TRANSFER">Перевод</option>
+        <option value="INCOME" {% if new_type == 'INCOME' %}selected{% endif %}>Доход</option>
+        <option value="EXPENSE" {% if not new_type or new_type == 'EXPENSE' %}selected{% endif %}>Расход</option>
+        <option value="TRANSFER" {% if new_type == 'TRANSFER' %}selected{% endif %}>Перевод</option>
       </select>
     </div>
 
@@ -439,5 +439,6 @@ function updateSubscriptionBlock() {
 
 filterCategories(document.getElementById('operationType').value);
 updateWalletHint();
+{% if new_type %}updateFormFields();{% endif %}
 </script>
 {% endblock %}

@@ -13,6 +13,8 @@ class TasksProjector(BaseProjector):
             self._handle_created(event)
         elif event.event_type == "task_completed":
             self._handle_completed(event)
+        elif event.event_type == "task_uncompleted":
+            self._handle_uncompleted(event)
         elif event.event_type == "task_archived":
             self._handle_archived(event)
 
@@ -45,6 +47,15 @@ class TasksProjector(BaseProjector):
         if task:
             task.status = "DONE"
             task.completed_at = datetime.fromisoformat(payload["completed_at"])
+
+    def _handle_uncompleted(self, event: EventLog) -> None:
+        payload = event.payload_json
+        task = self.db.query(TaskModel).filter(
+            TaskModel.task_id == payload["task_id"]
+        ).first()
+        if task:
+            task.status = "ACTIVE"
+            task.completed_at = None
 
     def _handle_archived(self, event: EventLog) -> None:
         payload = event.payload_json

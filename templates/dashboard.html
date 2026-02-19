@@ -270,6 +270,85 @@ a.dash-card-link {
 .feed-event-amount--income   { color: #2e7d32; }
 .feed-event-amount--expense  { color: #c62828; }
 .feed-event-amount--transfer { color: var(--text-secondary); }
+.feed-cancel-btn {
+  background: none; border: none; cursor: pointer; padding: 2px 5px;
+  font-size: 14px; color: var(--text-secondary); opacity: 0.4; line-height: 1;
+  flex-shrink: 0; border-radius: 4px;
+}
+.feed-cancel-btn:hover { opacity: 1; color: #c62828; background: rgba(198,40,40,.08); }
+
+/* ── Quick-op modal ── */
+.qop-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.35); align-items: center; justify-content: center;
+}
+.qop-backdrop.qop-open { display: flex; }
+.qop-dialog {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: min(360px, calc(100vw - 32px)); padding: 20px 22px;
+}
+.qop-title {
+  font-size: 15px; font-weight: 600; margin: 0 0 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.qop-close {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  color: var(--text-secondary); line-height: 1; padding: 0 2px;
+}
+.qop-close:hover { color: var(--text-primary); }
+.qop-field { margin-bottom: 12px; }
+.qop-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.qop-field input, .qop-field select {
+  width: 100%; padding: 8px 10px; font-size: 14px;
+  background: var(--bg-page); border: 1px solid var(--border-color);
+  border-radius: 8px; color: var(--text-primary); box-sizing: border-box;
+}
+.qop-field input:focus, .qop-field select:focus {
+  outline: none; border-color: var(--accent, #4a90d9);
+}
+.qop-actions { display: flex; gap: 8px; margin-top: 16px; }
+.qop-submit {
+  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 600;
+  background: var(--accent, #4a90d9); color: #fff;
+  border: none; border-radius: 10px; cursor: pointer;
+  transition: opacity .15s;
+}
+.qop-submit:hover { opacity: .88; }
+.qop-cancel-btn {
+  padding: 9px 16px; font-size: 14px;
+  background: transparent; border: 1px solid var(--border-color);
+  border-radius: 10px; cursor: pointer; color: var(--text-secondary);
+}
+.qop-cancel-btn:hover { background: var(--bg-hover, rgba(128,128,128,.1)); }
+
+/* ── Quick operation dropdown ── */
+.dash-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dash-card-header .dash-card-title { margin-bottom: 0; }
+.quick-op-wrapper { position: relative; }
+.quick-op-btn {
+  font-size: 13px; padding: 5px 10px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border-color);
+  color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s;
+  line-height: 1.4;
+}
+.quick-op-btn:hover { background: var(--bg-hover, rgba(128,128,128,.1)); color: var(--text-primary); }
+.quick-op-menu {
+  position: absolute; right: 0; top: calc(100% + 5px); z-index: 200;
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  min-width: 160px; overflow: hidden;
+}
+.quick-op-menu a {
+  display: block; padding: 10px 16px; font-size: 13px;
+  color: var(--text-primary); text-decoration: none;
+  transition: background .12s;
+}
+.quick-op-menu a:hover { background: var(--bg-hover, rgba(128,128,128,.08)); }
 </style>{% endblock %}
 
 {% block content %}
@@ -421,7 +500,17 @@ a.dash-card-link {
 
     {# ── Фокус дня ── #}
     <div class="dash-card" id="dash-focus">
-      <div class="dash-card-title">Фокус дня</div>
+      <div class="dash-card-header">
+        <div class="dash-card-title">Фокус дня</div>
+        <div class="quick-op-wrapper" id="quickOpWrapper">
+          <button class="quick-op-btn" type="button" aria-haspopup="true" aria-expanded="false">+ Быстрая операция</button>
+          <div class="quick-op-menu" hidden>
+            <a href="#" data-type="INCOME">Доход</a>
+            <a href="#" data-type="EXPENSE">Расход</a>
+            <a href="#" data-type="TRANSFER">Перемещение</a>
+          </div>
+        </div>
+      </div>
       {% set has_focus = focus_overdue or focus_tasks or focus_habits %}
 
       {# Просроченные задачи #}
@@ -510,6 +599,12 @@ a.dash-card-link {
           <span class="feed-event-title">{{ item.title }}</span>
           {% if item.amount_fmt %}
           <span class="feed-event-amount feed-event-amount--{{ item.amount_sign }}">{{ item.amount_fmt }}</span>
+          {% endif %}
+          {% if item.cancel_url %}
+          <form method="POST" action="{{ item.cancel_url }}" style="margin:0;">
+            <input type="hidden" name="redirect" value="/">
+            <button type="submit" class="feed-cancel-btn" title="Отменить">✕</button>
+          </form>
           {% endif %}
         </div>
         {% endfor %}
@@ -618,4 +713,65 @@ a.dash-card-link {
   </div>{# ── end RIGHT ── #}
 
 </div>{# ── end dash-v2-grid ── #}
+
+{# ── Быстрая операция — модальное окно ── #}
+<div class="qop-backdrop" id="qopBackdrop" role="dialog" aria-modal="true" aria-labelledby="qopTitle">
+  <div class="qop-dialog">
+    <div class="qop-title">
+      <span id="qopTitle">Быстрая операция</span>
+      <button class="qop-close" id="qopClose" type="button" aria-label="Закрыть">&#x2715;</button>
+    </div>
+    <form method="POST" action="/transactions/create">
+      <input type="hidden" name="redirect" value="/">
+      <input type="hidden" name="operation_type" id="qopType" value="EXPENSE">
+
+      <div class="qop-field">
+        <label>Сумма</label>
+        <input type="number" name="amount" id="qopAmount" step="0.01" min="0.01" placeholder="0.00" required autofocus>
+      </div>
+
+      {# Один кошелёк (доход / расход) #}
+      <div class="qop-field" id="qopWalletRow">
+        <label>Кошелёк</label>
+        <select name="wallet_id" id="qopWallet">
+          {% for w in dash_wallets %}
+          <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {# Два кошелька (перемещение) #}
+      <div class="qop-field" id="qopFromRow" style="display:none;">
+        <label>Из кошелька</label>
+        <select name="from_wallet_id" id="qopFrom" disabled>
+          {% for w in dash_wallets %}
+          <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="qop-field" id="qopToRow" style="display:none;">
+        <label>В кошелёк</label>
+        <select name="to_wallet_id" id="qopTo" disabled>
+          {% for w in dash_wallets %}
+          <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="qop-field">
+        <label>Описание <span style="color:var(--text-secondary);">(необязательно)</span></label>
+        <input type="text" name="description" id="qopDesc" placeholder="Например: продукты">
+      </div>
+
+      <div class="qop-actions">
+        <button type="button" class="qop-cancel-btn" id="qopCancelBtn">Отмена</button>
+        <button type="submit" class="qop-submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard-actions.js"></script>
 {% endblock %}

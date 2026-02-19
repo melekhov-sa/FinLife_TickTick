@@ -49,6 +49,8 @@ class CreateHabitUseCase:
             raise HabitValidationError("Уровень должен быть 1, 2 или 3")
         if freq == "WEEKLY" and not by_weekday:
             raise HabitValidationError("Для еженедельной привычки выберите хотя бы один день недели")
+        if freq == "MONTHLY" and by_monthday is None:
+            raise HabitValidationError("Для ежемесячной привычки укажите день месяца")
         if freq == "MONTHLY" and by_monthday is not None and (by_monthday < 1 or by_monthday > 31):
             raise HabitValidationError("День месяца должен быть от 1 до 31")
 

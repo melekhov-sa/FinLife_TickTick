@@ -36,7 +36,7 @@ from app.application.categories import (
 )
 from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
 from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase, UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
-from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, TaskValidationError
+from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, UncompleteTaskUseCase, TaskValidationError
 from app.application.habits import (
     CreateHabitUseCase, ArchiveHabitUseCase, UnarchiveHabitUseCase,
     ToggleHabitOccurrenceUseCase, CompleteHabitOccurrenceUseCase,
@@ -45,7 +45,7 @@ from app.application.habits import (
     get_today_habits, get_habits_grid, get_habits_analytics,
     get_global_heatmap, get_recent_milestones,
 )
-from app.application.task_templates import CreateTaskTemplateUseCase, CompleteTaskOccurrenceUseCase, SkipTaskOccurrenceUseCase, TaskTemplateValidationError
+from app.application.task_templates import CreateTaskTemplateUseCase, CompleteTaskOccurrenceUseCase, SkipTaskOccurrenceUseCase, UncompleteTaskOccurrenceUseCase, TaskTemplateValidationError
 from app.application.operation_templates import (
     CreateOperationTemplateUseCase, UpdateOperationTemplateUseCase,
     ArchiveOperationTemplateUseCase, UnarchiveOperationTemplateUseCase,
@@ -56,6 +56,7 @@ from app.application.occurrence_generator import OccurrenceGenerator
 from app.application.events import (
     CreateEventUseCase, UpdateEventUseCase, DeactivateEventUseCase,
     ReactivateEventUseCase, CreateEventOccurrenceUseCase, UpdateEventOccurrenceUseCase,
+    CancelEventOccurrenceUseCase,
     EventValidationError, validate_event_form, rebuild_event_occurrences,
 )
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase, UpdateRecurrenceRuleUseCase
@@ -269,6 +270,12 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     # 10. Event feed for #dash-feed (today_msk already defined in step 8)
     feed_groups = svc.get_dashboard_feed(user_id, today_msk)
 
+    # 11. Wallets for quick-op modal
+    dash_wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id,
+        WalletBalance.is_archived == False,
+    ).all()
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -300,6 +307,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "dash_activity": dash_activity,
         # Wishes
         "wishes_this_month": wishes_this_month,
+        # Wallets for quick-op modal
+        "dash_wallets": dash_wallets,
     })
 
 
@@ -985,6 +994,7 @@ def transactions_page(
     date_to: str = "",
     search: str = "",
     page: int = 1,
+    new_type: str = "",
     db: Session = Depends(get_db),
 ):
     """Страница операций с фильтрами и пагинацией"""
@@ -1179,6 +1189,7 @@ def transactions_page(
         "wallet_balance_map": wallet_balance_map,
         "goal_balance_map": goal_balance_map,
         "goal_currency_map": goal_currency_map,
+        "new_type": new_type.upper() if new_type else "",
     })
 
 
@@ -1201,6 +1212,7 @@ def create_transaction_form(
     sub_member_id: int | None = Form(None),
     sub_start_date: str | None = Form(None),
     sub_end_date: str | None = Form(None),
+    redirect: str = Form("/transactions"),
     db: Session = Depends(get_db),
 ):
     """Обработка формы создания операции"""
@@ -1320,7 +1332,7 @@ def create_transaction_form(
             )
 
         request.session["flash"] = {"message": "🎉 +5 XP"}
-        return RedirectResponse("/transactions", status_code=302)
+        return RedirectResponse(redirect, status_code=302)
     except Exception as e:
         db.rollback()
         return RedirectResponse(f"/transactions?error={e}", status_code=302)
@@ -3699,11 +3711,20 @@ def budget_page(
 
     user_id = request.session["user_id"]
 
-    # Load grain/range_count from session if not provided in URL
+    # Load user prefs: URL param → session → DB → hardcoded default
+    _user_prefs = db.query(User).filter(User.id == user_id).first()
     if grain is None:
-        grain = request.session.get("budget_grain", "month")
+        grain = (request.session.get("budget_grain")
+                 or (_user_prefs.budget_grain if _user_prefs else None)
+                 or "month")
     if range_count is None:
-        range_count = int(request.session.get("budget_range_count", 3))
+        rc_raw = request.session.get("budget_range_count")
+        if rc_raw is not None:
+            range_count = int(rc_raw)
+        elif _user_prefs and _user_prefs.budget_range_count:
+            range_count = _user_prefs.budget_range_count
+        else:
+            range_count = 3
 
     # Variant selection: URL param → session → first non-archived → stub
     resolved_variant_id = variant_id
@@ -3744,17 +3765,28 @@ def budget_page(
     # Persist validated settings to session and DB
     request.session["budget_grain"] = grain
     request.session["budget_range_count"] = range_count
-    _budget_user = db.query(User).filter(User.id == user_id).first()
-    if _budget_user:
-        _budget_user.budget_grain = grain
-        _budget_user.budget_range_count = range_count
+    if _user_prefs:
+        _user_prefs.budget_grain = grain
+        _user_prefs.budget_range_count = range_count
         db.commit()
 
     now = datetime.now()
 
+    # Restore anchor from session if not provided in URL
     if year is None:
-        year = now.year
+        year = request.session.get("budget_anchor_year", now.year)
     if month is None:
+        month = request.session.get("budget_anchor_month", now.month)
+    if date is None:
+        date = request.session.get("budget_anchor_date")
+
+    try:
+        year = int(year)
+    except (ValueError, TypeError):
+        year = now.year
+    try:
+        month = int(month)
+    except (ValueError, TypeError):
         month = now.month
     if month < 1:
         month = 1
@@ -3771,6 +3803,11 @@ def budget_page(
             date_param = None
     if date_param is None:
         date_param = date_cls.today()
+
+    # Save anchor to session so it persists across navigations
+    request.session["budget_anchor_year"] = year
+    request.session["budget_anchor_month"] = month
+    request.session["budget_anchor_date"] = date_param.isoformat()
 
     # Ensure system categories
     EnsureSystemCategoriesUseCase(db).execute(account_id=user_id, actor_user_id=user_id)
@@ -4124,7 +4161,7 @@ def save_budget_form(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.post("/budget/goals/save", response_class=HTMLResponse)
@@ -4179,7 +4216,7 @@ def save_goal_plans_form(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.get("/budget/goals/plan/edit", response_class=HTMLResponse)
@@ -4224,7 +4261,7 @@ def budget_goal_plan_edit_page(
     note = gp.note if gp else ""
 
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
 
     return templates.TemplateResponse("budget_goal_plan_edit.html", {
         "request": request,
@@ -4286,7 +4323,7 @@ def save_goal_plan_single(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.get("/budget/goals/withdrawal/plan/edit", response_class=HTMLResponse)
@@ -4329,7 +4366,7 @@ def budget_goal_withdrawal_plan_edit_page(
     note = gp.note if gp else ""
 
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
 
     return templates.TemplateResponse("budget_goal_withdrawal_plan_edit.html", {
         "request": request,
@@ -4391,7 +4428,7 @@ def save_goal_withdrawal_plan_single(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.post("/budget/visibility/save")
@@ -4586,7 +4623,7 @@ def budget_plan_edit_page(
     )
 
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant.id}"
+    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
 
     return templates.TemplateResponse("budget_plan_edit.html", {
         "request": request,
@@ -4656,7 +4693,7 @@ def save_budget_plan_single(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}&range_count=1{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.post("/budget/order/move")
@@ -4694,7 +4731,7 @@ def move_budget_category_order(
         db.commit()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?grain=month&year={year}&month={month}{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
 
 
 @router.post("/budget/copy-plan")
@@ -4726,7 +4763,7 @@ def copy_budget_plan(
         db.rollback()
 
     return RedirectResponse(
-        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        f"/budget?year={year}&month={month}&variant_id={variant_id}",
         status_code=302,
     )
 
@@ -4756,7 +4793,7 @@ def save_budget_template(
         db.rollback()
 
     return RedirectResponse(
-        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        f"/budget?year={year}&month={month}&variant_id={variant_id}",
         status_code=302,
     )
 
@@ -4787,7 +4824,7 @@ def apply_budget_template(
         db.rollback()
 
     return RedirectResponse(
-        f"/budget?grain=month&year={year}&month={month}&range_count=1&variant_id={variant_id}",
+        f"/budget?year={year}&month={month}&variant_id={variant_id}",
         status_code=302,
     )
 
@@ -4822,7 +4859,7 @@ def copy_manual_plan_forward(
         db.rollback()
 
     return RedirectResponse(
-        f"/budget?grain=month&year={year}&month={month}&variant_id={variant_id}",
+        f"/budget?year={year}&month={month}&variant_id={variant_id}",
         status_code=302,
     )
 
@@ -4905,6 +4942,28 @@ def plan_skip_task_occ(request: Request, occurrence_id: int, redirect: str = For
         return RedirectResponse("/login", status_code=302)
     try:
         SkipTaskOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+    except Exception:
+        db.rollback()
+    return RedirectResponse(redirect, status_code=302)
+
+
+@router.post("/plan/tasks/{task_id}/uncomplete")
+def plan_uncomplete_task(request: Request, task_id: int, redirect: str = Form("/"), db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    try:
+        UncompleteTaskUseCase(db).execute(task_id, request.session["user_id"], actor_user_id=request.session["user_id"])
+    except Exception:
+        db.rollback()
+    return RedirectResponse(redirect, status_code=302)
+
+
+@router.post("/plan/task-occurrences/{occurrence_id}/uncomplete")
+def plan_uncomplete_task_occ(request: Request, occurrence_id: int, redirect: str = Form("/"), db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    try:
+        UncompleteTaskOccurrenceUseCase(db).execute(occurrence_id, request.session["user_id"], actor_user_id=request.session["user_id"])
     except Exception:
         db.rollback()
     return RedirectResponse(redirect, status_code=302)

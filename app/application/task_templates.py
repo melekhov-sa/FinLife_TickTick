@@ -41,6 +41,8 @@ class CreateTaskTemplateUseCase:
 
         if freq == "WEEKLY" and not by_weekday:
             raise TaskTemplateValidationError("Для еженедельной задачи выберите хотя бы один день недели")
+        if freq == "MONTHLY" and by_monthday is None:
+            raise TaskTemplateValidationError("Для ежемесячной задачи укажите день месяца")
         if freq == "MONTHLY" and by_monthday is not None and (by_monthday < 1 or by_monthday > 31):
             raise TaskTemplateValidationError("День месяца должен быть от 1 до 31")
 
@@ -137,3 +139,31 @@ class SkipTaskOccurrenceUseCase:
         )
         self.db.commit()
         TaskTemplatesProjector(self.db).run(account_id, event_types=["task_occurrence_skipped"])
+
+
+class UncompleteTaskOccurrenceUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, occurrence_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        occ = self.db.query(TaskOccurrence).filter(
+            TaskOccurrence.id == occurrence_id,
+            TaskOccurrence.account_id == account_id,
+        ).first()
+        if not occ:
+            raise TaskTemplateValidationError(f"Occurrence #{occurrence_id} не найден")
+        if occ.status != "DONE":
+            raise TaskTemplateValidationError("Можно отменить только выполненное вхождение")
+
+        payload = TaskOccurrenceEvent.uncomplete(
+            occ.template_id, occurrence_id, occ.scheduled_date.isoformat()
+        )
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="task_occurrence_uncompleted",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        TaskTemplatesProjector(self.db).run(account_id, event_types=["task_occurrence_uncompleted"])

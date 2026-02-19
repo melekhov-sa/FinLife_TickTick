@@ -55,7 +55,10 @@ class OccurrenceGenerator:
                 continue
 
             spec = rule_spec_from_db(rule)
-            dates = generate_occurrence_dates(spec, ws, we)
+            try:
+                dates = generate_occurrence_dates(spec, ws, we)
+            except ValueError:
+                continue
 
             # Get existing dates for this habit in one query
             existing_dates = {
@@ -108,7 +111,10 @@ class OccurrenceGenerator:
                 continue
 
             spec = rule_spec_from_db(rule)
-            dates = generate_occurrence_dates(spec, ws, we)
+            try:
+                dates = generate_occurrence_dates(spec, ws, we)
+            except ValueError:
+                continue
 
             existing_dates = {
                 row.scheduled_date for row in
@@ -160,7 +166,10 @@ class OccurrenceGenerator:
                 continue
 
             spec = rule_spec_from_db(rule)
-            dates = generate_occurrence_dates(spec, ws, we)
+            try:
+                dates = generate_occurrence_dates(spec, ws, we)
+            except ValueError:
+                continue
 
             existing_dates = {
                 row.scheduled_date for row in

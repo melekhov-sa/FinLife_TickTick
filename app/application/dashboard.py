@@ -755,15 +755,19 @@ class DashboardService:
             if ev.event_type == "task_completed":
                 title = task_titles.get(int(p.get("task_id", 0)), "Задача")
                 icon = "✅"
+                cancel_url = f"/plan/tasks/{p.get('task_id')}/uncomplete" if p.get("task_id") else None
             elif ev.event_type == "task_occurrence_completed":
                 title = tmpl_titles.get(int(p.get("template_id", 0)), "Задача")
                 icon = "✅"
+                cancel_url = f"/plan/task-occurrences/{p.get('occurrence_id')}/uncomplete" if p.get("occurrence_id") else None
             elif ev.event_type == "habit_occurrence_completed":
                 title = habit_titles.get(int(p.get("habit_id", 0)), "Привычка")
                 icon = "💪"
+                cancel_url = f"/plan/habit-occurrences/{p.get('occurrence_id')}/toggle" if p.get("occurrence_id") else None
             else:  # goal_achieved
                 title = "Достигнута цель"
                 icon = "🏆"
+                cancel_url = None
             items.append({
                 "kind": "event",
                 "icon": icon,
@@ -771,6 +775,7 @@ class DashboardService:
                 "occurred_at": ev.occurred_at,
                 "amount_fmt": None,
                 "amount_sign": None,
+                "cancel_url": cancel_url,
             })
 
         for tx in tx_rows:
@@ -791,6 +796,7 @@ class DashboardService:
                     else "expense" if tx.operation_type == "EXPENSE"
                     else "transfer"
                 ),
+                "cancel_url": None,
             })
 
         # Sort combined list desc, cap at 30

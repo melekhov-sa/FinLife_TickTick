@@ -15,6 +15,15 @@ class TaskOccurrenceEvent:
         }
 
     @staticmethod
+    def uncomplete(template_id: int, occurrence_id: int, scheduled_date: str) -> Dict[str, Any]:
+        return {
+            "template_id": template_id,
+            "occurrence_id": occurrence_id,
+            "scheduled_date": scheduled_date,
+            "status": "ACTIVE",
+        }
+
+    @staticmethod
     def skip(template_id: int, occurrence_id: int, scheduled_date: str) -> Dict[str, Any]:
         return {
             "template_id": template_id,

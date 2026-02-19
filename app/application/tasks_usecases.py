@@ -102,3 +102,29 @@ class ArchiveTaskUseCase:
         )
         self.db.commit()
         TasksProjector(self.db).run(account_id, event_types=["task_archived"])
+
+
+class UncompleteTaskUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, task_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        task = self.db.query(TaskModel).filter(
+            TaskModel.task_id == task_id,
+            TaskModel.account_id == account_id,
+        ).first()
+        if not task:
+            raise TaskValidationError(f"Задача #{task_id} не найдена")
+        if task.status != "DONE":
+            raise TaskValidationError("Можно отменить только выполненную задачу")
+
+        payload = Task.uncomplete(task_id)
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="task_uncompleted",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        TasksProjector(self.db).run(account_id, event_types=["task_uncompleted"])

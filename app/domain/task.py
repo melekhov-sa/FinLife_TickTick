@@ -28,5 +28,9 @@ class Task:
         return {"task_id": task_id, "completed_at": datetime.utcnow().isoformat()}
 
     @staticmethod
+    def uncomplete(task_id: int) -> Dict[str, Any]:
+        return {"task_id": task_id, "uncompleted_at": datetime.utcnow().isoformat()}
+
+    @staticmethod
     def archive(task_id: int) -> Dict[str, Any]:
         return {"task_id": task_id, "archived_at": datetime.utcnow().isoformat()}

@@ -79,7 +79,8 @@
       "Bash(cmd //c \"dir /b C:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts 2>&1\")",
       "Bash(cmd //c \"C:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\pytest.exe:*)",
       "Bash(exit:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(grep:*)"
     ]
   }
 }

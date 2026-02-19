@@ -15,7 +15,8 @@ class TaskTemplatesProjector(BaseProjector):
             self._handle_updated(event)
         elif event.event_type == "task_template_archived":
             self._handle_archived(event)
-        elif event.event_type in ("task_occurrence_completed", "task_occurrence_skipped"):
+        elif event.event_type in ("task_occurrence_completed", "task_occurrence_skipped",
+                                   "task_occurrence_uncompleted"):
             self._handle_occurrence_status(event)
 
     def _handle_created(self, event: EventLog) -> None:
