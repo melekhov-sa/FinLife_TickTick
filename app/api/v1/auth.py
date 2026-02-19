@@ -1,20 +1,16 @@
 """
 Authentication routes (login, logout)
 """
-from pathlib import Path
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_user
 from app.auth import verify_password, get_user_by_email
+from app.api.v1.pages import templates
 
 
 router = APIRouter(tags=["auth"])
-# Используем абсолютный путь к директории шаблонов относительно корня проекта
-templates_dir = Path(__file__).parent.parent.parent.parent / "templates"
-templates = Jinja2Templates(directory=str(templates_dir))
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -52,6 +48,11 @@ def login_post(
     request.session["user_id"] = user.id
     # Restore saved theme (fallback to default if not set)
     request.session["user_theme"] = user.theme or "graphite-emerald-light"
+    # Restore budget view preferences if saved
+    if user.budget_grain:
+        request.session["budget_grain"] = user.budget_grain
+    if user.budget_range_count is not None:
+        request.session["budget_range_count"] = user.budget_range_count
     return RedirectResponse("/", status_code=302)
 
 

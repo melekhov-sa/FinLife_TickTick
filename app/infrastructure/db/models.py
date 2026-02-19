@@ -29,6 +29,10 @@ class User(Base):
     # UI theme: "{name}-{mode}", e.g. "graphite-emerald-light"
     theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    # Budget view preferences persisted across sessions
+    budget_grain: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    budget_range_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
 
 class EventLog(Base):
     """

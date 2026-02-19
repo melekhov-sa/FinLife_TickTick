@@ -3741,9 +3741,14 @@ def budget_page(
     max_rc = RANGE_LIMITS.get(grain, 12)
     range_count = max(1, min(range_count, max_rc))
 
-    # Persist validated settings to session
+    # Persist validated settings to session and DB
     request.session["budget_grain"] = grain
     request.session["budget_range_count"] = range_count
+    _budget_user = db.query(User).filter(User.id == user_id).first()
+    if _budget_user:
+        _budget_user.budget_grain = grain
+        _budget_user.budget_range_count = range_count
+        db.commit()
 
     now = datetime.now()
 
