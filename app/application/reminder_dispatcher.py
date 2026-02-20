@@ -40,22 +40,28 @@ def dispatch_due_reminders(db: Session) -> int:
 def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
     """Send push for task reminders that are due."""
     sent = 0
+    from sqlalchemy import or_
 
-    # Find tasks with due_datetime in the future that have reminders
+    # Find active tasks with due_date + time (DATETIME or WINDOW)
     tasks = (
         db.query(TaskModel)
         .filter(
-            TaskModel.due_datetime.isnot(None),
-            TaskModel.is_completed == False,
-            TaskModel.is_archived == False,
+            TaskModel.due_date.isnot(None),
+            TaskModel.status == "ACTIVE",
+            or_(
+                TaskModel.due_time.isnot(None),        # DATETIME
+                TaskModel.due_start_time.isnot(None),   # WINDOW
+            ),
         )
         .all()
     )
 
     for task in tasks:
-        due_dt = task.due_datetime
-        if due_dt.tzinfo is None:
-            due_dt = due_dt.replace(tzinfo=MSK)
+        # DATETIME uses due_time, WINDOW uses due_start_time as reference
+        ref_time = task.due_time or task.due_start_time
+        if not ref_time:
+            continue
+        due_dt = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
 
         reminders = (
             db.query(TaskReminderModel)
@@ -110,8 +116,8 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
 
     # Load event titles
     event_ids = {o.event_id for o in occs}
-    events = db.query(CalendarEventModel).filter(CalendarEventModel.id.in_(event_ids)).all()
-    event_map = {e.id: e for e in events}
+    events = db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(event_ids)).all()
+    event_map = {e.event_id: e for e in events}
 
     for rem in reminders:
         occ = occ_map.get(rem.occurrence_id)

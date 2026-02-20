@@ -5411,10 +5411,17 @@ def profile_page(request: Request, db: Session = Depends(get_db)):
         UserReminderTimePreset.account_id == user_id,
     ).order_by(UserReminderTimePreset.sort_order).all()
 
+    # Digest preferences
+    user = db.query(User).filter(User.id == user_id).first()
+    digest_morning = user.digest_morning if user and user.digest_morning is not None else True
+    digest_evening = user.digest_evening if user and user.digest_evening is not None else True
+
     return templates.TemplateResponse("profile.html", {
         "request": request,
         **data,
         "reminder_presets": reminder_presets,
+        "digest_morning": digest_morning,
+        "digest_evening": digest_evening,
     })
 
 
@@ -5580,4 +5587,25 @@ def save_profile_theme_form(
         db.commit()
 
     request.session["user_theme"] = theme
+    return RedirectResponse("/profile", status_code=302)
+
+
+@router.post("/profile/digest")
+def save_digest_settings(
+    request: Request,
+    db: Session = Depends(get_db),
+    digest_morning: bool = Form(False),
+    digest_evening: bool = Form(False),
+):
+    """Save daily digest push notification preferences."""
+    if "user_id" not in request.session:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.digest_morning = digest_morning
+        user.digest_evening = digest_evening
+        db.commit()
+
     return RedirectResponse("/profile", status_code=302)

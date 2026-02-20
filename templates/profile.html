@@ -396,6 +396,25 @@
       </button>
       <span id="pushStatus" class="muted" style="font-size: 12px;"></span>
     </div>
+
+    {# ── Ежедневная сводка ── #}
+    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+      <div style="font-weight: 500; font-size: 14px; margin-bottom: 10px;">Ежедневная сводка</div>
+      <form method="post" action="/profile/digest" id="digestForm">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 6px;">
+          <input type="checkbox" name="digest_morning" value="true"
+                 {% if digest_morning %}checked{% endif %}
+                 onchange="document.getElementById('digestForm').submit()">
+          Утренняя сводка (08:00) — план на день
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" name="digest_evening" value="true"
+                 {% if digest_evening %}checked{% endif %}
+                 onchange="document.getElementById('digestForm').submit()">
+          Вечерняя сводка (21:00) — итоги дня
+        </label>
+      </form>
+    </div>
   </div>
   {% endif %}
 

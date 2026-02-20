@@ -3,6 +3,7 @@ FastAPI application factory
 """
 import logging
 import traceback
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, HTMLResponse, FileResponse
@@ -14,6 +15,14 @@ from app.api.v1 import auth, wallets, categories, transactions, pages, push, adm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    from app.application.scheduler import start_scheduler, shutdown_scheduler
+    start_scheduler()
+    yield
+    shutdown_scheduler()
 
 
 def create_app() -> FastAPI:
@@ -28,6 +37,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="FinLife",
         debug=True,
+        lifespan=lifespan,
     )
 
     # Error-logging middleware — catches ALL exceptions including sync routes

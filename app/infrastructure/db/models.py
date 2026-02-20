@@ -38,6 +38,10 @@ class User(Base):
     budget_grain: Mapped[str | None] = mapped_column(String(10), nullable=True)
     budget_range_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Daily digest push notifications
+    digest_morning: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
+    digest_evening: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
+
 
 class EventLog(Base):
     """
