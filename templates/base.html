@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>{% block title %}FinLife{% endblock %}</title>
   {# Theme is server-rendered — no localStorage script needed #}
+  <link rel="manifest" href="/static/manifest.json">
   <link rel="stylesheet" href="/static/themes.css">
   <style>
     * { box-sizing: border-box; }
@@ -747,6 +748,32 @@
     @media (max-width: 480px) {
       .flash-toast { right: 16px; bottom: 16px; font-size: 14px; padding: 9px 16px; }
     }
+    /* ── Clarity masking ── */
+    .clarity-mask { /* Marker class — Clarity will blur these elements */ }
+    /* ── Cookie consent banner ── */
+    .cookie-consent {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000;
+      background: #1c1c1e; color: #fff;
+      padding: 14px 24px; display: flex; align-items: center;
+      justify-content: space-between; gap: 16px;
+      font-size: 13px; line-height: 1.4;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.25);
+    }
+    .cookie-consent-text { flex: 1; }
+    .cookie-consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .cookie-consent-btn {
+      padding: 7px 18px; border-radius: 6px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      min-height: unset;
+    }
+    .cookie-consent-btn--accept { background: #28a745; color: #fff; }
+    .cookie-consent-btn--accept:hover { background: #218838; }
+    .cookie-consent-btn--decline { background: transparent; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.2); }
+    .cookie-consent-btn--decline:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+    @media (max-width: 600px) {
+      .cookie-consent { flex-direction: column; padding: 12px 16px; }
+      .cookie-consent-actions { width: 100%; justify-content: flex-end; }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -850,6 +877,82 @@ function toggleTheme() {
 }
 _updateThemeBtn();
 </script>
+{# ── Cookie consent + Microsoft Clarity ── #}
+{% if clarity_project_id %}
+<div id="cookieConsent" class="cookie-consent" style="display:none">
+  <div class="cookie-consent-text">
+    Мы используем аналитические cookie для улучшения сервиса.
+    Финансовые данные не передаются — только анонимная статистика использования.
+  </div>
+  <div class="cookie-consent-actions">
+    <button class="cookie-consent-btn cookie-consent-btn--decline" onclick="finlifeAnalytics.decline()">Отклонить</button>
+    <button class="cookie-consent-btn cookie-consent-btn--accept" onclick="finlifeAnalytics.accept()">Принять</button>
+  </div>
+</div>
+<script>
+(function(){
+  var PROJECT_ID = '{{ clarity_project_id }}';
+  var CONSENT_KEY = 'fl_analytics_consent';
+  var banner = document.getElementById('cookieConsent');
+
+  /* ── Clarity loader ── */
+  function loadClarity() {
+    if (window.clarity) return;
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,"clarity","script",PROJECT_ID);
+    /* Tell Clarity to mask elements with .clarity-mask */
+    window.clarity("set", "mask", ".clarity-mask");
+  }
+
+  /* ── Consent logic ── */
+  var stored = localStorage.getItem(CONSENT_KEY);
+
+  function accept() {
+    localStorage.setItem(CONSENT_KEY, 'yes');
+    if (banner) banner.style.display = 'none';
+    loadClarity();
+  }
+  function decline() {
+    localStorage.setItem(CONSENT_KEY, 'no');
+    if (banner) banner.style.display = 'none';
+  }
+
+  /* On load: check consent state */
+  if (stored === 'yes') {
+    loadClarity();
+  } else if (stored === null) {
+    /* First visit — show banner */
+    if (banner) banner.style.display = '';
+  }
+  /* stored === 'no' — do nothing, banner stays hidden */
+
+  /* ── Public API ── */
+  window.finlifeAnalytics = {
+    accept: accept,
+    decline: decline,
+    resetConsent: function() {
+      localStorage.removeItem(CONSENT_KEY);
+      if (banner) banner.style.display = '';
+    },
+    isEnabled: function() { return localStorage.getItem(CONSENT_KEY) === 'yes'; }
+  };
+})();
+</script>
+{% endif %}
+
+{# ── Service Worker + VAPID key ── #}
+{% if vapid_public_key %}
+<script>
+window.__VAPID_PUBLIC_KEY__ = '{{ vapid_public_key }}';
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/js/service-worker.js');
+}
+</script>
+{% endif %}
+
 {% block scripts %}{% endblock %}
 </body>
 </html>

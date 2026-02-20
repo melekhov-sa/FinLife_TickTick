@@ -1,33 +1,38 @@
 """
-Pure-function tests for the dashboard event feed grouping logic.
+Pure-function tests for the dashboard diary feed grouping logic.
 
 The actual get_dashboard_feed() method touches PostgreSQL-specific features
 (JSONB) and timezone-aware timestamps — so we test the pure helper logic here
 without a DB session, mirroring the same formulas used in DashboardService.
 
 Tests cover:
-  - _day_label: "Сегодня" / "Вчера" / "DD.MM" classification
+  - _diary_day_label: "Сегодня, N месяца" / "Вчера, N месяца" / "День недели, N месяца"
   - MSK timezone conversion (UTC midnight → next MSK calendar day)
   - Feed item sorting (desc by occurred_at)
   - 30-item cap
 """
 from datetime import date, timedelta, timezone, datetime as dt
 
+from app.application.dashboard import _MONTH_GENITIVE_RU, _WEEKDAY_RU
+
 MSK = timezone(timedelta(hours=3))
 
 
 # ---------------------------------------------------------------------------
-# Pure helper mirroring the same logic in DashboardService.get_dashboard_feed
+# Pure helper mirroring DashboardService._diary_day_label
 # ---------------------------------------------------------------------------
 
-def _day_label(day: date, today: date) -> str:
-    """Return human-readable day label matching the feed grouping logic."""
-    yesterday = today - timedelta(days=1)
+def _diary_day_label(day: date, today: date) -> str:
+    """Return human-readable diary day label matching the feed grouping logic."""
+    d_num = day.day
+    month_g = _MONTH_GENITIVE_RU[day.month]
     if day == today:
-        return "Сегодня"
-    elif day == yesterday:
-        return "Вчера"
-    return day.strftime("%d.%m")
+        prefix = "Сегодня"
+    elif day == today - timedelta(days=1):
+        prefix = "Вчера"
+    else:
+        prefix = _WEEKDAY_RU[day.weekday()].capitalize()
+    return f"{prefix}, {d_num} {month_g}"
 
 
 def _msk_date(occurred_at: dt) -> date:
@@ -42,49 +47,53 @@ def _make_item(iso_str: str) -> dict:
         ts = ts.replace(tzinfo=MSK)
     return {
         "occurred_at": ts,
-        "kind": "event",
         "icon": "✅",
         "title": "test",
-        "amount_fmt": None,
-        "amount_sign": None,
+        "subtitle": None,
+        "amount_label": None,
+        "amount_css": None,
     }
 
 
 # ---------------------------------------------------------------------------
-# TestFeedDayLabel
+# TestDiaryDayLabel
 # ---------------------------------------------------------------------------
 
-class TestFeedDayLabel:
-    """_day_label maps dates to correct Russian labels."""
+class TestDiaryDayLabel:
+    """_diary_day_label maps dates to correct Russian labels."""
 
-    def test_today_returns_segodnya(self):
+    def test_today_returns_segodnya_with_date(self):
         d = date(2026, 2, 19)
-        assert _day_label(d, d) == "Сегодня"
+        assert _diary_day_label(d, d) == "Сегодня, 19 февраля"
 
-    def test_yesterday_returns_vchera(self):
+    def test_yesterday_returns_vchera_with_date(self):
         today = date(2026, 2, 19)
-        assert _day_label(today - timedelta(days=1), today) == "Вчера"
+        assert _diary_day_label(today - timedelta(days=1), today) == "Вчера, 18 февраля"
 
-    def test_two_days_ago_returns_date_string(self):
+    def test_two_days_ago_returns_weekday_with_date(self):
         today = date(2026, 2, 19)
-        assert _day_label(date(2026, 2, 17), today) == "17.02"
+        # 2026-02-17 is Tuesday
+        assert _diary_day_label(date(2026, 2, 17), today) == "Вторник, 17 февраля"
 
-    def test_older_date_returns_date_string(self):
+    def test_older_date_returns_weekday_with_date(self):
         today = date(2026, 2, 19)
-        assert _day_label(date(2026, 2, 15), today) == "15.02"
+        # 2026-02-15 is Sunday
+        assert _diary_day_label(date(2026, 2, 15), today) == "Воскресенье, 15 февраля"
 
     def test_month_boundary_march1_feb28_is_yesterday(self):
         today = date(2026, 3, 1)
-        assert _day_label(date(2026, 2, 28), today) == "Вчера"
+        assert _diary_day_label(date(2026, 2, 28), today) == "Вчера, 28 февраля"
 
     def test_new_year_boundary_jan1_dec31_is_yesterday(self):
         today = date(2026, 1, 1)
-        assert _day_label(date(2025, 12, 31), today) == "Вчера"
+        assert _diary_day_label(date(2025, 12, 31), today) == "Вчера, 31 декабря"
 
-    def test_date_format_is_dd_dot_mm(self):
+    def test_weekday_name_capitalized(self):
         today = date(2026, 2, 19)
-        # January 5 should be "05.01" (zero-padded)
-        assert _day_label(date(2026, 1, 5), today) == "05.01"
+        # 2026-01-05 is Monday
+        label = _diary_day_label(date(2026, 1, 5), today)
+        assert label == "Понедельник, 5 января"
+        assert label[0].isupper()
 
 
 # ---------------------------------------------------------------------------
@@ -191,18 +200,12 @@ class TestFeedGrouping:
 
     def _group(self, items: list[dict], today: date) -> dict[date, list]:
         """Simulate the grouping logic from get_dashboard_feed."""
-        yesterday = today - timedelta(days=1)
         groups: dict[date, dict] = {}
         for item in items:
             day = _msk_date(item["occurred_at"])
             item["time_str"] = item["occurred_at"].astimezone(MSK).strftime("%H:%M")
             if day not in groups:
-                if day == today:
-                    label = "Сегодня"
-                elif day == yesterday:
-                    label = "Вчера"
-                else:
-                    label = day.strftime("%d.%m")
+                label = _diary_day_label(day, today)
                 groups[day] = {"label": label, "date": day, "events": []}
             groups[day]["events"].append(item)
         return groups
@@ -215,7 +218,7 @@ class TestFeedGrouping:
         ]
         groups = self._group(items, today)
         assert len(groups) == 1
-        assert groups[today]["label"] == "Сегодня"
+        assert groups[today]["label"] == "Сегодня, 19 февраля"
         assert len(groups[today]["events"]) == 2
 
     def test_two_days_produce_two_groups(self):
@@ -231,13 +234,14 @@ class TestFeedGrouping:
         today = date(2026, 2, 19)
         items = [_make_item("2026-02-18T10:00:00+03:00")]
         groups = self._group(items, today)
-        assert groups[date(2026, 2, 18)]["label"] == "Вчера"
+        assert groups[date(2026, 2, 18)]["label"] == "Вчера, 18 февраля"
 
-    def test_older_date_label_is_dd_mm(self):
+    def test_older_date_label_has_weekday(self):
         today = date(2026, 2, 19)
         items = [_make_item("2026-02-15T10:00:00+03:00")]
         groups = self._group(items, today)
-        assert groups[date(2026, 2, 15)]["label"] == "15.02"
+        # 2026-02-15 is Sunday
+        assert groups[date(2026, 2, 15)]["label"] == "Воскресенье, 15 февраля"
 
     def test_time_str_set_in_msk(self):
         today = date(2026, 2, 19)
@@ -253,4 +257,4 @@ class TestFeedGrouping:
         items = [_make_item("2026-02-18T21:30:00+00:00")]
         groups = self._group(items, today)
         assert today in groups
-        assert groups[today]["label"] == "Сегодня"
+        assert groups[today]["label"] == "Сегодня, 19 февраля"

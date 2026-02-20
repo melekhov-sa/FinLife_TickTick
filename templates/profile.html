@@ -330,6 +330,71 @@
     </ul>
   </div>
 
+  {# ── Пресеты напоминаний ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 560px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 16px;">Пресеты напоминаний</div>
+
+    {% if reminder_presets %}
+    <table style="margin-bottom: 16px;">
+      <thead><tr><th>Название</th><th>Смещение</th><th></th></tr></thead>
+      <tbody>
+        {% for p in reminder_presets %}
+        <tr>
+          <td>{{ p.label }}</td>
+          <td class="muted">{{ p.offset_minutes }} мин</td>
+          <td>
+            <form method="POST" action="/profile/reminder-presets/{{ p.id }}/delete" style="display:inline;">
+              <button type="submit" class="danger" style="font-size: 11px; padding: 2px 8px; min-height: unset;">×</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted" style="margin-bottom: 12px;">Нет пресетов</p>
+    {% endif %}
+
+    <details>
+      <summary class="muted" style="cursor: pointer; font-size: 13px;">+ Добавить пресет</summary>
+      <form method="POST" action="/profile/reminder-presets/create" style="margin-top: 8px;">
+        <div class="form-row" style="display: flex; gap: 8px; align-items: end;">
+          <div style="flex: 1;">
+            <label style="font-size: 12px;">Название</label>
+            <input name="label" placeholder="Напр.: За 2 часа" required style="font-size: 13px;">
+          </div>
+          <div style="width: 120px;">
+            <label style="font-size: 12px;">Минут до</label>
+            <input name="offset_minutes" type="number" max="0" step="1" placeholder="-15" required style="font-size: 13px;">
+          </div>
+          <button type="submit" style="font-size: 12px; padding: 6px 12px; min-height: unset;">Добавить</button>
+        </div>
+      </form>
+    </details>
+  </div>
+
+  {# ── Push-уведомления ── #}
+  {% if vapid_public_key %}
+  <div class="card" style="grid-column: 1 / -1; max-width: 560px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Push-уведомления</div>
+    <p class="muted" style="font-size: 13px; margin-bottom: 12px;">
+      Получайте напоминания о задачах и событиях прямо на устройство.
+      На iOS: откройте через Safari → «На экран Домой».
+    </p>
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <button id="pushToggleBtn" type="button" onclick="finlifePush.toggle()"
+              style="font-size: 13px; padding: 7px 16px; min-height: unset;">
+        Включить push-уведомления
+      </button>
+      <button type="button" onclick="finlifePush.sendTest()" class="secondary"
+              style="font-size: 12px; padding: 5px 12px; min-height: unset;">
+        Тест
+      </button>
+      <span id="pushStatus" class="muted" style="font-size: 12px;"></span>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── Оформление (theme picker) ── #}
   <div class="card" style="grid-column: 1 / -1; max-width: 860px;">
     <div style="font-weight: 600; font-size: 15px; margin-bottom: 16px;">Оформление</div>
@@ -452,4 +517,7 @@
   };
 })();
 </script>
+{% if vapid_public_key %}
+<script src="/static/js/push-register.js"></script>
+{% endif %}
 {% endblock %}

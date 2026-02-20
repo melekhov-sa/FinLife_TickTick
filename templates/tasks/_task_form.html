@@ -1,0 +1,167 @@
+{# Reusable task creation form — included in tasks.html and dashboard modal #}
+<form method="POST" action="/tasks/create" id="taskForm">
+    <div class="task-form-grid">
+      <input type="hidden" name="mode" id="taskMode" value="once">
+      <input type="hidden" name="redirect" value="{{ task_form_redirect|default('/tasks') }}">
+
+      <!-- Row 1: Title + Category -->
+      <div class="form-row">
+        <label>Название</label>
+        <input name="title" placeholder="Что нужно сделать?" required>
+      </div>
+      <div class="form-row">
+        <label>Категория</label>
+        <select name="category_id">
+          <option value="">— Без категории —</option>
+          {% for cat in work_categories %}
+            <option value="{{ cat.category_id }}">{{ cat.emoji or '' }} {{ cat.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Row 2: Mode toggle (full width) -->
+      <div class="span-full form-row">
+        <label>Тип</label>
+        <div class="seg-control">
+          <button type="button" id="btnOnce" onclick="setMode('once')" class="seg-active">Один раз</button>
+          <button type="button" id="btnRecurring" onclick="setMode('recurring')">Повторяется</button>
+        </div>
+      </div>
+
+      <!-- One-off fields (full width) -->
+      <div id="blockOnce" class="span-full">
+        <input type="hidden" name="due_kind" id="dueKind" value="NONE">
+        <input type="hidden" name="reminders" id="remindersJson" value="">
+
+        <!-- DueSpec mode switcher -->
+        <div class="form-row">
+          <label>Когда</label>
+          <div class="seg-control">
+            <button type="button" id="dkNone" onclick="setDueKind('NONE')" class="seg-active">Без срока</button>
+            <button type="button" id="dkDate" onclick="setDueKind('DATE')">Дата</button>
+            <button type="button" id="dkDatetime" onclick="setDueKind('DATETIME')">Дата и время</button>
+            <button type="button" id="dkWindow" onclick="setDueKind('WINDOW')">Окно</button>
+          </div>
+        </div>
+
+        <!-- DATE / DATETIME / WINDOW: due_date -->
+        <div id="blockDueDate" style="display: none;">
+          <div class="form-row">
+            <label>Дата</label>
+            <input name="due_date" type="date" id="inputDueDate">
+          </div>
+        </div>
+
+        <!-- DATETIME: due_time -->
+        <div id="blockDueTime" style="display: none;">
+          <div class="form-row">
+            <label>Время</label>
+            <input name="due_time" type="time" id="inputDueTime">
+          </div>
+        </div>
+
+        <!-- WINDOW: start / end -->
+        <div id="blockDueWindow" style="display: none;">
+          <div class="form-row" style="display: flex; gap: 12px;">
+            <div style="flex:1;">
+              <label>С</label>
+              <input name="due_start_time" type="time" id="inputDueStartTime">
+            </div>
+            <div style="flex:1;">
+              <label>До</label>
+              <input name="due_end_time" type="time" id="inputDueEndTime">
+            </div>
+          </div>
+        </div>
+
+        <!-- Reminders (only for DATETIME / WINDOW) -->
+        <div id="blockReminders" style="display: none;">
+          <details>
+            <summary class="muted" style="cursor: pointer; font-size: 13px;">Напоминания</summary>
+            <div id="reminderChips" style="display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;"></div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="reminderPresetSelect" style="max-width: 200px; font-size: 13px;">
+                <option value="">+ Добавить...</option>
+                {% for preset in reminder_presets %}
+                <option value="{{ preset.offset_minutes }}">{{ preset.label }}</option>
+                {% endfor %}
+                <option value="__custom__">Своё значение...</option>
+              </select>
+              <div id="customReminderBlock" style="display: none; align-items: center; gap: 4px;">
+                <input type="number" id="customReminderMinutes" placeholder="минут до" min="0" max="10080"
+                       style="max-width: 100px; font-size: 13px;">
+                <button type="button" onclick="addCustomReminder()" style="font-size: 12px; padding: 4px 10px; min-height: unset;">OK</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Recurring fields (full width) -->
+      <div id="blockRecurring" class="span-full" style="display: none;">
+        <div class="form-row">
+          <label>Частота</label>
+          <select name="freq" id="taskFreq">
+            <option value="DAILY">Ежедневно</option>
+            <option value="WEEKLY">Еженедельно</option>
+            <option value="MONTHLY" selected>Ежемесячно</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Интервал</label>
+          <input name="interval" type="number" value="1" min="1" style="max-width: 80px;">
+        </div>
+
+        <!-- WEEKLY: weekday checkboxes -->
+        <div id="blockWeekdays" style="display: none;">
+          <div class="form-row">
+            <label>Дни недели</label>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              {% set days = [('MO','Пн'),('TU','Вт'),('WE','Ср'),('TH','Чт'),('FR','Пт'),('SA','Сб'),('SU','Вс')] %}
+              {% for code, label in days %}
+              <label style="display:flex; align-items:center; gap:3px; font-size:13px; cursor:pointer;">
+                <input type="checkbox" name="weekday_{{ code }}" value="1"> {{ label }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- MONTHLY: day of month -->
+        <div id="blockMonthday" style="display: none;">
+          <div class="form-row">
+            <label>День месяца</label>
+            <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31" style="max-width: 80px;">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Начать с</label>
+          <input name="start_date" type="date" value="{{ today.isoformat() }}">
+        </div>
+
+        <div class="form-row">
+          <label>Действует до</label>
+          <input name="active_until" type="date" value="">
+          <small class="muted" style="display: block; margin-top: 4px;">
+            Оставьте пустым для бессрочного действия
+          </small>
+        </div>
+      </div>
+
+      <!-- Note (full width) -->
+      <div class="span-full">
+        <details>
+          <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
+          <div class="form-row" style="margin-top: 6px;">
+            <input name="note" placeholder="Опционально">
+          </div>
+        </details>
+      </div>
+
+      <!-- Submit (full width) -->
+      <div class="span-full task-form-submit">
+        <button type="submit">Создать</button>
+      </div>
+    </div>
+  </form>

@@ -4,6 +4,7 @@
  *   - Dropdown toggle (type selection)
  *   - Modal open / close
  *   - Wallet field switching for TRANSFER
+ *   - Category filtering by operation type
  */
 (function () {
   'use strict';
@@ -15,6 +16,7 @@
       qopType, qopTitle, qopAmount, qopDesc,
       walletRow, fromRow, toRow,
       qopWallet, qopFrom, qopTo,
+      qopCategoryRow, qopCategory, qopOccurredAt,
       qopClose, qopCancelBtn;
 
   function init() {
@@ -33,6 +35,9 @@
     qopWallet   = document.getElementById('qopWallet');
     qopFrom     = document.getElementById('qopFrom');
     qopTo       = document.getElementById('qopTo');
+    qopCategoryRow = document.getElementById('qopCategoryRow');
+    qopCategory    = document.getElementById('qopCategory');
+    qopOccurredAt  = document.getElementById('qopOccurredAt');
     qopClose    = document.getElementById('qopClose');
     qopCancelBtn = document.getElementById('qopCancelBtn');
 
@@ -84,6 +89,29 @@
     });
   }
 
+  function filterCategories(type) {
+    if (!qopCategory) return;
+    var isTransfer = type === 'TRANSFER';
+
+    // Hide category row for transfers
+    if (qopCategoryRow) {
+      qopCategoryRow.style.display = isTransfer ? 'none' : '';
+    }
+    if (isTransfer) {
+      qopCategory.value = '';
+      return;
+    }
+
+    // Show only matching categories, hide others
+    var options = qopCategory.querySelectorAll('option[data-type]');
+    options.forEach(function (opt) {
+      opt.style.display = (opt.dataset.type === type) ? '' : 'none';
+      if (opt.selected && opt.style.display === 'none') {
+        qopCategory.value = '';
+      }
+    });
+  }
+
   function openModal(type) {
     // Close dropdown first
     menu.hidden = true;
@@ -102,9 +130,22 @@
     qopFrom.disabled         = !isTransfer;
     qopTo.disabled           = !isTransfer;
 
-    // Reset amount and description
+    // Filter categories by type
+    filterCategories(type);
+
+    // Reset fields
     qopAmount.value = '';
     qopDesc.value   = '';
+    if (qopCategory) qopCategory.value = '';
+    if (qopOccurredAt) qopOccurredAt.value = '';
+
+    // Show wallet balance hints
+    if (isTransfer) {
+      if (typeof updateQopFromHint === 'function') updateQopFromHint();
+      if (typeof updateQopToHint === 'function') updateQopToHint();
+    } else {
+      if (typeof updateQopWalletHint === 'function') updateQopWalletHint();
+    }
 
     backdrop.classList.add('qop-open');
     qopAmount.focus();

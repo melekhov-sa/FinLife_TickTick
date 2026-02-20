@@ -64,24 +64,24 @@
         <div class="form-row" style="flex: 1; min-width: 140px;">
           <label>Дата начала</label>
           <input name="start_date" type="date" id="onetimeStartDate" required
-                 value="{% if mode == 'edit' and occurrence and occurrence.start_date %}{{ occurrence.start_date.isoformat() }}{% else %}{{ form_start_date or '' }}{% endif %}">
+                 value="{% if form_start_date %}{{ form_start_date }}{% elif mode == 'edit' and occurrence and occurrence.start_date %}{{ occurrence.start_date.isoformat() }}{% endif %}">
         </div>
         <div class="form-row" style="flex: 1; min-width: 120px;">
           <label>Время начала</label>
           <input name="start_time" type="time"
-                 value="{% if mode == 'edit' and occurrence and occurrence.start_time %}{{ occurrence.start_time.isoformat() }}{% else %}{{ form_start_time or '' }}{% endif %}">
+                 value="{% if form_start_time %}{{ form_start_time }}{% elif mode == 'edit' and occurrence and occurrence.start_time %}{{ occurrence.start_time.isoformat() }}{% endif %}">
         </div>
       </div>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div class="form-row" style="flex: 1; min-width: 140px;">
           <label>Дата окончания</label>
           <input name="end_date" type="date"
-                 value="{% if mode == 'edit' and occurrence and occurrence.end_date %}{{ occurrence.end_date.isoformat() }}{% else %}{{ form_end_date or '' }}{% endif %}">
+                 value="{% if form_end_date %}{{ form_end_date }}{% elif mode == 'edit' and occurrence and occurrence.end_date %}{{ occurrence.end_date.isoformat() }}{% endif %}">
         </div>
         <div class="form-row" style="flex: 1; min-width: 120px;">
           <label>Время окончания</label>
           <input name="end_time" type="time"
-                 value="{% if mode == 'edit' and occurrence and occurrence.end_time %}{{ occurrence.end_time.isoformat() }}{% else %}{{ form_end_time or '' }}{% endif %}">
+                 value="{% if form_end_time %}{{ form_end_time }}{% elif mode == 'edit' and occurrence and occurrence.end_time %}{{ occurrence.end_time.isoformat() }}{% endif %}">
         </div>
       </div>
     </div>

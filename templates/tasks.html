@@ -2,6 +2,94 @@
 {% block title %}Задачи - FinLife{% endblock %}
 
 {% block content %}
+<style>
+/* ── Task create card ── */
+.task-create-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+.task-create-card {
+  max-width: 720px;
+  width: 100%;
+}
+.task-form-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px 16px;
+}
+.task-form-grid .span-full { grid-column: 1 / -1; }
+@media (max-width: 820px) {
+  .task-form-grid { grid-template-columns: 1fr; }
+  .task-form-grid .span-full { grid-column: 1; }
+}
+/* ── Segmented control ── */
+.seg-control {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input, #fff);
+}
+.seg-control button {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: unset;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.seg-control button:not(:last-child) {
+  border-right: 1px solid var(--border-color);
+}
+.seg-control button:hover {
+  background: var(--bg-table-header, #f0f0f0);
+  color: var(--text-primary);
+}
+.seg-control button.seg-active {
+  background: var(--accent);
+  color: #fff;
+}
+.seg-control button.seg-active:hover {
+  background: var(--accent-hover);
+}
+/* ── Compact form tweaks ── */
+.task-form-grid label {
+  margin-top: 0;
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+.task-form-grid .form-row {
+  margin-bottom: 0;
+}
+.task-form-grid input,
+.task-form-grid select {
+  max-width: 100%;
+  height: 36px;
+  font-size: 13px;
+}
+.task-form-grid textarea {
+  max-width: 100%;
+  font-size: 13px;
+}
+.task-form-grid details {
+  margin-bottom: 0;
+}
+.task-form-submit {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+.task-form-submit button[type="submit"] {
+  min-width: 120px;
+}
+</style>
 <h1>Задачи</h1>
 
 <!-- One-off tasks -->
@@ -23,7 +111,15 @@
             {% if task.note %}<br><small class="muted">{{ task.note }}</small>{% endif %}
           </td>
           <td class="{% if task.due_date and task.due_date < today %}negative{% endif %}">
-            {{ task.due_date.strftime('%d.%m.%Y') if task.due_date else '—' }}
+            {% if task.due_kind == 'DATETIME' %}
+              {{ task.due_date.strftime('%d.%m') }} {{ task.due_time.strftime('%H:%M') if task.due_time else '' }}
+            {% elif task.due_kind == 'WINDOW' %}
+              {{ task.due_date.strftime('%d.%m') }} {{ task.due_start_time.strftime('%H:%M') if task.due_start_time else '' }}–{{ task.due_end_time.strftime('%H:%M') if task.due_end_time else '' }}
+            {% elif task.due_date %}
+              {{ task.due_date.strftime('%d.%m.%Y') }}
+            {% else %}
+              —
+            {% endif %}
           </td>
           <td style="white-space: nowrap;">
             <form method="POST" action="/tasks/{{ task.task_id }}/complete" style="display:inline;">
@@ -102,111 +198,19 @@
 {% endif %}
 
 <!-- Create task (unified form) -->
-<div class="card">
+<div class="task-create-wrapper">
+<div class="card task-create-card">
   <h2>Создать задачу</h2>
   {% if error %}
     <div class="error-card">{{ error }}</div>
   {% endif %}
-  <form method="POST" action="/tasks/create" id="taskForm">
-
-    <!-- Mode toggle -->
-    <div class="form-row" style="display: flex; gap: 0; margin-bottom: 16px;">
-      <button type="button" id="btnOnce" onclick="setMode('once')"
-              style="flex:1; border-radius: 6px 0 0 6px; font-size: 13px; padding: 6px 0;">Один раз</button>
-      <button type="button" id="btnRecurring" onclick="setMode('recurring')" class="secondary"
-              style="flex:1; border-radius: 0 6px 6px 0; font-size: 13px; padding: 6px 0;">Повторяется</button>
-    </div>
-    <input type="hidden" name="mode" id="taskMode" value="once">
-
-    <div class="form-row">
-      <label>Название</label>
-      <input name="title" placeholder="Что нужно сделать?" required>
-    </div>
-
-    <!-- One-off fields -->
-    <div id="blockOnce">
-      <div class="form-row">
-        <label>Срок</label>
-        <input name="due_date" type="date">
-      </div>
-    </div>
-
-    <!-- Recurring fields -->
-    <div id="blockRecurring" style="display: none;">
-      <div class="form-row">
-        <label>Частота</label>
-        <select name="freq" id="taskFreq">
-          <option value="DAILY">Ежедневно</option>
-          <option value="WEEKLY">Еженедельно</option>
-          <option value="MONTHLY" selected>Ежемесячно</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Интервал</label>
-        <input name="interval" type="number" value="1" min="1" style="max-width: 80px;">
-      </div>
-
-      <!-- WEEKLY: weekday checkboxes -->
-      <div id="blockWeekdays" style="display: none;">
-        <div class="form-row">
-          <label>Дни недели</label>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            {% set days = [('MO','Пн'),('TU','Вт'),('WE','Ср'),('TH','Чт'),('FR','Пт'),('SA','Сб'),('SU','Вс')] %}
-            {% for code, label in days %}
-            <label style="display:flex; align-items:center; gap:3px; font-size:13px; cursor:pointer;">
-              <input type="checkbox" name="weekday_{{ code }}" value="1"> {{ label }}
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <!-- MONTHLY: day of month -->
-      <div id="blockMonthday" style="display: none;">
-        <div class="form-row">
-          <label>День месяца</label>
-          <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31" style="max-width: 80px;">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <label>Начать с</label>
-        <input name="start_date" type="date" value="{{ today.isoformat() }}">
-      </div>
-
-      <div class="form-row">
-        <label>Действует до</label>
-        <input name="active_until" type="date" value="">
-        <small class="muted" style="display: block; margin-top: 4px;">
-          Оставьте пустым для бессрочного действия
-        </small>
-      </div>
-    </div>
-
-    <!-- Shared fields -->
-    <div class="form-row">
-      <label>Категория</label>
-      <select name="category_id">
-        <option value="">— Без категории —</option>
-        {% for cat in work_categories %}
-          <option value="{{ cat.category_id }}">{{ cat.emoji or '' }} {{ cat.title }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <details style="margin-bottom: 12px;">
-      <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
-      <div class="form-row" style="margin-top: 8px;">
-        <input name="note" placeholder="Опционально">
-      </div>
-    </details>
-
-    <button type="submit">Создать</button>
-  </form>
+  {% include "tasks/_task_form.html" %}
+</div>
 </div>
 
 <script>
 (function() {
+  // ── Mode toggle (once / recurring) ──
   var mode = 'once';
   var btnOnce = document.getElementById('btnOnce');
   var btnRecurring = document.getElementById('btnRecurring');
@@ -221,13 +225,13 @@
     mode = m;
     taskMode.value = m;
     if (m === 'once') {
-      btnOnce.className = '';
-      btnRecurring.className = 'secondary';
+      btnOnce.className = 'seg-active';
+      btnRecurring.className = '';
       blockOnce.style.display = '';
       blockRecurring.style.display = 'none';
     } else {
-      btnOnce.className = 'secondary';
-      btnRecurring.className = '';
+      btnOnce.className = '';
+      btnRecurring.className = 'seg-active';
       blockOnce.style.display = 'none';
       blockRecurring.style.display = '';
       toggleFreqFields();
@@ -239,9 +243,105 @@
     blockWeekdays.style.display = freq === 'WEEKLY' ? '' : 'none';
     blockMonthday.style.display = freq === 'MONTHLY' ? '' : 'none';
   }
-
   taskFreq.addEventListener('change', toggleFreqFields);
   toggleFreqFields();
+
+  // ── DueSpec mode switcher ──
+  var dueKind = 'NONE';
+  var dkButtons = {
+    NONE: document.getElementById('dkNone'),
+    DATE: document.getElementById('dkDate'),
+    DATETIME: document.getElementById('dkDatetime'),
+    WINDOW: document.getElementById('dkWindow'),
+  };
+  var blockDueDate = document.getElementById('blockDueDate');
+  var blockDueTime = document.getElementById('blockDueTime');
+  var blockDueWindow = document.getElementById('blockDueWindow');
+  var blockReminders = document.getElementById('blockReminders');
+  var dueKindInput = document.getElementById('dueKind');
+
+  window.setDueKind = function(kind) {
+    dueKind = kind;
+    dueKindInput.value = kind;
+    for (var k in dkButtons) {
+      dkButtons[k].className = (k === kind) ? 'seg-active' : '';
+    }
+    blockDueDate.style.display = (kind !== 'NONE') ? '' : 'none';
+    blockDueTime.style.display = (kind === 'DATETIME') ? '' : 'none';
+    blockDueWindow.style.display = (kind === 'WINDOW') ? '' : 'none';
+    blockReminders.style.display = (kind === 'DATETIME' || kind === 'WINDOW') ? '' : 'none';
+
+    if (kind !== 'DATETIME' && kind !== 'WINDOW') {
+      _reminders = [];
+      renderReminderChips();
+    }
+  };
+
+  // ── Reminders ──
+  var _reminders = [];
+  var reminderChips = document.getElementById('reminderChips');
+  var reminderPresetSelect = document.getElementById('reminderPresetSelect');
+  var customReminderBlock = document.getElementById('customReminderBlock');
+  var remindersJsonInput = document.getElementById('remindersJson');
+
+  function renderReminderChips() {
+    reminderChips.innerHTML = '';
+    _reminders.forEach(function(rem, idx) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg-table-header, #e9ecef);padding:4px 10px;border-radius:12px;font-size:12px;';
+      chip.textContent = formatOffset(rem.offset_minutes);
+      var closeBtn = document.createElement('span');
+      closeBtn.textContent = '\u00d7';
+      closeBtn.style.cssText = 'cursor:pointer;font-weight:700;color:#888;margin-left:2px;';
+      closeBtn.onclick = (function(i) {
+        return function() { _reminders.splice(i, 1); renderReminderChips(); };
+      })(idx);
+      chip.appendChild(closeBtn);
+      reminderChips.appendChild(chip);
+    });
+    remindersJsonInput.value = _reminders.length ? JSON.stringify(_reminders) : '';
+  }
+
+  function formatOffset(minutes) {
+    if (minutes === 0) return 'В момент срока';
+    var abs = Math.abs(minutes);
+    if (abs < 60) return 'За ' + abs + ' мин';
+    if (abs % 60 === 0 && abs < 1440) return 'За ' + (abs / 60) + ' ч';
+    if (abs === 1440) return 'За 1 день';
+    if (abs % 1440 === 0) return 'За ' + (abs / 1440) + ' дн';
+    return 'За ' + abs + ' мин';
+  }
+
+  function addReminder(offsetMinutes) {
+    if (_reminders.length >= 5) return;
+    if (_reminders.some(function(r) { return r.offset_minutes === offsetMinutes; })) return;
+    _reminders.push({offset_minutes: offsetMinutes});
+    renderReminderChips();
+  }
+
+  if (reminderPresetSelect) {
+    reminderPresetSelect.addEventListener('change', function() {
+      var val = this.value;
+      if (val === '__custom__') {
+        customReminderBlock.style.display = 'flex';
+      } else if (val !== '') {
+        addReminder(parseInt(val, 10));
+        customReminderBlock.style.display = 'none';
+      }
+      this.value = '';
+    });
+  }
+
+  window.addCustomReminder = function() {
+    var input = document.getElementById('customReminderMinutes');
+    var minutes = parseInt(input.value, 10);
+    if (isNaN(minutes) || minutes < 0) return;
+    addReminder(-minutes);
+    input.value = '';
+    customReminderBlock.style.display = 'none';
+  };
+
+  renderReminderChips();
 })();
 </script>
 {% endblock %}

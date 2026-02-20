@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Admin — Создать пользователя{% endblock %}
+
+{% block extra_head %}<style>
+.admin-header {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+}
+.admin-header h1 { margin: 0; }
+.admin-nav { display: flex; gap: 8px; }
+.admin-nav a {
+  font-size: 13px; padding: 6px 14px; border-radius: 6px;
+  text-decoration: none; color: var(--text-secondary);
+  border: 1px solid var(--border-color); background: var(--bg-card);
+  transition: background .12s, color .12s;
+}
+.admin-nav a:hover { background: var(--bg-table-header); color: var(--text-primary); }
+.admin-nav a.active {
+  background: var(--accent); color: var(--accent-fg); border-color: var(--accent);
+}
+.new-user-form { max-width: 420px; }
+.new-user-form input[type="email"],
+.new-user-form input[type="password"] { max-width: 100%; }
+.checkbox-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 16px;
+}
+.checkbox-row input[type="checkbox"] { width: auto; max-width: unset; }
+.checkbox-row label { margin: 0; font-weight: 400; font-size: 14px; }
+.form-actions { margin-top: 20px; display: flex; gap: 12px; }
+.form-actions a {
+  font-size: 14px; padding: 8px 16px;
+  color: var(--text-secondary); text-decoration: none;
+}
+</style>{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <h1>Admin</h1>
+  <nav class="admin-nav">
+    <a href="/admin/overview">Overview</a>
+    <a href="/admin/users" class="active">Пользователи</a>
+  </nav>
+</div>
+
+<h2>Создать пользователя</h2>
+
+{% if error %}
+  <div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card new-user-form">
+  <form method="POST" action="/admin/users/new">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="form-row">
+      <label>Email</label>
+      <input type="email" name="email" required placeholder="user@example.com" autofocus>
+    </div>
+
+    <div class="form-row">
+      <label>Пароль</label>
+      <input type="password" name="password" required minlength="6" placeholder="Мин. 6 символов">
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" name="is_admin" value="1" id="isAdminCheck">
+      <label for="isAdminCheck">Администратор</label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Создать</button>
+      <a href="/admin/users">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -7,9 +7,10 @@
   All active-state logic is plain string comparison: no computations in Jinja.
 #}
 {% set cp = current_page(request) %}
-{% set in_finance = cp in ['wallets', 'transactions', 'categories', 'goals', 'subscriptions'] %}
+{% set in_finance = cp in ['wallets', 'transactions', 'categories', 'goals', 'subscriptions', 'planned-ops'] %}
 {% set in_tasks   = cp in ['tasks', 'habits', 'events', 'wishes', 'task-categories'] %}
 {% set in_system  = cp in ['contacts', 'profile'] %}
+{% set in_admin   = cp == 'admin' %}
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">FinLife</div>
@@ -59,6 +60,10 @@
         <a href="/subscriptions"
            class="nav-link{% if cp == 'subscriptions' %} active{% endif %}">
           <span class="nav-icon">↺</span>Подписки
+        </a>
+        <a href="/planned-ops"
+           class="nav-link{% if cp == 'planned-ops' %} active{% endif %}">
+          <span class="nav-icon">▷</span>Плановые операции
         </a>
       </div>
     </details>
@@ -117,6 +122,13 @@
         </a>
       </div>
     </details>
+
+    {% if request.session.get('is_admin') %}
+    <div class="nav-sep"></div>
+    <a href="/admin/overview" class="nav-link nav-primary{% if in_admin %} active{% endif %}">
+      <span class="nav-icon">&#9881;</span>Admin
+    </a>
+    {% endif %}
 
   </nav>
 

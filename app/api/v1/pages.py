@@ -36,7 +36,8 @@ from app.application.categories import (
 )
 from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
 from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase, UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
-from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, UncompleteTaskUseCase, TaskValidationError
+from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, UncompleteTaskUseCase, UpdateTaskUseCase, TaskValidationError
+from app.domain.task_due_spec import DueSpecValidationError, ReminderSpecValidationError
 from app.application.habits import (
     CreateHabitUseCase, ArchiveHabitUseCase, UnarchiveHabitUseCase,
     ToggleHabitOccurrenceUseCase, CompleteHabitOccurrenceUseCase,
@@ -119,6 +120,14 @@ templates.env.globals["format_money"] = format_money
 templates.env.globals["format_money2"] = format_money2
 templates.env.globals["currency_label"] = currency_label
 
+# Analytics (Microsoft Clarity) — expose to all templates
+from app.config import get_settings as _get_settings
+_s = _get_settings()
+templates.env.globals["clarity_project_id"] = _s.CLARITY_PROJECT_ID if _s.CLARITY_ENABLED else ""
+
+# Web Push (VAPID) — expose public key to all templates
+templates.env.globals["vapid_public_key"] = _s.VAPID_PUBLIC_KEY
+
 
 def _resolve_current_page(request: Request) -> str:
     """Map request URL path to a sidebar page-key string.
@@ -145,6 +154,7 @@ def _resolve_current_page(request: Request) -> str:
         ("/events",           "events"),
         ("/task-categories",  "task-categories"),
         ("/profile",          "profile"),
+        ("/admin",            "admin"),
     ]
     for prefix, key in _PREFIX_MAP:
         if path == prefix or path.startswith(prefix + "/"):
@@ -276,6 +286,28 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         WalletBalance.is_archived == False,
     ).all()
 
+    # 12. Categories for quick-op modal
+    dash_categories = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+    ).order_by(CategoryInfo.title).all()
+
+    # 13. Work categories + reminder presets for quick-task modal
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    ).order_by(WorkCategory.title).all()
+
+    from app.infrastructure.db.models import UserReminderTimePreset
+    from app.application.reminder_presets import ReminderPresetsService
+    reminder_presets = db.query(UserReminderTimePreset).filter(
+        UserReminderTimePreset.account_id == user_id,
+    ).order_by(UserReminderTimePreset.sort_order).all()
+    if not reminder_presets:
+        ReminderPresetsService(db).seed_defaults(user_id)
+        reminder_presets = db.query(UserReminderTimePreset).filter(
+            UserReminderTimePreset.account_id == user_id,
+        ).order_by(UserReminderTimePreset.sort_order).all()
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -307,8 +339,12 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "dash_activity": dash_activity,
         # Wishes
         "wishes_this_month": wishes_this_month,
-        # Wallets for quick-op modal
+        # Wallets + categories for quick-op modal
         "dash_wallets": dash_wallets,
+        "dash_categories": dash_categories,
+        # Work categories + reminder presets for quick-task modal
+        "work_categories": work_categories,
+        "reminder_presets": reminder_presets,
     })
 
 
@@ -1926,9 +1962,22 @@ def tasks_page(request: Request, db: Session = Depends(get_db)):
         WorkCategory.account_id == user_id, WorkCategory.is_archived == False
     ).order_by(WorkCategory.title).all()
 
+    # Reminder presets for task form
+    from app.infrastructure.db.models import UserReminderTimePreset
+    from app.application.reminder_presets import ReminderPresetsService
+    reminder_presets = db.query(UserReminderTimePreset).filter(
+        UserReminderTimePreset.account_id == user_id,
+    ).order_by(UserReminderTimePreset.sort_order).all()
+    if not reminder_presets:
+        ReminderPresetsService(db).seed_defaults(user_id)
+        reminder_presets = db.query(UserReminderTimePreset).filter(
+            UserReminderTimePreset.account_id == user_id,
+        ).order_by(UserReminderTimePreset.sort_order).all()
+
     return templates.TemplateResponse("tasks.html", {
         "request": request, "tasks": tasks, "task_templates": task_templates,
-        "task_occurrences": task_occurrences, "work_categories": work_categories, "today": today,
+        "task_occurrences": task_occurrences, "work_categories": work_categories,
+        "today": today, "reminder_presets": reminder_presets,
     })
 
 
@@ -1937,7 +1986,13 @@ def create_task_form(
     request: Request,
     mode: str = Form("once"),
     title: str = Form(...),
+    redirect: str = Form("/tasks"),
+    due_kind: str = Form("NONE"),
     due_date: str = Form(""),
+    due_time: str = Form(""),
+    due_start_time: str = Form(""),
+    due_end_time: str = Form(""),
+    reminders: str = Form(""),
     freq: str = Form(""),
     interval: int = Form(1),
     start_date: str = Form(""),
@@ -1963,7 +2018,9 @@ def create_task_form(
         today = date.today()
         task_occs = db.query(TaskOccurrence).filter(TaskOccurrence.account_id == user_id, TaskOccurrence.scheduled_date >= today - timedelta(days=7), TaskOccurrence.scheduled_date <= today + timedelta(days=30)).order_by(TaskOccurrence.scheduled_date.asc()).all()
         work_cats = db.query(WorkCategory).filter(WorkCategory.account_id == user_id, WorkCategory.is_archived == False).order_by(WorkCategory.title).all()
-        return templates.TemplateResponse("tasks.html", {"request": request, "tasks": tasks, "task_templates": task_tmpls, "task_occurrences": task_occs, "work_categories": work_cats, "today": today, "error": msg})
+        from app.infrastructure.db.models import UserReminderTimePreset
+        rem_presets = db.query(UserReminderTimePreset).filter(UserReminderTimePreset.account_id == user_id).order_by(UserReminderTimePreset.sort_order).all()
+        return templates.TemplateResponse("tasks.html", {"request": request, "tasks": tasks, "task_templates": task_tmpls, "task_occurrences": task_occs, "work_categories": work_cats, "today": today, "error": msg, "reminder_presets": rem_presets})
 
     try:
         if mode == "recurring":
@@ -1994,16 +2051,30 @@ def create_task_form(
                 active_until=active_until.strip() or None,
             )
         else:
-            # One-off task — ignore recurring fields
+            # One-off task — parse DueSpec and reminders
+            import json
+            reminder_list = []
+            if reminders.strip():
+                try:
+                    reminder_list = json.loads(reminders)
+                except json.JSONDecodeError:
+                    return _render_error("Некорректный формат напоминаний")
+
             CreateTaskUseCase(db).execute(
                 account_id=user_id, title=title, note=note.strip() or None,
-                due_date=due_date.strip() or None, category_id=category_id, actor_user_id=user_id,
+                due_kind=due_kind.strip() or "NONE",
+                due_date=due_date.strip() or None,
+                due_time=due_time.strip() or None,
+                due_start_time=due_start_time.strip() or None,
+                due_end_time=due_end_time.strip() or None,
+                category_id=category_id, actor_user_id=user_id,
+                reminders=reminder_list or None,
             )
-    except (TaskValidationError, TaskTemplateValidationError) as e:
+    except (TaskValidationError, TaskTemplateValidationError, DueSpecValidationError, ReminderSpecValidationError) as e:
         return _render_error(str(e))
     except Exception:
         db.rollback()
-    return RedirectResponse("/tasks", status_code=302)
+    return RedirectResponse(redirect or "/tasks", status_code=302)
 
 
 @router.post("/tasks/{task_id}/complete")
@@ -3597,6 +3668,15 @@ def event_update(
                     )
                     OccurrenceGenerator(db).generate_event_occurrences(user_id)
         elif event_type == "onetime" and start_date:
+            # If event was recurring, clear the repeat_rule_id
+            ev_fresh = db.query(CalendarEventModel).filter(
+                CalendarEventModel.event_id == event_id,
+            ).first()
+            if ev_fresh and ev_fresh.repeat_rule_id:
+                UpdateEventUseCase(db).execute(
+                    event_id=event_id, account_id=user_id,
+                    repeat_rule_id=None, actor_user_id=user_id,
+                )
             # Update or create occurrence for one-time events
             occ = db.query(EventOccurrenceModel).filter(
                 EventOccurrenceModel.event_id == event_id,
@@ -3634,6 +3714,9 @@ def event_update(
         redirect_view = "archived" if want_archived else "active"
         return RedirectResponse(f"/events?view={redirect_view}", status_code=302)
     except (EventValidationError, Exception) as e:
+        import traceback
+        print(f"EVENT_UPDATE ERROR for event_id={event_id}: {type(e).__name__}: {e}")
+        traceback.print_exc()
         db.rollback()
         ev = db.query(CalendarEventModel).filter(
             CalendarEventModel.event_id == event_id,
@@ -3646,9 +3729,18 @@ def event_update(
             rule = db.query(RecurrenceRuleModel).filter(
                 RecurrenceRuleModel.rule_id == ev.repeat_rule_id,
             ).first()
+        occurrence = None
+        if ev and not ev.repeat_rule_id:
+            occurrence = db.query(EventOccurrenceModel).filter(
+                EventOccurrenceModel.event_id == event_id,
+                EventOccurrenceModel.is_cancelled == False,
+            ).first()
         return templates.TemplateResponse("event_form.html", {
             "request": request, "mode": "edit", "event": ev,
-            "rule": rule, "categories": categories, "error": str(e),
+            "rule": rule, "occurrence": occurrence,
+            "categories": categories, "error": str(e),
+            "form_start_date": start_date, "form_start_time": start_time,
+            "form_end_date": end_date, "form_end_time": end_time,
         })
 
 
@@ -5313,10 +5405,52 @@ def profile_page(request: Request, db: Session = Depends(get_db)):
     data["theme_base"] = _parts[0]
     data["theme_mode"] = _parts[1] if len(_parts) == 2 else "light"
 
+    # Reminder presets
+    from app.infrastructure.db.models import UserReminderTimePreset
+    reminder_presets = db.query(UserReminderTimePreset).filter(
+        UserReminderTimePreset.account_id == user_id,
+    ).order_by(UserReminderTimePreset.sort_order).all()
+
     return templates.TemplateResponse("profile.html", {
         "request": request,
         **data,
+        "reminder_presets": reminder_presets,
     })
+
+
+@router.post("/profile/reminder-presets/create")
+def create_reminder_preset_form(
+    request: Request,
+    label: str = Form(...),
+    offset_minutes: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    from app.application.reminder_presets import ReminderPresetsService, ReminderPresetValidationError
+    try:
+        ReminderPresetsService(db).create_preset(user_id, label, offset_minutes)
+    except ReminderPresetValidationError:
+        pass
+    return RedirectResponse("/profile", status_code=302)
+
+
+@router.post("/profile/reminder-presets/{preset_id}/delete")
+def delete_reminder_preset_form(
+    request: Request,
+    preset_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    from app.application.reminder_presets import ReminderPresetsService, ReminderPresetValidationError
+    try:
+        ReminderPresetsService(db).delete_preset(preset_id, user_id)
+    except ReminderPresetValidationError:
+        pass
+    return RedirectResponse("/profile", status_code=302)
 
 
 @router.get("/profile/xp-history", response_class=HTMLResponse)

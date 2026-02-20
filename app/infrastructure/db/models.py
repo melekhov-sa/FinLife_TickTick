@@ -26,6 +26,11 @@ class User(Base):
         nullable=False
     )
 
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    last_seen_at: Mapped[DateTime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+
     # UI theme: "{name}-{mode}", e.g. "graphite-emerald-light"
     theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
@@ -265,7 +270,14 @@ class TaskModel(Base):
 
     title: Mapped[str] = mapped_column(Text, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # DueSpec fields
+    due_kind: Mapped[str] = mapped_column(String(16), nullable=False, server_default="NONE")  # NONE/DATE/DATETIME/WINDOW
     due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    due_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)       # for DATETIME
+    due_start_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)  # for WINDOW
+    due_end_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)    # for WINDOW
+
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="ACTIVE")  # ACTIVE/DONE/ARCHIVED
     category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> work_categories
 
@@ -274,6 +286,40 @@ class TaskModel(Base):
     )
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     archived_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class TaskReminderModel(Base):
+    """Read model: Task reminders (offset-based, tied to task due time)"""
+    __tablename__ = "task_reminders"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('task_id', 'offset_minutes', name='uq_task_reminder_offset'),
+    )
+
+
+class UserReminderTimePreset(Base):
+    """User-defined reminder time presets (e.g. 'За 15 минут', 'За 1 день')"""
+    __tablename__ = "user_reminder_time_presets"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(64), nullable=False)
+    offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sort_order: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('account_id', 'offset_minutes', name='uq_user_reminder_preset'),
+    )
 
 
 class HabitModel(Base):
@@ -945,4 +991,18 @@ class UserActivityDaily(Base):
     points: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     updated_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class PushSubscription(Base):
+    """Web Push subscription for a user device."""
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(Text, nullable=False)
+    auth: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

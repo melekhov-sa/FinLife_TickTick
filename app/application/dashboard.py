@@ -22,11 +22,18 @@ from app.infrastructure.db.models import (
     CalendarEventModel, EventOccurrenceModel,
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
-    EventLog,
+    EventLog, CategoryInfo,
 )
 from app.utils.money import format_money
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
+
+_MONTH_GENITIVE_RU = {
+    1: "января", 2: "февраля", 3: "марта", 4: "апреля",
+    5: "мая", 6: "июня", 7: "июля", 8: "августа",
+    9: "сентября", 10: "октября", 11: "ноября", 12: "декабря",
+}
+_WEEKDAY_RU = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 
 
 class DashboardService:
@@ -688,16 +695,16 @@ class DashboardService:
 
     def get_dashboard_feed(self, account_id: int, today_msk: date) -> list[dict]:
         """
-        Unified activity feed for the last 7 MSK calendar days.
+        Diary-style activity feed for the last 7 MSK calendar days.
 
         Sources:
           - EventLog: task/habit/goal completion events
           - TransactionFeed: all financial operations
 
         Returns a list of day-groups, newest first:
-          [{"label": "Сегодня"|"Вчера"|"DD.MM", "date": date, "items": [...]}, ...]
+          [{"label": "Сегодня, 20 февраля", "date": date, "events": [...]}, ...]
 
-        Each item has: kind, icon, title, occurred_at, time_str, amount_fmt, amount_sign.
+        Each item: icon, title, subtitle, time_str, amount_label, amount_css.
         """
         from datetime import datetime as dt, timezone
         MSK = timezone(timedelta(hours=3))
@@ -741,10 +748,34 @@ class DashboardService:
              .filter(TaskTemplateModel.template_id.in_(tmpl_ids)).all()}
             if tmpl_ids else {}
         )
-        habit_titles = (
-            {h.habit_id: h.title for h in self.db.query(HabitModel)
+        habit_map = (
+            {h.habit_id: h for h in self.db.query(HabitModel)
              .filter(HabitModel.habit_id.in_(habit_ids)).all()}
             if habit_ids else {}
+        )
+
+        # Batch-load wallet/category titles for transaction subtitles
+        wallet_ids: set[int] = set()
+        cat_ids: set[int] = set()
+        for tx in tx_rows:
+            if tx.wallet_id:
+                wallet_ids.add(tx.wallet_id)
+            if tx.from_wallet_id:
+                wallet_ids.add(tx.from_wallet_id)
+            if tx.to_wallet_id:
+                wallet_ids.add(tx.to_wallet_id)
+            if tx.category_id:
+                cat_ids.add(tx.category_id)
+
+        wallet_titles = (
+            {w.wallet_id: w.title for w in self.db.query(WalletBalance)
+             .filter(WalletBalance.wallet_id.in_(wallet_ids)).all()}
+            if wallet_ids else {}
+        )
+        cat_titles = (
+            {c.category_id: c.title for c in self.db.query(CategoryInfo)
+             .filter(CategoryInfo.category_id.in_(cat_ids)).all()}
+            if cat_ids else {}
         )
 
         # Build unified item list
@@ -755,27 +786,29 @@ class DashboardService:
             if ev.event_type == "task_completed":
                 title = task_titles.get(int(p.get("task_id", 0)), "Задача")
                 icon = "✅"
-                cancel_url = f"/plan/tasks/{p.get('task_id')}/uncomplete" if p.get("task_id") else None
+                subtitle = "Задача выполнена"
             elif ev.event_type == "task_occurrence_completed":
                 title = tmpl_titles.get(int(p.get("template_id", 0)), "Задача")
                 icon = "✅"
-                cancel_url = f"/plan/task-occurrences/{p.get('occurrence_id')}/uncomplete" if p.get("occurrence_id") else None
+                subtitle = "Повтор. задача выполнена"
             elif ev.event_type == "habit_occurrence_completed":
-                title = habit_titles.get(int(p.get("habit_id", 0)), "Привычка")
+                hid = int(p.get("habit_id", 0))
+                habit = habit_map.get(hid)
+                title = habit.title if habit else "Привычка"
                 icon = "💪"
-                cancel_url = f"/plan/habit-occurrences/{p.get('occurrence_id')}/toggle" if p.get("occurrence_id") else None
+                streak = habit.current_streak if habit else 0
+                subtitle = f"Привычка · серия {streak} дн." if streak and streak > 0 else "Привычка выполнена"
             else:  # goal_achieved
                 title = "Достигнута цель"
                 icon = "🏆"
-                cancel_url = None
+                subtitle = "Цель достигнута"
             items.append({
-                "kind": "event",
                 "icon": icon,
                 "title": title,
+                "subtitle": subtitle,
                 "occurred_at": ev.occurred_at,
-                "amount_fmt": None,
-                "amount_sign": None,
-                "cancel_url": cancel_url,
+                "amount_label": None,
+                "amount_css": None,
             })
 
         for tx in tx_rows:
@@ -785,41 +818,67 @@ class DashboardService:
                 else "Расход" if tx.operation_type == "EXPENSE"
                 else "Перевод"
             )
+
+            # Subtitle: wallet · category (or from → to for transfers)
+            if tx.operation_type == "TRANSFER":
+                from_name = wallet_titles.get(tx.from_wallet_id, "")
+                to_name = wallet_titles.get(tx.to_wallet_id, "")
+                subtitle = f"{from_name} → {to_name}" if from_name and to_name else "Перевод"
+            else:
+                w_name = wallet_titles.get(tx.wallet_id, "")
+                c_name = cat_titles.get(tx.category_id, "")
+                if w_name and c_name:
+                    subtitle = f"{w_name} · {c_name}"
+                else:
+                    subtitle = w_name or c_name or ""
+
+            # Amount with sign
+            if tx.operation_type == "INCOME":
+                amount_label = f"+{format_money(tx.amount, tx.currency)}"
+                amount_css = "income"
+            elif tx.operation_type == "EXPENSE":
+                amount_label = f"\u2212{format_money(tx.amount, tx.currency)}"
+                amount_css = "expense"
+            else:
+                amount_label = format_money(tx.amount, tx.currency)
+                amount_css = "transfer"
+
             items.append({
-                "kind": "transaction",
                 "icon": self._OP_ICONS.get(tx.operation_type, "💳"),
                 "title": title,
+                "subtitle": subtitle,
                 "occurred_at": tx.occurred_at,
-                "amount_fmt": format_money(tx.amount, tx.currency),
-                "amount_sign": (
-                    "income" if tx.operation_type == "INCOME"
-                    else "expense" if tx.operation_type == "EXPENSE"
-                    else "transfer"
-                ),
-                "cancel_url": None,
+                "amount_label": amount_label,
+                "amount_css": amount_css,
             })
 
         # Sort combined list desc, cap at 30
         items.sort(key=lambda x: x["occurred_at"], reverse=True)
         items = items[:30]
 
-        # Group by MSK date
-        yesterday = today_msk - timedelta(days=1)
+        # Group by MSK date with diary-style labels
         groups: dict[date, dict] = {}
         for item in items:
             day = item["occurred_at"].astimezone(MSK).date()
             item["time_str"] = item["occurred_at"].astimezone(MSK).strftime("%H:%M")
             if day not in groups:
-                if day == today_msk:
-                    label = "Сегодня"
-                elif day == yesterday:
-                    label = "Вчера"
-                else:
-                    label = day.strftime("%d.%m")
+                label = self._diary_day_label(day, today_msk)
                 groups[day] = {"label": label, "date": day, "events": []}
             groups[day]["events"].append(item)
 
         return sorted(groups.values(), key=lambda g: g["date"], reverse=True)
+
+    @staticmethod
+    def _diary_day_label(day: date, today_msk: date) -> str:
+        d_num = day.day
+        month_g = _MONTH_GENITIVE_RU[day.month]
+        if day == today_msk:
+            prefix = "Сегодня"
+        elif day == today_msk - timedelta(days=1):
+            prefix = "Вчера"
+        else:
+            prefix = _WEEKDAY_RU[day.weekday()].capitalize()
+        return f"{prefix}, {d_num} {month_g}"
 
     # ------------------------------------------------------------------
     # 7. Wishes this month

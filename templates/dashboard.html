@@ -242,40 +242,118 @@ a.dash-card-link {
 }
 
 /* ── Focus card (#dash-focus) ── */
+.focus-progress {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);
+}
+.focus-progress-bar {
+  flex: 1; height: 3px; background: var(--border-color); border-radius: 2px; overflow: hidden;
+}
+.focus-progress-fill {
+  height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s;
+}
+.focus-section-label {
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .04em;
+  margin: 10px 0 4px; padding: 0;
+}
+.focus-section-label:first-child { margin-top: 0; }
 .focus-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 0; border-bottom: 1px solid var(--border-color);
+  padding: 7px 4px; border-radius: 6px;
+  transition: background .12s;
 }
-.focus-item:last-child { border-bottom: none; }
-.focus-item-label { flex: 1; font-size: 14px; line-height: 1.3; }
-.focus-item-date  { font-size: 11px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
-.focus-item--overdue .focus-item-label { color: #c62828; }
+.focus-item:hover { background: rgba(128,128,128,.06); }
+.focus-check {
+  width: 18px; height: 18px; min-width: 18px;
+  border-radius: 6px; border: 1.5px solid var(--border-color);
+  background: transparent; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0; color: transparent;
+  transition: border-color .15s, background .15s;
+  flex-shrink: 0;
+}
+.focus-check:hover {
+  border-color: var(--accent);
+  background: rgba(0,122,255,.08);
+}
+.focus-content { flex: 1; min-width: 0; }
+.focus-title { font-size: 14px; line-height: 1.3; }
+.focus-meta { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+.focus-meta--overdue { color: #c62828; }
+.focus-item--overdue .focus-title { color: #c62828; }
+.focus-item--overdue .focus-check { border-color: #c62828; }
+.focus-item--overdue .focus-check:hover { background: rgba(198,40,40,.08); }
 .focus-all-done { text-align: center; padding: 20px 0; color: var(--text-secondary); font-size: 14px; }
 .focus-overflow { font-size: 12px; color: var(--text-secondary); margin-top: 6px; margin-bottom: 0; }
+.focus-header-actions { display: flex; gap: 6px; align-items: center; }
+.focus-link-btn {
+  font-size: 13px; padding: 5px 10px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border-color);
+  color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s; text-decoration: none;
+  line-height: 1.4; display: inline-block;
+}
+.focus-link-btn:hover { background: var(--bg-hover, rgba(128,128,128,.1)); color: var(--text-primary); }
 
-/* ── Feed card (#dash-feed) ── */
-.feed-day { margin-bottom: 14px; }
-.feed-day:last-child { margin-bottom: 0; }
-.feed-day-header {
-  font-size: 11px; font-weight: 700; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: .06em;
-  margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border-color);
+/* ── Diary card (#dash-feed) ── */
+.diary-day { margin-bottom: 20px; }
+.diary-day:last-child { margin-bottom: 0; }
+.diary-day-header {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
 }
-.feed-event { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-.feed-event-time  { font-size: 12px; color: var(--text-secondary);
-                    font-variant-numeric: tabular-nums; min-width: 34px; flex-shrink: 0; }
-.feed-event-icon  { font-size: 13px; flex-shrink: 0; }
-.feed-event-title { flex: 1; font-size: 13px; }
-.feed-event-amount { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.feed-event-amount--income   { color: #2e7d32; }
-.feed-event-amount--expense  { color: #c62828; }
-.feed-event-amount--transfer { color: var(--text-secondary); }
-.feed-cancel-btn {
-  background: none; border: none; cursor: pointer; padding: 2px 5px;
-  font-size: 14px; color: var(--text-secondary); opacity: 0.4; line-height: 1;
-  flex-shrink: 0; border-radius: 4px;
+/* Timeline container: vertical line via ::before */
+.diary-timeline {
+  position: relative;
+  padding-left: 24px;
 }
-.feed-cancel-btn:hover { opacity: 1; color: #c62828; background: rgba(198,40,40,.08); }
+.diary-timeline::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--border-color);
+  opacity: 0.6;
+}
+/* Each event on the timeline */
+.diary-item {
+  position: relative;
+  display: flex; gap: 8px; padding: 6px 0; align-items: flex-start;
+}
+/* Marker dot */
+.diary-item::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  opacity: 0.4;
+}
+.diary-item--income::before  { background: #2e7d32; opacity: 0.45; }
+.diary-item--expense::before { background: #c62828; opacity: 0.45; }
+.diary-item-time {
+  font-size: 12px; color: var(--text-secondary);
+  font-variant-numeric: tabular-nums; min-width: 38px; flex-shrink: 0;
+  padding-top: 1px;
+}
+.diary-item-icon { font-size: 14px; flex-shrink: 0; padding-top: 1px; }
+.diary-item-body { flex: 1; min-width: 0; }
+.diary-item-title { font-size: 13px; font-weight: 500; line-height: 1.3; }
+.diary-item-subtitle {
+  font-size: 11px; color: var(--text-secondary); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.diary-item-amount { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; padding-top: 1px; }
+.diary-amount--income   { color: #2e7d32; }
+.diary-amount--expense  { color: #c62828; }
+.diary-amount--transfer { color: var(--text-secondary); }
 
 /* ── Quick-op modal ── */
 .qop-backdrop {
@@ -349,6 +427,65 @@ a.dash-card-link {
   transition: background .12s;
 }
 .quick-op-menu a:hover { background: var(--bg-hover, rgba(128,128,128,.08)); }
+
+/* ── Quick-task modal ── */
+.qt-overlay {
+  display: none; position: fixed; inset: 0; z-index: 900;
+  background: rgba(0,0,0,.45); align-items: flex-start; justify-content: center;
+  padding-top: min(10vh, 80px);
+}
+.qt-overlay.open { display: flex; }
+.qt-modal {
+  background: var(--bg-card); border-radius: 14px; padding: 24px;
+  width: 95vw; max-width: 620px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  animation: qtSlideIn .18s ease-out;
+}
+@keyframes qtSlideIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+.qt-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.qt-modal-header h2 { margin: 0; font-size: 16px; }
+.qt-close-btn {
+  background: none; border: none; font-size: 22px; cursor: pointer;
+  color: var(--text-secondary); padding: 0 4px; min-height: unset; line-height: 1;
+}
+.qt-close-btn:hover { color: var(--text-primary); }
+
+/* ── Task form (shared with tasks page) ── */
+.task-form-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px 16px;
+}
+.task-form-grid .span-full { grid-column: 1 / -1; }
+@media (max-width: 620px) {
+  .task-form-grid { grid-template-columns: 1fr; }
+  .task-form-grid .span-full { grid-column: 1; }
+}
+.seg-control {
+  display: inline-flex; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border-color); background: var(--bg-input, #fff);
+}
+.seg-control button {
+  flex: 1; border: none; border-radius: 0; padding: 6px 14px;
+  font-size: 12px; font-weight: 500; min-height: unset;
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; transition: background .15s, color .15s; white-space: nowrap;
+}
+.seg-control button:not(:last-child) { border-right: 1px solid var(--border-color); }
+.seg-control button:hover { background: var(--bg-table-header, #f0f0f0); color: var(--text-primary); }
+.seg-control button.seg-active { background: var(--accent); color: #fff; }
+.seg-control button.seg-active:hover { background: var(--accent-hover); }
+.task-form-grid label { margin-top: 0; margin-bottom: 2px; font-size: 13px; }
+.task-form-grid .form-row { margin-bottom: 0; }
+.task-form-grid input,
+.task-form-grid select { max-width: 100%; height: 36px; font-size: 13px; }
+.task-form-grid textarea { max-width: 100%; font-size: 13px; }
+.task-form-grid details { margin-bottom: 0; }
+.task-form-submit { display: flex; justify-content: flex-start; padding-top: 4px; }
+.task-form-submit button[type="submit"] { min-width: 120px; }
 </style>{% endblock %}
 
 {% block content %}
@@ -376,7 +513,7 @@ a.dash-card-link {
   <div class="dash-col-left">
 
     {# ── Финансовое состояние ── #}
-    <div class="dash-card" id="dash-fin-state">
+    <div class="dash-card clarity-mask" id="dash-fin-state">
       <div class="dash-card-title">Финансовое состояние</div>
 
       {# ── Обычные кошельки ── #}
@@ -502,78 +639,104 @@ a.dash-card-link {
     <div class="dash-card" id="dash-focus">
       <div class="dash-card-header">
         <div class="dash-card-title">Фокус дня</div>
-        <div class="quick-op-wrapper" id="quickOpWrapper">
-          <button class="quick-op-btn" type="button" aria-haspopup="true" aria-expanded="false">+ Быстрая операция</button>
-          <div class="quick-op-menu" hidden>
-            <a href="#" data-type="INCOME">Доход</a>
-            <a href="#" data-type="EXPENSE">Расход</a>
-            <a href="#" data-type="TRANSFER">Перемещение</a>
+        <div class="focus-header-actions">
+          <a href="#" id="openQuickTask" class="focus-link-btn">+ Задача</a>
+          <div class="quick-op-wrapper" id="quickOpWrapper">
+            <button class="quick-op-btn" type="button" aria-haspopup="true" aria-expanded="false">+ Операция</button>
+            <div class="quick-op-menu" hidden>
+              <a href="#" data-type="INCOME">Доход</a>
+              <a href="#" data-type="EXPENSE">Расход</a>
+              <a href="#" data-type="TRANSFER">Перемещение</a>
+            </div>
           </div>
         </div>
       </div>
+
+      {# Progress bar #}
+      {% if progress.total > 0 %}
+      <div class="focus-progress">
+        <span>{{ progress.done }} из {{ progress.total }}</span>
+        <div class="focus-progress-bar">
+          <div class="focus-progress-fill" style="width: {{ (progress.done / progress.total * 100)|round|int }}%;"></div>
+        </div>
+      </div>
+      {% endif %}
+
       {% set has_focus = focus_overdue or focus_tasks or focus_habits %}
 
       {# Просроченные задачи #}
+      {% if focus_overdue %}
+      <div class="focus-section-label">Просрочено</div>
       {% for item in focus_overdue %}
       <div class="focus-item focus-item--overdue">
-        <span class="focus-item-date">{{ item.date.strftime('%d.%m') }} &#9650;</span>
-        <span class="focus-item-label">
-          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
-        </span>
         {% if item.kind == "task" %}
         <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
           <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+          <button type="submit" class="focus-check" title="Выполнить"></button>
         </form>
         {% elif item.kind == "task_occ" %}
         <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
           <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+          <button type="submit" class="focus-check" title="Выполнить"></button>
         </form>
         {% endif %}
+        <div class="focus-content">
+          <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+          <div class="focus-meta focus-meta--overdue">{{ item.date.strftime('%d.%m') }} — просрочено</div>
+        </div>
       </div>
       {% endfor %}
+      {% endif %}
 
       {# Активные задачи сегодня #}
+      {% if focus_tasks %}
+      <div class="focus-section-label">Задачи</div>
       {% for item in focus_tasks %}
       <div class="focus-item">
-        <span class="focus-item-label">
-          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
-        </span>
         {% if item.kind == "task" %}
         <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
           <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+          <button type="submit" class="focus-check" title="Выполнить"></button>
         </form>
         {% elif item.kind == "task_occ" %}
         <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
           <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+          <button type="submit" class="focus-check" title="Выполнить"></button>
         </form>
         {% endif %}
+        <div class="focus-content">
+          <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+          {% if item.date == today %}
+          <div class="focus-meta">сегодня</div>
+          {% endif %}
+        </div>
       </div>
       {% endfor %}
       {% if focus_tasks_overflow %}
       <p class="focus-overflow"><a href="/tasks">Показать все задачи &rarr;</a></p>
       {% endif %}
+      {% endif %}
 
       {# Активные привычки сегодня #}
+      {% if focus_habits %}
+      <div class="focus-section-label">Привычки</div>
       {% for item in focus_habits %}
       <div class="focus-item">
-        <span class="focus-item-label">
-          {% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}
-          {% if item.meta.current_streak > 0 %}
-          <small class="muted">&#128293; {{ item.meta.current_streak }}д</small>
-          {% endif %}
-        </span>
         <form method="POST" action="/plan/habit-occurrences/{{ item.meta.occurrence_id }}/toggle" style="margin:0;">
           <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="btn-icon" title="Выполнить">&#10003;</button>
+          <button type="submit" class="focus-check" title="Выполнить"></button>
         </form>
+        <div class="focus-content">
+          <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+          {% if item.meta.current_streak > 0 %}
+          <div class="focus-meta">серия {{ item.meta.current_streak }} дн.</div>
+          {% endif %}
+        </div>
       </div>
       {% endfor %}
       {% if focus_habits_overflow %}
       <p class="focus-overflow"><a href="/habits">Показать все привычки &rarr;</a></p>
+      {% endif %}
       {% endif %}
 
       {% if not has_focus %}
@@ -585,29 +748,30 @@ a.dash-card-link {
       </p>
     </div>
 
-    {# ── Лента событий ── #}
+    {# ── Дневник ── #}
     <div class="dash-card" id="dash-feed">
-      <div class="dash-card-title">Лента</div>
+      <div class="dash-card-title">Дневник</div>
       {% if feed_groups %}
       {% for group in feed_groups %}
-      <div class="feed-day">
-        <div class="feed-day-header">{{ group.label }}</div>
-        {% for item in group.events %}
-        <div class="feed-event">
-          <span class="feed-event-time">{{ item.time_str }}</span>
-          <span class="feed-event-icon">{{ item.icon }}</span>
-          <span class="feed-event-title">{{ item.title }}</span>
-          {% if item.amount_fmt %}
-          <span class="feed-event-amount feed-event-amount--{{ item.amount_sign }}">{{ item.amount_fmt }}</span>
-          {% endif %}
-          {% if item.cancel_url %}
-          <form method="POST" action="{{ item.cancel_url }}" style="margin:0;">
-            <input type="hidden" name="redirect" value="/">
-            <button type="submit" class="feed-cancel-btn" title="Отменить">✕</button>
-          </form>
-          {% endif %}
+      <div class="diary-day">
+        <div class="diary-day-header">{{ group.label }}</div>
+        <div class="diary-timeline">
+          {% for item in group.events %}
+          <div class="diary-item{% if item.amount_css %} diary-item--{{ item.amount_css }}{% endif %}">
+            <span class="diary-item-time">{{ item.time_str }}</span>
+            <span class="diary-item-icon">{{ item.icon }}</span>
+            <div class="diary-item-body">
+              <div class="diary-item-title">{{ item.title }}</div>
+              {% if item.subtitle %}
+              <div class="diary-item-subtitle">{{ item.subtitle }}</div>
+              {% endif %}
+            </div>
+            {% if item.amount_label %}
+            <span class="diary-item-amount diary-amount--{{ item.amount_css }} clarity-mask">{{ item.amount_label }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
       {% endfor %}
       {% else %}
@@ -630,7 +794,7 @@ a.dash-card-link {
               {{ wish_status_labels.get(wish.status, '') }}
               <span>{{ wish.title }}</span>
               {% if wish.estimated_amount %}
-              <span class="badge" style="background:#e8f5e9;color:#2e7d32;">
+              <span class="badge clarity-mask" style="background:#e8f5e9;color:#2e7d32;">
                 {{ "{:,.2f}".format(wish.estimated_amount).replace(',', ' ') }} руб.
               </span>
               {% endif %}
@@ -673,7 +837,7 @@ a.dash-card-link {
         <div class="dash-item-left">
           &#128197;
           <span>{{ pay.title }}</span>
-          <span class="badge {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
+          <span class="badge clarity-mask {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
             {{ pay.kind_label }} {{ pay.amount_formatted }}
           </span>
         </div>
@@ -733,27 +897,41 @@ a.dash-card-link {
       {# Один кошелёк (доход / расход) #}
       <div class="qop-field" id="qopWalletRow">
         <label>Кошелёк</label>
-        <select name="wallet_id" id="qopWallet">
+        <select name="wallet_id" id="qopWallet" onchange="updateQopWalletHint()">
           {% for w in dash_wallets %}
           <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
           {% endfor %}
         </select>
+        <small id="qopWalletHint" style="display:none; color:var(--text-secondary); margin-top:3px; font-size:12px;"></small>
       </div>
 
       {# Два кошелька (перемещение) #}
       <div class="qop-field" id="qopFromRow" style="display:none;">
         <label>Из кошелька</label>
-        <select name="from_wallet_id" id="qopFrom" disabled>
+        <select name="from_wallet_id" id="qopFrom" disabled onchange="updateQopFromHint()">
           {% for w in dash_wallets %}
           <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
           {% endfor %}
         </select>
+        <small id="qopFromHint" style="display:none; color:var(--text-secondary); margin-top:3px; font-size:12px;"></small>
       </div>
       <div class="qop-field" id="qopToRow" style="display:none;">
         <label>В кошелёк</label>
-        <select name="to_wallet_id" id="qopTo" disabled>
+        <select name="to_wallet_id" id="qopTo" disabled onchange="updateQopToHint()">
           {% for w in dash_wallets %}
           <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+        <small id="qopToHint" style="display:none; color:var(--text-secondary); margin-top:3px; font-size:12px;"></small>
+      </div>
+
+      {# Категория #}
+      <div class="qop-field" id="qopCategoryRow">
+        <label>Категория</label>
+        <select name="category_id" id="qopCategory">
+          <option value="">Без категории</option>
+          {% for c in dash_categories %}
+          <option value="{{ c.category_id }}" data-type="{{ c.category_type }}">{{ c.title }}</option>
           {% endfor %}
         </select>
       </div>
@@ -763,6 +941,12 @@ a.dash-card-link {
         <input type="text" name="description" id="qopDesc" placeholder="Например: продукты">
       </div>
 
+      <div class="qop-field">
+        <label>Дата и время <span style="color:var(--text-secondary);">(необязательно)</span></label>
+        <input type="datetime-local" name="occurred_at" id="qopOccurredAt">
+        <small style="color:var(--text-secondary); font-size:11px;">Если не указано — текущее время</small>
+      </div>
+
       <div class="qop-actions">
         <button type="button" class="qop-cancel-btn" id="qopCancelBtn">Отмена</button>
         <button type="submit" class="qop-submit">Сохранить</button>
@@ -770,8 +954,217 @@ a.dash-card-link {
     </form>
   </div>
 </div>
+
+{# ── Quick-task modal ── #}
+<div class="qt-overlay" id="quickTaskOverlay">
+  <div class="qt-modal">
+    <div class="qt-modal-header">
+      <h2>Создать задачу</h2>
+      <button type="button" class="qt-close-btn" id="qtCloseBtn">&times;</button>
+    </div>
+    {% set task_form_redirect = "/" %}
+    {% include "tasks/_task_form.html" %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script>
+var qopWalletBalanceMap = {
+  {% for w in dash_wallets %}
+  "{{ w.wallet_id }}": { balance: {{ w.balance }}, currency: "{{ w.currency }}" }{{ "," if not loop.last }}
+  {% endfor %}
+};
+
+function fmtQopBalance(amount, currency) {
+  var n = Math.round(Math.abs(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  var sym = currency === 'RUB' ? '\u20bd' : currency;
+  return 'Баланс: ' + (amount < 0 ? '\u2212' : '') + n + '\u00a0' + sym;
+}
+
+function showQopHint(id, amount, currency) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (amount === undefined || amount === null) { el.style.display = 'none'; return; }
+  el.textContent = fmtQopBalance(amount, currency);
+  el.style.display = 'block';
+}
+
+function updateQopWalletHint() {
+  var sel = document.getElementById('qopWallet');
+  var info = qopWalletBalanceMap[sel ? sel.value : ''];
+  showQopHint('qopWalletHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+function updateQopFromHint() {
+  var sel = document.getElementById('qopFrom');
+  var info = qopWalletBalanceMap[sel ? sel.value : ''];
+  showQopHint('qopFromHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+function updateQopToHint() {
+  var sel = document.getElementById('qopTo');
+  var info = qopWalletBalanceMap[sel ? sel.value : ''];
+  showQopHint('qopToHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+</script>
 <script src="/static/js/dashboard-actions.js"></script>
+
+<script>
+/* ── Task form logic (shared with tasks page) ── */
+(function() {
+  var mode = 'once';
+  var btnOnce = document.getElementById('btnOnce');
+  var btnRecurring = document.getElementById('btnRecurring');
+  var blockOnce = document.getElementById('blockOnce');
+  var blockRecurring = document.getElementById('blockRecurring');
+  var taskMode = document.getElementById('taskMode');
+  var taskFreq = document.getElementById('taskFreq');
+  var blockWeekdays = document.getElementById('blockWeekdays');
+  var blockMonthday = document.getElementById('blockMonthday');
+
+  window.setMode = function(m) {
+    mode = m;
+    taskMode.value = m;
+    if (m === 'once') {
+      btnOnce.className = 'seg-active';
+      btnRecurring.className = '';
+      blockOnce.style.display = '';
+      blockRecurring.style.display = 'none';
+    } else {
+      btnOnce.className = '';
+      btnRecurring.className = 'seg-active';
+      blockOnce.style.display = 'none';
+      blockRecurring.style.display = '';
+      toggleFreqFields();
+    }
+  };
+
+  function toggleFreqFields() {
+    var freq = taskFreq.value;
+    blockWeekdays.style.display = freq === 'WEEKLY' ? '' : 'none';
+    blockMonthday.style.display = freq === 'MONTHLY' ? '' : 'none';
+  }
+  taskFreq.addEventListener('change', toggleFreqFields);
+  toggleFreqFields();
+
+  var dueKind = 'NONE';
+  var dkButtons = {
+    NONE: document.getElementById('dkNone'),
+    DATE: document.getElementById('dkDate'),
+    DATETIME: document.getElementById('dkDatetime'),
+    WINDOW: document.getElementById('dkWindow'),
+  };
+  var blockDueDate = document.getElementById('blockDueDate');
+  var blockDueTime = document.getElementById('blockDueTime');
+  var blockDueWindow = document.getElementById('blockDueWindow');
+  var blockReminders = document.getElementById('blockReminders');
+  var dueKindInput = document.getElementById('dueKind');
+
+  window.setDueKind = function(kind) {
+    dueKind = kind;
+    dueKindInput.value = kind;
+    for (var k in dkButtons) {
+      dkButtons[k].className = (k === kind) ? 'seg-active' : '';
+    }
+    blockDueDate.style.display = (kind !== 'NONE') ? '' : 'none';
+    blockDueTime.style.display = (kind === 'DATETIME') ? '' : 'none';
+    blockDueWindow.style.display = (kind === 'WINDOW') ? '' : 'none';
+    blockReminders.style.display = (kind === 'DATETIME' || kind === 'WINDOW') ? '' : 'none';
+    if (kind !== 'DATETIME' && kind !== 'WINDOW') {
+      _reminders = [];
+      renderReminderChips();
+    }
+  };
+
+  var _reminders = [];
+  var reminderChips = document.getElementById('reminderChips');
+  var reminderPresetSelect = document.getElementById('reminderPresetSelect');
+  var customReminderBlock = document.getElementById('customReminderBlock');
+  var remindersJsonInput = document.getElementById('remindersJson');
+
+  function renderReminderChips() {
+    reminderChips.innerHTML = '';
+    _reminders.forEach(function(rem, idx) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg-table-header, #e9ecef);padding:4px 10px;border-radius:12px;font-size:12px;';
+      chip.textContent = formatOffset(rem.offset_minutes);
+      var closeBtn = document.createElement('span');
+      closeBtn.textContent = '\u00d7';
+      closeBtn.style.cssText = 'cursor:pointer;font-weight:700;color:#888;margin-left:2px;';
+      closeBtn.onclick = (function(i) {
+        return function() { _reminders.splice(i, 1); renderReminderChips(); };
+      })(idx);
+      chip.appendChild(closeBtn);
+      reminderChips.appendChild(chip);
+    });
+    remindersJsonInput.value = _reminders.length ? JSON.stringify(_reminders) : '';
+  }
+
+  function formatOffset(minutes) {
+    if (minutes === 0) return 'В момент срока';
+    var abs = Math.abs(minutes);
+    if (abs < 60) return 'За ' + abs + ' мин';
+    if (abs % 60 === 0 && abs < 1440) return 'За ' + (abs / 60) + ' ч';
+    if (abs === 1440) return 'За 1 день';
+    if (abs % 1440 === 0) return 'За ' + (abs / 1440) + ' дн';
+    return 'За ' + abs + ' мин';
+  }
+
+  function addReminder(offsetMinutes) {
+    if (_reminders.length >= 5) return;
+    if (_reminders.some(function(r) { return r.offset_minutes === offsetMinutes; })) return;
+    _reminders.push({offset_minutes: offsetMinutes});
+    renderReminderChips();
+  }
+
+  if (reminderPresetSelect) {
+    reminderPresetSelect.addEventListener('change', function() {
+      var val = this.value;
+      if (val === '__custom__') {
+        customReminderBlock.style.display = 'flex';
+      } else if (val !== '') {
+        addReminder(parseInt(val, 10));
+        customReminderBlock.style.display = 'none';
+      }
+      this.value = '';
+    });
+  }
+
+  window.addCustomReminder = function() {
+    var input = document.getElementById('customReminderMinutes');
+    var minutes = parseInt(input.value, 10);
+    if (isNaN(minutes) || minutes < 0) return;
+    addReminder(-minutes);
+    input.value = '';
+    customReminderBlock.style.display = 'none';
+  };
+
+  renderReminderChips();
+})();
+
+/* ── Quick-task modal open/close ── */
+(function() {
+  var overlay = document.getElementById('quickTaskOverlay');
+  var openBtn = document.getElementById('openQuickTask');
+  var closeBtn = document.getElementById('qtCloseBtn');
+
+  function openModal(e) {
+    e.preventDefault();
+    overlay.classList.add('open');
+  }
+  function closeModal() {
+    overlay.classList.remove('open');
+  }
+
+  if (openBtn) openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeModal();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+  });
+})();
+</script>
 {% endblock %}

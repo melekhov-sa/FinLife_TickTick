@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Admin — Overview{% endblock %}
+
+{% block extra_head %}<style>
+.admin-header {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
+}
+.admin-header h1 { margin: 0; }
+.admin-nav { display: flex; gap: 8px; }
+.admin-nav a {
+  font-size: 13px; padding: 6px 14px; border-radius: 6px;
+  text-decoration: none; color: var(--text-secondary);
+  border: 1px solid var(--border-color); background: var(--bg-card);
+  transition: background .12s, color .12s;
+}
+.admin-nav a:hover { background: var(--bg-table-header); color: var(--text-primary); }
+.admin-nav a.active {
+  background: var(--accent); color: var(--accent-fg); border-color: var(--accent);
+}
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.metric-card {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.metric-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.metric-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.top-table { max-width: 600px; }
+.top-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+</style>{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <h1>Admin</h1>
+  <nav class="admin-nav">
+    <a href="/admin/overview" class="active">Overview</a>
+    <a href="/admin/users">Пользователи</a>
+  </nav>
+</div>
+
+<h2>Пользователи</h2>
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.total_users }}</div>
+    <div class="metric-label">Всего</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.new_users_7d }}</div>
+    <div class="metric-label">Новые за 7 дн.</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.new_users_30d }}</div>
+    <div class="metric-label">Новые за 30 дн.</div>
+  </div>
+</div>
+
+<h2>Активность</h2>
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.dau }}</div>
+    <div class="metric-label">DAU (сегодня)</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.wau }}</div>
+    <div class="metric-label">WAU (7 дн.)</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.mau }}</div>
+    <div class="metric-label">MAU (30 дн.)</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-value">{{ stats.retention_14d }}</div>
+    <div class="metric-label">Retention 14d (2+ дня)</div>
+  </div>
+</div>
+
+{% if stats.top_active_30d %}
+<h2>Топ-10 активных (30 дн.)</h2>
+<div class="card top-table">
+  <table>
+    <thead><tr><th>#</th><th>Email</th><th>Событий</th></tr></thead>
+    <tbody>
+      {% for item in stats.top_active_30d %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><a href="/admin/users/{{ item.user_id }}">{{ item.email }}</a></td>
+        <td>{{ item.events_30d }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

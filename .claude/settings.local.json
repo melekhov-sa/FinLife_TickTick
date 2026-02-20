@@ -80,7 +80,12 @@
       "Bash(cmd //c \"C:\\\\Projects\\\\FinLife_TickTick\\\\.venv\\\\Scripts\\\\pytest.exe:*)",
       "Bash(exit:*)",
       "Bash(git config:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(/c/Projects/FinLife_TickTick/ProjectsFinLife_TickTick.venv/Scripts/python.exe -m pytest:*)",
+      "Bash(/c/Projects/FinLife_TickTick/ProjectsFinLife_TickTick.venv/Scripts/python.exe -m alembic upgrade:*)",
+      "Bash(c:/Projects/FinLife_TickTick/.venv/Scripts/pip list:*)",
+      "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/pip.exe install:*)",
+      "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/pip.exe freeze:*)"
     ]
   }
 }

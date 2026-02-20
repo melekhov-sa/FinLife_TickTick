@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     TIMEZONE: str = "Europe/Moscow"
     DEBUG: bool = False
 
+    # Analytics (Microsoft Clarity)
+    CLARITY_PROJECT_ID: str = ""
+    CLARITY_ENABLED: bool = False
+
+    # Web Push (VAPID)
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_MAILTO: str = "mailto:admin@finlife.app"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -29,13 +29,13 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
   {% for s in summary %}
   {% if s.wallet_type == 'SAVINGS' %}
-  <a href="/goals" class="card" style="padding: 16px; text-decoration: none; color: inherit; display: block;">
+  <a href="/goals" class="card clarity-mask" style="padding: 16px; text-decoration: none; color: inherit; display: block;">
     <div class="muted" style="font-size: 13px; margin-bottom: 4px;">{{ type_labels.get(s.wallet_type, s.wallet_type) }}{% if s.currency != 'RUB' %} ({{ s.currency }}){% endif %} &rarr;</div>
     <div style="font-size: 20px; font-weight: 600;">{{ format_money2(s.total, s.currency) }}</div>
     <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ s.count }} шт.</div>
   </a>
   {% else %}
-  <div class="card" style="padding: 16px;">
+  <div class="card clarity-mask" style="padding: 16px;">
     <div class="muted" style="font-size: 13px; margin-bottom: 4px;">{{ type_labels.get(s.wallet_type, s.wallet_type) }}{% if s.currency != 'RUB' %} ({{ s.currency }}){% endif %}</div>
     <div style="font-size: 20px; font-weight: 600;">{{ format_money2(s.total, s.currency) }}</div>
     <div class="muted" style="font-size: 12px; margin-top: 4px;">{{ s.count }} шт.</div>

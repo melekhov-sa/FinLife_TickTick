@@ -23,6 +23,11 @@ services:
       - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID:-}
+      - CLARITY_ENABLED=${CLARITY_ENABLED:-false}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_MAILTO=${VAPID_MAILTO:-mailto:admin@finlife.app}
     depends_on:
       db:
         condition: service_healthy

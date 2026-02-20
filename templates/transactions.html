@@ -8,7 +8,7 @@
 
 <!-- KPI -->
 {% for cur, kpi in kpi_by_currency.items() %}
-<div class="stats-grid">
+<div class="stats-grid clarity-mask">
   <div class="stat-card">
     <div class="stat-label">ДОХОДЫ{% if kpi_by_currency|length > 1 %} ({{ currency_label(cur) }}){% endif %}</div>
     <div class="stat-value positive">{{ format_money(kpi.income, cur) }}</div>

@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.infrastructure.db.session import check_db_connection
-from app.api.v1 import auth, wallets, categories, transactions, pages
+from app.api.v1 import auth, wallets, categories, transactions, pages, push, admin
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,6 +63,8 @@ def create_app() -> FastAPI:
     app.include_router(categories.router)
     app.include_router(transactions.router)
     app.include_router(auth.router)
+    app.include_router(push.router)
+    app.include_router(admin.router)
     app.include_router(pages.router)  # SSR pages (/, /wallets, /transactions)
 
     # Health checks

@@ -18,7 +18,7 @@ class TestOneOffTaskValidation:
     def test_one_off_with_due_date(self, db_session, sample_account_id):
         """Разовая задача с датой создаётся."""
         uc = CreateTaskUseCase(db_session)
-        task_id = uc.execute(account_id=sample_account_id, title="Оплатить счёт", due_date="2026-03-15")
+        task_id = uc.execute(account_id=sample_account_id, title="Оплатить счёт", due_kind="DATE", due_date="2026-03-15")
         assert task_id > 0
 
     def test_one_off_empty_title_fails(self, db_session, sample_account_id):
