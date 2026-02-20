@@ -5,7 +5,7 @@ import logging
 import traceback
 
 from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse, HTMLResponse
+from fastapi.responses import PlainTextResponse, HTMLResponse, FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
@@ -66,6 +66,17 @@ def create_app() -> FastAPI:
     app.include_router(push.router)
     app.include_router(admin.router)
     app.include_router(pages.router)  # SSR pages (/, /wallets, /transactions)
+
+    # Service Worker — must be served from root for scope="/"
+    _sw_path = _os.path.join(_static_dir, "js", "service-worker.js")
+
+    @app.get("/service-worker.js", include_in_schema=False)
+    def service_worker():
+        return FileResponse(
+            _sw_path,
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+        )
 
     # Health checks
     @app.get("/health", response_class=PlainTextResponse, tags=["system"])

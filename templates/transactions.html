@@ -204,9 +204,9 @@
           <th>Дата</th>
           <th>Тип</th>
           <th>Кошелёк</th>
-          <th>Категория</th>
+          <th class="col-txcat">Категория</th>
           <th style="text-align: right;">Сумма</th>
-          <th>Описание</th>
+          <th class="col-txdesc">Описание</th>
         </tr>
       </thead>
       <tbody>
@@ -232,7 +232,7 @@
               {{ w.title if w else '—' }}
             {% endif %}
           </td>
-          <td>
+          <td class="col-txcat">
             {% if tx.category_id %}
               {% set cat = category_map.get(tx.category_id) %}
               {{ cat.title if cat else '—' }}
@@ -243,7 +243,7 @@
           <td style="text-align: right; white-space: nowrap;" class="{% if tx.operation_type == 'INCOME' %}positive{% elif tx.operation_type == 'EXPENSE' %}negative{% endif %}">
             {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ format_money(tx.amount, tx.currency) }}
           </td>
-          <td>{{ tx.description }}</td>
+          <td class="col-txdesc">{{ tx.description }}</td>
         </tr>
         {% endfor %}
       </tbody>

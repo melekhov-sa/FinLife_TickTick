@@ -590,6 +590,12 @@
       /* Filter panel */
       .category-checkboxes { gap: 4px; }
       .filter-actions button { min-height: 36px; }
+      /* Transactions — hide Category & Description columns */
+      .col-txcat, .col-txdesc { display: none; }
+      /* Categories — toolbar polish */
+      .filter-toolbar { padding: 10px !important; }
+      .filter-toolbar form { flex-wrap: wrap; }
+      .filter-toolbar input[type="text"] { max-width: 100% !important; flex: 1 1 100% !important; }
     }
     /* ===== SMALL PHONE ===== */
     @media (max-width: 380px) {
@@ -948,7 +954,7 @@ _updateThemeBtn();
 <script>
 window.__VAPID_PUBLIC_KEY__ = '{{ vapid_public_key }}';
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/js/service-worker.js');
+  navigator.serviceWorker.register('/service-worker.js');
 }
 </script>
 {% endif %}

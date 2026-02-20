@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Кошельки - FinLife{% endblock %}
 
+{% block extra_head %}
+<style>
+@media (max-width: 768px) {
+  .col-wtype, .col-wcur, .col-wdelta, .col-wops, .col-wlast { display: none; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
   <h1 style="margin: 0;">Кошельки</h1>
@@ -55,12 +62,12 @@
       <thead>
         <tr>
           <th>Название</th>
-          <th>Тип</th>
-          <th>Валюта</th>
+          <th class="col-wtype">Тип</th>
+          <th class="col-wcur">Валюта</th>
           <th>Баланс</th>
-          <th>Δ30 дней</th>
-          <th>Операций за 30д</th>
-          <th>Последняя операция</th>
+          <th class="col-wdelta">Δ30 дней</th>
+          <th class="col-wops">Операций за 30д</th>
+          <th class="col-wlast">Последняя операция</th>
           <th style="width: 40px;"></th>
         </tr>
       </thead>
@@ -74,16 +81,16 @@
             📁 {{ group.folder.title }}
             <span class="muted" style="font-weight: 400; font-size: 12px; margin-left: 4px;">({{ group.wallets|length }})</span>
           </td>
-          <td class="muted" style="font-size: 12px;"></td>
-          <td class="muted" style="font-size: 12px;">{{ group.currency if group.currency else '—' }}</td>
+          <td class="col-wtype muted" style="font-size: 12px;"></td>
+          <td class="col-wcur muted" style="font-size: 12px;">{{ group.currency if group.currency else '—' }}</td>
           <td style="font-weight: 600;" class="{% if group.total_balance is not none %}{% if group.total_balance|float >= 0 %}positive{% else %}negative{% endif %}{% endif %}">
             {% if group.total_balance is not none %}{{ format_money2(group.total_balance, group.currency) }}{% else %}—{% endif %}
           </td>
-          <td class="{% if group.total_delta_30d is not none %}{% if group.total_delta_30d|float > 0 %}positive{% elif group.total_delta_30d|float < 0 %}negative{% endif %}{% endif %}">
+          <td class="col-wdelta {% if group.total_delta_30d is not none %}{% if group.total_delta_30d|float > 0 %}positive{% elif group.total_delta_30d|float < 0 %}negative{% endif %}{% endif %}">
             {% if group.total_delta_30d is not none %}{% if group.total_delta_30d|float > 0 %}+{% endif %}{{ format_money2(group.total_delta_30d, group.currency) }}{% else %}—{% endif %}
           </td>
-          <td class="muted" style="font-size: 12px;">{{ group.total_ops_30d }}</td>
-          <td class="muted" style="font-size: 12px;">
+          <td class="col-wops muted" style="font-size: 12px;">{{ group.total_ops_30d }}</td>
+          <td class="col-wlast muted" style="font-size: 12px;">
             {% if group.last_op_at %}{{ group.last_op_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
           </td>
           <td>
@@ -115,21 +122,21 @@
         {% set wallet = wd.wallet %}
         <tr>
           <td>{{ wallet.title }}</td>
-          <td>
+          <td class="col-wtype">
             {% if wallet.wallet_type == 'REGULAR' %}Обычный
             {% elif wallet.wallet_type == 'CREDIT' %}Кредит
             {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
             {% else %}{{ wallet.wallet_type }}{% endif %}
           </td>
-          <td>{{ currency_label(wallet.currency) }}</td>
+          <td class="col-wcur">{{ currency_label(wallet.currency) }}</td>
           <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
             {{ format_money2(wallet.balance, wallet.currency) }}
           </td>
-          <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
+          <td class="col-wdelta {% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
             {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
           </td>
-          <td>{{ wd.operations_count_30d }}</td>
-          <td class="muted" style="font-size: 12px;">
+          <td class="col-wops">{{ wd.operations_count_30d }}</td>
+          <td class="col-wlast muted" style="font-size: 12px;">
             {% if wallet.last_operation_at %}
               {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
             {% else %}—{% endif %}
@@ -182,21 +189,21 @@
         {% set wallet = wd.wallet %}
         <tr>
           <td>{{ wallet.title }}</td>
-          <td>
+          <td class="col-wtype">
             {% if wallet.wallet_type == 'REGULAR' %}Обычный
             {% elif wallet.wallet_type == 'CREDIT' %}Кредит
             {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
             {% else %}{{ wallet.wallet_type }}{% endif %}
           </td>
-          <td>{{ currency_label(wallet.currency) }}</td>
+          <td class="col-wcur">{{ currency_label(wallet.currency) }}</td>
           <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
             {{ format_money2(wallet.balance, wallet.currency) }}
           </td>
-          <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
+          <td class="col-wdelta {% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
             {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
           </td>
-          <td>{{ wd.operations_count_30d }}</td>
-          <td class="muted" style="font-size: 12px;">
+          <td class="col-wops">{{ wd.operations_count_30d }}</td>
+          <td class="col-wlast muted" style="font-size: 12px;">
             {% if wallet.last_operation_at %}
               {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
             {% else %}—{% endif %}
@@ -256,12 +263,12 @@
     <thead>
       <tr>
         <th>Название</th>
-        <th>Тип</th>
-        <th>Валюта</th>
+        <th class="col-wtype">Тип</th>
+        <th class="col-wcur">Валюта</th>
         <th>Баланс</th>
-        <th>Δ30 дней</th>
-        <th>Операций за 30д</th>
-        <th>Последняя операция</th>
+        <th class="col-wdelta">Δ30 дней</th>
+        <th class="col-wops">Операций за 30д</th>
+        <th class="col-wlast">Последняя операция</th>
         <th style="width: 120px;"></th>
       </tr>
     </thead>
@@ -270,21 +277,21 @@
       {% set wallet = wd.wallet %}
       <tr style="opacity: 0.6;">
         <td>{{ wallet.title }}</td>
-        <td>
+        <td class="col-wtype">
           {% if wallet.wallet_type == 'REGULAR' %}Обычный
           {% elif wallet.wallet_type == 'CREDIT' %}Кредит
           {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
           {% else %}{{ wallet.wallet_type }}{% endif %}
         </td>
-        <td>{{ currency_label(wallet.currency) }}</td>
+        <td class="col-wcur">{{ currency_label(wallet.currency) }}</td>
         <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
           {{ format_money2(wallet.balance, wallet.currency) }}
         </td>
-        <td class="{% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
+        <td class="col-wdelta {% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
           {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
         </td>
-        <td>{{ wd.operations_count_30d }}</td>
-        <td class="muted" style="font-size: 12px;">
+        <td class="col-wops">{{ wd.operations_count_30d }}</td>
+        <td class="col-wlast muted" style="font-size: 12px;">
           {% if wallet.last_operation_at %}
             {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
           {% else %}—{% endif %}

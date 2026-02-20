@@ -17,7 +17,17 @@
 {%- if cell.get('note') %}<span title="{{ cell.get('note') }}" style="cursor: help; font-size: 9px; vertical-align: super; color: #f5a623; margin-left: 1px;">●</span>{% endif -%}
 {%- endmacro %}
 
-{% block extra_head %}<style>.main-content { max-width: none; }</style>{% endblock %}
+{% block extra_head %}
+<style>
+.main-content { max-width: none; }
+@media (max-width: 768px) {
+  .budget-table .sticky-col { min-width: 110px; max-width: 140px; font-size: 12px; }
+  .budget-table td, .budget-table th { font-size: 11px; padding: 4px 3px; }
+  .compact-cell { padding: 4px 2px !important; }
+  .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <h1>Бюджет</h1>
 

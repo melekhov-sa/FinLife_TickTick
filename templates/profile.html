@@ -11,6 +11,10 @@
   }
   @media (max-width: 640px) {
     .profile-grid { grid-template-columns: 1fr; }
+    .profile-grid > .card { grid-column: 1 !important; }
+    .xp-event-date { min-width: 80px; font-size: 11px; }
+    .activity-label { min-width: 100px; }
+    .profile-meta-row { flex-direction: column; gap: 2px; }
   }
   .xp-bar-track {
     background: #e9ecef;
