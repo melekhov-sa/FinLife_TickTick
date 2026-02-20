@@ -71,10 +71,22 @@ def test_push(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
-    from app.application.push_service import send_push_to_user
-    sent = send_push_to_user(db, user_id, {
-        "title": "FinLife",
-        "body": "Push-уведомления работают!",
-        "url": "/profile",
-    })
-    return {"success": True, "sent": sent}
+    subs_count = db.query(PushSubscription).filter(
+        PushSubscription.user_id == user_id
+    ).count()
+
+    if subs_count == 0:
+        return {"success": False, "sent": 0, "error": "Нет активных подписок"}
+
+    try:
+        from app.application.push_service import send_push_to_user
+        sent = send_push_to_user(db, user_id, {
+            "title": "FinLife",
+            "body": "Push-уведомления работают!",
+            "url": "/profile",
+        })
+        return {"success": True, "sent": sent}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)

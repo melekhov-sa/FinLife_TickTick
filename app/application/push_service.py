@@ -38,14 +38,25 @@ def send_web_push(db: Session, subscription: PushSubscription, payload: dict) ->
         },
     }
 
-    # .env stores PEM with literal \n — restore actual newlines
-    private_key = settings.VAPID_PRIVATE_KEY.replace("\\n", "\n")
+    # .env may store PEM with literal \n or real newlines depending on quoting
+    raw_key = settings.VAPID_PRIVATE_KEY
+    # If it contains literal backslash-n, convert to real newlines
+    if "\\n" in raw_key:
+        raw_key = raw_key.replace("\\n", "\n")
+
+    # pywebpush accepts either a PEM string or a raw base64url key.
+    # Extract raw key from PEM if present.
+    if "BEGIN" in raw_key:
+        import base64
+        lines = [l.strip() for l in raw_key.strip().splitlines()
+                 if l.strip() and not l.strip().startswith("-----")]
+        raw_key = "".join(lines)
 
     try:
         webpush(
             subscription_info=subscription_info,
             data=json.dumps(payload, ensure_ascii=False),
-            vapid_private_key=private_key,
+            vapid_private_key=raw_key,
             vapid_claims={"sub": settings.VAPID_MAILTO},
         )
         return True
