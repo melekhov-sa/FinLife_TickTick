@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import User
 
-# Stable, no native deps (works great on Windows)
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+# pbkdf2_sha256 — primary (no native deps, works on Windows)
+# bcrypt — legacy support for existing hashes created on the server
+pwd_context = CryptContext(schemes=["pbkdf2_sha256", "bcrypt"], deprecated=["bcrypt"])
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
