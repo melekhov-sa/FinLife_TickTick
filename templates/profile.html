@@ -418,6 +418,65 @@
   </div>
   {% endif %}
 
+  {# ── Задачи и расходы ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 560px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Задачи и расходы</div>
+    <form method="post" action="/profile/task-expense-setting" id="taskExpenseForm">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+        <input type="checkbox" name="enable_task_expense_link" value="true"
+               {% if enable_task_expense_link %}checked{% endif %}
+               onchange="document.getElementById('taskExpenseForm').submit()">
+        При выполнении задачи создавать расходную операцию
+      </label>
+      <small class="muted" style="display: block; margin-top: 6px; font-size: 12px;">
+        Если включено, в задачах появится опция привязки расхода.
+        Задачу с привязкой нельзя выполнить без создания операции.
+      </small>
+    </form>
+  </div>
+
+  {# ── Шаблоны задач ── #}
+  <div class="card" style="grid-column: 1 / -1; max-width: 560px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Шаблоны задач</div>
+    <form method="post" action="/profile/task-templates-setting" id="taskTemplatesForm">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+        <input type="checkbox" name="enable_task_templates" value="true"
+               {% if enable_task_templates %}checked{% endif %}
+               onchange="document.getElementById('taskTemplatesForm').submit()">
+        Включить шаблоны задач
+      </label>
+      <small class="muted" style="display: block; margin-top: 6px; font-size: 12px;">
+        Если включено, в форме создания задач появится выбор шаблона для быстрого заполнения полей.
+      </small>
+    </form>
+    {% if enable_task_templates %}
+    <p style="margin-top: 10px; margin-bottom: 0;">
+      <a href="/task-presets" style="font-size: 12px;">Управление шаблонами &rarr;</a>
+    </p>
+    {% endif %}
+  </div>
+
+  {# ── Причины переносов ── #}
+  <div class="card" style="max-width: 420px;">
+    <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Переносы задач</div>
+    <form method="post" action="/profile/reschedule-reasons-setting" id="rescheduleReasonsForm">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+        <input type="checkbox" name="enable_task_reschedule_reasons" value="true"
+               {% if enable_task_reschedule_reasons %}checked{% endif %}
+               onchange="document.getElementById('rescheduleReasonsForm').submit()">
+        Требовать причину при переносе задач
+      </label>
+      <small class="muted" style="display: block; margin-top: 6px; font-size: 12px;">
+        Если включено, при переносе задачи нужно будет выбрать причину из справочника.
+      </small>
+    </form>
+    {% if enable_task_reschedule_reasons %}
+    <p style="margin-top: 10px; margin-bottom: 0;">
+      <a href="/task-reschedule-reasons" style="font-size: 12px;">Справочник причин &rarr;</a>
+    </p>
+    {% endif %}
+  </div>
+
   {# ── Оформление (theme picker) ── #}
   <div class="card" style="grid-column: 1 / -1; max-width: 860px;">
     <div style="font-weight: 600; font-size: 15px; margin-bottom: 16px;">Оформление</div>

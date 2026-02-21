@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Причины переноса — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Причины переноса</h1>
+  <a href="/task-reschedule-reasons/new" class="btn">+ Добавить причину</a>
+</div>
+
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/task-reschedule-reasons?view=active" {% if view != "archived" %}class="active"{% endif %}>Активные</a>
+  <a href="/task-reschedule-reasons?view=archived" {% if view == "archived" %}class="active"{% endif %}>Неактивные</a>
+</div>
+
+{% if reasons %}
+<div class="card">
+  {% for r in reasons %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left" style="font-size: 15px;">
+      <span {% if not r.is_active %}class="muted"{% endif %}>{{ r.name }}</span>
+      {% if not r.is_active %}
+      <span class="badge badge-archive">неактивна</span>
+      {% endif %}
+    </div>
+    <div class="dash-item-actions" style="gap: 4px;">
+      <form method="POST" action="/task-reschedule-reasons/{{ r.id }}/move" style="display:inline;">
+        <input type="hidden" name="direction" value="up">
+        <button type="submit" class="btn-gear" title="Вверх" style="font-size: 12px;">&#9650;</button>
+      </form>
+      <form method="POST" action="/task-reschedule-reasons/{{ r.id }}/move" style="display:inline;">
+        <input type="hidden" name="direction" value="down">
+        <button type="submit" class="btn-gear" title="Вниз" style="font-size: 12px;">&#9660;</button>
+      </form>
+      <a href="/task-reschedule-reasons/{{ r.id }}/edit" class="btn-gear" title="Редактировать">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  {% if view == "archived" %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Неактивных причин нет</p>
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">
+    Причин нет.
+    <a href="/task-reschedule-reasons/new">Добавить первую</a>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

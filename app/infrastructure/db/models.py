@@ -3,7 +3,7 @@ SQLAlchemy ORM models (domain tables + readmodels)
 """
 from decimal import Decimal
 from datetime import date as date_type, time as time_type
-from sqlalchemy import String, DateTime, Integer, SmallInteger, Text, TIMESTAMP, Date, Time, func, Boolean, Numeric, UniqueConstraint, Index
+from sqlalchemy import String, DateTime, Integer, SmallInteger, Text, TIMESTAMP, Date, Time, func, Boolean, Numeric, UniqueConstraint, Index, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -41,6 +41,15 @@ class User(Base):
     # Daily digest push notifications
     digest_morning: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
     digest_evening: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
+
+    # Task-expense link feature toggle
+    enable_task_expense_link: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    # Task presets (quick templates) feature toggle
+    enable_task_templates: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    # Task reschedule reasons feature toggle
+    enable_task_reschedule_reasons: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
 
 class EventLog(Base):
@@ -208,6 +217,8 @@ class TransactionFeed(Base):
         index=True
     )
 
+    task_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -291,6 +302,11 @@ class TaskModel(Base):
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     archived_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
+    # Task-expense link
+    requires_expense: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    suggested_expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    suggested_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+
 
 class TaskReminderModel(Base):
     """Read model: Task reminders (offset-based, tied to task due time)"""
@@ -323,6 +339,66 @@ class UserReminderTimePreset(Base):
 
     __table_args__ = (
         UniqueConstraint('account_id', 'offset_minutes', name='uq_user_reminder_preset'),
+    )
+
+
+class TaskPresetModel(Base):
+    """Task presets for quick form pre-filling"""
+    __tablename__ = "task_presets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    title_template: Mapped[str] = mapped_column(Text, nullable=False)
+    description_template: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_task_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TaskRescheduleReason(Base):
+    """Dictionary of user-defined reschedule reasons"""
+    __tablename__ = "task_reschedule_reasons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'name', name='uq_reschedule_reason_user_name'),
+    )
+
+
+class TaskDueChangeLog(Base):
+    """Log of task due_date changes (reschedules) with reasons"""
+    __tablename__ = "task_due_change_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    old_due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    new_due_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    reason_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("task_reschedule_reasons.id", ondelete="SET NULL"), nullable=True
+    )
+    changed_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
 

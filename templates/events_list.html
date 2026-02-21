@@ -40,36 +40,89 @@
   </form>
 </div>
 
-<!-- Event list -->
-{% if events %}
-<div class="card">
-  {% for ev in events %}
-  <div class="dash-item" style="padding: 10px 0;">
-    <div class="dash-item-left" style="font-size: 15px;">
-      <span style="font-size: 20px; min-width: 28px; text-align: center;">
-        {% if wc_map.get(ev.category_id) %}{{ wc_map[ev.category_id].emoji or '' }}{% endif %}
+{# ── Upcoming events block (active view only) ── #}
+{% if view != "archived" %}
+<div class="card" style="margin-top: 16px;">
+  <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Ближайшие события</div>
+  {% if upcoming %}
+  <div class="ev-upcoming-list">
+    {% for u in upcoming %}
+    <div class="ev-upcoming-row">
+      <a href="/events/{{ u.event.event_id }}/edit" class="ev-upcoming-title">
+        {% if wc_map.get(u.event.category_id) %}
+        <span style="margin-right: 4px;">{{ wc_map[u.event.category_id].emoji or '' }}</span>
+        {% endif %}
+        {{ u.event.title }}
+      </a>
+      <span class="ev-upcoming-date">{{ u.next_date.strftime('%d.%m.%Y') }}</span>
+      <span class="ev-upcoming-days {% if u.days_left == 0 %}ev-today{% elif u.days_left == 1 %}ev-tomorrow{% endif %}">
+        {% if u.days_left == 0 %}сегодня{% elif u.days_left == 1 %}завтра{% else %}через {{ u.days_left }} дн.{% endif %}
       </span>
-      <span {% if not ev.is_active %}class="muted"{% endif %}>{{ ev.title }}</span>
-      {% if wc_map.get(ev.category_id) %}
-      <span class="badge">{{ wc_map[ev.category_id].title }}</span>
-      {% endif %}
-      {% if ev.repeat_rule_id and rule_map.get(ev.repeat_rule_id) %}
-      <span class="badge" style="background: #e8f0fe; color: #1a56db;">{{ freq_labels.get(rule_map[ev.repeat_rule_id].freq, rule_map[ev.repeat_rule_id].freq) }}</span>
-      {% elif not ev.repeat_rule_id %}
-      <span class="badge" style="background: #f3f4f6; color: #666;">однократное</span>
-      {% endif %}
-      {% if not ev.is_active %}
-      <span class="badge badge-archive">архив</span>
-      {% endif %}
     </div>
-    <div class="dash-item-actions">
-      <a href="/events/{{ ev.event_id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
-    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
+  {% if upcoming_has_more %}
+  <div style="text-align: center; margin-top: 8px;">
+    <a href="#event-groups" style="font-size: 13px; color: #007AFF;">Показать все</a>
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 12px 0; margin: 0;">В ближайшие 30 дней событий нет.</p>
+  {% endif %}
 </div>
-{% else %}
-<div class="card">
+{% endif %}
+
+{# ── Grouped event list ── #}
+<div id="event-groups">
+{% if grouped_list %}
+  {% for group_key, group_title, items in grouped_list %}
+  <details class="card" style="margin-top: 16px;" open>
+    <summary style="cursor: pointer; font-weight: 600; font-size: 15px; list-style: none; display: flex; align-items: center; gap: 8px;">
+      <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
+      {{ group_title }}
+      <span class="badge" style="font-size: 12px;">{{ items|length }}</span>
+    </summary>
+    <div style="margin-top: 12px;">
+      {% for it in items %}
+      <div class="dash-item" style="padding: 10px 0;">
+        <div class="dash-item-left" style="font-size: 15px;">
+          <span style="font-size: 20px; min-width: 28px; text-align: center;">
+            {% if wc_map.get(it.event.category_id) %}{{ wc_map[it.event.category_id].emoji or '' }}{% endif %}
+          </span>
+          <span {% if not it.event.is_active %}class="muted"{% endif %}>{{ it.event.title }}</span>
+          {% if wc_map.get(it.event.category_id) %}
+          <span class="badge">{{ wc_map[it.event.category_id].title }}</span>
+          {% endif %}
+          {% if it.event.repeat_rule_id and rule_map.get(it.event.repeat_rule_id) %}
+            {% set rule = rule_map[it.event.repeat_rule_id] %}
+            {% if rule.freq == 'INTERVAL_DAYS' %}
+            <span class="badge" style="background: #e8f0fe; color: #1a56db;">каждые {{ rule.interval }} дн.</span>
+            {% else %}
+            <span class="badge" style="background: #e8f0fe; color: #1a56db;">{{ freq_labels.get(rule.freq, rule.freq) }}</span>
+            {% endif %}
+          {% elif not it.event.repeat_rule_id %}
+          <span class="badge" style="background: #f3f4f6; color: #666;">однократное</span>
+          {% endif %}
+          {% if not it.event.is_active %}
+          <span class="badge badge-archive">архив</span>
+          {% endif %}
+        </div>
+        <div class="dash-item-actions" style="gap: 8px; align-items: center;">
+          {% if it.next_date %}
+          <span class="ev-meta-date">{{ it.next_date.strftime('%d.%m.%Y') }}</span>
+          <span class="ev-meta-days {% if it.days_left == 0 %}ev-today{% elif it.days_left == 1 %}ev-tomorrow{% endif %}">
+            {% if it.days_left == 0 %}сегодня{% elif it.days_left == 1 %}завтра{% elif it.days_left is not none %}через {{ it.days_left }} дн.{% endif %}
+          </span>
+          {% endif %}
+          <a href="/events/{{ it.event.event_id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+{% elif not events %}
+<div class="card" style="margin-top: 16px;">
   {% if view == "archived" %}
   <p class="muted" style="text-align: center; padding: 24px 0;">Архив пуст</p>
   {% else %}
@@ -80,4 +133,95 @@
   {% endif %}
 </div>
 {% endif %}
+</div>
+
+<style>
+  .ev-upcoming-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .ev-upcoming-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border, #f0f0f0);
+    font-size: 14px;
+  }
+  .ev-upcoming-row:last-child {
+    border-bottom: none;
+  }
+  .ev-upcoming-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+    text-decoration: none;
+  }
+  .ev-upcoming-title:hover {
+    text-decoration: underline;
+  }
+  .ev-upcoming-date {
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+    white-space: nowrap;
+  }
+  .ev-upcoming-days {
+    font-size: 12px;
+    color: var(--text-secondary, #888);
+    white-space: nowrap;
+    min-width: 72px;
+    text-align: right;
+  }
+  .ev-today {
+    color: #d97706;
+    font-weight: 600;
+  }
+  .ev-tomorrow {
+    color: #2563eb;
+    font-weight: 500;
+  }
+  .ev-meta-date {
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+    white-space: nowrap;
+  }
+  .ev-meta-days {
+    font-size: 12px;
+    color: var(--text-secondary, #888);
+    white-space: nowrap;
+    min-width: 72px;
+    text-align: right;
+  }
+
+  /* details/summary chevron rotation */
+  details.card > summary .nav-chevron {
+    transition: transform 0.15s ease;
+  }
+  details.card[open] > summary .nav-chevron {
+    transform: rotate(90deg);
+  }
+
+  @media (max-width: 600px) {
+    .ev-upcoming-row {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .ev-upcoming-date {
+      font-size: 12px;
+    }
+    .ev-upcoming-days {
+      min-width: auto;
+    }
+    .ev-meta-date {
+      font-size: 12px;
+    }
+    .ev-meta-days {
+      min-width: auto;
+    }
+  }
+</style>
 {% endblock %}

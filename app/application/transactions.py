@@ -115,7 +115,8 @@ class CreateTransactionUseCase:
         category_id: int | None,
         description: str,
         occurred_at: datetime | None = None,
-        actor_user_id: int | None = None
+        actor_user_id: int | None = None,
+        task_id: int | None = None,
     ) -> int:
         """
         Создать EXPENSE (расход)
@@ -167,7 +168,8 @@ class CreateTransactionUseCase:
             currency=currency,
             category_id=category_id,
             description=description,
-            occurred_at=occurred_at
+            occurred_at=occurred_at,
+            task_id=task_id,
         )
 
         self.event_repo.append_event(

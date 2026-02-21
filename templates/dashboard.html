@@ -233,6 +233,11 @@ a.dash-card-link {
     grid-template-columns: 1fr;
     gap: 12px;
   }
+  .dash-col-left,
+  .dash-col-center,
+  .dash-col-right {
+    min-width: 0;
+  }
   .dash-col-right {
     grid-column: 1;
     flex-direction: column;
@@ -240,13 +245,17 @@ a.dash-card-link {
   .dash-col-right > .dash-card {
     flex: none;
   }
-  /* Reduce card padding for more content space */
+  /* Reduce card padding + prevent overflow */
   .dash-card {
     padding: 14px;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
   /* Finance state: smaller amounts */
   .fs-amount {
     font-size: 15px;
+    word-break: break-word;
   }
   .fs-net {
     font-size: 14px;
@@ -268,6 +277,8 @@ a.dash-card-link {
   }
   .fs-sub {
     font-size: 11px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   /* Level & Activity: slightly smaller */
   .lv-num {
@@ -282,6 +293,23 @@ a.dash-card-link {
   /* Diary */
   .diary-item-amount {
     font-size: 12px;
+    word-break: break-word;
+  }
+  .diary-item-body {
+    min-width: 0;
+  }
+  .diary-item-subtitle {
+    max-width: 100%;
+  }
+  /* Badges — allow wrapping on mobile */
+  .badge {
+    white-space: normal;
+    word-break: break-word;
+  }
+  /* Dash items — prevent overflow */
+  .dash-item-left {
+    min-width: 0;
+    overflow-wrap: break-word;
   }
   /* Focus */
   .focus-header-actions {
@@ -304,6 +332,13 @@ a.dash-card-link {
     font-size: 13px;
   }
   .fs-label {
+    font-size: 11px;
+  }
+  .fs-sub {
+    font-size: 10px;
+  }
+  .diary-item-time {
+    min-width: 32px;
     font-size: 11px;
   }
 }
@@ -644,7 +679,7 @@ a.dash-card-link {
           </span>
         </div>
         <div class="fs-sub">
-          Доход: {{ format_money(fin_state.month_income, "RUB") }}&nbsp;•&nbsp;Расход: {{ format_money(fin_state.month_expense, "RUB") }}
+          Доход: {{ format_money(fin_state.month_income, "RUB") }} • Расход: {{ format_money(fin_state.month_expense, "RUB") }}
         </div>
       </div>
 
@@ -1229,6 +1264,100 @@ function updateQopToHint() {
   };
 
   renderReminderChips();
+})();
+
+/* ── Task preset pre-fill ── */
+function applyTaskPreset(presetId) {
+  var sel = document.getElementById('presetSelect');
+  if (!sel) return;
+  var opt = sel.options[sel.selectedIndex];
+  var form = document.getElementById('taskForm');
+  var titleInput = form.querySelector('input[name="title"]');
+  var noteInput  = form.querySelector('input[name="note"]');
+  var catSelect  = form.querySelector('select[name="category_id"]');
+
+  if (!presetId) {
+    if (titleInput) titleInput.value = '';
+    if (noteInput)  noteInput.value = '';
+    if (catSelect)  catSelect.value = '';
+    return;
+  }
+  if (titleInput) titleInput.value = opt.dataset.title || '';
+  if (noteInput)  noteInput.value = opt.dataset.note || '';
+  if (catSelect)  catSelect.value = opt.dataset.category || '';
+}
+
+/* ── Multi-date chips ── */
+(function() {
+  var _dates = [];
+  var chipsEl = document.getElementById('multiDateChips');
+  var hiddenEl = document.getElementById('multiDatesJson');
+  var hintEl = document.getElementById('multiDateHint');
+
+  function renderChips() {
+    if (!chipsEl) return;
+    _dates.sort();
+    chipsEl.innerHTML = '';
+    _dates.forEach(function(d, idx) {
+      var parts = d.split('-');
+      var label = parts[2] + '.' + parts[1] + '.' + parts[0];
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg-table-header, #e9ecef);padding:4px 10px;border-radius:12px;font-size:12px;';
+      chip.textContent = label;
+      var closeBtn = document.createElement('span');
+      closeBtn.textContent = '\u00d7';
+      closeBtn.style.cssText = 'cursor:pointer;font-weight:700;color:#888;margin-left:2px;';
+      closeBtn.onclick = (function(i) {
+        return function() { _dates.splice(i, 1); renderChips(); };
+      })(idx);
+      chip.appendChild(closeBtn);
+      chipsEl.appendChild(chip);
+    });
+    hiddenEl.value = _dates.length ? _dates.join(',') : '';
+    if (hintEl) hintEl.style.display = _dates.length ? 'none' : 'block';
+  }
+
+  window.addMultiDate = function() {
+    var input = document.getElementById('inputMultiDate');
+    if (!input || !input.value) return;
+    var val = input.value;
+    if (_dates.indexOf(val) !== -1) return;
+    _dates.push(val);
+    input.value = '';
+    renderChips();
+  };
+
+  window.toggleMultiDates = function() {
+    var chk = document.getElementById('chkMultiDates');
+    var blockMulti = document.getElementById('blockMultiDates');
+    var blockSwitcher = document.getElementById('blockDueKindSwitcher');
+    var blockDate = document.getElementById('blockDueDate');
+    var blockTime = document.getElementById('blockDueTime');
+    var blockWindow = document.getElementById('blockDueWindow');
+    var blockReminders = document.getElementById('blockReminders');
+
+    if (chk && chk.checked) {
+      if (blockSwitcher) blockSwitcher.style.display = 'none';
+      if (blockDate) blockDate.style.display = 'none';
+      if (blockTime) blockTime.style.display = 'none';
+      if (blockWindow) blockWindow.style.display = 'none';
+      if (blockReminders) blockReminders.style.display = 'none';
+      if (blockMulti) blockMulti.style.display = '';
+      var dueKindInput = document.getElementById('dueKind');
+      if (dueKindInput) dueKindInput.value = 'DATE';
+    } else {
+      if (blockSwitcher) blockSwitcher.style.display = '';
+      if (blockMulti) blockMulti.style.display = 'none';
+      if (window.setDueKind) {
+        var cur = document.getElementById('dueKind');
+        window.setDueKind(cur ? cur.value : 'NONE');
+      }
+      _dates = [];
+      renderChips();
+    }
+  };
+
+  renderChips();
 })();
 
 /* ── Quick-task modal open/close ── */

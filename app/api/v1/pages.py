@@ -14,14 +14,15 @@ from sqlalchemy import func, or_
 
 from app.api.deps import get_db, require_user
 from app.infrastructure.db.models import (
-    User,
+    User, EventLog,
     WalletBalance, WalletFolder, CategoryInfo, TransactionFeed,
     WorkCategory, TaskModel, HabitModel, HabitOccurrence,
     TaskTemplateModel, TaskOccurrence,
     OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel,
     CalendarEventModel, EventOccurrenceModel, EventFilterPresetModel,
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
-    ContactModel, WishModel,
+    ContactModel, WishModel, TaskPresetModel,
+    TaskRescheduleReason, TaskDueChangeLog,
     GoalInfo, GoalWalletBalance,
     BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
 )
@@ -155,6 +156,8 @@ def _resolve_current_page(request: Request) -> str:
         ("/contacts",         "contacts"),
         ("/events",           "events"),
         ("/task-categories",  "task-categories"),
+        ("/task-presets",     "task-presets"),
+        ("/task-reschedule-reasons", "task-reschedule-reasons"),
         ("/profile",          "profile"),
         ("/admin",            "admin"),
     ]
@@ -310,7 +313,17 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             UserReminderTimePreset.account_id == user_id,
         ).order_by(UserReminderTimePreset.sort_order).all()
 
-    # 14. Expiring subscriptions (SELF only, next 30 days)
+    # 14. Task presets for quick-task modal
+    _dash_user = db.query(User).filter(User.id == user_id).first()
+    _dash_enable_tt = _dash_user.enable_task_templates if _dash_user else False
+    _dash_task_presets = []
+    if _dash_enable_tt:
+        _dash_task_presets = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.is_active == True,
+        ).order_by(TaskPresetModel.sort_order, TaskPresetModel.id).all()
+
+    # 15. Expiring subscriptions (SELF only, next 30 days)
     _sub_deadline = today + timedelta(days=30)
     expiring_subs_raw = db.query(SubscriptionModel).filter(
         SubscriptionModel.account_id == user_id,
@@ -367,6 +380,9 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         # Work categories + reminder presets for quick-task modal
         "work_categories": work_categories,
         "reminder_presets": reminder_presets,
+        # Task presets for quick-task modal
+        "enable_task_templates": _dash_enable_tt,
+        "task_presets": _dash_task_presets,
         # Expiring subscriptions
         "expiring_subs": expiring_subs,
     })
@@ -2097,6 +2113,241 @@ def task_category_update(
 
 # === Tasks ===
 
+
+def _build_discipline_metrics(db: Session, user_id: int, today: date) -> dict:
+    """Discipline score (0..100) and reschedule stats from event_log. No new tables."""
+    from collections import Counter
+
+    d7 = today - timedelta(days=6)
+    d30 = today - timedelta(days=29)
+
+    # --- Completed on time / late (7 days) ---
+    completed_on_time_7 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        TaskModel.due_date.isnot(None),
+        func.date(TaskModel.completed_at) >= d7,
+        func.date(TaskModel.completed_at) <= today,
+        func.date(TaskModel.completed_at) <= TaskModel.due_date,
+    ).scalar() or 0
+
+    completed_late_7 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        TaskModel.due_date.isnot(None),
+        func.date(TaskModel.completed_at) >= d7,
+        func.date(TaskModel.completed_at) <= today,
+        func.date(TaskModel.completed_at) > TaskModel.due_date,
+    ).scalar() or 0
+
+    # --- Overdue now (active tasks past due) ---
+    overdue_now = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.status == "ACTIVE",
+        TaskModel.due_date.isnot(None),
+        TaskModel.due_date < today,
+    ).scalar() or 0
+
+    # --- Reschedules from task_due_change_log ---
+    reschedules_7 = db.query(func.count()).filter(
+        TaskDueChangeLog.user_id == user_id,
+        func.date(TaskDueChangeLog.changed_at) >= d7,
+        func.date(TaskDueChangeLog.changed_at) <= today,
+    ).scalar() or 0
+
+    reschedules_30 = db.query(func.count()).filter(
+        TaskDueChangeLog.user_id == user_id,
+        func.date(TaskDueChangeLog.changed_at) >= d30,
+        func.date(TaskDueChangeLog.changed_at) <= today,
+    ).scalar() or 0
+
+    # Top-5 tasks by reschedule count (30 days)
+    top_tasks_q = db.query(
+        TaskDueChangeLog.task_id,
+        func.count().label("cnt"),
+    ).filter(
+        TaskDueChangeLog.user_id == user_id,
+        func.date(TaskDueChangeLog.changed_at) >= d30,
+        func.date(TaskDueChangeLog.changed_at) <= today,
+    ).group_by(TaskDueChangeLog.task_id).order_by(
+        func.count().desc()
+    ).limit(5).all()
+
+    reschedule_top = []
+    if top_tasks_q:
+        top_task_ids = [r.task_id for r in top_tasks_q]
+        title_rows = db.query(TaskModel.task_id, TaskModel.title).filter(
+            TaskModel.task_id.in_(top_task_ids),
+        ).all()
+        title_map = {t.task_id: t.title for t in title_rows}
+        for r in top_tasks_q:
+            reschedule_top.append({
+                "task_id": r.task_id,
+                "title": title_map.get(r.task_id, f"Задача #{r.task_id}"),
+                "count": r.cnt,
+            })
+
+    # Top-5 reasons (30 days)
+    reason_stats = db.query(
+        TaskRescheduleReason.name,
+        func.count().label("cnt"),
+    ).join(
+        TaskDueChangeLog, TaskDueChangeLog.reason_id == TaskRescheduleReason.id,
+    ).filter(
+        TaskDueChangeLog.user_id == user_id,
+        func.date(TaskDueChangeLog.changed_at) >= d30,
+        func.date(TaskDueChangeLog.changed_at) <= today,
+    ).group_by(TaskRescheduleReason.name).order_by(
+        func.count().desc()
+    ).limit(5).all()
+    reason_top_30 = [{"name": r.name, "count": r.cnt} for r in reason_stats]
+
+    # --- Discipline score (0..100) ---
+    # Penalties (easily tunable)
+    PENALTY_PER_OVERDUE = 10
+    PENALTY_MAX_OVERDUE = 40
+    PENALTY_PER_LATE = 5
+    PENALTY_MAX_LATE = 30
+    PENALTY_PER_RESCHEDULE = 3
+    PENALTY_MAX_RESCHEDULE = 30
+
+    penalty_overdue = min(PENALTY_MAX_OVERDUE, overdue_now * PENALTY_PER_OVERDUE)
+    penalty_late = min(PENALTY_MAX_LATE, completed_late_7 * PENALTY_PER_LATE)
+    penalty_reschedules = min(PENALTY_MAX_RESCHEDULE, reschedules_7 * PENALTY_PER_RESCHEDULE)
+    score = max(0, 100 - penalty_overdue - penalty_late - penalty_reschedules)
+
+    return {
+        "score": score,
+        "completed_on_time_7": completed_on_time_7,
+        "completed_late_7": completed_late_7,
+        "overdue_now": overdue_now,
+        "reschedules_7": reschedules_7,
+        "reschedules_30": reschedules_30,
+        "reschedule_top_30": reschedule_top,
+        "reason_top_30": reason_top_30,
+    }
+
+
+def _build_task_analytics(db: Session, user_id: int, today: date, work_categories) -> dict:
+    """Build analytics dict for 7d, 30d summaries and by-category breakdown (SQL aggregates)."""
+    from sqlalchemy import case, literal
+
+    d7 = today - timedelta(days=6)
+    d30 = today - timedelta(days=29)
+
+    cat_map = {c.category_id: c for c in work_categories}
+
+    # --- 7-day summary ---
+    created_7 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        func.date(TaskModel.created_at) >= d7,
+        func.date(TaskModel.created_at) <= today,
+    ).scalar() or 0
+    completed_7 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        func.date(TaskModel.completed_at) >= d7,
+        func.date(TaskModel.completed_at) <= today,
+    ).scalar() or 0
+
+    # --- 30-day summary ---
+    created_30 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        func.date(TaskModel.created_at) >= d30,
+        func.date(TaskModel.created_at) <= today,
+    ).scalar() or 0
+    completed_30 = db.query(func.count()).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        func.date(TaskModel.completed_at) >= d30,
+        func.date(TaskModel.completed_at) <= today,
+    ).scalar() or 0
+
+    # --- By category (30 days) ---
+    cat_created = db.query(
+        TaskModel.category_id,
+        func.count().label("cnt"),
+    ).filter(
+        TaskModel.account_id == user_id,
+        func.date(TaskModel.created_at) >= d30,
+        func.date(TaskModel.created_at) <= today,
+    ).group_by(TaskModel.category_id).all()
+
+    cat_completed = db.query(
+        TaskModel.category_id,
+        func.count().label("cnt"),
+    ).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        func.date(TaskModel.completed_at) >= d30,
+        func.date(TaskModel.completed_at) <= today,
+    ).group_by(TaskModel.category_id).all()
+
+    created_map = {row.category_id: row.cnt for row in cat_created}
+    completed_map = {row.category_id: row.cnt for row in cat_completed}
+    all_cat_ids = set(created_map.keys()) | set(completed_map.keys())
+
+    by_category = []
+    for cid in all_cat_ids:
+        c = created_map.get(cid, 0)
+        d = completed_map.get(cid, 0)
+        cat = cat_map.get(cid)
+        name = (cat.emoji + " " if cat and cat.emoji else "") + cat.title if cat else "Без категории"
+        by_category.append({
+            "category_name": name,
+            "created": c,
+            "completed": d,
+            "rate": round(d / max(c, 1) * 100),
+        })
+    by_category.sort(key=lambda x: x["completed"], reverse=True)
+    by_category = by_category[:8]
+
+    # --- Daily completed (7 days, for mini-chart) ---
+    _weekday_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    daily_rows = db.query(
+        func.date(TaskModel.completed_at).label("d"),
+        func.count().label("cnt"),
+    ).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.completed_at.isnot(None),
+        func.date(TaskModel.completed_at) >= d7,
+        func.date(TaskModel.completed_at) <= today,
+    ).group_by(func.date(TaskModel.completed_at)).all()
+    daily_map = {row.d: row.cnt for row in daily_rows}
+    # Handle string keys from SQLite (func.date returns str in SQLite)
+    daily_map_norm: dict[date, int] = {}
+    for k, v in daily_map.items():
+        if isinstance(k, str):
+            daily_map_norm[date.fromisoformat(k)] = v
+        else:
+            daily_map_norm[k] = v
+
+    productivity_7 = []
+    for i in range(7):
+        d = d7 + timedelta(days=i)
+        productivity_7.append({
+            "date": d.isoformat(),
+            "weekday": _weekday_names[d.weekday()],
+            "count": daily_map_norm.get(d, 0),
+            "is_today": d == today,
+        })
+
+    return {
+        "days7": {
+            "created": created_7,
+            "completed": completed_7,
+            "completion_rate": round(completed_7 / max(created_7, 1) * 100),
+        },
+        "days30": {
+            "created": created_30,
+            "completed": completed_30,
+            "completion_rate": round(completed_30 / max(created_30, 1) * 100),
+        },
+        "by_category_30": by_category,
+        "productivity_7": productivity_7,
+    }
+
+
 @router.get("/tasks", response_class=HTMLResponse)
 def tasks_page(request: Request, db: Session = Depends(get_db)):
     if not require_user(request):
@@ -2137,10 +2388,119 @@ def tasks_page(request: Request, db: Session = Depends(get_db)):
             UserReminderTimePreset.account_id == user_id,
         ).order_by(UserReminderTimePreset.sort_order).all()
 
+    # Task-expense link: load user setting + expense categories + wallets
+    user = db.query(User).filter(User.id == user_id).first()
+    enable_task_expense_link = user.enable_task_expense_link if user else False
+    expense_categories = []
+    task_wallets = []
+    if enable_task_expense_link:
+        expense_categories = db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.category_type == "EXPENSE",
+            CategoryInfo.is_archived == False,
+        ).order_by(CategoryInfo.title).all()
+        task_wallets = db.query(WalletBalance).filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.is_archived == False,
+        ).all()
+
+    # Task presets (quick templates)
+    enable_task_templates = user.enable_task_templates if user else False
+    task_presets = []
+    if enable_task_templates:
+        task_presets = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.is_active == True,
+        ).order_by(TaskPresetModel.sort_order, TaskPresetModel.id).all()
+
+    # Task reschedule reasons
+    enable_reschedule_reasons = user.enable_task_reschedule_reasons if user else False
+    reschedule_reasons = []
+    if enable_reschedule_reasons:
+        reschedule_reasons = db.query(TaskRescheduleReason).filter(
+            TaskRescheduleReason.user_id == user_id,
+            TaskRescheduleReason.is_active == True,
+        ).order_by(TaskRescheduleReason.sort_order, TaskRescheduleReason.id).all()
+
+    # --- Prepare display blocks ---
+    active_tasks = [t for t in tasks if t.status == "ACTIVE"]
+    done_tasks = [t for t in tasks if t.status == "DONE"]
+
+    # Block "Сегодня": overdue (due_date < today) + today's tasks
+    overdue = [t for t in active_tasks if t.due_date and t.due_date < today]
+    today_due = [t for t in active_tasks if t.due_date and t.due_date == today]
+    today_tasks = sorted(overdue, key=lambda t: t.due_date) + today_due
+
+    # Block "Ближайшие 14 дней": due_date in (today, today+14]
+    deadline_14 = today + timedelta(days=14)
+    upcoming_14 = sorted(
+        [t for t in active_tasks if t.due_date and today < t.due_date <= deadline_14],
+        key=lambda t: t.due_date,
+    )
+
+    # Block "Без срока": active tasks without due_date
+    no_date_tasks = [t for t in active_tasks if not t.due_date]
+
+    # Block "Позже": active tasks with due_date > today+14
+    later_tasks = sorted(
+        [t for t in active_tasks if t.due_date and t.due_date > deadline_14],
+        key=lambda t: t.due_date,
+    )
+
+    # Block "Повторяющиеся": for each template, only nearest ACTIVE occurrence
+    recurring_items = []
+    for tmpl in task_templates:
+        tmpl_occs = [
+            occ for occ in task_occurrences
+            if occ.template_id == tmpl.template_id and occ.status == "ACTIVE"
+        ]
+        nearest = min(tmpl_occs, key=lambda o: o.scheduled_date) if tmpl_occs else None
+        recurring_items.append({
+            "template": tmpl,
+            "nearest_occ": nearest,
+        })
+    # Sort: templates with nearest occurrence first, then by date
+    recurring_items.sort(
+        key=lambda x: x["nearest_occ"].scheduled_date if x["nearest_occ"] else date.max,
+    )
+
+    # --- Progress metrics ---
+    planned_today = len(today_due) + sum(
+        1 for o in task_occurrences if o.scheduled_date == today and o.status == "ACTIVE"
+    )
+    completed_today = sum(
+        1 for t in tasks if t.completed_at and t.completed_at.date() == today
+    ) + sum(
+        1 for o in task_occurrences if o.completed_at and o.completed_at.date() == today
+    )
+    overdue_count = len(overdue)
+
+    # --- Analytics (7d / 30d / by category) ---
+    analytics = _build_task_analytics(db, user_id, today, work_categories)
+    discipline = _build_discipline_metrics(db, user_id, today)
+
     return templates.TemplateResponse("tasks.html", {
         "request": request, "tasks": tasks, "task_templates": task_templates,
         "task_occurrences": task_occurrences, "work_categories": work_categories,
         "today": today, "reminder_presets": reminder_presets,
+        "enable_task_expense_link": enable_task_expense_link,
+        "expense_categories": expense_categories,
+        "task_wallets": task_wallets,
+        "enable_task_templates": enable_task_templates,
+        "task_presets": task_presets,
+        "today_tasks": today_tasks,
+        "upcoming_14": upcoming_14,
+        "no_date_tasks": no_date_tasks,
+        "later_tasks": later_tasks,
+        "done_tasks": done_tasks,
+        "recurring_items": recurring_items,
+        "planned_today": planned_today,
+        "completed_today": completed_today,
+        "overdue_count": overdue_count,
+        "analytics": analytics,
+        "discipline": discipline,
+        "enable_reschedule_reasons": enable_reschedule_reasons,
+        "reschedule_reasons": reschedule_reasons,
     })
 
 
@@ -2166,6 +2526,10 @@ def create_task_form(
     category_id: int | None = Form(None),
     note: str = Form(""),
     active_until: str = Form(""),
+    requires_expense: str = Form(""),
+    suggested_expense_category_id: int | None = Form(None),
+    suggested_amount: str = Form(""),
+    multi_dates: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -2183,7 +2547,44 @@ def create_task_form(
         work_cats = db.query(WorkCategory).filter(WorkCategory.account_id == user_id, WorkCategory.is_archived == False).order_by(WorkCategory.title).all()
         from app.infrastructure.db.models import UserReminderTimePreset
         rem_presets = db.query(UserReminderTimePreset).filter(UserReminderTimePreset.account_id == user_id).order_by(UserReminderTimePreset.sort_order).all()
-        return templates.TemplateResponse("tasks.html", {"request": request, "tasks": tasks, "task_templates": task_tmpls, "task_occurrences": task_occs, "work_categories": work_cats, "today": today, "error": msg, "reminder_presets": rem_presets})
+        _user = db.query(User).filter(User.id == user_id).first()
+        _enable_tt = _user.enable_task_templates if _user else False
+        _presets = db.query(TaskPresetModel).filter(TaskPresetModel.account_id == user_id, TaskPresetModel.is_active == True).order_by(TaskPresetModel.sort_order, TaskPresetModel.id).all() if _enable_tt else []
+        # Prepare display blocks for template
+        _active = [t for t in tasks if t.status == "ACTIVE"]
+        _done = [t for t in tasks if t.status == "DONE"]
+        _overdue = [t for t in _active if t.due_date and t.due_date < today]
+        _today_due = [t for t in _active if t.due_date and t.due_date == today]
+        _today_tasks = sorted(_overdue, key=lambda t: t.due_date) + _today_due
+        _dl14 = today + timedelta(days=14)
+        _upcoming = sorted([t for t in _active if t.due_date and today < t.due_date <= _dl14], key=lambda t: t.due_date)
+        _no_date = [t for t in _active if not t.due_date]
+        _later = sorted([t for t in _active if t.due_date and t.due_date > _dl14], key=lambda t: t.due_date)
+        _rec_items = []
+        for _tmpl in task_tmpls:
+            _tocc = [o for o in task_occs if o.template_id == _tmpl.template_id and o.status == "ACTIVE"]
+            _near = min(_tocc, key=lambda o: o.scheduled_date) if _tocc else None
+            _rec_items.append({"template": _tmpl, "nearest_occ": _near})
+        _rec_items.sort(key=lambda x: x["nearest_occ"].scheduled_date if x["nearest_occ"] else date.max)
+        _planned = len(_today_due) + sum(1 for o in task_occs if o.scheduled_date == today and o.status == "ACTIVE")
+        _completed = sum(1 for t in tasks if t.completed_at and t.completed_at.date() == today) + sum(1 for o in task_occs if o.completed_at and o.completed_at.date() == today)
+        _analytics = _build_task_analytics(db, user_id, today, work_cats)
+        _discipline = _build_discipline_metrics(db, user_id, today)
+        return templates.TemplateResponse("tasks.html", {
+            "request": request, "tasks": tasks, "task_templates": task_tmpls,
+            "task_occurrences": task_occs, "work_categories": work_cats,
+            "today": today, "error": msg, "reminder_presets": rem_presets,
+            "enable_task_templates": _enable_tt, "task_presets": _presets,
+            "today_tasks": _today_tasks, "upcoming_14": _upcoming,
+            "no_date_tasks": _no_date, "later_tasks": _later,
+            "done_tasks": _done, "recurring_items": _rec_items,
+            "planned_today": _planned, "completed_today": _completed,
+            "overdue_count": len(_overdue),
+            "analytics": _analytics,
+            "discipline": _discipline,
+            "enable_reschedule_reasons": _user.enable_task_reschedule_reasons if _user else False,
+            "reschedule_reasons": db.query(TaskRescheduleReason).filter(TaskRescheduleReason.user_id == user_id, TaskRescheduleReason.is_active == True).order_by(TaskRescheduleReason.sort_order, TaskRescheduleReason.id).all() if (_user and _user.enable_task_reschedule_reasons) else [],
+        })
 
     try:
         if mode == "recurring":
@@ -2223,16 +2624,57 @@ def create_task_form(
                 except json.JSONDecodeError:
                     return _render_error("Некорректный формат напоминаний")
 
-            CreateTaskUseCase(db).execute(
-                account_id=user_id, title=title, note=note.strip() or None,
-                due_kind=due_kind.strip() or "NONE",
-                due_date=due_date.strip() or None,
-                due_time=due_time.strip() or None,
-                due_start_time=due_start_time.strip() or None,
-                due_end_time=due_end_time.strip() or None,
-                category_id=category_id, actor_user_id=user_id,
-                reminders=reminder_list or None,
-            )
+            # Task-expense link: check user setting
+            _user = db.query(User).filter(User.id == user_id).first()
+            _req_expense = bool(requires_expense) and _user and _user.enable_task_expense_link
+            _sug_cat_id = suggested_expense_category_id if _req_expense else None
+            _sug_amount = suggested_amount.strip() if _req_expense and suggested_amount else None
+
+            # Multi-date creation: create N tasks (one per date)
+            if multi_dates.strip():
+                raw_dates = [d.strip() for d in multi_dates.split(",") if d.strip()]
+                if not raw_dates:
+                    return _render_error("Выберите хотя бы одну дату.")
+                # Validate and deduplicate
+                parsed_dates = []
+                seen = set()
+                for d in raw_dates:
+                    try:
+                        pd = date.fromisoformat(d)
+                    except ValueError:
+                        return _render_error(f"Некорректная дата: {d}")
+                    if d not in seen:
+                        seen.add(d)
+                        parsed_dates.append(pd)
+                parsed_dates.sort()
+                for pd in parsed_dates:
+                    CreateTaskUseCase(db).execute(
+                        account_id=user_id, title=title, note=note.strip() or None,
+                        due_kind="DATE",
+                        due_date=pd.isoformat(),
+                        due_time=None,
+                        due_start_time=None,
+                        due_end_time=None,
+                        category_id=category_id, actor_user_id=user_id,
+                        reminders=reminder_list or None,
+                        requires_expense=_req_expense,
+                        suggested_expense_category_id=_sug_cat_id,
+                        suggested_amount=_sug_amount,
+                    )
+            else:
+                CreateTaskUseCase(db).execute(
+                    account_id=user_id, title=title, note=note.strip() or None,
+                    due_kind=due_kind.strip() or "NONE",
+                    due_date=due_date.strip() or None,
+                    due_time=due_time.strip() or None,
+                    due_start_time=due_start_time.strip() or None,
+                    due_end_time=due_end_time.strip() or None,
+                    category_id=category_id, actor_user_id=user_id,
+                    reminders=reminder_list or None,
+                    requires_expense=_req_expense,
+                    suggested_expense_category_id=_sug_cat_id,
+                    suggested_amount=_sug_amount,
+                )
     except (TaskValidationError, TaskTemplateValidationError, DueSpecValidationError, ReminderSpecValidationError) as e:
         return _render_error(str(e))
     except Exception:
@@ -2249,12 +2691,93 @@ def complete_task_form(request: Request, task_id: int, db: Session = Depends(get
         task = db.query(TaskModel).filter(
             TaskModel.task_id == task_id, TaskModel.account_id == user_id
         ).first()
+        if not task:
+            return RedirectResponse("/tasks", status_code=302)
+
+        # Block normal completion if expense is required and feature is enabled
+        _user = db.query(User).filter(User.id == user_id).first()
+        if _user and _user.enable_task_expense_link and task.requires_expense:
+            request.session["flash"] = {"message": "Эта задача требует создания расхода", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
         today_msk = datetime.now(timezone(timedelta(hours=3))).date()
         xp_delta = preview_task_xp(task.due_date if task else None, today_msk)
         CompleteTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id)
         request.session["flash"] = {"message": f"🎉 +{xp_delta} XP"}
     except Exception:
         db.rollback()
+    return RedirectResponse("/tasks", status_code=302)
+
+
+@router.post("/tasks/{task_id}/complete-with-expense")
+def complete_task_with_expense(
+    request: Request,
+    task_id: int,
+    expense_category_id: int = Form(...),
+    expense_amount: str = Form(...),
+    expense_wallet_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        # Validate user setting
+        _user = db.query(User).filter(User.id == user_id).first()
+        if not _user or not _user.enable_task_expense_link:
+            request.session["flash"] = {"message": "Функция связки задач и расходов отключена", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
+        # Validate task
+        task = db.query(TaskModel).filter(
+            TaskModel.task_id == task_id, TaskModel.account_id == user_id
+        ).first()
+        if not task or task.status != "ACTIVE":
+            request.session["flash"] = {"message": "Задача не найдена или уже выполнена", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
+        # Parse and validate amount
+        from decimal import Decimal, InvalidOperation
+        try:
+            amount = Decimal(expense_amount)
+        except (InvalidOperation, ValueError):
+            request.session["flash"] = {"message": "Некорректная сумма", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
+        if amount <= 0:
+            request.session["flash"] = {"message": "Сумма должна быть больше нуля", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
+        # Get wallet for currency
+        wallet = db.query(WalletBalance).filter(
+            WalletBalance.wallet_id == expense_wallet_id,
+            WalletBalance.account_id == user_id,
+        ).first()
+        if not wallet:
+            request.session["flash"] = {"message": "Кошелёк не найден", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
+        # Create expense transaction linked to task
+        from app.application.transactions import CreateTransactionUseCase
+        CreateTransactionUseCase(db).execute_expense(
+            account_id=user_id,
+            wallet_id=expense_wallet_id,
+            amount=amount,
+            currency=wallet.currency,
+            category_id=expense_category_id,
+            description=task.title,
+            actor_user_id=user_id,
+            task_id=task_id,
+        )
+
+        # Complete the task
+        today_msk = datetime.now(timezone(timedelta(hours=3))).date()
+        xp_delta = preview_task_xp(task.due_date, today_msk)
+        CompleteTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id)
+        request.session["flash"] = {"message": f"🎉 Расход создан, +{xp_delta} XP"}
+    except Exception:
+        db.rollback()
+        request.session["flash"] = {"message": "Ошибка при создании расхода", "type": "error"}
     return RedirectResponse("/tasks", status_code=302)
 
 
@@ -2269,6 +2792,70 @@ def archive_task_form(request: Request, task_id: int, db: Session = Depends(get_
     return RedirectResponse("/tasks", status_code=302)
 
 
+@router.post("/tasks/{task_id}/reschedule")
+def reschedule_task_form(
+    request: Request, task_id: int,
+    new_due_date: str = Form(...),
+    reason_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.enable_task_reschedule_reasons:
+        return RedirectResponse("/tasks", status_code=302)
+
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        return RedirectResponse("/tasks", status_code=302)
+
+    new_date_str = new_due_date.strip()
+    if not new_date_str:
+        return RedirectResponse("/tasks", status_code=302)
+
+    try:
+        new_date = date.fromisoformat(new_date_str)
+    except ValueError:
+        return RedirectResponse("/tasks", status_code=302)
+
+    if not reason_id:
+        return RedirectResponse("/tasks", status_code=302)
+
+    # Verify reason belongs to this user and is active
+    reason = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.id == reason_id,
+        TaskRescheduleReason.user_id == user_id,
+        TaskRescheduleReason.is_active == True,
+    ).first()
+    if not reason:
+        return RedirectResponse("/tasks", status_code=302)
+
+    old_due_date = task.due_date
+    if old_due_date == new_date:
+        return RedirectResponse("/tasks", status_code=302)
+
+    # Update task via use case (writes event_log)
+    from app.application.tasks_usecases import UpdateTaskUseCase
+    UpdateTaskUseCase(db).execute(
+        task_id=task_id, account_id=user_id,
+        actor_user_id=user_id,
+        due_date=new_date_str,
+    )
+
+    # Write reschedule log entry
+    log_entry = TaskDueChangeLog(
+        task_id=task_id, user_id=user_id,
+        old_due_date=old_due_date, new_due_date=new_date,
+        reason_id=reason_id,
+    )
+    db.add(log_entry)
+    db.commit()
+
+    return RedirectResponse("/tasks", status_code=302)
 
 
 @router.post("/tasks/occurrences/{occurrence_id}/complete")
@@ -2292,6 +2879,330 @@ def skip_task_occurrence_form(request: Request, occurrence_id: int, db: Session 
     except Exception:
         db.rollback()
     return RedirectResponse("/tasks", status_code=302)
+
+
+# === Task Presets (quick templates) ===
+
+@router.get("/task-presets", response_class=HTMLResponse)
+def task_presets_list(request: Request, view: str = "active", db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    q = TaskPresetModel.account_id == user_id
+    if view == "inactive":
+        q_active = TaskPresetModel.is_active == False
+    else:
+        q_active = TaskPresetModel.is_active == True
+    presets = db.query(TaskPresetModel).filter(q, q_active).order_by(
+        TaskPresetModel.sort_order, TaskPresetModel.id
+    ).all()
+    return templates.TemplateResponse("task_presets_list.html", {
+        "request": request, "presets": presets, "view": view,
+    })
+
+
+@router.get("/task-presets/new", response_class=HTMLResponse)
+def task_preset_new_form(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    ).order_by(WorkCategory.title).all()
+    return templates.TemplateResponse("task_preset_form.html", {
+        "request": request, "mode": "new", "work_categories": work_categories,
+    })
+
+
+@router.post("/task-presets/new", response_class=HTMLResponse)
+def task_preset_create(
+    request: Request,
+    name: str = Form(...),
+    title_template: str = Form(...),
+    description_template: str = Form(""),
+    default_task_category_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    name = name.strip()
+    title_template = title_template.strip()
+    if not name or not title_template:
+        work_categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+        ).order_by(WorkCategory.title).all()
+        return templates.TemplateResponse("task_preset_form.html", {
+            "request": request, "mode": "new", "error": "Название и шаблон заголовка обязательны",
+            "work_categories": work_categories,
+            "form_name": name, "form_title_template": title_template,
+            "form_description_template": description_template.strip(),
+            "form_category_id": default_task_category_id,
+        })
+
+    # Determine sort_order (append to end)
+    max_order = db.query(func.max(TaskPresetModel.sort_order)).filter(
+        TaskPresetModel.account_id == user_id
+    ).scalar() or 0
+
+    preset = TaskPresetModel(
+        account_id=user_id,
+        name=name,
+        title_template=title_template,
+        description_template=description_template.strip() or None,
+        default_task_category_id=default_task_category_id,
+        sort_order=max_order + 1,
+    )
+    db.add(preset)
+    db.commit()
+    return RedirectResponse("/task-presets", status_code=302)
+
+
+@router.get("/task-presets/{preset_id}/edit", response_class=HTMLResponse)
+def task_preset_edit_form(request: Request, preset_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    preset = db.query(TaskPresetModel).filter(
+        TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id
+    ).first()
+    if not preset:
+        return RedirectResponse("/task-presets", status_code=302)
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    ).order_by(WorkCategory.title).all()
+    return templates.TemplateResponse("task_preset_form.html", {
+        "request": request, "mode": "edit", "preset": preset,
+        "work_categories": work_categories,
+    })
+
+
+@router.post("/task-presets/{preset_id}/edit", response_class=HTMLResponse)
+def task_preset_update(
+    request: Request,
+    preset_id: int,
+    name: str = Form(...),
+    title_template: str = Form(...),
+    description_template: str = Form(""),
+    default_task_category_id: int | None = Form(None),
+    is_active: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    preset = db.query(TaskPresetModel).filter(
+        TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id
+    ).first()
+    if not preset:
+        return RedirectResponse("/task-presets", status_code=302)
+
+    name = name.strip()
+    title_template = title_template.strip()
+    if not name or not title_template:
+        work_categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+        ).order_by(WorkCategory.title).all()
+        return templates.TemplateResponse("task_preset_form.html", {
+            "request": request, "mode": "edit", "preset": preset,
+            "error": "Название и шаблон заголовка обязательны",
+            "work_categories": work_categories,
+        })
+
+    preset.name = name
+    preset.title_template = title_template
+    preset.description_template = description_template.strip() or None
+    preset.default_task_category_id = default_task_category_id
+    preset.is_active = is_active
+    db.commit()
+    view = "active" if preset.is_active else "inactive"
+    return RedirectResponse(f"/task-presets?view={view}", status_code=302)
+
+
+@router.post("/task-presets/{preset_id}/move")
+def task_preset_move(
+    request: Request,
+    preset_id: int,
+    direction: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    preset = db.query(TaskPresetModel).filter(
+        TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id
+    ).first()
+    if not preset:
+        return RedirectResponse("/task-presets", status_code=302)
+
+    if direction == "up":
+        neighbor = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.sort_order < preset.sort_order,
+        ).order_by(TaskPresetModel.sort_order.desc()).first()
+    else:
+        neighbor = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.sort_order > preset.sort_order,
+        ).order_by(TaskPresetModel.sort_order.asc()).first()
+
+    if neighbor:
+        preset.sort_order, neighbor.sort_order = neighbor.sort_order, preset.sort_order
+        db.commit()
+
+    return RedirectResponse("/task-presets", status_code=302)
+
+
+# === Task Reschedule Reasons ===
+
+@router.get("/task-reschedule-reasons", response_class=HTMLResponse)
+def reschedule_reasons_list(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.enable_task_reschedule_reasons:
+        return RedirectResponse("/tasks", status_code=302)
+
+    view = request.query_params.get("view", "active")
+    q = db.query(TaskRescheduleReason).filter(TaskRescheduleReason.user_id == user_id)
+    if view == "archived":
+        q = q.filter(TaskRescheduleReason.is_active == False)
+    else:
+        q = q.filter(TaskRescheduleReason.is_active == True)
+    reasons = q.order_by(TaskRescheduleReason.sort_order, TaskRescheduleReason.id).all()
+    return templates.TemplateResponse("reschedule_reasons_list.html", {
+        "request": request, "reasons": reasons, "view": view,
+    })
+
+
+@router.get("/task-reschedule-reasons/new", response_class=HTMLResponse)
+def reschedule_reason_new(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.enable_task_reschedule_reasons:
+        return RedirectResponse("/tasks", status_code=302)
+    return templates.TemplateResponse("reschedule_reason_form.html", {
+        "request": request, "mode": "new",
+    })
+
+
+@router.post("/task-reschedule-reasons/new", response_class=HTMLResponse)
+def reschedule_reason_create(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    name = name.strip()
+    if not name:
+        return templates.TemplateResponse("reschedule_reason_form.html", {
+            "request": request, "mode": "new", "error": "Название не может быть пустым",
+            "form_name": name,
+        })
+    existing = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.user_id == user_id, TaskRescheduleReason.name == name,
+    ).first()
+    if existing:
+        return templates.TemplateResponse("reschedule_reason_form.html", {
+            "request": request, "mode": "new", "error": "Причина с таким названием уже существует",
+            "form_name": name,
+        })
+    max_order = db.query(func.max(TaskRescheduleReason.sort_order)).filter(
+        TaskRescheduleReason.user_id == user_id
+    ).scalar() or 0
+    reason = TaskRescheduleReason(user_id=user_id, name=name, sort_order=max_order + 1)
+    db.add(reason)
+    db.commit()
+    return RedirectResponse("/task-reschedule-reasons", status_code=302)
+
+
+@router.get("/task-reschedule-reasons/{reason_id}/edit", response_class=HTMLResponse)
+def reschedule_reason_edit(request: Request, reason_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    reason = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.id == reason_id, TaskRescheduleReason.user_id == user_id,
+    ).first()
+    if not reason:
+        return RedirectResponse("/task-reschedule-reasons", status_code=302)
+    return templates.TemplateResponse("reschedule_reason_form.html", {
+        "request": request, "mode": "edit", "reason": reason,
+    })
+
+
+@router.post("/task-reschedule-reasons/{reason_id}/edit", response_class=HTMLResponse)
+def reschedule_reason_update(
+    request: Request, reason_id: int,
+    name: str = Form(...),
+    is_active: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    reason = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.id == reason_id, TaskRescheduleReason.user_id == user_id,
+    ).first()
+    if not reason:
+        return RedirectResponse("/task-reschedule-reasons", status_code=302)
+    name = name.strip()
+    if not name:
+        return templates.TemplateResponse("reschedule_reason_form.html", {
+            "request": request, "mode": "edit", "reason": reason,
+            "error": "Название не может быть пустым",
+        })
+    dup = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.user_id == user_id,
+        TaskRescheduleReason.name == name,
+        TaskRescheduleReason.id != reason_id,
+    ).first()
+    if dup:
+        return templates.TemplateResponse("reschedule_reason_form.html", {
+            "request": request, "mode": "edit", "reason": reason,
+            "error": "Причина с таким названием уже существует",
+        })
+    reason.name = name
+    reason.is_active = bool(is_active)
+    db.commit()
+    return RedirectResponse("/task-reschedule-reasons", status_code=302)
+
+
+@router.post("/task-reschedule-reasons/{reason_id}/move")
+def reschedule_reason_move(
+    request: Request, reason_id: int,
+    direction: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    reason = db.query(TaskRescheduleReason).filter(
+        TaskRescheduleReason.id == reason_id, TaskRescheduleReason.user_id == user_id,
+    ).first()
+    if not reason:
+        return RedirectResponse("/task-reschedule-reasons", status_code=302)
+    if direction == "up":
+        neighbor = db.query(TaskRescheduleReason).filter(
+            TaskRescheduleReason.user_id == user_id,
+            TaskRescheduleReason.sort_order < reason.sort_order,
+        ).order_by(TaskRescheduleReason.sort_order.desc()).first()
+    else:
+        neighbor = db.query(TaskRescheduleReason).filter(
+            TaskRescheduleReason.user_id == user_id,
+            TaskRescheduleReason.sort_order > reason.sort_order,
+        ).order_by(TaskRescheduleReason.sort_order.asc()).first()
+    if neighbor:
+        reason.sort_order, neighbor.sort_order = neighbor.sort_order, reason.sort_order
+        db.commit()
+    return RedirectResponse("/task-reschedule-reasons", status_code=302)
 
 
 # === Habits ===
@@ -3660,6 +4571,85 @@ def events_list(
         for r in db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all():
             rule_map[r.rule_id] = r
 
+    # --- Next occurrence date for each event ---
+    today = date.today()
+    event_ids = [ev.event_id for ev in events]
+    next_occ_map: dict[int, date] = {}  # event_id -> next_occurrence_date
+    if event_ids:
+        from sqlalchemy import func as sa_func
+        rows = (
+            db.query(
+                EventOccurrenceModel.event_id,
+                sa_func.min(EventOccurrenceModel.start_date).label("next_date"),
+            )
+            .filter(
+                EventOccurrenceModel.account_id == user_id,
+                EventOccurrenceModel.event_id.in_(event_ids),
+                EventOccurrenceModel.start_date >= today,
+                EventOccurrenceModel.is_cancelled == False,
+            )
+            .group_by(EventOccurrenceModel.event_id)
+            .all()
+        )
+        for row in rows:
+            next_occ_map[row.event_id] = row.next_date
+
+    # --- Upcoming events (active view only, next 30 days, limit 8) ---
+    upcoming = []
+    upcoming_has_more = False
+    if view != "archived":
+        deadline = today + timedelta(days=30)
+        upcoming_raw = []
+        for ev in events:
+            nd = next_occ_map.get(ev.event_id)
+            if nd and nd <= deadline:
+                dl = (nd - today).days
+                upcoming_raw.append({
+                    "event": ev,
+                    "next_date": nd,
+                    "days_left": dl,
+                })
+        upcoming_raw.sort(key=lambda x: x["next_date"])
+        upcoming = upcoming_raw[:8]
+        upcoming_has_more = len(upcoming_raw) > 8
+
+    # --- Group events by frequency ---
+    GROUP_ORDER = ["single", "YEARLY", "WEEKLY", "INTERVAL_DAYS", "MONTHLY", "DAILY", "other"]
+    GROUP_TITLES = {
+        "single": "Однократные",
+        "YEARLY": "Ежегодно",
+        "WEEKLY": "Еженедельно",
+        "INTERVAL_DAYS": "Каждые N дней",
+        "MONTHLY": "Ежемесячно",
+        "DAILY": "Ежедневно",
+        "other": "Прочее",
+    }
+    grouped: dict[str, list] = {}
+    for ev in events:
+        if not ev.repeat_rule_id:
+            grp = "single"
+        else:
+            rule = rule_map.get(ev.repeat_rule_id)
+            freq = rule.freq if rule else None
+            grp = freq if freq in GROUP_TITLES else "other"
+        nd = next_occ_map.get(ev.event_id)
+        dl = (nd - today).days if nd else None
+        item = {"event": ev, "next_date": nd, "days_left": dl}
+        grouped.setdefault(grp, []).append(item)
+
+    # Sort items inside each group by next_date ASC (nulls last)
+    for grp_items in grouped.values():
+        grp_items.sort(key=lambda x: x["next_date"] if x["next_date"] else date.max)
+
+    # Build ordered list of (group_key, group_title, items)
+    grouped_list = []
+    for gk in GROUP_ORDER:
+        if gk in grouped:
+            title = GROUP_TITLES[gk]
+            if gk == "INTERVAL_DAYS":
+                title = "Каждые N дней"
+            grouped_list.append((gk, title, grouped[gk]))
+
     return templates.TemplateResponse("events_list.html", {
         "request": request,
         "events": events,
@@ -3671,6 +4661,11 @@ def events_list(
         "q": q,
         "category_id": category_id,
         "event_type": event_type,
+        "upcoming": upcoming,
+        "upcoming_has_more": upcoming_has_more if view != "archived" else False,
+        "grouped_list": grouped_list,
+        "next_occ_map": next_occ_map,
+        "today": today,
     })
 
 
@@ -5719,12 +6714,24 @@ def profile_page(request: Request, db: Session = Depends(get_db)):
     digest_morning = user.digest_morning if user and user.digest_morning is not None else True
     digest_evening = user.digest_evening if user and user.digest_evening is not None else True
 
+    # Task-expense link setting
+    enable_task_expense_link = user.enable_task_expense_link if user else False
+
+    # Task templates setting
+    enable_task_templates = user.enable_task_templates if user else False
+
+    # Task reschedule reasons setting
+    enable_task_reschedule_reasons = user.enable_task_reschedule_reasons if user else False
+
     return templates.TemplateResponse("profile.html", {
         "request": request,
         **data,
         "reminder_presets": reminder_presets,
         "digest_morning": digest_morning,
         "digest_evening": digest_evening,
+        "enable_task_expense_link": enable_task_expense_link,
+        "enable_task_templates": enable_task_templates,
+        "enable_task_reschedule_reasons": enable_task_reschedule_reasons,
     })
 
 
@@ -5909,6 +6916,63 @@ def save_digest_settings(
     if user:
         user.digest_morning = digest_morning
         user.digest_evening = digest_evening
+        db.commit()
+
+    return RedirectResponse("/profile", status_code=302)
+
+
+@router.post("/profile/task-expense-setting")
+def save_task_expense_setting(
+    request: Request,
+    db: Session = Depends(get_db),
+    enable_task_expense_link: bool = Form(False),
+):
+    """Toggle task-expense link feature."""
+    if "user_id" not in request.session:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.enable_task_expense_link = enable_task_expense_link
+        db.commit()
+
+    return RedirectResponse("/profile", status_code=302)
+
+
+@router.post("/profile/task-templates-setting")
+def save_task_templates_setting(
+    request: Request,
+    db: Session = Depends(get_db),
+    enable_task_templates: bool = Form(False),
+):
+    """Toggle task presets (quick templates) feature."""
+    if "user_id" not in request.session:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.enable_task_templates = enable_task_templates
+        db.commit()
+
+    return RedirectResponse("/profile", status_code=302)
+
+
+@router.post("/profile/reschedule-reasons-setting")
+def save_reschedule_reasons_setting(
+    request: Request,
+    db: Session = Depends(get_db),
+    enable_task_reschedule_reasons: bool = Form(False),
+):
+    """Toggle task reschedule reasons feature."""
+    if "user_id" not in request.session:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user_id = request.session["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.enable_task_reschedule_reasons = enable_task_reschedule_reasons
         db.commit()
 
     return RedirectResponse("/profile", status_code=302)

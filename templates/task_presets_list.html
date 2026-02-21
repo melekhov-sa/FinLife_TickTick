@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Шаблоны задач — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Шаблоны задач</h1>
+  <a href="/task-presets/new" class="btn">+ Создать шаблон</a>
+</div>
+
+<!-- Tabs: Active / Inactive -->
+<div class="plan-tabs" style="max-width: 300px; margin-bottom: 16px;">
+  <a href="/task-presets?view=active" {% if view != "inactive" %}class="active"{% endif %}>Активные</a>
+  <a href="/task-presets?view=inactive" {% if view == "inactive" %}class="active"{% endif %}>Неактивные</a>
+</div>
+
+{% if presets %}
+<div class="card">
+  {% for p in presets %}
+  <div class="dash-item" style="padding: 10px 0;">
+    <div class="dash-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+      <span style="font-size: 15px; font-weight: 500;">
+        {{ p.name }}
+        {% if not p.is_active %}
+        <span class="badge badge-archive">неактивен</span>
+        {% endif %}
+      </span>
+      <small class="muted" style="font-size: 12px;">{{ p.title_template }}</small>
+    </div>
+    <div class="dash-item-actions" style="gap: 2px;">
+      {% if view != "inactive" %}
+      <form method="POST" action="/task-presets/{{ p.id }}/move" style="display:inline;">
+        <input type="hidden" name="direction" value="up">
+        <button type="submit" class="btn-icon" title="Вверх">&#9650;</button>
+      </form>
+      <form method="POST" action="/task-presets/{{ p.id }}/move" style="display:inline;">
+        <input type="hidden" name="direction" value="down">
+        <button type="submit" class="btn-icon" title="Вниз">&#9660;</button>
+      </form>
+      {% endif %}
+      <a href="/task-presets/{{ p.id }}/edit" class="btn-gear" title="Настройки">&#9881;</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  {% if view == "inactive" %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Неактивных шаблонов нет</p>
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">
+    Активных шаблонов нет.
+    <a href="/task-presets/new">Создать</a>
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Добавить причину{% else %}Редактировать причину{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Добавить причину переноса{% else %}Редактировать причину{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/task-reschedule-reasons/new">
+  {% else %}
+  <form method="POST" action="/task-reschedule-reasons/{{ reason.id }}/edit">
+  {% endif %}
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="name" required
+             value="{% if mode == 'new' %}{{ form_name or '' }}{% else %}{{ reason.name }}{% endif %}"
+             placeholder="Например: Нет времени">
+    </div>
+
+    {% if mode == "edit" %}
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_active" value="1" {% if reason.is_active %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Активна
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Неактивные причины не отображаются при переносе задач
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      {% endif %}
+      <a href="/task-reschedule-reasons" class="btn secondary" style="text-decoration: none;">Назад</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

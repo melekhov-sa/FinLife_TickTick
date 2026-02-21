@@ -4,6 +4,24 @@
       <input type="hidden" name="mode" id="taskMode" value="once">
       <input type="hidden" name="redirect" value="{{ task_form_redirect|default('/tasks') }}">
 
+      <!-- Preset selector (only when feature enabled and presets exist) -->
+      {% if enable_task_templates is defined and enable_task_templates and task_presets %}
+      <div class="span-full form-row">
+        <label>Шаблон</label>
+        <select id="presetSelect" onchange="applyTaskPreset(this.value)">
+          <option value="">— Новая задача —</option>
+          {% for p in task_presets %}
+          <option value="{{ p.id }}"
+            data-title="{{ p.title_template|e }}"
+            data-note="{{ (p.description_template or '')|e }}"
+            data-category="{{ p.default_task_category_id or '' }}">
+            {{ p.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
       <!-- Row 1: Title + Category -->
       <div class="form-row">
         <label>Название</label>
@@ -32,9 +50,19 @@
       <div id="blockOnce" class="span-full">
         <input type="hidden" name="due_kind" id="dueKind" value="NONE">
         <input type="hidden" name="reminders" id="remindersJson" value="">
+        <input type="hidden" name="multi_dates" id="multiDatesJson" value="">
 
-        <!-- DueSpec mode switcher -->
-        <div class="form-row">
+        <!-- Multi-date checkbox -->
+        <div class="form-row" style="margin-bottom: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+            <input type="checkbox" id="chkMultiDates" onchange="toggleMultiDates()"
+                   style="width: auto; max-width: none;">
+            Создать на несколько дат
+          </label>
+        </div>
+
+        <!-- DueSpec mode switcher (hidden when multi-dates is on) -->
+        <div class="form-row" id="blockDueKindSwitcher">
           <label>Когда</label>
           <div class="seg-control">
             <button type="button" id="dkNone" onclick="setDueKind('NONE')" class="seg-active">Без срока</button>
@@ -44,7 +72,20 @@
           </div>
         </div>
 
-        <!-- DATE / DATETIME / WINDOW: due_date -->
+        <!-- Multi-date block (hidden by default) -->
+        <div id="blockMultiDates" style="display: none;">
+          <div class="form-row">
+            <label>Даты</label>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <input type="date" id="inputMultiDate" style="max-width: 180px;">
+              <button type="button" onclick="addMultiDate()" style="font-size: 12px; padding: 6px 12px; min-height: unset;">Добавить</button>
+            </div>
+            <div id="multiDateChips" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;"></div>
+            <small class="muted" id="multiDateHint" style="display: block; margin-top: 4px; font-size: 12px;">Добавьте одну или несколько дат</small>
+          </div>
+        </div>
+
+        <!-- DATE / DATETIME / WINDOW: due_date (hidden when multi-dates is on) -->
         <div id="blockDueDate" style="display: none;">
           <div class="form-row">
             <label>Дата</label>
@@ -158,6 +199,36 @@
           </div>
         </details>
       </div>
+
+      <!-- Task-expense link (only if feature enabled, one-off tasks only) -->
+      {% if enable_task_expense_link is defined and enable_task_expense_link %}
+      <div class="span-full" id="blockExpenseLink">
+        <div class="form-row" style="margin-top: 4px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" name="requires_expense" value="1" id="chkRequiresExpense"
+                   onchange="toggleExpenseFields()">
+            При выполнении создать расход
+          </label>
+        </div>
+        <div id="blockExpenseFields" style="display: none; margin-top: 8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px;">
+            <div class="form-row">
+              <label>Категория расхода</label>
+              <select name="suggested_expense_category_id" id="selExpenseCat">
+                <option value="">— Выберите —</option>
+                {% for cat in expense_categories %}
+                  <option value="{{ cat.category_id }}">{{ cat.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Сумма</label>
+              <input name="suggested_amount" type="number" step="0.01" min="0.01" placeholder="0.00" id="inputExpenseAmount">
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
 
       <!-- Submit (full width) -->
       <div class="span-full task-form-submit">

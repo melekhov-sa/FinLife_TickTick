@@ -32,6 +32,9 @@ class CreateTaskUseCase:
         category_id: int | None = None,
         actor_user_id: int | None = None,
         reminders: list[dict] | None = None,
+        requires_expense: bool = False,
+        suggested_expense_category_id: int | None = None,
+        suggested_amount: str | None = None,
     ) -> int:
         title = title.strip()
         if not title:
@@ -43,6 +46,9 @@ class CreateTaskUseCase:
             due_kind=due_kind, due_date=due_date, due_time=due_time,
             due_start_time=due_start_time, due_end_time=due_end_time,
             category_id=category_id,
+            requires_expense=requires_expense,
+            suggested_expense_category_id=suggested_expense_category_id,
+            suggested_amount=suggested_amount,
         )
 
         self.event_repo.append_event(

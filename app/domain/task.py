@@ -18,6 +18,9 @@ class Task:
         due_start_time: str | None = None,
         due_end_time: str | None = None,
         category_id: int | None = None,
+        requires_expense: bool = False,
+        suggested_expense_category_id: int | None = None,
+        suggested_amount: str | None = None,
     ) -> Dict[str, Any]:
         validate_due_spec(due_kind, due_date, due_time, due_start_time, due_end_time)
         return {
@@ -31,6 +34,9 @@ class Task:
             "due_start_time": due_start_time,
             "due_end_time": due_end_time,
             "category_id": category_id,
+            "requires_expense": requires_expense,
+            "suggested_expense_category_id": suggested_expense_category_id,
+            "suggested_amount": suggested_amount,
             "created_at": datetime.utcnow().isoformat(),
         }
 
@@ -44,6 +50,7 @@ class Task:
         allowed_fields = (
             "title", "note", "due_kind", "due_date", "due_time",
             "due_start_time", "due_end_time", "category_id",
+            "requires_expense", "suggested_expense_category_id", "suggested_amount",
         )
         for key in allowed_fields:
             if key in changes:

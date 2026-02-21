@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == "new" %}Создать шаблон{% else %}Редактировать шаблон{% endif %} — FinLife{% endblock %}
+
+{% block content %}
+<h1>{% if mode == "new" %}Создать шаблон задачи{% else %}Настройки шаблона{% endif %}</h1>
+
+{% if error %}
+<div class="error-card">{{ error }}</div>
+{% endif %}
+
+<div class="card">
+  {% if mode == "new" %}
+  <form method="POST" action="/task-presets/new">
+  {% else %}
+  <form method="POST" action="/task-presets/{{ preset.id }}/edit">
+  {% endif %}
+
+    <div class="form-row">
+      <label>Название шаблона</label>
+      <input name="name" required
+             value="{% if mode == 'new' %}{{ form_name or '' }}{% else %}{{ preset.name }}{% endif %}"
+             placeholder="Например: Оплата ЖКХ">
+      <small class="muted" style="display: block; margin-top: 4px; font-size: 12px;">
+        Отображается в списке выбора шаблонов
+      </small>
+    </div>
+
+    <div class="form-row">
+      <label>Заголовок задачи</label>
+      <input name="title_template" required
+             value="{% if mode == 'new' %}{{ form_title_template or '' }}{% else %}{{ preset.title_template }}{% endif %}"
+             placeholder="Что нужно сделать?">
+      <small class="muted" style="display: block; margin-top: 4px; font-size: 12px;">
+        Подставится в поле «Название» при создании задачи
+      </small>
+    </div>
+
+    <div class="form-row">
+      <label>Описание (необязательно)</label>
+      <input name="description_template"
+             value="{% if mode == 'new' %}{{ form_description_template or '' }}{% else %}{{ preset.description_template or '' }}{% endif %}"
+             placeholder="Заметка к задаче">
+    </div>
+
+    <div class="form-row">
+      <label>Категория по умолчанию</label>
+      <select name="default_task_category_id">
+        <option value="">— Без категории —</option>
+        {% for cat in work_categories %}
+          <option value="{{ cat.category_id }}"
+            {% if mode == 'new' and form_category_id == cat.category_id %}selected
+            {% elif mode == 'edit' and preset.default_task_category_id == cat.category_id %}selected
+            {% endif %}>
+            {{ cat.emoji or '' }} {{ cat.title }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if mode == "edit" %}
+    <div class="form-row">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="is_active" value="true"
+               {% if preset.is_active %}checked{% endif %}
+               style="width: auto; max-width: none;">
+        Активен
+      </label>
+      <small class="muted" style="display: block; margin-top: 4px;">
+        Неактивные шаблоны не отображаются в форме создания задач
+      </small>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 8px; margin-top: 20px;">
+      {% if mode == "new" %}
+      <button type="submit">Создать</button>
+      <a href="/task-presets" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% else %}
+      <button type="submit">Сохранить</button>
+      <a href="/task-presets?view={% if preset.is_active %}active{% else %}inactive{% endif %}" class="btn secondary" style="text-decoration: none;">Назад</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

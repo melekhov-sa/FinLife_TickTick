@@ -8,7 +8,7 @@
 #}
 {% set cp = current_page(request) %}
 {% set in_finance = cp in ['wallets', 'transactions', 'categories', 'goals', 'subscriptions', 'planned-ops'] %}
-{% set in_tasks   = cp in ['tasks', 'habits', 'events', 'wishes', 'task-categories'] %}
+{% set in_tasks   = cp in ['tasks', 'habits', 'events', 'wishes', 'task-categories', 'task-presets', 'task-reschedule-reasons'] %}
 {% set in_system  = cp in ['contacts', 'profile'] %}
 {% set in_admin   = cp == 'admin' %}
 
@@ -98,6 +98,14 @@
         <a href="/task-categories"
            class="nav-link{% if cp == 'task-categories' %} active{% endif %}">
           <span class="nav-icon">≡</span>Категории дел
+        </a>
+        <a href="/task-presets"
+           class="nav-link{% if cp == 'task-presets' %} active{% endif %}">
+          <span class="nav-icon">⊞</span>Шаблоны задач
+        </a>
+        <a href="/task-reschedule-reasons"
+           class="nav-link{% if cp == 'task-reschedule-reasons' %} active{% endif %}">
+          <span class="nav-icon">&#8634;</span>Причины переноса
         </a>
       </div>
     </details>

@@ -80,7 +80,8 @@ class Transaction:
         currency: str,
         category_id: Optional[int],
         description: str,
-        occurred_at: datetime
+        occurred_at: datetime,
+        task_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Создать событие transaction_created (EXPENSE)
@@ -94,11 +95,12 @@ class Transaction:
             category_id: ID категории (опционально)
             description: Описание
             occurred_at: Дата операции
+            task_id: ID задачи (опционально, для связки задача-расход)
 
         Returns:
             Event payload для сохранения в event_log
         """
-        return {
+        payload = {
             "transaction_id": transaction_id,
             "account_id": account_id,
             "operation_type": "EXPENSE",
@@ -109,6 +111,9 @@ class Transaction:
             "description": description,
             "occurred_at": occurred_at.isoformat()
         }
+        if task_id is not None:
+            payload["task_id"] = task_id
+        return payload
 
     @staticmethod
     def create_transfer(

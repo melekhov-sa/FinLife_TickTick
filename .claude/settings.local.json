@@ -87,7 +87,12 @@
       "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/pip.exe install:*)",
       "Bash(/c/Projects/FinLife_TickTick/.venv/Scripts/pip.exe freeze:*)",
       "Bash(.venv/Scripts/pip.exe install:*)",
-      "Bash(.venv/Scripts/python -m pytest tests/ -x -q --tb=short)"
+      "Bash(.venv/Scripts/python -m pytest tests/ -x -q --tb=short)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\" .venv/Scripts/python:*)",
+      "Bash(xargs:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

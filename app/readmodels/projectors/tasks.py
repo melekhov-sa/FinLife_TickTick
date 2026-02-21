@@ -1,5 +1,6 @@
 """TasksProjector - builds tasks read model from events"""
 from datetime import date, time, datetime
+from decimal import Decimal
 from app.readmodels.projectors.base import BaseProjector
 from app.infrastructure.db.models import TaskModel, TaskReminderModel, EventLog
 
@@ -41,6 +42,9 @@ class TasksProjector(BaseProjector):
             due_end_time=time.fromisoformat(payload["due_end_time"]) if payload.get("due_end_time") else None,
             status="ACTIVE",
             category_id=payload.get("category_id"),
+            requires_expense=payload.get("requires_expense", False),
+            suggested_expense_category_id=payload.get("suggested_expense_category_id"),
+            suggested_amount=Decimal(payload["suggested_amount"]) if payload.get("suggested_amount") else None,
             created_at=datetime.fromisoformat(payload["created_at"])
         )
         self.db.add(task)
@@ -54,9 +58,11 @@ class TasksProjector(BaseProjector):
         ).first()
         if not task:
             return
-        for field in ("title", "note", "category_id", "due_kind"):
+        for field in ("title", "note", "category_id", "due_kind", "requires_expense", "suggested_expense_category_id"):
             if field in payload:
                 setattr(task, field, payload[field])
+        if "suggested_amount" in payload:
+            task.suggested_amount = Decimal(payload["suggested_amount"]) if payload["suggested_amount"] else None
         if "due_date" in payload:
             task.due_date = date.fromisoformat(payload["due_date"]) if payload["due_date"] else None
         for field in ("due_time", "due_start_time", "due_end_time"):

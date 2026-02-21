@@ -4,22 +4,17 @@
 {% block content %}
 <style>
 /* ── Task create card ── */
-.task-create-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
 .task-create-card {
-  max-width: 720px;
   width: 100%;
+  margin-top: 16px;
 }
 .task-form-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 10px 16px;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 8px 16px;
 }
 .task-form-grid .span-full { grid-column: 1 / -1; }
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .task-form-grid { grid-template-columns: 1fr; }
   .task-form-grid .span-full { grid-column: 1; }
 }
@@ -35,7 +30,7 @@
   flex: 1;
   border: none;
   border-radius: 0;
-  padding: 6px 14px;
+  padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
   min-height: unset;
@@ -71,7 +66,7 @@
 .task-form-grid input,
 .task-form-grid select {
   max-width: 100%;
-  height: 36px;
+  height: 32px;
   font-size: 13px;
 }
 .task-form-grid textarea {
@@ -89,124 +84,623 @@
 .task-form-submit button[type="submit"] {
   min-width: 120px;
 }
+/* ── Task list rows ── */
+.tsk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+}
+.tsk-row:last-child { border-bottom: none; }
+.tsk-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tsk-title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tsk-note {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tsk-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.tsk-date {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+}
+.tsk-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent, #4a90d9);
+}
+.tsk-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--text-secondary, #999);
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.tsk-del:hover {
+  color: #dc3545;
+  background: rgba(220,53,69,.08);
+}
+.tsk-resc {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--text-secondary, #999);
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.tsk-resc:hover {
+  color: var(--accent, #4a90d9);
+  background: rgba(74,144,217,.08);
+}
+/* ── Reschedule modal ── */
+.resc-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.resc-overlay.open { display: flex; }
+.resc-modal {
+  background: var(--bg-card, #fff);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.resc-modal h3 { margin: 0 0 16px; font-size: 16px; }
+.resc-modal .form-row { margin-bottom: 12px; }
+.resc-modal label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.resc-modal input, .resc-modal select { width: 100%; }
+.resc-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.tsk-overdue {
+  border-left: 3px solid #dc3545;
+  padding-left: 8px;
+}
+/* details chevron rotation */
+details.card > summary .nav-chevron {
+  transition: transform 0.15s ease;
+}
+details.card[open] > summary .nav-chevron {
+  transform: rotate(90deg);
+}
+@media (max-width: 600px) {
+  .tsk-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tsk-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+/* ── Progress card ── */
+.progress-bar {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.progress-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+}
+.progress-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.progress-label {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin-top: 2px;
+}
+.progress-num.clr-done { color: #16a34a; }
+.progress-num.clr-overdue { color: #dc3545; }
+.progress-num.clr-plan { color: var(--text-primary, #333); }
+@media (max-width: 600px) {
+  .progress-bar { gap: 16px; }
+  .progress-num { font-size: 18px; }
+}
+/* ── Analytics card ── */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.analytics-period {
+  background: var(--bg-table-header, #f8f9fa);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.analytics-period-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--text-secondary, #666);
+}
+.analytics-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.analytics-row .val { font-weight: 600; }
+.analytics-rate {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.analytics-rate.good { color: #16a34a; }
+.analytics-rate.ok { color: #d97706; }
+.analytics-rate.low { color: #dc3545; }
+.cat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.cat-table th {
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+.cat-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+}
+.cat-table tr:last-child td { border-bottom: none; }
+.cat-table .num { text-align: right; }
+@media (max-width: 600px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+  .analytics-rate { font-size: 15px; }
+}
+/* ── Mini-chart ── */
+.mini-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  height: 120px;
+  padding-top: 8px;
+}
+.mini-chart .bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  height: 100%;
+}
+.mini-chart .bar-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  margin-bottom: 3px;
+}
+.mini-chart .bar {
+  width: 24px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent, #4a90d9);
+  transition: background 0.15s;
+}
+.mini-chart .bar.bar-zero {
+  background: var(--border, #e5e7eb);
+}
+.mini-chart .bar.bar-today {
+  background: var(--accent-hover, #3570b5);
+}
+.mini-chart .bar-label {
+  font-size: 11px;
+  margin-top: 5px;
+  color: var(--text-secondary, #888);
+}
+.mini-chart .bar-label.bar-today-label {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+@media (max-width: 600px) {
+  .mini-chart { height: 90px; }
+  .mini-chart .bar { width: 18px; }
+}
+/* ── Discipline & reschedules ── */
+.disc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.disc-card {
+  background: var(--bg-table-header, #f8f9fa);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+.disc-score {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.disc-score.sc-high { color: #16a34a; }
+.disc-score.sc-mid  { color: #d97706; }
+.disc-score.sc-low  { color: #dc3545; }
+.disc-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+  color: var(--text-secondary, #666);
+}
+.disc-detail .dv { font-weight: 600; color: var(--text-primary, #333); }
+.resc-top-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.resc-top-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border, #f0f0f0);
+}
+.resc-top-list li:last-child { border-bottom: none; }
+.resc-top-list .resc-cnt { font-weight: 600; white-space: nowrap; }
+.resc-top-list .resc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .disc-grid { grid-template-columns: 1fr; }
+  .disc-score { font-size: 22px; }
+}
 </style>
 <h1>Задачи</h1>
 
-<!-- One-off tasks -->
-<div class="card">
-  <h2>Разовые задачи</h2>
-  {% set active_tasks = tasks | selectattr('status', 'equalto', 'ACTIVE') | list %}
-  {% set done_tasks = tasks | selectattr('status', 'equalto', 'DONE') | list %}
+{# ── Progress card ── #}
+{% if planned_today or completed_today or overdue_count %}
+<div class="card" style="padding: 14px 24px; margin-bottom: 16px;">
+  <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">Прогресс сегодня</div>
+  <div class="progress-bar">
+    <div class="progress-stat">
+      <span class="progress-num clr-plan">{{ planned_today }}</span>
+      <span class="progress-label">Запланировано</span>
+    </div>
+    <div class="progress-stat">
+      <span class="progress-num clr-done">{{ completed_today }}</span>
+      <span class="progress-label">Выполнено</span>
+    </div>
+    {% if overdue_count %}
+    <div class="progress-stat">
+      <span class="progress-num clr-overdue">{{ overdue_count }}</span>
+      <span class="progress-label">Просрочено</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
-  {% if active_tasks %}
-    <table>
+{# ── Analytics card ── #}
+{% if analytics %}
+<details class="card" style="margin-bottom: 16px;">
+  <summary style="cursor: pointer; font-weight: 600; font-size: 15px; list-style: none; display: flex; align-items: center; gap: 8px;">
+    <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
+    Аналитика
+  </summary>
+  <div style="margin-top: 12px;">
+    <div class="analytics-grid">
+      {# 7 days #}
+      <div class="analytics-period">
+        <div class="analytics-period-title">За 7 дней</div>
+        <div class="analytics-row"><span>Создано</span><span class="val">{{ analytics.days7.created }}</span></div>
+        <div class="analytics-row"><span>Выполнено</span><span class="val">{{ analytics.days7.completed }}</span></div>
+        <div class="analytics-rate {% if analytics.days7.completion_rate >= 70 %}good{% elif analytics.days7.completion_rate >= 40 %}ok{% else %}low{% endif %}">
+          {{ analytics.days7.completion_rate }}%
+        </div>
+      </div>
+      {# 30 days #}
+      <div class="analytics-period">
+        <div class="analytics-period-title">За 30 дней</div>
+        <div class="analytics-row"><span>Создано</span><span class="val">{{ analytics.days30.created }}</span></div>
+        <div class="analytics-row"><span>Выполнено</span><span class="val">{{ analytics.days30.completed }}</span></div>
+        <div class="analytics-rate {% if analytics.days30.completion_rate >= 70 %}good{% elif analytics.days30.completion_rate >= 40 %}ok{% else %}low{% endif %}">
+          {{ analytics.days30.completion_rate }}%
+        </div>
+      </div>
+    </div>
+
+    {# Discipline + Reschedules #}
+    {% if discipline %}
+    <div class="disc-grid">
+      <div class="disc-card">
+        <div class="analytics-period-title">Дисциплина (7 дней)</div>
+        <div class="disc-score {% if discipline.score >= 70 %}sc-high{% elif discipline.score >= 40 %}sc-mid{% else %}sc-low{% endif %}">
+          {{ discipline.score }}<span style="font-size: 14px; font-weight: 500;">/100</span>
+        </div>
+        <div style="margin-top: 6px;">
+          <div class="disc-detail"><span>В срок</span><span class="dv">{{ discipline.completed_on_time_7 }}</span></div>
+          <div class="disc-detail"><span>С просрочкой</span><span class="dv">{{ discipline.completed_late_7 }}</span></div>
+          <div class="disc-detail"><span>Просрочено сейчас</span><span class="dv">{{ discipline.overdue_now }}</span></div>
+          <div class="disc-detail"><span>Переносов</span><span class="dv">{{ discipline.reschedules_7 }}</span></div>
+        </div>
+      </div>
+      <div class="disc-card">
+        <div class="analytics-period-title">Переносы</div>
+        <div class="disc-detail" style="font-size: 13px;"><span>За 7 дней</span><span class="dv">{{ discipline.reschedules_7 }}</span></div>
+        <div class="disc-detail" style="font-size: 13px;"><span>За 30 дней</span><span class="dv">{{ discipline.reschedules_30 }}</span></div>
+        {% if discipline.reschedule_top_30 %}
+        <div style="font-size: 11px; color: var(--text-secondary, #888); margin-top: 8px;">Топ-5 задач (30 дн.)</div>
+        <ul class="resc-top-list">
+          {% for r in discipline.reschedule_top_30 %}
+          <li><span class="resc-name">{{ r.title }}</span><span class="resc-cnt">{{ r.count }}</span></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if discipline.reason_top_30 %}
+        <div style="font-size: 11px; color: var(--text-secondary, #888); margin-top: 8px;">Причины (30 дн.)</div>
+        <ul class="resc-top-list">
+          {% for r in discipline.reason_top_30 %}
+          <li><span class="resc-name">{{ r.name }}</span><span class="resc-cnt">{{ r.count }}</span></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if not discipline.reschedule_top_30 and not discipline.reason_top_30 %}
+        <div style="font-size: 12px; color: var(--text-secondary, #aaa); margin-top: 8px;">Переносов нет</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Mini-chart: 7 days productivity #}
+    {% if analytics.productivity_7 %}
+    {% set max_count = analytics.productivity_7|map(attribute='count')|max %}
+    <div style="font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--text-secondary, #666);">Динамика за 7 дней</div>
+    <div class="mini-chart">
+      {% for day in analytics.productivity_7 %}
+      <div class="bar-col" title="{{ day.date }}: {{ day.count }}">
+        <span class="bar-count">{{ day.count }}</span>
+        <div class="bar{% if day.count == 0 %} bar-zero{% endif %}{% if day.is_today %} bar-today{% endif %}"
+             style="height: {% if max_count > 0 and day.count > 0 %}{{ (day.count / max_count * 80)|round|int }}px{% else %}4{% endif %}px;"></div>
+        <span class="bar-label{% if day.is_today %} bar-today-label{% endif %}">{{ day.weekday }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# By category table #}
+    {% if analytics.by_category_30 %}
+    <div style="font-weight: 600; font-size: 13px; margin-top: 16px; margin-bottom: 6px; color: var(--text-secondary, #666);">По категориям (30 дней)</div>
+    <table class="cat-table">
       <thead>
-        <tr><th>Задача</th><th>Срок</th><th>Действия</th></tr>
+        <tr><th>Категория</th><th class="num">Создано</th><th class="num">Выполнено</th><th class="num">%</th></tr>
       </thead>
       <tbody>
-        {% for task in active_tasks %}
+        {% for row in analytics.by_category_30 %}
         <tr>
-          <td>
-            {{ task.title }}
-            {% if task.note %}<br><small class="muted">{{ task.note }}</small>{% endif %}
-          </td>
-          <td class="{% if task.due_date and task.due_date < today %}negative{% endif %}">
-            {% if task.due_kind == 'DATETIME' %}
-              {{ task.due_date.strftime('%d.%m') }} {{ task.due_time.strftime('%H:%M') if task.due_time else '' }}
-            {% elif task.due_kind == 'WINDOW' %}
-              {{ task.due_date.strftime('%d.%m') }} {{ task.due_start_time.strftime('%H:%M') if task.due_start_time else '' }}–{{ task.due_end_time.strftime('%H:%M') if task.due_end_time else '' }}
-            {% elif task.due_date %}
-              {{ task.due_date.strftime('%d.%m.%Y') }}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td style="white-space: nowrap;">
-            <form method="POST" action="/tasks/{{ task.task_id }}/complete" style="display:inline;">
-              <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
-            </form>
-            <form method="POST" action="/tasks/{{ task.task_id }}/archive" style="display:inline;">
-              <button type="submit" class="danger" style="font-size: 12px; padding: 4px 10px;">Убрать</button>
-            </form>
-          </td>
+          <td>{{ row.category_name }}</td>
+          <td class="num">{{ row.created }}</td>
+          <td class="num">{{ row.completed }}</td>
+          <td class="num">{{ row.rate }}%</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-  {% else %}
-    <p class="muted">Нет активных задач</p>
-  {% endif %}
+    {% endif %}
+  </div>
+</details>
+{% endif %}
 
-  {% if done_tasks %}
-    <details style="margin-top: 12px;">
-      <summary class="muted" style="cursor: pointer;">Выполненные ({{ done_tasks | length }})</summary>
-      <table>
-        <tbody>
-          {% for task in done_tasks %}
-          <tr style="opacity: 0.5;">
-            <td><s>{{ task.title }}</s></td>
-            <td class="muted">{{ task.completed_at.strftime('%d.%m %H:%M') if task.completed_at else '' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </details>
+{# ── Macro: one-off task row ── #}
+{# (defined before layout so it's available inside) #}
+{% macro task_row(task, show_overdue=false) %}
+<div class="tsk-row{% if show_overdue and task.due_date and task.due_date < today %} tsk-overdue{% endif %}">
+  <form id="frm-c-{{ task.task_id }}" method="POST" action="/tasks/{{ task.task_id }}/complete" style="display:none;"></form>
+  <form id="frm-a-{{ task.task_id }}" method="POST" action="/tasks/{{ task.task_id }}/archive" style="display:none;"></form>
+  {% if enable_task_expense_link and task.requires_expense %}
+  <input type="checkbox" class="tsk-check"
+         onchange="this.checked=false; openExpenseModal({{ task.task_id }}, {{ task.suggested_expense_category_id or 'null' }}, '{{ task.suggested_amount or '' }}', '{{ task.title|e }}')">
+  {% else %}
+  <input type="checkbox" class="tsk-check"
+         onchange="tskConfirmComplete(this, 'frm-c-{{ task.task_id }}')">
+  {% endif %}
+  <div class="tsk-info">
+    <span class="tsk-title">{{ task.title }}</span>
+    {% if task.note %}<span class="tsk-note muted">{{ task.note }}</span>{% endif %}
+  </div>
+  <div class="tsk-meta">
+    {% if task.due_kind == 'DATETIME' %}
+      <span class="tsk-date">{{ task.due_date.strftime('%d.%m') }} {{ task.due_time.strftime('%H:%M') if task.due_time else '' }}</span>
+    {% elif task.due_kind == 'WINDOW' %}
+      <span class="tsk-date">{{ task.due_date.strftime('%d.%m') }} {{ task.due_start_time.strftime('%H:%M') if task.due_start_time else '' }}–{{ task.due_end_time.strftime('%H:%M') if task.due_end_time else '' }}</span>
+    {% elif task.due_date %}
+      <span class="tsk-date">{{ task.due_date.strftime('%d.%m.%Y') }}</span>
+    {% endif %}
+    {% if enable_reschedule_reasons and task.due_date %}
+    <button type="button" class="tsk-resc" title="Перенести"
+            onclick="openRescheduleModal({{ task.task_id }}, '{{ task.due_date.isoformat() }}', '{{ task.title|e }}')">&#8634;</button>
+    {% endif %}
+    <button type="button" class="tsk-del" onclick="tskConfirmArchive('frm-a-{{ task.task_id }}')" title="Убрать">&#x2715;</button>
+  </div>
+</div>
+{% endmacro %}
+
+{# ── Block: Сегодня ── #}
+<div class="card">
+  <h2 style="margin-bottom: 12px;">🔥 Сегодня ({{ today_tasks|length }})</h2>
+  {% if today_tasks %}
+    {% for task in today_tasks %}
+      {{ task_row(task, show_overdue=true) }}
+    {% endfor %}
+  {% else %}
+    <p class="muted" style="margin: 0;">На сегодня задач нет.</p>
   {% endif %}
 </div>
 
-<!-- Recurring task occurrences -->
-{% if task_templates %}
-<div class="card">
-  <h2>Повторяющиеся задачи</h2>
-  {% for tmpl in task_templates %}
-    <h3 style="margin-bottom: 4px;">{{ tmpl.title }}</h3>
-    {% set tmpl_occs = task_occurrences | selectattr('template_id', 'equalto', tmpl.template_id) | list %}
-    {% if tmpl_occs %}
-    <table>
-      <thead><tr><th>Дата</th><th>Статус</th><th>Действия</th></tr></thead>
-      <tbody>
-        {% for occ in tmpl_occs %}
-        <tr>
-          <td class="{% if occ.scheduled_date == today %}positive{% elif occ.scheduled_date < today and occ.status == 'ACTIVE' %}negative{% endif %}">
+{# ── Block: Ближайшие 14 дней ── #}
+<div class="card" style="margin-top: 16px;">
+  <h2 style="margin-bottom: 12px;">📅 Ближайшие 14 дней ({{ upcoming_14|length }})</h2>
+  {% if upcoming_14 %}
+    {% for task in upcoming_14 %}
+      {{ task_row(task) }}
+    {% endfor %}
+  {% else %}
+    <p class="muted" style="margin: 0;">В ближайшие 14 дней задач нет.</p>
+  {% endif %}
+</div>
+
+{# ── Block: Повторяющиеся ── #}
+{% if recurring_items %}
+<div class="card" style="margin-top: 16px;">
+  <h2 style="margin-bottom: 12px;">🔁 Повторяющиеся ({{ recurring_items|length }})</h2>
+  {% for ri in recurring_items %}
+    {% set tmpl = ri.template %}
+    {% set occ = ri.nearest_occ %}
+    <div class="tsk-row">
+      {% if occ %}
+      <form id="frm-oc-{{ occ.id }}" method="POST" action="/tasks/occurrences/{{ occ.id }}/complete" style="display:none;"></form>
+      <form id="frm-os-{{ occ.id }}" method="POST" action="/tasks/occurrences/{{ occ.id }}/skip" style="display:none;"></form>
+      <input type="checkbox" class="tsk-check"
+             onchange="tskConfirmComplete(this, 'frm-oc-{{ occ.id }}')">
+      {% endif %}
+      <div class="tsk-info">
+        <span class="tsk-title">{{ tmpl.title }}</span>
+      </div>
+      <div class="tsk-meta">
+        {% if occ %}
+          <span class="tsk-date{% if occ.scheduled_date < today %} negative{% elif occ.scheduled_date == today %} positive{% endif %}">
             {{ occ.scheduled_date.strftime('%d.%m.%Y') }}
             {% if occ.scheduled_date == today %}<small>(сегодня)</small>{% endif %}
-          </td>
-          <td>
-            {% if occ.status == 'DONE' %}<span class="positive">Выполнено</span>
-            {% elif occ.status == 'SKIPPED' %}<span class="muted">Пропущено</span>
-            {% else %}Активно{% endif %}
-          </td>
-          <td style="white-space: nowrap;">
-            {% if occ.status == 'ACTIVE' %}
-              <form method="POST" action="/tasks/occurrences/{{ occ.id }}/complete" style="display:inline;">
-                <button type="submit" style="font-size: 12px; padding: 4px 10px;">Выполнить</button>
-              </form>
-              <form method="POST" action="/tasks/occurrences/{{ occ.id }}/skip" style="display:inline;">
-                <button type="submit" class="secondary" style="font-size: 12px; padding: 4px 10px;">Пропустить</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p class="muted">Нет предстоящих</p>
-    {% endif %}
+          </span>
+          <button type="button" class="tsk-del" onclick="tskConfirmSkip('frm-os-{{ occ.id }}')" title="Пропустить">&#x2715;</button>
+        {% else %}
+          <span class="tsk-date muted">нет предстоящих</span>
+        {% endif %}
+      </div>
+    </div>
   {% endfor %}
 </div>
 {% endif %}
 
-<!-- Create task (unified form) -->
-<div class="task-create-wrapper">
+{# ── Create task form (inline) ── #}
 <div class="card task-create-card">
-  <h2>Создать задачу</h2>
+  <h2 style="margin-bottom: 10px; font-size: 16px;">Создать задачу</h2>
   {% if error %}
     <div class="error-card">{{ error }}</div>
   {% endif %}
   {% include "tasks/_task_form.html" %}
 </div>
-</div>
+
+{# ── Block: Без срока ── #}
+{% if no_date_tasks %}
+<details class="card" style="margin-top: 16px;" open>
+  <summary style="cursor: pointer; font-weight: 600; font-size: 16px; list-style: none; display: flex; align-items: center; gap: 8px;">
+    <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
+    Без срока ({{ no_date_tasks|length }})
+  </summary>
+  <div style="margin-top: 12px;">
+    {% for task in no_date_tasks %}
+      {{ task_row(task) }}
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
+{# ── Block: Позже (>14 дней) ── #}
+{% if later_tasks %}
+<details class="card" style="margin-top: 16px;">
+  <summary style="cursor: pointer; font-weight: 600; font-size: 16px; list-style: none; display: flex; align-items: center; gap: 8px;">
+    <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
+    Позже ({{ later_tasks|length }})
+  </summary>
+  <div style="margin-top: 12px;">
+    {% for task in later_tasks %}
+      {{ task_row(task) }}
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
+{# ── Block: Выполненные ── #}
+{% if done_tasks %}
+<details class="card" style="margin-top: 16px;">
+  <summary class="muted" style="cursor: pointer; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+    <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
+    Выполненные ({{ done_tasks|length }})
+  </summary>
+  <div style="margin-top: 12px;">
+    {% for task in done_tasks %}
+    <div class="tsk-row" style="opacity: 0.5;">
+      <div class="tsk-info">
+        <span class="tsk-title"><s>{{ task.title }}</s></span>
+      </div>
+      <div class="tsk-meta">
+        <span class="tsk-date muted">{{ task.completed_at.strftime('%d.%m %H:%M') if task.completed_at else '' }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
+
+<script>
+/* ── Task action confirmations ── */
+function tskConfirmComplete(chk, formId) {
+  if (confirm('Вы действительно выполнили задачу?')) {
+    document.getElementById(formId).submit();
+  } else {
+    chk.checked = false;
+  }
+}
+function tskConfirmArchive(formId) {
+  if (confirm('Удалить задачу?')) {
+    document.getElementById(formId).submit();
+  }
+}
+function tskConfirmSkip(formId) {
+  if (confirm('Пропустить задачу?')) {
+    document.getElementById(formId).submit();
+  }
+}
+</script>
 
 <script>
 (function() {
@@ -342,6 +836,307 @@
   };
 
   renderReminderChips();
+
+  // ── Task-expense link: toggle fields in create form ──
+  window.toggleExpenseFields = function() {
+    var chk = document.getElementById('chkRequiresExpense');
+    var block = document.getElementById('blockExpenseFields');
+    if (chk && block) {
+      block.style.display = chk.checked ? '' : 'none';
+      if (!chk.checked) {
+        var sel = document.getElementById('selExpenseCat');
+        var inp = document.getElementById('inputExpenseAmount');
+        if (sel) sel.value = '';
+        if (inp) inp.value = '';
+      }
+    }
+  };
+
+  // Hide expense link block when mode is recurring
+  var origSetMode = window.setMode;
+  window.setMode = function(m) {
+    origSetMode(m);
+    var expBlock = document.getElementById('blockExpenseLink');
+    if (expBlock) {
+      expBlock.style.display = (m === 'once') ? '' : 'none';
+      if (m !== 'once') {
+        var chk = document.getElementById('chkRequiresExpense');
+        if (chk) { chk.checked = false; toggleExpenseFields(); }
+      }
+    }
+  };
 })();
 </script>
+
+<script>
+/* ── Task preset pre-fill ── */
+function applyTaskPreset(presetId) {
+  var sel = document.getElementById('presetSelect');
+  if (!sel) return;
+  var opt = sel.options[sel.selectedIndex];
+  var form = document.getElementById('taskForm');
+  var titleInput = form.querySelector('input[name="title"]');
+  var noteInput  = form.querySelector('input[name="note"]');
+  var catSelect  = form.querySelector('select[name="category_id"]');
+
+  if (!presetId) {
+    if (titleInput) titleInput.value = '';
+    if (noteInput)  noteInput.value = '';
+    if (catSelect)  catSelect.value = '';
+    return;
+  }
+  if (titleInput) titleInput.value = opt.dataset.title || '';
+  if (noteInput)  noteInput.value = opt.dataset.note || '';
+  if (catSelect)  catSelect.value = opt.dataset.category || '';
+}
+</script>
+
+<script>
+/* ── Multi-date chips ── */
+(function() {
+  var _dates = [];
+  var chipsEl = document.getElementById('multiDateChips');
+  var hiddenEl = document.getElementById('multiDatesJson');
+  var hintEl = document.getElementById('multiDateHint');
+
+  function renderChips() {
+    if (!chipsEl) return;
+    _dates.sort();
+    chipsEl.innerHTML = '';
+    _dates.forEach(function(d, idx) {
+      var parts = d.split('-');
+      var label = parts[2] + '.' + parts[1] + '.' + parts[0];
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg-table-header, #e9ecef);padding:4px 10px;border-radius:12px;font-size:12px;';
+      chip.textContent = label;
+      var closeBtn = document.createElement('span');
+      closeBtn.textContent = '\u00d7';
+      closeBtn.style.cssText = 'cursor:pointer;font-weight:700;color:#888;margin-left:2px;';
+      closeBtn.onclick = (function(i) {
+        return function() { _dates.splice(i, 1); renderChips(); };
+      })(idx);
+      chip.appendChild(closeBtn);
+      chipsEl.appendChild(chip);
+    });
+    hiddenEl.value = _dates.length ? _dates.join(',') : '';
+    if (hintEl) hintEl.style.display = _dates.length ? 'none' : 'block';
+  }
+
+  window.addMultiDate = function() {
+    var input = document.getElementById('inputMultiDate');
+    if (!input || !input.value) return;
+    var val = input.value; // YYYY-MM-DD
+    if (_dates.indexOf(val) !== -1) return; // duplicate
+    _dates.push(val);
+    input.value = '';
+    renderChips();
+  };
+
+  window.toggleMultiDates = function() {
+    var chk = document.getElementById('chkMultiDates');
+    var blockMulti = document.getElementById('blockMultiDates');
+    var blockSwitcher = document.getElementById('blockDueKindSwitcher');
+    var blockDate = document.getElementById('blockDueDate');
+    var blockTime = document.getElementById('blockDueTime');
+    var blockWindow = document.getElementById('blockDueWindow');
+    var blockReminders = document.getElementById('blockReminders');
+
+    if (chk && chk.checked) {
+      // Multi-date mode: hide due_kind switcher and single-date fields, show multi block
+      if (blockSwitcher) blockSwitcher.style.display = 'none';
+      if (blockDate) blockDate.style.display = 'none';
+      if (blockTime) blockTime.style.display = 'none';
+      if (blockWindow) blockWindow.style.display = 'none';
+      if (blockReminders) blockReminders.style.display = 'none';
+      if (blockMulti) blockMulti.style.display = '';
+      // Force due_kind to DATE for multi-date tasks
+      var dueKindInput = document.getElementById('dueKind');
+      if (dueKindInput) dueKindInput.value = 'DATE';
+    } else {
+      // Single-date mode: restore
+      if (blockSwitcher) blockSwitcher.style.display = '';
+      if (blockMulti) blockMulti.style.display = 'none';
+      // Reset to current due_kind state
+      if (window.setDueKind) {
+        var cur = document.getElementById('dueKind');
+        window.setDueKind(cur ? cur.value : 'NONE');
+      }
+      // Clear multi-date state
+      _dates = [];
+      renderChips();
+    }
+  };
+
+  renderChips();
+})();
+</script>
+
+{% if enable_task_expense_link %}
+{# ── Expense completion modal ── #}
+<style>
+.te-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.35); align-items: center; justify-content: center;
+}
+.te-backdrop.te-open { display: flex; }
+.te-dialog {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: min(380px, calc(100vw - 32px)); padding: 20px 22px;
+}
+.te-title {
+  font-size: 15px; font-weight: 600; margin: 0 0 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.te-close {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  color: var(--text-secondary); line-height: 1; padding: 0 2px;
+}
+.te-close:hover { color: var(--text-primary); }
+.te-field { margin-bottom: 12px; }
+.te-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.te-field input, .te-field select {
+  width: 100%; padding: 8px 10px; font-size: 14px;
+  background: var(--bg-page); border: 1px solid var(--border-color);
+  border-radius: 8px; color: var(--text-primary); box-sizing: border-box;
+}
+.te-field input:focus, .te-field select:focus {
+  outline: none; border-color: var(--accent, #4a90d9);
+}
+.te-actions { display: flex; gap: 8px; margin-top: 16px; }
+.te-submit {
+  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 600;
+  background: var(--accent, #4a90d9); color: #fff;
+  border: none; border-radius: 10px; cursor: pointer;
+  transition: opacity .15s;
+}
+.te-submit:hover { opacity: .88; }
+.te-cancel {
+  padding: 9px 16px; font-size: 14px;
+  background: transparent; border: 1px solid var(--border-color);
+  border-radius: 10px; cursor: pointer; color: var(--text-secondary);
+}
+.te-cancel:hover { background: var(--bg-hover, rgba(128,128,128,.1)); }
+</style>
+
+<div class="te-backdrop" id="teBackdrop" role="dialog" aria-modal="true">
+  <div class="te-dialog">
+    <div class="te-title">
+      <span id="teTitle">Выполнить с расходом</span>
+      <button class="te-close" id="teClose" type="button" aria-label="Закрыть">&#x2715;</button>
+    </div>
+    <form method="POST" action="" id="teForm">
+      <div class="te-field">
+        <label>Сумма</label>
+        <input type="number" name="expense_amount" id="teAmount" step="0.01" min="0.01" placeholder="0.00" required>
+      </div>
+      <div class="te-field">
+        <label>Кошелёк</label>
+        <select name="expense_wallet_id" id="teWallet" required>
+          {% for w in task_wallets %}
+            <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="te-field">
+        <label>Категория расхода</label>
+        <select name="expense_category_id" id="teCategory" required>
+          <option value="">— Выберите —</option>
+          {% for c in expense_categories %}
+            <option value="{{ c.category_id }}">{{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="te-actions">
+        <button type="button" class="te-cancel" id="teCancelBtn">Отмена</button>
+        <button type="submit" class="te-submit">Выполнить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  var backdrop = document.getElementById('teBackdrop');
+  var form = document.getElementById('teForm');
+  var amountInput = document.getElementById('teAmount');
+  var catSelect = document.getElementById('teCategory');
+  var closeBtn = document.getElementById('teClose');
+  var cancelBtn = document.getElementById('teCancelBtn');
+
+  window.openExpenseModal = function(taskId, suggestedCatId, suggestedAmount, taskTitle) {
+    form.action = '/tasks/' + taskId + '/complete-with-expense';
+    if (suggestedAmount) amountInput.value = suggestedAmount;
+    else amountInput.value = '';
+    if (suggestedCatId) catSelect.value = suggestedCatId;
+    else catSelect.value = '';
+    document.getElementById('teTitle').textContent = 'Расход: ' + taskTitle;
+    backdrop.classList.add('te-open');
+    amountInput.focus();
+  };
+
+  function closeModal() {
+    backdrop.classList.remove('te-open');
+  }
+
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', function(e) {
+    if (e.target === backdrop) closeModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && backdrop.classList.contains('te-open')) closeModal();
+  });
+})();
+</script>
+{% endif %}
+
+{# ── Reschedule modal ── #}
+{% if enable_reschedule_reasons and reschedule_reasons %}
+<div class="resc-overlay" id="rescOverlay">
+  <div class="resc-modal">
+    <h3 id="rescTitle">Перенести задачу</h3>
+    <form method="POST" id="rescForm" action="">
+      <div class="form-row">
+        <label>Новая дата</label>
+        <input type="date" name="new_due_date" id="rescDate" required>
+      </div>
+      <div class="form-row">
+        <label>Причина</label>
+        <select name="reason_id" id="rescReason" required>
+          <option value="">— Выберите причину —</option>
+          {% for r in reschedule_reasons %}
+          <option value="{{ r.id }}">{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="resc-modal-actions">
+        <button type="submit">Перенести</button>
+        <button type="button" class="btn secondary" onclick="closeRescheduleModal()">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function openRescheduleModal(taskId, currentDate, title) {
+  document.getElementById('rescForm').action = '/tasks/' + taskId + '/reschedule';
+  document.getElementById('rescTitle').textContent = 'Перенести: ' + title;
+  var dateInput = document.getElementById('rescDate');
+  dateInput.value = '';
+  dateInput.min = new Date().toISOString().split('T')[0];
+  document.getElementById('rescReason').value = '';
+  document.getElementById('rescOverlay').classList.add('open');
+}
+function closeRescheduleModal() {
+  document.getElementById('rescOverlay').classList.remove('open');
+}
+document.getElementById('rescOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeRescheduleModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeRescheduleModal();
+});
+</script>
+{% endif %}
+
 {% endblock %}
