@@ -559,17 +559,9 @@ class DashboardService:
 
     def get_fin_state_summary(self, account_id: int, today: date) -> dict:
         """
-        Wallet balance totals by type (REGULAR / CREDIT / SAVINGS) for RUB wallets,
-        net balance change over the last 30 days, and monthly income / expense.
-
-        Δ30d is derived from TransactionFeed: the sum of all INCOME, EXPENSE, and
-        TRANSFER entries touching each wallet set within the rolling 30-day window.
-
-        Returns a flat dict with pre-computed sign / abs / fmt fields so Jinja
-        contains zero arithmetic.
+        Wallet balance totals by type (REGULAR / CREDIT / SAVINGS) for RUB wallets.
+        financial_result = regular + savings - credits.
         """
-        from datetime import datetime as dt, timedelta
-
         # ── Wallet totals (RUB, non-archived) ──
         wallets = self.db.query(WalletBalance).filter(
             WalletBalance.account_id == account_id,
@@ -577,110 +569,21 @@ class DashboardService:
             WalletBalance.currency == "RUB",
         ).all()
 
-        def _ids_and_total(wtype: str):
+        def _total(wtype: str) -> int:
             ws = [w for w in wallets if w.wallet_type == wtype]
-            total = sum(w.balance for w in ws) if ws else Decimal("0")
-            return {w.wallet_id for w in ws}, int(total)
+            return int(sum(w.balance for w in ws)) if ws else 0
 
-        regular_ids, regular_total = _ids_and_total("REGULAR")
-        credit_ids,  credit_total  = _ids_and_total("CREDIT")
-        savings_ids, savings_total = _ids_and_total("SAVINGS")
+        regular_total = _total("REGULAR")
+        credit_total  = _total("CREDIT")
+        savings_total = _total("SAVINGS")
 
-        # ── Δ30d: net balance change via TransactionFeed ──
-        window_start = dt(today.year, today.month, today.day) - timedelta(days=30)
-        window_end   = dt(today.year, today.month, today.day) + timedelta(days=1)
-
-        def _net_30d(wallet_ids: set) -> int:
-            if not wallet_ids:
-                return 0
-            ids = list(wallet_ids)
-            base = [
-                TransactionFeed.account_id == account_id,
-                TransactionFeed.occurred_at >= window_start,
-                TransactionFeed.occurred_at < window_end,
-            ]
-            inc = self.db.query(
-                func.coalesce(func.sum(TransactionFeed.amount), 0)
-            ).filter(*base,
-                     TransactionFeed.operation_type == "INCOME",
-                     TransactionFeed.wallet_id.in_(ids)).scalar() or Decimal("0")
-
-            exp = self.db.query(
-                func.coalesce(func.sum(TransactionFeed.amount), 0)
-            ).filter(*base,
-                     TransactionFeed.operation_type == "EXPENSE",
-                     TransactionFeed.wallet_id.in_(ids)).scalar() or Decimal("0")
-
-            t_in = self.db.query(
-                func.coalesce(func.sum(TransactionFeed.amount), 0)
-            ).filter(*base,
-                     TransactionFeed.operation_type == "TRANSFER",
-                     TransactionFeed.to_wallet_id.in_(ids)).scalar() or Decimal("0")
-
-            t_out = self.db.query(
-                func.coalesce(func.sum(TransactionFeed.amount), 0)
-            ).filter(*base,
-                     TransactionFeed.operation_type == "TRANSFER",
-                     TransactionFeed.from_wallet_id.in_(ids)).scalar() or Decimal("0")
-
-            return int(inc - exp + t_in - t_out)
-
-        regular_delta = _net_30d(regular_ids)
-        credit_delta  = _net_30d(credit_ids)
-        savings_delta = _net_30d(savings_ids)
-
-        # ── Monthly income / expense (RUB) ──
-        month_start = dt(today.year, today.month, 1)
-        if today.month == 12:
-            month_end = dt(today.year + 1, 1, 1)
-        else:
-            month_end = dt(today.year, today.month + 1, 1)
-
-        m_base = [
-            TransactionFeed.account_id == account_id,
-            TransactionFeed.currency == "RUB",
-            TransactionFeed.occurred_at >= month_start,
-            TransactionFeed.occurred_at < month_end,
-        ]
-        month_income = int(self.db.query(
-            func.coalesce(func.sum(TransactionFeed.amount), 0)
-        ).filter(*m_base, TransactionFeed.operation_type == "INCOME").scalar() or 0)
-
-        month_expense = int(self.db.query(
-            func.coalesce(func.sum(TransactionFeed.amount), 0)
-        ).filter(*m_base, TransactionFeed.operation_type == "EXPENSE").scalar() or 0)
-
-        # ── Helpers ──
-        def _sign_abs(delta: int):
-            if delta > 0:
-                return "up", delta
-            if delta < 0:
-                return "down", abs(delta)
-            return "zero", 0
-
-        def _fmt_int(n: int) -> str:
-            return f"{n:,}".replace(",", " ")
-
-        r_sign, r_abs = _sign_abs(regular_delta)
-        c_sign, c_abs = _sign_abs(credit_delta)
-        s_sign, s_abs = _sign_abs(savings_delta)
+        financial_result = regular_total + savings_total - credit_total
 
         return {
-            "regular_total":      regular_total,
-            "credit_total":       credit_total,
-            "savings_total":      savings_total,
-            "regular_delta_sign": r_sign,
-            "regular_delta_abs":  r_abs,
-            "regular_delta_fmt":  _fmt_int(r_abs),
-            "credit_delta_sign":  c_sign,
-            "credit_delta_abs":   c_abs,
-            "credit_delta_fmt":   _fmt_int(c_abs),
-            "savings_delta_sign": s_sign,
-            "savings_delta_abs":  s_abs,
-            "savings_delta_fmt":  _fmt_int(s_abs),
-            "month_income":       month_income,
-            "month_expense":      month_expense,
-            "month_net":          month_income - month_expense,
+            "regular_total":    regular_total,
+            "credit_total":     credit_total,
+            "savings_total":    savings_total,
+            "financial_result": financial_result,
         }
 
     # ------------------------------------------------------------------

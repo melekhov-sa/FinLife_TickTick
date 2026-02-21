@@ -71,46 +71,24 @@
   text-decoration: none;
 }
 a.fs-label:hover { color: var(--text-primary); }
-.fs-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
 .fs-amount {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
-.fs-delta {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
+.fs-result {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
 }
-.fs-delta--up   { color: #2e7d32; }
-.fs-delta--down { color: #c62828; }
-.fs-delta--zero { color: var(--text-secondary); }
-.fs-monthly {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 2px solid var(--border-color);
-}
-.fs-net-row {
-  padding: 0;
-  border-bottom: none;
-}
-.fs-net {
-  font-size: 17px;
+.fs-result-val {
+  font-size: 18px;
   font-weight: 700;
 }
-.fs-sub {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-  line-height: 1.4;
-}
+.fs-result--pos { color: #2e7d32; }
+.fs-result--neg { color: #c62828; }
 
 /* ── Progress bar (shared) ── */
 .progress {
@@ -254,11 +232,11 @@ a.dash-card-link {
   }
   /* Finance state: smaller amounts */
   .fs-amount {
-    font-size: 15px;
+    font-size: 13px;
     word-break: break-word;
   }
-  .fs-net {
-    font-size: 14px;
+  .fs-result-val {
+    font-size: 15px;
   }
   .fs-label {
     font-size: 12px;
@@ -267,18 +245,6 @@ a.dash-card-link {
   }
   .fs-row {
     gap: 8px;
-  }
-  .fs-right {
-    min-width: 0;
-    flex-shrink: 0;
-  }
-  .fs-delta {
-    font-size: 11px;
-  }
-  .fs-sub {
-    font-size: 11px;
-    word-break: break-word;
-    overflow-wrap: anywhere;
   }
   /* Level & Activity: slightly smaller */
   .lv-num {
@@ -326,16 +292,13 @@ a.dash-card-link {
     padding: 12px;
   }
   .fs-amount {
-    font-size: 14px;
+    font-size: 12px;
   }
-  .fs-net {
-    font-size: 13px;
+  .fs-result-val {
+    font-size: 14px;
   }
   .fs-label {
     font-size: 11px;
-  }
-  .fs-sub {
-    font-size: 10px;
   }
   .diary-item-time {
     min-width: 32px;
@@ -618,68 +581,27 @@ a.dash-card-link {
     <div class="dash-card clarity-mask" id="dash-fin-state">
       <div class="dash-card-title">Финансовое состояние</div>
 
-      {# ── Обычные кошельки ── #}
       <div class="fs-row">
         <a href="/wallets" class="fs-label">Обычные кошельки</a>
-        <div class="fs-right">
-          <span class="fs-amount">{{ format_money(fin_state.regular_total, "RUB") }}</span>
-          <span class="fs-delta fs-delta--{{ fin_state.regular_delta_sign }}">
-            {%- if fin_state.regular_delta_sign == "up" -%}
-              ▲ +{{ fin_state.regular_delta_fmt }}
-            {%- elif fin_state.regular_delta_sign == "down" -%}
-              ▼ −{{ fin_state.regular_delta_fmt }}
-            {%- else -%}
-              • 0
-            {%- endif -%}
-          </span>
-        </div>
+        <span class="fs-amount">{{ format_money(fin_state.regular_total, "RUB") }}</span>
       </div>
 
-      {# ── Кредиты ── #}
       <div class="fs-row">
         <a href="/wallets" class="fs-label">Кредиты</a>
-        <div class="fs-right">
-          <span class="fs-amount">{{ format_money(fin_state.credit_total, "RUB") }}</span>
-          <span class="fs-delta fs-delta--{{ fin_state.credit_delta_sign }}">
-            {%- if fin_state.credit_delta_sign == "up" -%}
-              ▲ +{{ fin_state.credit_delta_fmt }}
-            {%- elif fin_state.credit_delta_sign == "down" -%}
-              ▼ −{{ fin_state.credit_delta_fmt }}
-            {%- else -%}
-              • 0
-            {%- endif -%}
-          </span>
-        </div>
+        <span class="fs-amount">{{ format_money(fin_state.credit_total, "RUB") }}</span>
       </div>
 
-      {# ── Накопления ── #}
       <div class="fs-row">
         <a href="/goals" class="fs-label">Накопления</a>
-        <div class="fs-right">
-          <span class="fs-amount">{{ format_money(fin_state.savings_total, "RUB") }}</span>
-          <span class="fs-delta fs-delta--{{ fin_state.savings_delta_sign }}">
-            {%- if fin_state.savings_delta_sign == "up" -%}
-              ▲ +{{ fin_state.savings_delta_fmt }}
-            {%- elif fin_state.savings_delta_sign == "down" -%}
-              ▼ −{{ fin_state.savings_delta_fmt }}
-            {%- else -%}
-              • 0
-            {%- endif -%}
-          </span>
-        </div>
+        <span class="fs-amount">{{ format_money(fin_state.savings_total, "RUB") }}</span>
       </div>
 
-      {# ── Финансовый результат месяца ── #}
-      <div class="fs-monthly">
-        <div class="fs-row fs-net-row">
-          <span class="fs-label">Результат — {{ current_month }}</span>
-          <span class="fs-amount fs-net {% if fin_state.month_net >= 0 %}positive{% else %}negative{% endif %}">
-            {%- if fin_state.month_net > 0 %}+{% endif -%}
-            {{ format_money(fin_state.month_net, "RUB") }}
+      <div class="fs-result">
+        <div class="fs-row" style="border-bottom:none;">
+          <span class="fs-label" style="font-weight:600;">Финансовый результат</span>
+          <span class="fs-amount fs-result-val {% if fin_state.financial_result >= 0 %}fs-result--pos{% else %}fs-result--neg{% endif %}">
+            {{ format_money(fin_state.financial_result, "RUB") }}
           </span>
-        </div>
-        <div class="fs-sub">
-          Доход: {{ format_money(fin_state.month_income, "RUB") }} • Расход: {{ format_money(fin_state.month_expense, "RUB") }}
         </div>
       </div>
 
