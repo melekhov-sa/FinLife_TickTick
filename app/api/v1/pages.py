@@ -6486,6 +6486,71 @@ def plan_cancel_event(request: Request, occurrence_id: int, redirect: str = Form
 # WISHES
 # ====================
 
+_WISH_MONTH_NAMES_RU = {
+    1: "январь", 2: "февраль", 3: "март", 4: "апрель",
+    5: "май", 6: "июнь", 7: "июль", 8: "август",
+    9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь",
+}
+
+_WISH_STATUS_LABELS = {
+    "IDEA": "идея",
+    "CONSIDERING": "думаю",
+    "PLANNED": "запланировано",
+    "DONE": "выполнено",
+    "CANCELED": "отменено",
+}
+
+
+def _enrich_wish(w, today: date) -> dict:
+    """Build display dict for a single wish."""
+    # Resolve effective date
+    eff_date: date | None = None
+    formatted_date: str | None = None
+    if w.target_date:
+        eff_date = w.target_date
+        formatted_date = w.target_date.strftime("%d.%m.%Y")
+    elif w.target_month:
+        try:
+            y, m = w.target_month.split("-")
+            eff_date = date(int(y), int(m), 1)
+            formatted_date = f"{_WISH_MONTH_NAMES_RU.get(int(m), m)} {y}"
+        except (ValueError, KeyError):
+            formatted_date = w.target_month
+
+    days_until: int | None = None
+    is_overdue = False
+    if eff_date:
+        days_until = (eff_date - today).days
+        is_overdue = days_until < 0
+
+    # Meta parts
+    meta_parts: list[str] = []
+    label = _WISH_STATUS_LABELS.get(w.status)
+    if label:
+        meta_parts.append(label)
+    if formatted_date:
+        meta_parts.append(formatted_date)
+    if days_until is not None:
+        if days_until == 0:
+            meta_parts.append("сегодня")
+        elif days_until == 1:
+            meta_parts.append("завтра")
+        elif days_until > 1:
+            meta_parts.append(f"через {days_until} дн.")
+        else:
+            meta_parts.append("просрочено")
+    if w.is_recurring:
+        meta_parts.append("повтор")
+
+    return {
+        "wish": w,
+        "days_until": days_until,
+        "is_overdue": is_overdue,
+        "formatted_date": formatted_date,
+        "meta": " · ".join(meta_parts),
+    }
+
+
 @router.get("/wishes", response_class=HTMLResponse)
 def wishes_list(
     request: Request,
@@ -6516,16 +6581,61 @@ def wishes_list(
         search=search if search else None
     )
 
-    # Group by type
-    grouped = service.group_by_type(wishes)
+    # Group by type, enrich each item
+    today = date.today()
+    grouped_raw = service.group_by_type(wishes)
+    grouped_wishes: dict[str, list[dict]] = {}
+    for wtype, wlist in grouped_raw.items():
+        grouped_wishes[wtype] = [_enrich_wish(w, today) for w in wlist]
+
+    # Summary counts (across ALL filtered wishes)
+    deadline_30 = today + timedelta(days=30)
+    count_active = len(wishes)
+    count_next30 = 0
+    count_recurring = 0
+    for w in wishes:
+        if w.is_recurring:
+            count_recurring += 1
+        if w.target_date and w.target_date <= deadline_30:
+            count_next30 += 1
+        elif w.target_month:
+            try:
+                y, m = w.target_month.split("-")
+                if date(int(y), int(m), 1) <= deadline_30:
+                    count_next30 += 1
+            except (ValueError, KeyError):
+                pass
 
     return templates.TemplateResponse("wishes_list.html", {
         "request": request,
-        "grouped_wishes": grouped,
+        "grouped_wishes": grouped_wishes,
         "period": period,
         "status": status,
         "search": search,
+        "count_active": count_active,
+        "count_next30": count_next30,
+        "count_recurring": count_recurring,
     })
+
+
+@router.post("/wishes/{wish_id}/to-task")
+def wish_to_task(request: Request, wish_id: int, db: Session = Depends(get_db)):
+    """Создать задачу из хотелки."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    account_id = request.session["user_id"]
+    wish = db.query(WishModel).filter(
+        WishModel.wish_id == wish_id,
+        WishModel.account_id == account_id,
+    ).first()
+    if not wish:
+        return RedirectResponse("/wishes", status_code=302)
+    CreateTaskUseCase(db).execute(
+        account_id=account_id,
+        title=wish.title,
+        actor_user_id=account_id,
+    )
+    return RedirectResponse("/tasks", status_code=302)
 
 
 @router.get("/wishes/purchase", response_class=HTMLResponse)
