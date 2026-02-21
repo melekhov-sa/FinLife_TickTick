@@ -410,8 +410,14 @@ a.dash-card-link {
   border-color: var(--accent);
   background: rgba(0,122,255,.08);
 }
+.focus-check--done {
+  border-color: var(--accent); background: var(--accent);
+  color: #fff; font-size: 10px;
+  pointer-events: none;
+}
 .focus-content { flex: 1; min-width: 0; }
 .focus-title { font-size: 14px; line-height: 1.3; }
+.focus-title--done { text-decoration: line-through; color: var(--text-secondary); }
 .focus-meta { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
 .focus-meta--overdue { color: #c62828; }
 .focus-item--overdue .focus-title { color: #c62828; }
@@ -428,6 +434,18 @@ a.dash-card-link {
   line-height: 1.4; display: inline-block;
 }
 .focus-link-btn:hover { background: var(--bg-hover, rgba(128,128,128,.1)); color: var(--text-primary); }
+/* Two-column layout for todo/done */
+.focus-cols {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-top: 4px;
+}
+.focus-col {}
+.focus-event-icon {
+  flex: 0 0 18px; font-size: 14px; line-height: 1; text-align: center;
+}
+@media (max-width: 767px) {
+  .focus-cols { grid-template-columns: 1fr; gap: 8px; }
+}
 
 /* ── Diary card (#dash-feed) ── */
 .diary-day { margin-bottom: 20px; }
@@ -754,17 +772,15 @@ a.dash-card-link {
         </div>
       </div>
 
-      {# Progress bar #}
-      {% if progress.total > 0 %}
+      {# Progress bar — tasks only, events excluded #}
+      {% if focus_total_count > 0 %}
       <div class="focus-progress">
-        <span>{{ progress.done }} из {{ progress.total }}</span>
+        <span>{{ focus_done_count }} из {{ focus_total_count }}</span>
         <div class="focus-progress-bar">
-          <div class="focus-progress-fill" style="width: {{ (progress.done / progress.total * 100)|round|int }}%;"></div>
+          <div class="focus-progress-fill" style="width: {{ (focus_done_count / focus_total_count * 100)|round|int }}%;"></div>
         </div>
       </div>
       {% endif %}
-
-      {% set has_focus = focus_overdue or focus_tasks or focus_habits %}
 
       {# Просроченные задачи #}
       {% if focus_overdue %}
@@ -790,36 +806,62 @@ a.dash-card-link {
       {% endfor %}
       {% endif %}
 
-      {# Активные задачи сегодня #}
-      {% if focus_tasks %}
-      <div class="focus-section-label">Задачи</div>
-      {% for item in focus_tasks %}
-      <div class="focus-item">
-        {% if item.kind == "task" %}
-        <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="focus-check" title="Выполнить"></button>
-        </form>
-        {% elif item.kind == "task_occ" %}
-        <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
-          <input type="hidden" name="redirect" value="/">
-          <button type="submit" class="focus-check" title="Выполнить"></button>
-        </form>
-        {% endif %}
-        <div class="focus-content">
-          <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
-          {% if item.date == today %}
-          <div class="focus-meta">сегодня</div>
+      {# Two-column layout: Осталось сегодня / Сделано сегодня #}
+      {% if focus_today_todo or focus_today_done %}
+      <div class="focus-cols">
+        {# Left column: Осталось сегодня #}
+        <div class="focus-col">
+          <div class="focus-section-label">Осталось сегодня</div>
+          {% if focus_today_todo %}
+          {% for item in focus_today_todo %}
+          <div class="focus-item">
+            {% if item.kind == "task" %}
+            <form method="POST" action="/plan/tasks/{{ item.meta.task_id }}/complete" style="margin:0;">
+              <input type="hidden" name="redirect" value="/">
+              <button type="submit" class="focus-check" title="Выполнить"></button>
+            </form>
+            {% elif item.kind == "task_occ" %}
+            <form method="POST" action="/plan/task-occurrences/{{ item.meta.occurrence_id }}/complete" style="margin:0;">
+              <input type="hidden" name="redirect" value="/">
+              <button type="submit" class="focus-check" title="Выполнить"></button>
+            </form>
+            {% endif %}
+            <div class="focus-content">
+              <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+            </div>
+          </div>
+          {% endfor %}
+          {% if focus_today_todo_overflow %}
+          <p class="focus-overflow"><a href="/tasks">ещё &rarr;</a></p>
+          {% endif %}
+          {% else %}
+          <div style="font-size:12px;color:var(--text-secondary);padding:6px 4px;">Нет задач</div>
+          {% endif %}
+        </div>
+
+        {# Right column: Сделано сегодня #}
+        <div class="focus-col">
+          <div class="focus-section-label">Сделано сегодня</div>
+          {% if focus_today_done %}
+          {% for item in focus_today_done %}
+          <div class="focus-item">
+            <span class="focus-check focus-check--done">&#10003;</span>
+            <div class="focus-content">
+              <div class="focus-title focus-title--done">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+            </div>
+          </div>
+          {% endfor %}
+          {% if focus_today_done_overflow %}
+          <p class="focus-overflow"><a href="/tasks">ещё &rarr;</a></p>
+          {% endif %}
+          {% else %}
+          <div style="font-size:12px;color:var(--text-secondary);padding:6px 4px;">Пока ничего</div>
           {% endif %}
         </div>
       </div>
-      {% endfor %}
-      {% if focus_tasks_overflow %}
-      <p class="focus-overflow"><a href="/tasks">Показать все задачи &rarr;</a></p>
-      {% endif %}
       {% endif %}
 
-      {# Активные привычки сегодня #}
+      {# Привычки #}
       {% if focus_habits %}
       <div class="focus-section-label">Привычки</div>
       {% for item in focus_habits %}
@@ -841,7 +883,26 @@ a.dash-card-link {
       {% endif %}
       {% endif %}
 
-      {% if not has_focus %}
+      {# События сегодня — отдельно от прогресса #}
+      {% if focus_today_events %}
+      <div class="focus-section-label">События сегодня</div>
+      {% for item in focus_today_events %}
+      <div class="focus-item">
+        <span class="focus-event-icon">📅</span>
+        <div class="focus-content">
+          <div class="focus-title">{% if item.category_emoji %}{{ item.category_emoji }} {% endif %}{{ item.title }}</div>
+          {% if item.time %}
+          <div class="focus-meta">{{ item.time }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% if focus_today_events_overflow %}
+      <p class="focus-overflow"><a href="/events">ещё &rarr;</a></p>
+      {% endif %}
+      {% endif %}
+
+      {% if not focus_overdue and not focus_today_todo and not focus_today_done and not focus_habits and not focus_today_events %}
       <div class="focus-all-done">Сегодня всё выполнено &#10003;</div>
       {% endif %}
 

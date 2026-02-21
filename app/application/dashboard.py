@@ -48,9 +48,10 @@ class DashboardService:
         """
         Returns:
             overdue:  list[item]   — tasks + planned ops that are overdue (scheduled < today)
-            active:   list[item]   — today's active items (tasks, ops, events, habits)
-            done:     list[item]   — items completed today
-            progress: {total, done, left}  — only today items (overdue excluded from total)
+            active:   list[item]   — today's active items (tasks, ops, habits)
+            done:     list[item]   — items completed today (tasks, ops, habits)
+            events:   list[item]   — today's events (separate, NOT in progress)
+            progress: {total, done, left}  — tasks-only progress (events excluded)
         """
         wc_map = self._load_wc_map(account_id)
         wcur_map = self._load_wallet_currency_map(account_id)
@@ -58,6 +59,7 @@ class DashboardService:
         overdue: list[dict] = []
         active: list[dict] = []
         done: list[dict] = []
+        events: list[dict] = []
 
         # --- One-off tasks ---
         self._collect_oneoff_tasks(account_id, today, wc_map, overdue, active, done)
@@ -68,20 +70,22 @@ class DashboardService:
         # --- Planned operations ---
         self._collect_operation_occurrences(account_id, today, wc_map, wcur_map, overdue, active, done)
 
-        # --- Events (today only, no overdue concept) ---
-        self._collect_events_today(account_id, today, wc_map, active)
+        # --- Events (today only, separate list — NOT in progress) ---
+        self._collect_events_today(account_id, today, wc_map, events)
 
         # --- Habits (today only, no overdue concept) ---
         self._collect_habits_today(account_id, today, wc_map, active, done)
 
-        # Sort: events first, then tasks, then ops, then habits
-        kind_sort = {"event": 1, "task": 2, "task_occ": 2, "planned_op": 3, "habit": 4}
+        # Sort: tasks, then ops, then habits
+        kind_sort = {"task": 1, "task_occ": 1, "planned_op": 2, "habit": 3}
         _sort = lambda it: (kind_sort.get(it["kind"], 9), it["title"])
         overdue.sort(key=_sort)
         active.sort(key=_sort)
         done.sort(key=_sort)
+        events.sort(key=lambda it: (it.get("time") or "", it["title"]))
 
-        # Progress: only today's items (active + done), overdue excluded
+        # Progress: tasks only (active + done), events excluded, overdue excluded
+        _task_kinds = ("task", "task_occ", "planned_op", "habit")
         total = len(active) + len(done)
         done_count = len(done)
         progress = {"total": total, "done": done_count, "left": total - done_count}
@@ -90,6 +94,7 @@ class DashboardService:
             "overdue": overdue,
             "active": active,
             "done": done,
+            "events": events,
             "progress": progress,
         }
 

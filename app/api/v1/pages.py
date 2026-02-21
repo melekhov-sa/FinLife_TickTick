@@ -228,17 +228,32 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     # 1. Today block
     today_block = svc.get_today_block(user_id, today)
 
-    # 9. Focus data for #dash-focus (tasks + habits only, max 5 each)
-    _FOCUS_MAX = 5
+    # 9. Focus data for #dash-focus
+    _FOCUS_MAX_TASKS = 5
+    _FOCUS_MAX_EVENTS = 3
     _overdue_all = today_block["overdue"]
     _active_all = today_block["active"]
+    _done_all = today_block["done"]
+    _events_all = today_block["events"]
     focus_overdue = [i for i in _overdue_all if i["kind"] in ("task", "task_occ")]
-    focus_tasks_all = [i for i in _active_all if i["kind"] in ("task", "task_occ")]
+    # Today's active tasks (todo)
+    focus_today_todo_all = [i for i in _active_all if i["kind"] in ("task", "task_occ")]
+    focus_today_todo = focus_today_todo_all[:_FOCUS_MAX_TASKS]
+    focus_today_todo_overflow = len(focus_today_todo_all) > _FOCUS_MAX_TASKS
+    # Today's completed tasks (done)
+    focus_today_done_all = [i for i in _done_all if i["kind"] in ("task", "task_occ")]
+    focus_today_done = focus_today_done_all[:_FOCUS_MAX_TASKS]
+    focus_today_done_overflow = len(focus_today_done_all) > _FOCUS_MAX_TASKS
+    # Events today (separate, not in progress)
+    focus_today_events = _events_all[:_FOCUS_MAX_EVENTS]
+    focus_today_events_overflow = len(_events_all) > _FOCUS_MAX_EVENTS
+    # Habits (active only, as before)
     focus_habits_all = [i for i in _active_all if i["kind"] == "habit"]
-    focus_tasks = focus_tasks_all[:_FOCUS_MAX]
-    focus_habits = focus_habits_all[:_FOCUS_MAX]
-    focus_tasks_overflow = len(focus_tasks_all) > _FOCUS_MAX
-    focus_habits_overflow = len(focus_habits_all) > _FOCUS_MAX
+    focus_habits = focus_habits_all[:_FOCUS_MAX_TASKS]
+    focus_habits_overflow = len(focus_habits_all) > _FOCUS_MAX_TASKS
+    # Progress: tasks only (events excluded)
+    focus_done_count = today_block["progress"]["done"]
+    focus_total_count = today_block["progress"]["total"]
 
     # 2. Upcoming payments
     upcoming_payments = svc.get_upcoming_payments(user_id, today, limit=3)
@@ -353,10 +368,16 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "progress": today_block["progress"],
         # Focus data for #dash-focus
         "focus_overdue": focus_overdue,
-        "focus_tasks": focus_tasks,
+        "focus_today_todo": focus_today_todo,
+        "focus_today_todo_overflow": focus_today_todo_overflow,
+        "focus_today_done": focus_today_done,
+        "focus_today_done_overflow": focus_today_done_overflow,
+        "focus_today_events": focus_today_events,
+        "focus_today_events_overflow": focus_today_events_overflow,
         "focus_habits": focus_habits,
-        "focus_tasks_overflow": focus_tasks_overflow,
         "focus_habits_overflow": focus_habits_overflow,
+        "focus_done_count": focus_done_count,
+        "focus_total_count": focus_total_count,
         # Event feed for #dash-feed
         "feed_groups": feed_groups,
         # Upcoming payments

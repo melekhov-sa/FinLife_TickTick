@@ -1,6 +1,6 @@
 """Tests for DashboardService V2."""
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from app.infrastructure.db.models import (
@@ -158,6 +158,7 @@ class TestTodayBlockEmpty:
         assert block["overdue"] == []
         assert block["active"] == []
         assert block["done"] == []
+        assert block["events"] == []
         assert block["progress"] == {"total": 0, "done": 0, "left": 0}
 
 
@@ -216,13 +217,14 @@ class TestTodayBlockActive:
         assert len(block["active"]) == 1
 
     def test_active_event_today(self, db_session):
-        """Event with start_date == today → active."""
+        """Event with start_date == today → separate events list (not active)."""
         _add_event(db_session, 1, title="Meeting", category_id=1)
         _add_event_occ(db_session, 1, 1, TODAY)
         block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
-        events = [it for it in block["active"] if it["kind"] == "event"]
-        assert len(events) == 1
-        assert events[0]["title"] == "Meeting"
+        # Events are in separate list, not in active
+        assert len(block["events"]) == 1
+        assert block["events"][0]["title"] == "Meeting"
+        assert all(it["kind"] != "event" for it in block["active"])
 
     def test_active_habit_today(self, db_session):
         """Habit occurrence for today, ACTIVE status → active."""
@@ -531,12 +533,15 @@ class TestIntegrationMixed:
 
         # Overdue: task#1 + op#100
         assert len(block["overdue"]) == 2
-        # Active: task#2 + op#101 + event#1 + habit#1
-        assert len(block["active"]) == 4
+        # Active: task#2 + op#101 + habit#1 (events are separate now)
+        assert len(block["active"]) == 3
         # Done: task#3 + habit#2
         assert len(block["done"]) == 2
-        # Progress: total = active(4) + done(2) = 6, done = 2
-        assert block["progress"]["total"] == 6
+        # Events: event#1 (separate from active/progress)
+        assert len(block["events"]) == 1
+        assert block["events"][0]["title"] == "Meeting"
+        # Progress: tasks only = active(3) + done(2) = 5, done = 2
+        assert block["progress"]["total"] == 5
         assert block["progress"]["done"] == 2
 
         # Upcoming
@@ -676,3 +681,72 @@ class TestFinStateSummary:
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         assert result["capital_delta_30"] is None
+
+
+# ======================================================================
+# Focus day: events separated from progress
+# ======================================================================
+
+class TestFocusDayEventsExcluded:
+    """Events must NOT count in progress; they go to a separate 'events' list."""
+
+    def test_event_only_progress_zero(self, db_session):
+        """1 event today + 0 tasks → progress 0/0, event in events list."""
+        _add_event(db_session, 1, title="Dentist", category_id=1)
+        _add_event_occ(db_session, 1, 1, TODAY, start_time=time(10, 0))
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+
+        # Event in separate list
+        assert len(block["events"]) == 1
+        assert block["events"][0]["title"] == "Dentist"
+        assert block["events"][0]["time"] == time(10, 0)
+
+        # Not in active/done
+        assert len(block["active"]) == 0
+        assert len(block["done"]) == 0
+
+        # Progress is 0/0 (no tasks)
+        assert block["progress"]["total"] == 0
+        assert block["progress"]["done"] == 0
+        assert block["progress"]["left"] == 0
+
+    def test_tasks_and_event_mixed(self, db_session):
+        """2 tasks (1 done) + 1 event → progress 1/2, event separate."""
+        # Active task
+        _add_task(db_session, 1, due_date=TODAY, title="Buy milk")
+        # Done task
+        _add_task(db_session, 2, due_date=TODAY, status="DONE", title="Send email")
+        # Event today
+        _add_event(db_session, 1, title="Team standup", category_id=1)
+        _add_event_occ(db_session, 1, 1, TODAY, start_time=time(9, 0))
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+
+        # Tasks in active/done
+        assert len(block["active"]) == 1
+        assert block["active"][0]["title"] == "Buy milk"
+        assert len(block["done"]) == 1
+        assert block["done"][0]["title"] == "Send email"
+
+        # Event in events, not in active/done
+        assert len(block["events"]) == 1
+        assert block["events"][0]["title"] == "Team standup"
+
+        # Progress: 1 done out of 2 tasks total (event excluded)
+        assert block["progress"]["total"] == 2
+        assert block["progress"]["done"] == 1
+        assert block["progress"]["left"] == 1
+
+    def test_multiple_events_not_in_progress(self, db_session):
+        """Multiple events do not inflate progress counts."""
+        _add_event(db_session, 1, title="Event 1", category_id=1)
+        _add_event_occ(db_session, 1, 1, TODAY)
+        _add_event(db_session, 2, title="Event 2", category_id=1)
+        _add_event_occ(db_session, 2, 2, TODAY)
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+
+        assert len(block["events"]) == 2
+        assert block["progress"]["total"] == 0
+        assert block["progress"]["done"] == 0
