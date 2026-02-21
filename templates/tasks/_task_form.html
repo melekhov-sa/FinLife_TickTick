@@ -37,7 +37,7 @@
         </select>
       </div>
 
-      <!-- Row 2: Mode toggle (full width) -->
+      <!-- Row 2: Mode toggle -->
       <div class="span-full form-row">
         <label>Тип</label>
         <div class="seg-control">
@@ -46,22 +46,21 @@
         </div>
       </div>
 
-      <!-- One-off fields (full width) -->
+      <!-- One-off fields -->
       <div id="blockOnce" class="span-full">
         <input type="hidden" name="due_kind" id="dueKind" value="NONE">
         <input type="hidden" name="reminders" id="remindersJson" value="">
         <input type="hidden" name="multi_dates" id="multiDatesJson" value="">
 
         <!-- Multi-date checkbox -->
-        <div class="form-row" style="margin-bottom: 8px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-            <input type="checkbox" id="chkMultiDates" onchange="toggleMultiDates()"
-                   style="width: auto; max-width: none;">
-            Создать на несколько дат
+        <div class="form-row tf-checkbox-row">
+          <label class="tf-checkbox-label">
+            <input type="checkbox" id="chkMultiDates" onchange="toggleMultiDates()">
+            <span>Создать на несколько дат</span>
           </label>
         </div>
 
-        <!-- DueSpec mode switcher (hidden when multi-dates is on) -->
+        <!-- DueSpec mode switcher -->
         <div class="form-row" id="blockDueKindSwitcher">
           <label>Когда</label>
           <div class="seg-control">
@@ -85,7 +84,7 @@
           </div>
         </div>
 
-        <!-- DATE / DATETIME / WINDOW: due_date (hidden when multi-dates is on) -->
+        <!-- DATE / DATETIME / WINDOW: due_date -->
         <div id="blockDueDate" style="display: none;">
           <div class="form-row">
             <label>Дата</label>
@@ -138,7 +137,7 @@
         </div>
       </div>
 
-      <!-- Recurring fields (full width) -->
+      <!-- Recurring fields -->
       <div id="blockRecurring" class="span-full" style="display: none;">
         <div class="form-row">
           <label>Частота</label>
@@ -190,7 +189,7 @@
         </div>
       </div>
 
-      <!-- Note (full width) -->
+      <!-- Note -->
       <div class="span-full">
         <details>
           <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
@@ -200,18 +199,19 @@
         </details>
       </div>
 
-      <!-- Task-expense link (only if feature enabled, one-off tasks only) -->
+      <!-- Task-expense link (only if feature enabled) -->
       {% if enable_task_expense_link is defined and enable_task_expense_link %}
       <div class="span-full" id="blockExpenseLink">
-        <div class="form-row" style="margin-top: 4px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <div class="tf-section-divider"></div>
+        <div class="form-row tf-checkbox-row">
+          <label class="tf-checkbox-label">
             <input type="checkbox" name="requires_expense" value="1" id="chkRequiresExpense"
                    onchange="toggleExpenseFields()">
-            При выполнении создать расход
+            <span>При выполнении создать расход</span>
           </label>
         </div>
-        <div id="blockExpenseFields" style="display: none; margin-top: 8px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px;">
+        <div id="blockExpenseFields" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
             <div class="form-row">
               <label>Категория расхода</label>
               <select name="suggested_expense_category_id" id="selExpenseCat">
@@ -230,7 +230,7 @@
       </div>
       {% endif %}
 
-      <!-- Submit (full width) -->
+      <!-- Submit -->
       <div class="span-full task-form-submit">
         <button type="submit">Создать</button>
       </div>

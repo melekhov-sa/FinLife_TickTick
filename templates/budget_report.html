@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}Отчёт по бюджету — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rpt-back { font-size: 13px; color: #007AFF; text-decoration: none; }
+  .rpt-back:hover { text-decoration: underline; }
+  .rpt-period { font-size: 15px; color: #888; font-weight: 400; margin-left: 8px; }
+
+  /* Filter form */
+  .rpt-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 20px; }
+  .rpt-filter label { font-size: 12px; font-weight: 500; color: #666; }
+  .rpt-filter select, .rpt-filter input[type="number"] { font-size: 12px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .rpt-filter input[type="number"] { width: 62px; }
+  .rpt-filter button { font-size: 12px; padding: 4px 14px; border-radius: 4px; cursor: pointer; border: 1px solid #007AFF; background: #007AFF; color: #fff; }
+  .rpt-filter button:hover { background: #005ecb; }
+
+  /* Toggle buttons */
+  .rpt-toggle { display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .rpt-toggle a { padding: 4px 12px; font-size: 12px; text-decoration: none; color: #666; border-right: 1px solid #ddd; }
+  .rpt-toggle a:last-child { border-right: none; }
+  .rpt-toggle a.active { background: #007AFF; color: #fff; border-color: #007AFF; }
+
+  /* Quality score */
+  .rpt-score-block { display: flex; align-items: center; gap: 24px; padding: 16px 20px; }
+  .rpt-score-num { font-size: 42px; font-weight: 800; line-height: 1; }
+  .rpt-score-label { font-size: 12px; color: #888; margin-top: 2px; }
+  .rpt-penalties { flex: 1; }
+  .rpt-penalty-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+  .rpt-penalty-val { font-weight: 600; }
+  .score-good { color: #27ae60; }
+  .score-ok { color: #f39c12; }
+  .score-bad { color: #e74c3c; }
+
+  /* Top-5 grid */
+  .rpt-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .rpt-top-card h3 { font-size: 14px; margin: 0 0 12px; color: #555; }
+  .rpt-top-item { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+  .rpt-top-item:last-child { border-bottom: none; }
+
+  /* Category table */
+  .rpt-cat-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .rpt-cat-table th { background: var(--bg-table-header, #f9f9f9); padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 600; border-bottom: 2px solid var(--border-color, #e0e0e0); }
+  .rpt-cat-table th.text-right { text-align: right; }
+  .rpt-cat-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; }
+  .rpt-cat-table td.text-right { text-align: right; font-variant-numeric: tabular-nums; }
+  .rpt-cat-table .child-row td:first-child { padding-left: 28px; color: #888; }
+  .rpt-cat-table .total-row td { font-weight: 700; border-top: 2px solid var(--border-color, #ddd); background: var(--bg-table-header, #fafafa); }
+
+  /* Savings stats */
+  .rpt-savings-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+
+  /* Monthly table */
+  .rpt-monthly-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .rpt-monthly-table th { background: var(--bg-table-header, #f9f9f9); padding: 6px 8px; text-align: right; font-size: 12px; font-weight: 600; border-bottom: 2px solid var(--border-color, #e0e0e0); }
+  .rpt-monthly-table th:first-child { text-align: left; }
+  .rpt-monthly-table td { padding: 5px 8px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+  .rpt-monthly-table td:first-child { text-align: left; }
+
+  /* Utils */
+  .rpt-dash { color: #ccc; }
+  .rpt-section { margin-bottom: 24px; }
+  .rpt-section h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .rpt-top-grid { grid-template-columns: 1fr; }
+    .rpt-savings-stats { grid-template-columns: 1fr; }
+    .rpt-score-block { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .rpt-filter { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* Dark mode */
+  [data-theme$="-dark"] .rpt-filter select,
+  [data-theme$="-dark"] .rpt-filter input[type="number"] { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+  [data-theme$="-dark"] .rpt-toggle a { color: #8b949e; border-color: #30363d; }
+  [data-theme$="-dark"] .rpt-toggle a.active { background: #007AFF; color: white; border-color: #007AFF; }
+  [data-theme$="-dark"] .rpt-back { color: #58a6ff; }
+  [data-theme$="-dark"] .rpt-top-item { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .rpt-top-card h3 { color: #8b949e; }
+  [data-theme$="-dark"] .rpt-cat-table th { background: #21262d; }
+  [data-theme$="-dark"] .rpt-cat-table .total-row td { background: #21262d; }
+  [data-theme$="-dark"] .rpt-monthly-table th { background: #21262d; }
+  [data-theme$="-dark"] .rpt-dash { color: #30363d; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Macros ── #}
+{% macro fmt(val) %}{% if val and val != 0 %}{{ "{:,.0f}".format(val|float).replace(",", " ") }}{% else %}<span class="rpt-dash">—</span>{% endif %}{% endmacro %}
+{% macro fmtd(val) %}{% if val and val != 0 %}<span class="{{ 'negative' if val > 0 else 'positive' }}">{{ "{:+,.0f}".format(val|float).replace(",", " ") }}</span>{% else %}<span class="rpt-dash">—</span>{% endif %}{% endmacro %}
+{% macro fmtpct(val) %}{% if val %}{{ "%.1f"|format(val) }}%{% else %}<span class="rpt-dash">—</span>{% endif %}{% endmacro %}
+
+{# ── Header ── #}
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+  <div>
+    <a href="/budget{% if variant %}?variant_id={{ variant.id }}{% endif %}" class="rpt-back">&larr; Бюджет</a>
+    <h1 style="margin: 4px 0 0; font-size: 22px;">
+      Отчёт по бюджету
+      {% if report.period_label %}<span class="rpt-period">{{ report.period_label }}</span>{% endif %}
+    </h1>
+  </div>
+</div>
+
+{# ── Period filter ── #}
+<form method="GET" action="/budget/report" class="rpt-filter">
+  <label>С:</label>
+  <select name="from_month">
+    {% for m in range(1, 13) %}
+    <option value="{{ m }}" {{ "selected" if m == from_month }}>{{ ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"][m-1] }}</option>
+    {% endfor %}
+  </select>
+  <input type="number" name="from_year" value="{{ from_year }}" min="2020" max="2040">
+
+  <label>По:</label>
+  <select name="to_month">
+    {% for m in range(1, 13) %}
+    <option value="{{ m }}" {{ "selected" if m == to_month }}>{{ ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"][m-1] }}</option>
+    {% endfor %}
+  </select>
+  <input type="number" name="to_year" value="{{ to_year }}" min="2020" max="2040">
+
+  {% if variant %}
+  <input type="hidden" name="variant_id" value="{{ variant.id }}">
+  {% endif %}
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="over_only" value="{{ over_only }}">
+  <button type="submit">Показать</button>
+
+  {# View toggle #}
+  <div class="rpt-toggle" style="margin-left: 8px;">
+    <a href="?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view=total&sort={{ sort }}&over_only={{ over_only }}{% if variant %}&variant_id={{ variant.id }}{% endif %}" class="{{ 'active' if view == 'total' }}">Итого</a>
+    <a href="?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view=months&sort={{ sort }}&over_only={{ over_only }}{% if variant %}&variant_id={{ variant.id }}{% endif %}" class="{{ 'active' if view == 'months' }}">По месяцам</a>
+  </div>
+
+  {# Variant selector #}
+  {% if all_variants|length > 1 %}
+  <select name="variant_id_sel" onchange="location.href='?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view={{ view }}&sort={{ sort }}&over_only={{ over_only }}&variant_id='+this.value">
+    {% for v in all_variants %}
+    <option value="{{ v.id }}" {{ "selected" if variant and v.id == variant.id }}>{{ v.name or "Вариант " ~ v.id }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+</form>
+
+{# ── Summary Cards ── #}
+{% set s = report.summary %}
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 20px;">
+  <div class="stat-card">
+    <div class="stat-label">Расходы план</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmt(s.expense_plan) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Расходы факт</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmt(s.expense_fact) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Отклонение</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmtd(s.expense_delta) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Выполнение плана</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmtpct(s.plan_compliance_pct) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Чистый результат</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmtd(s.net_result) }}</div>
+    <div class="stat-sublabel">Доход {{ fmt(s.income_fact) }} — Расход {{ fmt(s.expense_fact) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Чистые сбережения</div>
+    <div class="stat-value" style="font-size: 22px;">{{ fmtd(s.net_savings) }}</div>
+  </div>
+</div>
+
+{# ── Quality Score ── #}
+{% set q = report.quality %}
+<div class="card rpt-section">
+  <div class="rpt-score-block">
+    <div>
+      <div class="rpt-score-num {{ 'score-good' if q.score >= 70 else ('score-ok' if q.score >= 40 else 'score-bad') }}">{{ q.score }}</div>
+      <div class="rpt-score-label">из 100</div>
+    </div>
+    <div class="rpt-penalties">
+      <div class="rpt-penalty-row">
+        <span>Перерасход по категориям</span>
+        <span class="rpt-penalty-val negative">−{{ q.penalty_over }}</span>
+      </div>
+      <div class="rpt-penalty-row">
+        <span>Отклонение от общего плана</span>
+        <span class="rpt-penalty-val negative">−{{ q.penalty_plan }}</span>
+      </div>
+      <div class="rpt-penalty-row">
+        <span>Нестабильность расходов</span>
+        <span class="rpt-penalty-val negative">−{{ q.penalty_stability }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Top-5 blocks ── #}
+{% if report.top5_over or report.top5_savings %}
+<div class="rpt-top-grid">
+  <div class="card rpt-top-card" style="padding: 16px;">
+    <h3>Перерасход (Топ-5)</h3>
+    {% if report.top5_over %}
+      {% for item in report.top5_over %}
+      <div class="rpt-top-item">
+        <span>{{ item.title }}</span>
+        <span class="negative">+{{ "{:,.0f}".format(item.delta|float).replace(",", " ") }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="muted" style="font-size: 13px;">Перерасхода нет</div>
+    {% endif %}
+  </div>
+  <div class="card rpt-top-card" style="padding: 16px;">
+    <h3>Экономия (Топ-5)</h3>
+    {% if report.top5_savings %}
+      {% for item in report.top5_savings %}
+      <div class="rpt-top-item">
+        <span>{{ item.title }}</span>
+        <span class="positive">{{ "{:,.0f}".format(item.delta|float).replace(",", " ") }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="muted" style="font-size: 13px;">Экономии нет</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# ── Category Table (Expenses) ── #}
+<div class="rpt-section">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+    <h2 style="margin: 0;">Расходы по категориям</h2>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      {# Sort toggle #}
+      <div class="rpt-toggle">
+        <a href="?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view={{ view }}&sort=actual&over_only={{ over_only }}{% if variant %}&variant_id={{ variant.id }}{% endif %}" class="{{ 'active' if sort == 'actual' }}">По факту</a>
+        <a href="?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view={{ view }}&sort=delta&over_only={{ over_only }}{% if variant %}&variant_id={{ variant.id }}{% endif %}" class="{{ 'active' if sort == 'delta' }}">По Δ</a>
+      </div>
+      {# Over-only toggle #}
+      <a href="?from_year={{ from_year }}&from_month={{ from_month }}&to_year={{ to_year }}&to_month={{ to_month }}&view={{ view }}&sort={{ sort }}&over_only={{ 0 if over_only else 1 }}{% if variant %}&variant_id={{ variant.id }}{% endif %}"
+         style="font-size: 12px; padding: 4px 10px; border: 1px solid {{ '#007AFF' if over_only else '#ddd' }}; border-radius: 4px; text-decoration: none; color: {{ '#007AFF' if over_only else '#666' }}; background: {{ '#e8f0fe' if over_only else 'transparent' }};">
+        Только перерасход
+      </a>
+    </div>
+  </div>
+
+  {% set rows = report.category_rows %}
+  {# Sort rows #}
+  {% if sort == "delta" %}
+    {% set sorted_rows = rows|sort(attribute="delta", reverse=true) %}
+  {% else %}
+    {% set sorted_rows = rows|sort(attribute="fact", reverse=true) %}
+  {% endif %}
+
+  <table class="rpt-cat-table">
+    <thead>
+      <tr>
+        <th>Категория</th>
+        <th class="text-right">План</th>
+        <th class="text-right">Факт</th>
+        <th class="text-right">Δ</th>
+        <th class="text-right">%</th>
+        <th class="text-right">Доля</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set ns = namespace(total_plan=0, total_fact=0) %}
+      {% for row in sorted_rows %}
+        {% if not over_only or (over_only and row.is_over) %}
+        <tr class="{{ 'child-row' if row.parent_id }}">
+          <td>{{ row.title }}</td>
+          <td class="text-right">{{ fmt(row.plan) }}</td>
+          <td class="text-right">{{ fmt(row.fact) }}</td>
+          <td class="text-right">{{ fmtd(row.delta) }}</td>
+          <td class="text-right">{{ fmtpct(row.pct) }}</td>
+          <td class="text-right">{{ "%.1f"|format(row.share_pct) }}%</td>
+        </tr>
+        {% set ns.total_plan = ns.total_plan + row.plan|float %}
+        {% set ns.total_fact = ns.total_fact + row.fact|float %}
+        {% endif %}
+      {% endfor %}
+      {% if not over_only %}
+      <tr class="total-row">
+        <td>Итого</td>
+        <td class="text-right">{{ fmt(s.expense_plan) }}</td>
+        <td class="text-right">{{ fmt(s.expense_fact) }}</td>
+        <td class="text-right">{{ fmtd(s.expense_delta) }}</td>
+        <td class="text-right">{{ fmtpct(s.plan_compliance_pct) }}</td>
+        <td class="text-right">100%</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Savings Block ── #}
+{% set sv = report.savings %}
+<div class="rpt-section">
+  <h2>Сбережения</h2>
+  <div class="rpt-savings-stats">
+    <div class="stat-card">
+      <div class="stat-label">Отложено</div>
+      <div class="stat-value" style="font-size: 20px;">{{ fmt(sv.total_deposited) }}</div>
+      <div class="stat-sublabel">план {{ fmt(sv.deposit_plan) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Взято</div>
+      <div class="stat-value" style="font-size: 20px;">{{ fmt(sv.total_withdrawn) }}</div>
+      <div class="stat-sublabel">план {{ fmt(sv.withdrawal_plan) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Чистые сбережения</div>
+      <div class="stat-value" style="font-size: 20px;">{{ fmtd(sv.net) }}</div>
+    </div>
+  </div>
+
+  {% if sv.monthly %}
+  <table class="rpt-monthly-table">
+    <thead>
+      <tr>
+        <th>Месяц</th>
+        <th>Отложено</th>
+        <th>Взято</th>
+        <th>Нетто</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in sv.monthly %}
+      <tr>
+        <td>{{ m.label }}</td>
+        <td>{{ fmt(m.deposited) }}</td>
+        <td>{{ fmt(m.withdrawn) }}</td>
+        <td>{{ fmtd(m.net) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{# ── Monthly Dynamics ── #}
+{% if view == "months" and report.monthly_dynamics %}
+<div class="rpt-section">
+  <h2>Динамика по месяцам</h2>
+  <div style="overflow-x: auto;">
+  <table class="rpt-monthly-table">
+    <thead>
+      <tr>
+        <th>Месяц</th>
+        <th>Расх. план</th>
+        <th>Расх. факт</th>
+        <th>Δ</th>
+        <th>%</th>
+        <th>Дох. план</th>
+        <th>Дох. факт</th>
+        <th>Net результат</th>
+        <th>Отложено</th>
+        <th>Взято</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in report.monthly_dynamics %}
+      <tr>
+        <td>{{ m.label }}</td>
+        <td>{{ fmt(m.expense_plan) }}</td>
+        <td>{{ fmt(m.expense_fact) }}</td>
+        <td>{{ fmtd(m.expense_delta) }}</td>
+        <td>{{ fmtpct(m.expense_pct) }}</td>
+        <td>{{ fmt(m.income_plan) }}</td>
+        <td>{{ fmt(m.income_fact) }}</td>
+        <td>{{ fmtd(m.net_result) }}</td>
+        <td>{{ fmt(m.deposited) }}</td>
+        <td>{{ fmt(m.withdrawn) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

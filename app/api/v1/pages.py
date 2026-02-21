@@ -80,6 +80,7 @@ from app.application.budget import (
     get_hidden_withdrawal_goal_ids, save_hidden_withdrawal_goal_ids,
 )
 from app.application.budget_matrix import BudgetMatrixService, RANGE_LIMITS
+from app.application.budget_report import BudgetReportService
 from app.application.plan import build_plan_view
 from app.application.dashboard import DashboardService
 from app.application.subscriptions import (
@@ -5416,6 +5417,68 @@ def budget_page(
     })
 
 
+@router.get("/budget/report", response_class=HTMLResponse)
+def budget_report_page(
+    request: Request,
+    from_year: int | None = None,
+    from_month: int | None = None,
+    to_year: int | None = None,
+    to_month: int | None = None,
+    view: str = "total",
+    sort: str = "actual",
+    over_only: int = 0,
+    variant_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """Budget analytical report page."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    # Defaults: last 6 months inclusive
+    today = date.today()
+    if to_year is None or to_month is None:
+        to_year = today.year
+        to_month = today.month
+    if from_year is None or from_month is None:
+        # Go back 5 months from to_year/to_month to get 6 months total
+        fm = to_month - 5
+        fy = to_year
+        while fm < 1:
+            fm += 12
+            fy -= 1
+        from_year = fy
+        from_month = fm
+
+    variant = get_active_variant(db, user_id, variant_id)
+    all_variants = get_all_variants(db, user_id)
+
+    svc = BudgetReportService(db)
+    report = svc.build(
+        account_id=user_id,
+        year_from=from_year,
+        month_from=from_month,
+        year_to=to_year,
+        month_to=to_month,
+        budget_variant_id=variant.id if variant else None,
+    )
+
+    return templates.TemplateResponse("budget_report.html", {
+        "request": request,
+        "report": report,
+        "view": view,
+        "sort": sort,
+        "over_only": over_only,
+        "variant": variant,
+        "all_variants": all_variants,
+        "from_year": from_year,
+        "from_month": from_month,
+        "to_year": to_year,
+        "to_month": to_month,
+    })
+
+
 @router.get("/budget/variants/new", response_class=HTMLResponse)
 def budget_variant_form(request: Request, db: Session = Depends(get_db)):
     """Form to create a new budget variant."""
@@ -6314,6 +6377,15 @@ def plan_complete_task(request: Request, task_id: int, redirect: str = Form("/pl
         task = db.query(TaskModel).filter(
             TaskModel.task_id == task_id, TaskModel.account_id == user_id
         ).first()
+        if not task:
+            return RedirectResponse(redirect, status_code=302)
+
+        # Block normal completion if expense is required — redirect to tasks page
+        _user = db.query(User).filter(User.id == user_id).first()
+        if _user and _user.enable_task_expense_link and task.requires_expense:
+            request.session["flash"] = {"message": "Эта задача требует создания расхода", "type": "error"}
+            return RedirectResponse("/tasks", status_code=302)
+
         today_msk = datetime.now(timezone(timedelta(hours=3))).date()
         xp_delta = preview_task_xp(task.due_date if task else None, today_msk)
         CompleteTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id)
