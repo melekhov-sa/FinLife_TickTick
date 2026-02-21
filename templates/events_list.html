@@ -72,27 +72,24 @@
 </div>
 {% endif %}
 
-{# ── Grouped event list ── #}
+{# ── Events grouped by category ── #}
 <div id="event-groups">
 {% if grouped_list %}
-  {% for group_key, group_title, items in grouped_list %}
+  {% for grp in grouped_list %}
   <details class="card" style="margin-top: 16px;" open>
     <summary style="cursor: pointer; font-weight: 600; font-size: 15px; list-style: none; display: flex; align-items: center; gap: 8px;">
       <span class="nav-chevron" style="font-size: 10px;">&#9658;</span>
-      {{ group_title }}
-      <span class="badge" style="font-size: 12px;">{{ items|length }}</span>
+      {{ grp.category_name }}
+      <span class="badge" style="font-size: 12px;">{{ grp.count }}</span>
     </summary>
     <div style="margin-top: 12px;">
-      {% for it in items %}
+      {% for it in grp.events %}
       <div class="dash-item" style="padding: 10px 0;">
         <div class="dash-item-left" style="font-size: 15px;">
           <span style="font-size: 20px; min-width: 28px; text-align: center;">
             {% if wc_map.get(it.event.category_id) %}{{ wc_map[it.event.category_id].emoji or '' }}{% endif %}
           </span>
           <span {% if not it.event.is_active %}class="muted"{% endif %}>{{ it.event.title }}</span>
-          {% if wc_map.get(it.event.category_id) %}
-          <span class="badge">{{ wc_map[it.event.category_id].title }}</span>
-          {% endif %}
           {% if it.event.repeat_rule_id and rule_map.get(it.event.repeat_rule_id) %}
             {% set rule = rule_map[it.event.repeat_rule_id] %}
             {% if rule.freq == 'INTERVAL_DAYS' %}

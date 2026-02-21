@@ -4634,42 +4634,41 @@ def events_list(
         upcoming = upcoming_raw[:8]
         upcoming_has_more = len(upcoming_raw) > 8
 
-    # --- Group events by frequency ---
-    GROUP_ORDER = ["single", "YEARLY", "WEEKLY", "INTERVAL_DAYS", "MONTHLY", "DAILY", "other"]
-    GROUP_TITLES = {
-        "single": "Однократные",
-        "YEARLY": "Ежегодно",
-        "WEEKLY": "Еженедельно",
-        "INTERVAL_DAYS": "Каждые N дней",
-        "MONTHLY": "Ежемесячно",
-        "DAILY": "Ежедневно",
-        "other": "Прочее",
-    }
-    grouped: dict[str, list] = {}
+    # --- Group events by category ---
+    cat_groups: dict[int | None, list] = {}
     for ev in events:
-        if not ev.repeat_rule_id:
-            grp = "single"
-        else:
-            rule = rule_map.get(ev.repeat_rule_id)
-            freq = rule.freq if rule else None
-            grp = freq if freq in GROUP_TITLES else "other"
         nd = next_occ_map.get(ev.event_id)
         dl = (nd - today).days if nd else None
         item = {"event": ev, "next_date": nd, "days_left": dl}
-        grouped.setdefault(grp, []).append(item)
+        cat_groups.setdefault(ev.category_id, []).append(item)
 
     # Sort items inside each group by next_date ASC (nulls last)
-    for grp_items in grouped.values():
+    for grp_items in cat_groups.values():
         grp_items.sort(key=lambda x: x["next_date"] if x["next_date"] else date.max)
 
-    # Build ordered list of (group_key, group_title, items)
+    # Build ordered list: categories alphabetically, "Без категории" last
     grouped_list = []
-    for gk in GROUP_ORDER:
-        if gk in grouped:
-            title = GROUP_TITLES[gk]
-            if gk == "INTERVAL_DAYS":
-                title = "Каждые N дней"
-            grouped_list.append((gk, title, grouped[gk]))
+    no_cat_items = cat_groups.pop(None, None)
+    sorted_cat_ids = sorted(
+        cat_groups.keys(),
+        key=lambda cid: (wc_map[cid].title.lower() if cid in wc_map else ""),
+    )
+    for cid in sorted_cat_ids:
+        wc = wc_map.get(cid)
+        cat_name = f"{wc.emoji} {wc.title}" if wc and wc.emoji else (wc.title if wc else f"Категория #{cid}")
+        grouped_list.append({
+            "category_id": cid,
+            "category_name": cat_name,
+            "events": cat_groups[cid],
+            "count": len(cat_groups[cid]),
+        })
+    if no_cat_items:
+        grouped_list.append({
+            "category_id": None,
+            "category_name": "Без категории",
+            "events": no_cat_items,
+            "count": len(no_cat_items),
+        })
 
     return templates.TemplateResponse("events_list.html", {
         "request": request,
