@@ -89,6 +89,14 @@ a.fs-label:hover { color: var(--text-primary); }
 }
 .fs-result--pos { color: #2e7d32; }
 .fs-result--neg { color: #c62828; }
+.fs-extras {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
 
 /* ── Progress bar (shared) ── */
 .progress {
@@ -601,6 +609,16 @@ a.dash-card-link {
           <span class="fs-label" style="font-weight:600;">Финансовый результат</span>
           <span class="fs-amount fs-result-val {% if fin_state.financial_result >= 0 %}fs-result--pos{% else %}fs-result--neg{% endif %}">
             {{ format_money(fin_state.financial_result, "RUB") }}
+          </span>
+        </div>
+        <div class="fs-extras">
+          <span>Долговая нагрузка: {% if fin_state.debt_load_pct is not none %}{{ fin_state.debt_load_pct }}%{% else %}&mdash;{% endif %}</span>
+          <span>Капитал за 30 дн:
+            {%- if fin_state.capital_delta_30 is none %} &mdash;
+            {%- elif fin_state.capital_delta_30 > 0 %} <span class="fs-result--pos">+{{ format_money(fin_state.capital_delta_30, "RUB") }}</span>
+            {%- elif fin_state.capital_delta_30 < 0 %} <span class="fs-result--neg">{{ format_money(fin_state.capital_delta_30, "RUB") }}</span>
+            {%- else %} {{ format_money(0, "RUB") }}
+            {%- endif %}
           </span>
         </div>
       </div>

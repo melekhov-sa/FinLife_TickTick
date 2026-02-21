@@ -553,7 +553,8 @@ _WALLET_NOW = datetime(2025, 1, 1, 0, 0)  # fixed timestamp for wallet created_a
 
 
 def _add_wallet(db, wallet_id, wallet_type="REGULAR", balance="10000",
-                currency="RUB", is_archived=False, account_id=ACCOUNT):
+                currency="RUB", is_archived=False, account_id=ACCOUNT,
+                balance_30d_ago=None):
     w = WalletBalance(
         wallet_id=wallet_id,
         account_id=account_id,
@@ -562,6 +563,7 @@ def _add_wallet(db, wallet_id, wallet_type="REGULAR", balance="10000",
         wallet_type=wallet_type,
         balance=Decimal(str(balance)),
         is_archived=is_archived,
+        balance_30d_ago=Decimal(str(balance_30d_ago)) if balance_30d_ago is not None else None,
         created_at=_WALLET_NOW,
         updated_at=_WALLET_NOW,
     )
@@ -626,3 +628,51 @@ class TestFinStateSummary:
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         assert result["financial_result"] == 250000
+
+    def test_debt_load_pct(self, db_session):
+        """debt_load_pct = round(debt / assets * 100)."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="60000")
+        _add_wallet(db_session, 2, wallet_type="SAVINGS", balance="40000")
+        _add_wallet(db_session, 3, wallet_type="CREDIT",  balance="50000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        # assets=100000, debt=50000 → 50%
+        assert result["debt_load_pct"] == 50
+
+    def test_debt_load_none_when_no_assets(self, db_session):
+        """debt_load_pct is None when assets <= 0."""
+        _add_wallet(db_session, 1, wallet_type="CREDIT", balance="100000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["debt_load_pct"] is None
+
+    def test_debt_load_zero_when_no_credits(self, db_session):
+        """debt_load_pct = 0 when no credits."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["debt_load_pct"] == 0
+
+    def test_capital_delta_30_positive(self, db_session):
+        """Capital grew over 30 days."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="80000", balance_30d_ago="60000")
+        _add_wallet(db_session, 2, wallet_type="CREDIT",  balance="10000", balance_30d_ago="10000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        # now: 80000 - 10000 = 70000; 30d ago: 60000 - 10000 = 50000; delta = 20000
+        assert result["capital_delta_30"] == 20000
+
+    def test_capital_delta_30_negative(self, db_session):
+        """Capital shrank over 30 days."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="40000", balance_30d_ago="60000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        # now: 40000; 30d ago: 60000; delta = -20000
+        assert result["capital_delta_30"] == -20000
+
+    def test_capital_delta_30_none_when_no_snapshot(self, db_session):
+        """capital_delta_30 is None when balance_30d_ago is missing."""
+        _add_wallet(db_session, 1, wallet_type="REGULAR", balance="50000")
+
+        result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
+        assert result["capital_delta_30"] is None
