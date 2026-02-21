@@ -7,6 +7,33 @@
 {% macro contact_name(member) %}{% if contact_map and contact_map.get(member.contact_id) %}{{ contact_map[member.contact_id].name }}{% else %}?{% endif %}{% endmacro %}
 
 {% block content %}
+<style>
+.sub-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 1000; justify-content: center; align-items: center;
+}
+.sub-backdrop.open { display: flex; }
+.sub-dialog {
+  background: var(--card-bg, #fff); border-radius: 12px; padding: 24px;
+  width: min(420px, 92vw); max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.sub-dialog h3 { margin: 0 0 16px; font-size: 18px; }
+.sub-field { margin-bottom: 14px; }
+.sub-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.sub-field input, .sub-field select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px; font-size: 14px; box-sizing: border-box;
+  background: var(--input-bg, #fff); color: var(--text-color, #333);
+}
+.sub-field .check-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.sub-field .check-row label { font-weight: normal; font-size: 14px; margin: 0; }
+.sub-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.sub-actions button { padding: 8px 20px; border-radius: 6px; font-size: 14px; cursor: pointer; border: 1px solid var(--border-color, #ddd); }
+.sub-actions .sub-cancel { background: transparent; }
+.sub-actions .sub-submit { background: var(--accent-color, #1976d2); color: #fff; border: none; }
+</style>
+
 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
   <h1 style="margin: 0;">{{ sub.name }}</h1>
   <a href="/subscriptions/{{ sub.id }}/edit" class="btn secondary" style="font-size: 13px;">&#9881; Настройки</a>
@@ -14,8 +41,14 @@
 </div>
 
 {% if error %}
-<div class="card" style="border-color: #dc3545; background: #f8d7da;">
+<div class="card" style="border-color: #dc3545; background: #f8d7da; margin-bottom: 16px;">
   <p style="color: #721c24; margin: 0;">{{ error }}</p>
+</div>
+{% endif %}
+
+{% if success %}
+<div class="card" style="border-color: #2e7d32; background: #e8f5e9; margin-bottom: 16px;">
+  <p style="color: #1b5e20; margin: 0;">{{ success }}</p>
 </div>
 {% endif %}
 
@@ -97,6 +130,16 @@
   <p class="muted" style="margin: 8px 0 0;">Участников нет.
     <a href="/subscriptions/{{ sub.id }}/edit">Добавить</a>
   </p>
+  {% endif %}
+
+  <!-- Action buttons -->
+  {% if wallets %}
+  <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+    <button onclick="openExtend()" style="font-size: 13px; padding: 6px 14px;">Продлить</button>
+    {% if members %}
+    <button onclick="openCompensate()" class="secondary" style="font-size: 13px; padding: 6px 14px;">Получить компенсацию</button>
+    {% endif %}
+  </div>
   {% endif %}
 </div>
 
@@ -209,10 +252,247 @@
   {% endif %}
 </div>
 
+<!-- Financial Analytics -->
+{% if analytics and analytics.timeline %}
+<div class="card">
+  <h2 style="margin-top: 0; font-size: 16px;">Аналитика</h2>
+
+  <div class="stats-grid" style="margin-bottom: 16px;">
+    <div class="stat-card">
+      <div class="stat-label">ВСЕГО РАСХОД</div>
+      <div class="stat-value negative">{{ fmt2(analytics.total_expense) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ВСЕГО ДОХОД</div>
+      <div class="stat-value positive">{{ fmt2(analytics.total_income) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ЧИСТЫЙ РАСХОД</div>
+      <div class="stat-value {% if analytics.net_cost <= 0 %}positive{% else %}negative{% endif %}">
+        {{ fmt2(analytics.net_cost) }}
+      </div>
+    </div>
+  </div>
+
+  {% if analytics.friends %}
+  <h3 style="font-size: 14px; margin: 16px 0 8px;">Долги участников</h3>
+  <div style="font-size: 13px;">
+    <div class="muted" style="margin-bottom: 4px;">
+      Ожидаемая доля: {{ fmt2(analytics.expected_share) }} на человека
+    </div>
+    {% for f in analytics.friends %}
+    <div class="dash-item" style="padding: 4px 0;">
+      <div class="dash-item-left">
+        <a href="/contacts/{{ f.contact_id }}" style="text-decoration: none; color: inherit;">{{ f.contact_name }}</a>
+        <span class="muted">(оплатил: {{ fmt2(f.paid) }})</span>
+      </div>
+      <div>
+        {% if f.debt > 0 %}
+          <span class="negative" style="font-weight: 500;">долг {{ fmt2(f.debt) }}</span>
+        {% elif f.debt < 0 %}
+          <span class="positive" style="font-weight: 500;">переплата {{ fmt2(-f.debt) }}</span>
+        {% else %}
+          <span class="muted">ровно</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Timeline Chart -->
+  <div style="margin-top: 20px;">
+    <canvas id="timelineChart" height="200"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<!-- ===== Extend Modal ===== -->
+<div class="sub-backdrop" id="extendBackdrop">
+  <div class="sub-dialog">
+    <h3>Продлить подписку</h3>
+    <form method="POST" action="/subscriptions/{{ sub.id }}/extend" id="extendForm">
+      <div class="sub-field">
+        <label>Кошелёк</label>
+        <select name="wallet_id" required>
+          {% for w in wallets %}
+          <option value="{{ w.wallet_id }}">{{ w.title }} ({{ fmt(w.balance) }} {{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="sub-field">
+        <label>Сумма</label>
+        <input type="number" name="amount" step="0.01" min="0.01" required>
+      </div>
+      <div class="sub-field">
+        <label>Оплачено до</label>
+        <input type="date" name="new_paid_until" required id="extPaidUntil">
+      </div>
+
+      {% if members %}
+      <div class="sub-field">
+        <label>Продлить также для участников</label>
+        {% for m in members %}
+        {% if not m.is_archived %}
+        <div class="check-row">
+          <input type="checkbox" name="member_ids" value="{{ m.id }}" id="ext_m_{{ m.id }}" checked>
+          <label for="ext_m_{{ m.id }}">
+            {{ contact_name(m) }}
+            {% if m.paid_until %}
+            <span class="muted" style="font-size: 11px;">(до {{ fmt_date(m.paid_until) }})</span>
+            {% endif %}
+          </label>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="sub-actions">
+        <button type="button" class="sub-cancel" onclick="closeExtend()">Отмена</button>
+        <button type="submit" class="sub-submit">Продлить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Compensate Modal ===== -->
+<div class="sub-backdrop" id="compBackdrop">
+  <div class="sub-dialog">
+    <h3>Получить компенсацию</h3>
+    <form method="POST" action="/subscriptions/{{ sub.id }}/compensate" id="compForm">
+      <div class="sub-field">
+        <label>Участник</label>
+        <select name="member_id" required>
+          {% for m in members %}
+          {% if not m.is_archived %}
+          <option value="{{ m.id }}">{{ contact_name(m) }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="sub-field">
+        <label>Кошелёк</label>
+        <select name="wallet_id" required>
+          {% for w in wallets %}
+          <option value="{{ w.wallet_id }}">{{ w.title }} ({{ fmt(w.balance) }} {{ w.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="sub-field">
+        <label>Сумма</label>
+        <input type="number" name="amount" step="0.01" min="0.01" required>
+      </div>
+      <div class="sub-actions">
+        <button type="button" class="sub-cancel" onclick="closeCompensate()">Отмена</button>
+        <button type="submit" class="sub-submit">Добавить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function toggleInitialMember() {
   var isMember = document.querySelector('input[name="payer_type"][value="MEMBER"]').checked;
   document.getElementById('initialMemberField').style.display = isMember ? '' : 'none';
 }
+
+function openExtend() {
+  {% if sub.paid_until_self %}
+  var d = new Date('{{ sub.paid_until_self.isoformat() }}');
+  d.setDate(d.getDate() + 1);
+  document.getElementById('extPaidUntil').min = d.toISOString().slice(0, 10);
+  {% endif %}
+  document.getElementById('extendBackdrop').classList.add('open');
+}
+function closeExtend() {
+  document.getElementById('extendBackdrop').classList.remove('open');
+}
+
+function openCompensate() {
+  document.getElementById('compBackdrop').classList.add('open');
+}
+function closeCompensate() {
+  document.getElementById('compBackdrop').classList.remove('open');
+}
+
+// Close on backdrop click or Escape
+document.querySelectorAll('.sub-backdrop').forEach(function(bd) {
+  bd.addEventListener('click', function(e) {
+    if (e.target === bd) {
+      bd.classList.remove('open');
+    }
+  });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.sub-backdrop.open').forEach(function(bd) {
+      bd.classList.remove('open');
+    });
+  }
+});
 </script>
+
+{% if analytics and analytics.timeline %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var timeline = {{ analytics.timeline | tojson }};
+  if (!timeline.length) return;
+
+  var labels = timeline.map(function(t) { return t.month; });
+  var cumExpense = timeline.map(function(t) { return t.cum_expense; });
+  var cumIncome = timeline.map(function(t) { return t.cum_income; });
+  var cumNet = timeline.map(function(t) { return t.cum_net; });
+
+  var ctx = document.getElementById('timelineChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Расход (нарастающий)',
+          data: cumExpense,
+          borderColor: '#e53935',
+          backgroundColor: 'rgba(229,57,53,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+        },
+        {
+          label: 'Доход (нарастающий)',
+          data: cumIncome,
+          borderColor: '#43a047',
+          backgroundColor: 'rgba(67,160,71,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+        },
+        {
+          label: 'Чистый расход',
+          data: cumNet,
+          borderColor: '#1976d2',
+          borderDash: [5, 3],
+          fill: false,
+          tension: 0.3,
+          pointRadius: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } },
+      },
+      scales: {
+        x: { ticks: { font: { size: 11 }, maxRotation: 45 } },
+        y: { ticks: { font: { size: 11 } } },
+      },
+    },
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

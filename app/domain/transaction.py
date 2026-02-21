@@ -157,3 +157,50 @@ class Transaction:
         if to_goal_id is not None:
             payload["to_goal_id"] = to_goal_id
         return payload
+
+    @staticmethod
+    def update(
+        transaction_id: int,
+        account_id: int,
+        old_snapshot: Dict[str, Any],
+        **changes: Any,
+    ) -> Dict[str, Any]:
+        """
+        Generate transaction_updated event payload.
+
+        old_snapshot contains the current financial state so projectors
+        can reverse old balance impacts and apply new ones.
+        """
+        payload: Dict[str, Any] = {
+            "transaction_id": transaction_id,
+            "account_id": account_id,
+            "updated_at": datetime.utcnow().isoformat(),
+            # Old values for balance reversal by projectors
+            "old_operation_type": old_snapshot["operation_type"],
+            "old_amount": old_snapshot["amount"],
+            "old_wallet_id": old_snapshot.get("wallet_id"),
+            "old_from_wallet_id": old_snapshot.get("from_wallet_id"),
+            "old_to_wallet_id": old_snapshot.get("to_wallet_id"),
+            "old_from_goal_id": old_snapshot.get("from_goal_id"),
+            "old_to_goal_id": old_snapshot.get("to_goal_id"),
+            # Carry over operation_type and currency (not editable)
+            "operation_type": old_snapshot["operation_type"],
+            "currency": old_snapshot["currency"],
+        }
+
+        allowed = (
+            "amount", "wallet_id", "from_wallet_id", "to_wallet_id",
+            "category_id", "description", "occurred_at",
+            "from_goal_id", "to_goal_id",
+        )
+        for key in allowed:
+            if key in changes:
+                val = changes[key]
+                if isinstance(val, datetime):
+                    payload[key] = val.isoformat()
+                elif isinstance(val, Decimal):
+                    payload[key] = str(val)
+                else:
+                    payload[key] = val
+
+        return payload

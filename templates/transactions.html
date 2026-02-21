@@ -207,6 +207,7 @@
           <th class="col-txcat">Категория</th>
           <th style="text-align: right;">Сумма</th>
           <th class="col-txdesc">Описание</th>
+          <th style="width: 36px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -244,6 +245,10 @@
             {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ format_money(tx.amount, tx.currency) }}
           </td>
           <td class="col-txdesc">{{ tx.description }}</td>
+          <td style="text-align: center;">
+            <a href="/transactions/{{ tx.transaction_id }}/edit" title="Изменить"
+               style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">&#9998;</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

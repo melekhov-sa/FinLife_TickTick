@@ -25,6 +25,8 @@ class GoalWalletBalancesProjector(BaseProjector):
     def handle_event(self, event: EventLog) -> None:
         if event.event_type == "transaction_created":
             self._handle_transaction_created(event)
+        elif event.event_type == "transaction_updated":
+            self._handle_transaction_updated(event)
         elif event.event_type == "wallet_created":
             self._handle_wallet_created(event)
 
@@ -54,6 +56,33 @@ class GoalWalletBalancesProjector(BaseProjector):
                 wallet_id=payload["to_wallet_id"],
                 delta=amount
             )
+
+    def _handle_transaction_updated(self, event: EventLog) -> None:
+        """Reverse old goal allocations, apply new ones (TRANSFER only)."""
+        p = event.payload_json
+        account_id = p["account_id"]
+        old_amount = Decimal(p["old_amount"])
+
+        # Reverse old allocations
+        if p["old_operation_type"] == "TRANSFER":
+            old_from_goal = p.get("old_from_goal_id")
+            old_to_goal = p.get("old_to_goal_id")
+            if old_from_goal is not None:
+                self._adjust_balance(account_id, old_from_goal, p["old_from_wallet_id"], old_amount)
+            if old_to_goal is not None:
+                self._adjust_balance(account_id, old_to_goal, p["old_to_wallet_id"], -old_amount)
+
+        # Apply new allocations
+        if p["operation_type"] == "TRANSFER":
+            new_amount = Decimal(p["amount"]) if "amount" in p else old_amount
+            new_from_goal = p.get("from_goal_id", p.get("old_from_goal_id"))
+            new_to_goal = p.get("to_goal_id", p.get("old_to_goal_id"))
+            new_from_wallet = p.get("from_wallet_id", p.get("old_from_wallet_id"))
+            new_to_wallet = p.get("to_wallet_id", p.get("old_to_wallet_id"))
+            if new_from_goal is not None:
+                self._adjust_balance(account_id, new_from_goal, new_from_wallet, -new_amount)
+            if new_to_goal is not None:
+                self._adjust_balance(account_id, new_to_goal, new_to_wallet, new_amount)
 
     def _handle_wallet_created(self, event: EventLog) -> None:
         """При создании SAVINGS с initial_balance > 0 — зачислить в 'Без цели'"""

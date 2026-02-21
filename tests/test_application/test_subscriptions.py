@@ -1,11 +1,12 @@
-"""Tests for Subscriptions module — CRUD, coverages, overlap, distribution."""
+"""Tests for Subscriptions module — CRUD, coverages, overlap, distribution, extend, compensate, notifications, analytics."""
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
 
 from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
-    CategoryInfo, TransactionFeed, WalletBalance, ContactModel,
+    SubscriptionNotificationLog,
+    CategoryInfo, TransactionFeed, WalletBalance, ContactModel, EventLog,
 )
 from app.application.subscriptions import (
     CreateSubscriptionUseCase, UpdateSubscriptionUseCase,
@@ -13,9 +14,14 @@ from app.application.subscriptions import (
     AddSubscriptionMemberUseCase, ArchiveMemberUseCase, UnarchiveMemberUseCase,
     UpdateMemberPaymentUseCase,
     CreateSubscriptionCoverageUseCase, CreateInitialCoverageUseCase,
+    ExtendSubscriptionUseCase, CompensateSubscriptionUseCase,
     SubscriptionValidationError,
     validate_coverage_before_transaction, compute_subscription_detail,
+    compute_subscription_analytics,
     _compute_months,
+)
+from app.application.subscription_notifications import (
+    check_subscription_notifications, _already_notified,
 )
 from app.application.contacts import CreateContactUseCase
 
@@ -853,3 +859,399 @@ class TestCombinedDetail:
             db_session, subscription, date(2026, 5, 1),
         )
         assert detail_may["cost_month"] == Decimal("200")  # 600/3
+
+
+# ======================================================================
+# 15. Extend subscription
+# ======================================================================
+
+class TestExtendSubscription:
+    def test_extend_creates_expense_and_updates_paid_until(self, db_session, wallet, subscription):
+        result = ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("900"),
+            new_paid_until=date(2026, 3, 31),
+            actor_user_id=ACCOUNT,
+        )
+        assert result["transaction_id"] is not None
+
+        # Check EXPENSE created
+        tx = db_session.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == result["transaction_id"],
+        ).first()
+        assert tx is not None
+        assert tx.operation_type == "EXPENSE"
+        assert tx.amount == Decimal("900")
+        assert tx.category_id == subscription.expense_category_id
+
+        # Check paid_until_self updated
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 3, 31)
+
+        # Check SELF coverage created
+        cov = db_session.query(SubscriptionCoverageModel).filter(
+            SubscriptionCoverageModel.subscription_id == subscription.id,
+            SubscriptionCoverageModel.payer_type == "SELF",
+        ).first()
+        assert cov is not None
+        assert cov.end_date == date(2026, 3, 31)
+        assert cov.transaction_id == result["transaction_id"]
+
+    def test_extend_updates_selected_members(self, db_session, wallet, subscription, member):
+        result = ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("600"),
+            new_paid_until=date(2026, 6, 30),
+            member_ids=[member.id],
+            actor_user_id=ACCOUNT,
+        )
+        assert result["transaction_id"] is not None
+
+        # Check member paid_until updated
+        db_session.refresh(member)
+        assert member.paid_until == date(2026, 6, 30)
+
+        # Check sub paid_until_self also updated
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 6, 30)
+
+    def test_extend_second_time_advances_paid_until(self, db_session, wallet, subscription):
+        # First extend
+        ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            new_paid_until=date(2026, 3, 31),
+            actor_user_id=ACCOUNT,
+        )
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 3, 31)
+
+        # Second extend
+        ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            new_paid_until=date(2026, 6, 30),
+            actor_user_id=ACCOUNT,
+        )
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 6, 30)
+
+    def test_extend_validation_date_must_be_later(self, db_session, wallet, subscription):
+        # Set initial paid_until
+        subscription.paid_until_self = date(2026, 3, 31)
+        db_session.commit()
+
+        with pytest.raises(SubscriptionValidationError, match="позже текущей"):
+            ExtendSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("300"),
+                new_paid_until=date(2026, 3, 31),  # same date, not later
+                actor_user_id=ACCOUNT,
+            )
+
+    def test_extend_validation_amount_positive(self, db_session, wallet, subscription):
+        with pytest.raises(SubscriptionValidationError, match="больше нуля"):
+            ExtendSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("0"),
+                new_paid_until=date(2026, 3, 31),
+                actor_user_id=ACCOUNT,
+            )
+
+    def test_extend_subscription_not_found(self, db_session, wallet):
+        with pytest.raises(SubscriptionValidationError, match="не найдена"):
+            ExtendSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=9999,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("300"),
+                new_paid_until=date(2026, 3, 31),
+                actor_user_id=ACCOUNT,
+            )
+
+
+# ======================================================================
+# 16. Compensate subscription
+# ======================================================================
+
+class TestCompensateSubscription:
+    def test_compensate_creates_income(self, db_session, wallet, subscription, member):
+        result = CompensateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            member_id=member.id,
+            actor_user_id=ACCOUNT,
+        )
+        assert result["transaction_id"] is not None
+
+        # Check INCOME created
+        tx = db_session.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == result["transaction_id"],
+        ).first()
+        assert tx is not None
+        assert tx.operation_type == "INCOME"
+        assert tx.amount == Decimal("300")
+        assert tx.category_id == subscription.income_category_id
+
+    def test_compensate_does_not_change_paid_until(self, db_session, wallet, subscription, member):
+        # Set initial paid_until
+        member.paid_until = date(2026, 3, 31)
+        subscription.paid_until_self = date(2026, 3, 31)
+        db_session.commit()
+
+        CompensateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            member_id=member.id,
+            actor_user_id=ACCOUNT,
+        )
+
+        db_session.refresh(member)
+        db_session.refresh(subscription)
+        assert member.paid_until == date(2026, 3, 31)  # unchanged
+        assert subscription.paid_until_self == date(2026, 3, 31)  # unchanged
+
+    def test_compensate_member_not_found(self, db_session, wallet, subscription):
+        with pytest.raises(SubscriptionValidationError, match="Участник не найден"):
+            CompensateSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("300"),
+                member_id=9999,
+                actor_user_id=ACCOUNT,
+            )
+
+    def test_compensate_amount_positive(self, db_session, wallet, subscription, member):
+        with pytest.raises(SubscriptionValidationError, match="больше нуля"):
+            CompensateSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("0"),
+                member_id=member.id,
+                actor_user_id=ACCOUNT,
+            )
+
+    def test_compensate_description_includes_contact_name(self, db_session, wallet, subscription, member):
+        result = CompensateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("100"),
+            member_id=member.id,
+            actor_user_id=ACCOUNT,
+        )
+        tx = db_session.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == result["transaction_id"],
+        ).first()
+        assert "Иван" in tx.description  # contact name from fixture
+
+
+# ======================================================================
+# 9. Subscription Notifications
+# ======================================================================
+
+
+class TestSubscriptionNotifications:
+
+    def test_notification_fires_on_trigger_day(self, db_session, subscription):
+        """Notification should be created when today == paid_until - notify_days_before."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        # trigger day = 2026-02-07 (10 - 3)
+        sent = check_subscription_notifications(db_session, today=date(2026, 2, 7))
+        # No push subscriptions, so 0 sent, but notification should be logged
+        assert _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_does_not_fire_before_trigger(self, db_session, subscription):
+        """Notification should NOT fire before trigger day."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 6))
+        assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_does_not_fire_after_trigger(self, db_session, subscription):
+        """Notification should NOT fire after trigger day."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 8))
+        assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_not_duplicated(self, db_session, subscription):
+        """Running twice on trigger day should not create duplicate log entries."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 7))
+        check_subscription_notifications(db_session, today=date(2026, 2, 7))
+
+        count = db_session.query(SubscriptionNotificationLog).filter(
+            SubscriptionNotificationLog.subscription_id == subscription.id,
+        ).count()
+        assert count == 1
+
+    def test_notification_disabled(self, db_session, subscription):
+        """No notification when notify_enabled=False."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = False
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 7))
+        assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_for_member(self, db_session, subscription, member):
+        """Notification fires for member paid_until too."""
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 2
+        member.paid_until = date(2026, 3, 15)
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 3, 13))
+        assert _already_notified(db_session, subscription.id, member.id, date(2026, 3, 15))
+
+    def test_notification_archived_subscription_ignored(self, db_session, subscription):
+        """Archived subscriptions should not trigger notifications."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        subscription.is_archived = True
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 7))
+        assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+
+# ======================================================================
+# 10. Subscription Analytics
+# ======================================================================
+
+
+class TestSubscriptionAnalytics:
+
+    def test_empty_analytics(self, db_session, subscription):
+        """Analytics with no coverages returns zeros."""
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert analytics["total_expense"] == Decimal("0")
+        assert analytics["total_income"] == Decimal("0")
+        assert analytics["net_cost"] == Decimal("0")
+        assert analytics["timeline"] == []
+
+    def test_expense_only(self, db_session, wallet, subscription):
+        """Single SELF extend should show total_expense."""
+        result = ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("1200"),
+            new_paid_until=date(2026, 12, 31),
+            actor_user_id=ACCOUNT,
+        )
+
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert analytics["total_expense"] == Decimal("1200")
+        assert analytics["total_income"] == Decimal("0")
+        assert analytics["net_cost"] == Decimal("1200")
+        assert len(analytics["timeline"]) > 0
+
+    def test_expense_and_income(self, db_session, wallet, subscription, member):
+        """Extend + compensate should reflect in analytics."""
+        ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("1200"),
+            new_paid_until=date(2026, 12, 31),
+            member_ids=[member.id],
+            actor_user_id=ACCOUNT,
+        )
+
+        CompensateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("400"),
+            member_id=member.id,
+            actor_user_id=ACCOUNT,
+        )
+
+        # Compensate does NOT create a coverage, so income from compensate
+        # is not tracked in analytics (analytics uses coverages only).
+        # This is by design: analytics tracks OPERATION coverages.
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert analytics["total_expense"] == Decimal("1200")
+        assert analytics["net_cost"] == Decimal("1200")
+
+    def test_member_count_includes_self(self, db_session, subscription, member):
+        """member_count should be members + 1 (self)."""
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert analytics["member_count"] == 2  # 1 member + self
+
+    def test_expected_share_calculation(self, db_session, wallet, subscription, member):
+        """Expected share = total_expense / member_count."""
+        ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("1000"),
+            new_paid_until=date(2026, 6, 30),
+            actor_user_id=ACCOUNT,
+        )
+
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert analytics["expected_share"] == Decimal("500")  # 1000 / 2
+        assert len(analytics["friends"]) == 1
+        assert analytics["friends"][0]["contact_name"] == "Иван"
+        assert analytics["friends"][0]["debt"] == Decimal("500")  # expected - paid(0)
+
+    def test_timeline_monthly_aggregation(self, db_session, wallet, subscription):
+        """Timeline should have monthly entries with cumulative values."""
+        # Extend for 3 months: Jan-Mar 2026
+        subscription.paid_until_self = date(2025, 12, 31)
+        db_session.commit()
+
+        ExtendSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            new_paid_until=date(2026, 3, 31),
+            actor_user_id=ACCOUNT,
+        )
+
+        analytics = compute_subscription_analytics(db_session, subscription)
+        assert len(analytics["timeline"]) == 3
+        # Each month should have 100 expense
+        for entry in analytics["timeline"]:
+            assert entry["expense"] == 100.0
+        # Cumulative check
+        assert analytics["timeline"][-1]["cum_expense"] == 300.0
+        assert analytics["timeline"][-1]["cum_net"] == 300.0

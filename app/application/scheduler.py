@@ -58,6 +58,20 @@ def _run_reminders():
         db.close()
 
 
+def _run_subscription_notifications():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.subscription_notifications import check_subscription_notifications
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        check_subscription_notifications(db)
+    except Exception:
+        logger.exception("Subscription notifications job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     # Morning digest — 08:00 MSK (05:00 UTC)
@@ -85,8 +99,16 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Subscription expiration notifications — 09:00 MSK (06:00 UTC)
+    scheduler.add_job(
+        _run_subscription_notifications,
+        CronTrigger(hour=6, minute=0),
+        id="subscription_notifications",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    logger.info("Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), reminders (every 2 min)")
+    logger.info("Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), reminders (every 2 min), sub_notifications (06:00 UTC)")
 
 
 def shutdown_scheduler():

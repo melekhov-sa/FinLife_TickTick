@@ -34,6 +34,8 @@ class WalletBalancesProjector(BaseProjector):
             self._handle_wallet_unarchived(event)
         elif event.event_type == "transaction_created":
             self._handle_transaction_created(event)
+        elif event.event_type == "transaction_updated":
+            self._handle_transaction_updated(event)
 
     def _handle_wallet_created(self, event: EventLog) -> None:
         """Создать новый кошелёк с начальным балансом"""
@@ -137,6 +139,56 @@ class WalletBalancesProjector(BaseProjector):
             if to_wallet:
                 to_wallet.balance += amount
                 to_wallet.last_operation_at = occurred_at
+
+    def _handle_transaction_updated(self, event: EventLog) -> None:
+        """Реверс старых балансов + применение новых."""
+        p = event.payload_json
+        old_op = p["old_operation_type"]
+        old_amount = Decimal(p["old_amount"])
+
+        # --- Step 1: Reverse old impact ---
+        if old_op == "INCOME":
+            w = self._get_wallet(p.get("old_wallet_id"))
+            if w:
+                w.balance -= old_amount
+        elif old_op == "EXPENSE":
+            w = self._get_wallet(p.get("old_wallet_id"))
+            if w:
+                w.balance += old_amount
+        elif old_op == "TRANSFER":
+            fw = self._get_wallet(p.get("old_from_wallet_id"))
+            tw = self._get_wallet(p.get("old_to_wallet_id"))
+            if fw:
+                fw.balance += old_amount
+            if tw:
+                tw.balance -= old_amount
+
+        # --- Step 2: Apply new impact ---
+        new_op = p["operation_type"]
+        new_amount = Decimal(p["amount"]) if "amount" in p else old_amount
+
+        if new_op == "INCOME":
+            w = self._get_wallet(p.get("wallet_id", p.get("old_wallet_id")))
+            if w:
+                w.balance += new_amount
+        elif new_op == "EXPENSE":
+            w = self._get_wallet(p.get("wallet_id", p.get("old_wallet_id")))
+            if w:
+                w.balance -= new_amount
+        elif new_op == "TRANSFER":
+            fw = self._get_wallet(p.get("from_wallet_id", p.get("old_from_wallet_id")))
+            tw = self._get_wallet(p.get("to_wallet_id", p.get("old_to_wallet_id")))
+            if fw:
+                fw.balance -= new_amount
+            if tw:
+                tw.balance += new_amount
+
+    def _get_wallet(self, wallet_id):
+        if wallet_id is None:
+            return None
+        return self.db.query(WalletBalance).filter(
+            WalletBalance.wallet_id == wallet_id
+        ).first()
 
     def reset(self, account_id: int) -> None:
         """Удалить все балансы кошельков для аккаунта"""

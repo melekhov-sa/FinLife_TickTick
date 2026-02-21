@@ -743,6 +743,11 @@ class SubscriptionModel(Base):
     expense_category_id: Mapped[int] = mapped_column(Integer, nullable=False)  # -> categories (EXPENSE)
     income_category_id: Mapped[int] = mapped_column(Integer, nullable=False)   # -> categories (INCOME)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    paid_until_self: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+
+    # Notification settings
+    notify_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    notify_days_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -916,6 +921,7 @@ class SubscriptionMemberModel(Base):
 
     payment_per_year: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     payment_per_month: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    paid_until: Mapped[date_type | None] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -946,6 +952,25 @@ class SubscriptionCoverageModel(Base):
     __table_args__ = (
         UniqueConstraint('transaction_id', name='uq_coverage_transaction'),
         Index('ix_coverage_sub_payer', 'subscription_id', 'payer_type', 'member_id'),
+    )
+
+
+class SubscriptionNotificationLog(Base):
+    """Log of sent subscription expiration notifications (prevents duplicates)."""
+    __tablename__ = "subscription_notification_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    subscription_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    member_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # NULL = SELF
+    notified_for_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('subscription_id', 'member_id', 'notified_for_date',
+                         name='uq_sub_notification_log'),
     )
 
 

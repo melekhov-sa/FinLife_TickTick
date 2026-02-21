@@ -43,6 +43,24 @@
     </div>
 
     {% if mode == "edit" %}
+    <!-- Notification settings -->
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color, #eee);">
+      <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" name="notify_enabled" id="notifyEnabled"
+               {% if sub.notify_enabled %}checked{% endif %}
+               style="width: auto; max-width: none;"
+               onchange="document.getElementById('notifyDaysField').style.display = this.checked ? '' : 'none'">
+        Уведомлять о скором окончании
+      </label>
+      <div id="notifyDaysField" style="margin-top: 8px; {% if not sub.notify_enabled %}display: none;{% endif %}">
+        <label style="font-size: 13px;">За сколько дней</label>
+        <input type="number" name="notify_days_before" min="1" max="90"
+               value="{{ sub.notify_days_before if sub.notify_days_before else '' }}"
+               placeholder="3"
+               style="width: 100px;">
+      </div>
+    </div>
+
     <div style="margin-top: 16px;">
       <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
         <input type="checkbox" name="is_archived"

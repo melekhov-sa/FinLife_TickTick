@@ -231,6 +231,7 @@ a.dash-card-link {
 @media (max-width: 767px) {
   .dash-v2-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   .dash-col-right {
     grid-column: 1;
@@ -238,6 +239,72 @@ a.dash-card-link {
   }
   .dash-col-right > .dash-card {
     flex: none;
+  }
+  /* Reduce card padding for more content space */
+  .dash-card {
+    padding: 14px;
+  }
+  /* Finance state: smaller amounts */
+  .fs-amount {
+    font-size: 15px;
+  }
+  .fs-net {
+    font-size: 14px;
+  }
+  .fs-label {
+    font-size: 12px;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  .fs-row {
+    gap: 8px;
+  }
+  .fs-right {
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .fs-delta {
+    font-size: 11px;
+  }
+  .fs-sub {
+    font-size: 11px;
+  }
+  /* Level & Activity: slightly smaller */
+  .lv-num {
+    font-size: 26px;
+  }
+  .act-num {
+    font-size: 28px;
+  }
+  .act-denom {
+    font-size: 14px;
+  }
+  /* Diary */
+  .diary-item-amount {
+    font-size: 12px;
+  }
+  /* Focus */
+  .focus-header-actions {
+    gap: 4px;
+  }
+  .focus-link-btn, .quick-op-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+}
+/* ── Small phone ── */
+@media (max-width: 380px) {
+  .dash-card {
+    padding: 12px;
+  }
+  .fs-amount {
+    font-size: 14px;
+  }
+  .fs-net {
+    font-size: 13px;
+  }
+  .fs-label {
+    font-size: 11px;
   }
 }
 
@@ -851,6 +918,29 @@ a.dash-card-link {
       </p>
       {% else %}
       <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет ближайших платежей</p>
+      {% endif %}
+    </div>
+
+    {# ── Скоро закончится (подписки) ── #}
+    <div class="dash-card" id="dash-expiring-subs">
+      <div class="dash-card-title">Скоро закончится</div>
+      {% if expiring_subs %}
+      {% for s in expiring_subs %}
+      <div class="dash-item" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div class="dash-item-left">
+          <a href="/subscriptions/{{ s.id }}" style="text-decoration:none;color:inherit;font-weight:500;">{{ s.name }}</a>
+          <span class="muted" style="font-size:12px;">до {{ s.paid_until.strftime('%d.%m.%Y') }}</span>
+        </div>
+        <small class="muted" style="font-size:11px;padding-left:0;">
+          {% if s.days_left == 0 %}сегодня{% else %}осталось {{ s.days_left }} дн.{% endif %}
+        </small>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/subscriptions" style="font-size:12px;">Все подписки &rarr;</a>
+      </p>
+      {% else %}
+      <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет подписок с окончанием в ближайшие 30 дней</p>
       {% endif %}
     </div>
 

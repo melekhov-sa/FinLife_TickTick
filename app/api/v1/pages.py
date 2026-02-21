@@ -4,6 +4,7 @@ SSR pages - server-side rendered HTML pages
 from pathlib import Path
 from decimal import Decimal
 from datetime import datetime, date, timedelta, timezone
+from urllib.parse import quote
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -34,7 +35,7 @@ from app.application.categories import (
     ListCategoriesService,
     CategoryValidationError
 )
-from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
+from app.application.transactions import CreateTransactionUseCase, UpdateTransactionUseCase, TransactionValidationError
 from app.application.work_categories import CreateWorkCategoryUseCase, UpdateWorkCategoryUseCase, ArchiveWorkCategoryUseCase, UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
 from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, ArchiveTaskUseCase, UncompleteTaskUseCase, UpdateTaskUseCase, TaskValidationError
 from app.domain.task_due_spec import DueSpecValidationError, ReminderSpecValidationError
@@ -85,9 +86,10 @@ from app.application.subscriptions import (
     ArchiveSubscriptionUseCase, UnarchiveSubscriptionUseCase,
     AddSubscriptionMemberUseCase, ArchiveMemberUseCase, UnarchiveMemberUseCase, UpdateMemberPaymentUseCase,
     CreateSubscriptionCoverageUseCase, CreateInitialCoverageUseCase,
+    ExtendSubscriptionUseCase, CompensateSubscriptionUseCase,
     SubscriptionValidationError,
     validate_coverage_before_transaction, compute_subscription_detail,
-    compute_subscriptions_overview,
+    compute_subscriptions_overview, compute_subscription_analytics,
 )
 from app.application.contacts import (
     CreateContactUseCase, UpdateContactUseCase,
@@ -308,6 +310,26 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             UserReminderTimePreset.account_id == user_id,
         ).order_by(UserReminderTimePreset.sort_order).all()
 
+    # 14. Expiring subscriptions (SELF only, next 30 days)
+    _sub_deadline = today + timedelta(days=30)
+    expiring_subs_raw = db.query(SubscriptionModel).filter(
+        SubscriptionModel.account_id == user_id,
+        SubscriptionModel.is_archived == False,
+        SubscriptionModel.paid_until_self.isnot(None),
+        SubscriptionModel.paid_until_self >= today,
+        SubscriptionModel.paid_until_self <= _sub_deadline,
+    ).order_by(SubscriptionModel.paid_until_self).limit(5).all()
+
+    expiring_subs = []
+    for s in expiring_subs_raw:
+        days_left = (s.paid_until_self - today).days
+        expiring_subs.append({
+            "id": s.id,
+            "name": s.name,
+            "paid_until": s.paid_until_self,
+            "days_left": days_left,
+        })
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -345,6 +367,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         # Work categories + reminder presets for quick-task modal
         "work_categories": work_categories,
         "reminder_presets": reminder_presets,
+        # Expiring subscriptions
+        "expiring_subs": expiring_subs,
     })
 
 
@@ -644,6 +668,51 @@ def unarchive_wallet_form(
             "wallets": wallets,
             "error": str(e)
         })
+
+
+# === Wallet Balance Actualization ===
+
+@router.post("/wallets/{wallet_id}/actualize-balance", response_class=HTMLResponse)
+def actualize_wallet_balance(
+    request: Request,
+    wallet_id: int,
+    target_balance: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Актуализировать баланс кошелька — создать корректирующую операцию"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    try:
+        target = Decimal(target_balance)
+    except Exception:
+        return RedirectResponse(
+            "/wallets?error=Некорректное+значение+баланса", status_code=302
+        )
+
+    try:
+        result = CreateTransactionUseCase(db).actualize_balance(
+            account_id=user_id,
+            wallet_id=wallet_id,
+            target_balance=target,
+            actor_user_id=user_id,
+        )
+    except TransactionValidationError as e:
+        return RedirectResponse(f"/wallets?error={quote(str(e))}", status_code=302)
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse(f"/wallets?error={quote(str(e))}", status_code=302)
+
+    if result["action"] == "none":
+        return RedirectResponse(
+            f"/wallets?success={quote('Баланс уже актуален')}", status_code=302
+        )
+
+    action_label = "доход" if result["action"] == "income" else "расход"
+    msg = f"Баланс актуализирован: создан {action_label} на {result['delta']}"
+    return RedirectResponse(f"/wallets?success={quote(msg)}", status_code=302)
 
 
 # === Wallet Folders ===
@@ -1372,6 +1441,100 @@ def create_transaction_form(
     except Exception as e:
         db.rollback()
         return RedirectResponse(f"/transactions?error={e}", status_code=302)
+
+
+@router.get("/transactions/{transaction_id}/edit", response_class=HTMLResponse)
+def edit_transaction_page(
+    request: Request,
+    transaction_id: int,
+    db: Session = Depends(get_db),
+):
+    """Форма редактирования операции"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    tx = db.query(TransactionFeed).filter(
+        TransactionFeed.transaction_id == transaction_id,
+        TransactionFeed.account_id == user_id,
+    ).first()
+    if not tx:
+        return RedirectResponse("/transactions?error=Операция не найдена", status_code=302)
+
+    wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id,
+        WalletBalance.is_archived == False,
+    ).order_by(WalletBalance.title).all()
+
+    categories = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+        CategoryInfo.is_archived == False,
+    ).order_by(CategoryInfo.title).all()
+
+    return templates.TemplateResponse("transactions_edit.html", {
+        "request": request,
+        "tx": tx,
+        "wallets": wallets,
+        "categories": categories,
+    })
+
+
+@router.post("/transactions/{transaction_id}/edit", response_class=HTMLResponse)
+def update_transaction_form(
+    request: Request,
+    transaction_id: int,
+    amount: str = Form(...),
+    description: str = Form(""),
+    wallet_id: int | None = Form(None),
+    from_wallet_id: int | None = Form(None),
+    to_wallet_id: int | None = Form(None),
+    category_id: int | None = Form(None),
+    occurred_at: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Обработка формы редактирования операции"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    tx_occurred_at = None
+    if occurred_at:
+        try:
+            tx_occurred_at = datetime.strptime(occurred_at, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            try:
+                tx_occurred_at = datetime.strptime(occurred_at, "%Y-%m-%d")
+            except ValueError:
+                pass
+
+    try:
+        changes = {
+            "amount": Decimal(amount),
+            "description": description,
+            "category_id": category_id,
+        }
+        if wallet_id is not None:
+            changes["wallet_id"] = wallet_id
+        if from_wallet_id is not None:
+            changes["from_wallet_id"] = from_wallet_id
+        if to_wallet_id is not None:
+            changes["to_wallet_id"] = to_wallet_id
+        if tx_occurred_at is not None:
+            changes["occurred_at"] = tx_occurred_at
+
+        UpdateTransactionUseCase(db).execute(
+            transaction_id=transaction_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+            **changes,
+        )
+        return RedirectResponse("/transactions", status_code=302)
+    except Exception as e:
+        db.rollback()
+        return RedirectResponse(
+            f"/transactions/{transaction_id}/edit?error={e}",
+            status_code=302,
+        )
 
 
 # === Categories ===
@@ -2793,6 +2956,7 @@ def subscription_detail_page(
         selected = date.today().replace(day=1)
 
     detail = compute_subscription_detail(db, sub, selected)
+    analytics = compute_subscription_analytics(db, sub)
 
     # Nav months
     prev_m = selected.month - 2
@@ -2813,6 +2977,15 @@ def subscription_detail_page(
     contact_map = detail.get("contact_map", {})
     members.sort(key=lambda m: (contact_map.get(m.contact_id) and contact_map[m.contact_id].name or "").lower())
 
+    # Wallets for extend/compensate forms (exclude SAVINGS)
+    wallets = db.query(WalletBalance).filter(
+        WalletBalance.account_id == user_id,
+        WalletBalance.is_archived == False,
+        WalletBalance.wallet_type != "SAVINGS",
+    ).all()
+
+    success = request.query_params.get("success", "")
+
     return templates.TemplateResponse("subscription_detail.html", {
         "request": request,
         "sub": sub,
@@ -2821,11 +2994,14 @@ def subscription_detail_page(
         "prev_month": prev_month.strftime("%Y-%m"),
         "next_month": next_month.strftime("%Y-%m"),
         "detail": detail,
+        "analytics": analytics,
         "cat_map": cat_map,
         "month_names": MONTH_NAMES_RU,
         "members": members,
         "contact_map": contact_map,
+        "wallets": wallets,
         "error": error,
+        "success": success,
     })
 
 
@@ -2943,6 +3119,8 @@ def subscription_update(
     expense_category_id: int = Form(...),
     income_category_id: int = Form(...),
     is_archived: str = Form(""),
+    notify_enabled: str = Form(""),
+    notify_days_before: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -2971,6 +3149,12 @@ def subscription_update(
             expense_category_id=expense_category_id,
             income_category_id=income_category_id,
         )
+
+        # Update notification settings
+        sub = db.query(SubscriptionModel).filter(SubscriptionModel.id == sub_id).first()
+        sub.notify_enabled = notify_enabled == "on"
+        sub.notify_days_before = int(notify_days_before) if notify_days_before.strip() else None
+        db.commit()
 
         # Archive last if needed
         sub = db.query(SubscriptionModel).filter(SubscriptionModel.id == sub_id).first()
@@ -3099,6 +3283,125 @@ def subscription_update_member_payment(
     if next == "detail":
         return RedirectResponse(f"/subscriptions/{sub_id}", status_code=302)
     return RedirectResponse(f"/subscriptions/{sub_id}/edit", status_code=302)
+
+
+@router.post("/subscriptions/{sub_id}/extend")
+async def extend_subscription(
+    request: Request,
+    sub_id: int,
+    db: Session = Depends(get_db),
+):
+    """Продлить подписку: создать EXPENSE + обновить paid_until"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        form = await request.form()
+        wallet_id = int(form["wallet_id"])
+        amount_decimal = Decimal(str(form["amount"]))
+        paid_until_date = date.fromisoformat(str(form["new_paid_until"]))
+
+        # Collect member_ids from checkboxes
+        member_ids = [int(v) for v in form.getlist("member_ids")]
+
+        result = ExtendSubscriptionUseCase(db).execute(
+            account_id=user_id,
+            subscription_id=sub_id,
+            wallet_id=wallet_id,
+            amount=amount_decimal,
+            new_paid_until=paid_until_date,
+            member_ids=member_ids,
+            actor_user_id=user_id,
+        )
+        success_msg = quote(f"Подписка продлена до {paid_until_date.strftime('%d.%m.%Y')}")
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?success={success_msg}",
+            status_code=302,
+        )
+    except (SubscriptionValidationError, ValueError, Exception) as e:
+        db.rollback()
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?error={quote(str(e))}",
+            status_code=302,
+        )
+
+
+@router.post("/subscriptions/{sub_id}/compensate")
+def compensate_subscription(
+    request: Request,
+    sub_id: int,
+    wallet_id: int = Form(...),
+    amount: str = Form(...),
+    member_id: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Получить компенсацию от участника: создать INCOME"""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        amount_decimal = Decimal(amount)
+
+        result = CompensateSubscriptionUseCase(db).execute(
+            account_id=user_id,
+            subscription_id=sub_id,
+            wallet_id=wallet_id,
+            amount=amount_decimal,
+            member_id=member_id,
+            actor_user_id=user_id,
+        )
+        success_msg = quote(f"Компенсация {amount} добавлена")
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?success={success_msg}",
+            status_code=302,
+        )
+    except (SubscriptionValidationError, ValueError, Exception) as e:
+        db.rollback()
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?error={quote(str(e))}",
+            status_code=302,
+        )
+
+
+@router.get("/subscriptions/{sub_id}/analytics")
+def subscription_analytics_api(
+    request: Request,
+    sub_id: int,
+    db: Session = Depends(get_db),
+):
+    """JSON endpoint: subscription financial analytics + timeline for Chart.js."""
+    if not require_user(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    user_id = request.session["user_id"]
+
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id,
+        SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        return JSONResponse({"error": "not found"}, status_code=404)
+
+    analytics = compute_subscription_analytics(db, sub)
+
+    return JSONResponse({
+        "total_expense": float(analytics["total_expense"]),
+        "total_income": float(analytics["total_income"]),
+        "net_cost": float(analytics["net_cost"]),
+        "member_count": analytics["member_count"],
+        "expected_share": float(analytics["expected_share"]),
+        "friends": [
+            {
+                "contact_name": f["contact_name"],
+                "paid": float(f["paid"]),
+                "expected": float(f["expected"]),
+                "debt": float(f["debt"]),
+            }
+            for f in analytics["friends"]
+        ],
+        "timeline": analytics["timeline"],
+    })
 
 
 # === Contacts ===

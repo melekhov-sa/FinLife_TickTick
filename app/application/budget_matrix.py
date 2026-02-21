@@ -567,16 +567,21 @@ class BudgetMatrixService:
 
             for i in range(n):
                 own_fact = parent_row["cells"][i]["fact"]
+                own_pm = parent_row["cells"][i]["plan_manual"]
+                own_pp = parent_row["cells"][i]["plan_planned"]
                 child_plan = sum(ch["cells"][i]["plan"] for ch in children)
                 child_pm = sum(ch["cells"][i]["plan_manual"] for ch in children)
                 child_pp = sum(ch["cells"][i]["plan_planned"] for ch in children)
                 child_fact = sum(ch["cells"][i]["fact"] for ch in children)
                 agg_fact = own_fact + child_fact
-                parent_row["cells"][i]["plan"] = child_plan
-                parent_row["cells"][i]["plan_manual"] = child_pm
-                parent_row["cells"][i]["plan_planned"] = child_pp
+                agg_pm = own_pm + child_pm
+                agg_pp = own_pp + child_pp
+                agg_plan = agg_pm + agg_pp
+                parent_row["cells"][i]["plan"] = agg_plan
+                parent_row["cells"][i]["plan_manual"] = agg_pm
+                parent_row["cells"][i]["plan_planned"] = agg_pp
                 parent_row["cells"][i]["fact"] = agg_fact
-                parent_row["cells"][i]["deviation"] = agg_fact - child_plan
+                parent_row["cells"][i]["deviation"] = agg_fact - agg_plan
 
             # Update totals
             parent_row["total"]["plan"] = sum(parent_row["cells"][i]["plan"] for i in range(n))

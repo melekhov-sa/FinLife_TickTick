@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Изменить операцию — FinLife{% endblock %}
+
+{% block content %}
+<h1>Изменить операцию</h1>
+
+{% set error = request.query_params.get('error') %}
+{% if error %}
+<div class="card" style="border-color: #dc3545; background: #f8d7da; margin-bottom: 16px;">
+  <p style="color: #721c24; margin: 0;">{{ error }}</p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width: 600px;">
+  <form method="post" action="/transactions/{{ tx.transaction_id }}/edit">
+
+    {# Тип операции — только для отображения, не меняется #}
+    <div style="margin-bottom: 16px;">
+      <label style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Тип операции</label>
+      <div>
+        {% if tx.operation_type == 'INCOME' %}
+        <span class="badge badge-income">Доход</span>
+        {% elif tx.operation_type == 'EXPENSE' %}
+        <span class="badge badge-expense">Расход</span>
+        {% else %}
+        <span class="badge badge-transfer">Перевод</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Кошелёк (INCOME / EXPENSE) #}
+    {% if tx.operation_type in ('INCOME', 'EXPENSE') %}
+    <div style="margin-bottom: 16px;">
+      <label for="wallet_id" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Кошелёк</label>
+      <select name="wallet_id" id="wallet_id" required style="width: 100%;">
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}" {% if w.wallet_id == tx.wallet_id %}selected{% endif %}>
+          {{ w.title }} ({{ w.currency }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {# Кошельки (TRANSFER) #}
+    {% if tx.operation_type == 'TRANSFER' %}
+    <div style="margin-bottom: 16px;">
+      <label for="from_wallet_id" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Из кошелька</label>
+      <select name="from_wallet_id" id="from_wallet_id" required style="width: 100%;">
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}" {% if w.wallet_id == tx.from_wallet_id %}selected{% endif %}>
+          {{ w.title }} ({{ w.currency }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label for="to_wallet_id" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">В кошелёк</label>
+      <select name="to_wallet_id" id="to_wallet_id" required style="width: 100%;">
+        {% for w in wallets %}
+        <option value="{{ w.wallet_id }}" {% if w.wallet_id == tx.to_wallet_id %}selected{% endif %}>
+          {{ w.title }} ({{ w.currency }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {# Сумма #}
+    <div style="margin-bottom: 16px;">
+      <label for="amount" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Сумма</label>
+      <input type="number" name="amount" id="amount" step="0.01" min="0.01" required
+             value="{{ tx.amount }}" style="width: 100%;">
+    </div>
+
+    {# Категория (INCOME / EXPENSE) #}
+    {% if tx.operation_type in ('INCOME', 'EXPENSE') %}
+    <div style="margin-bottom: 16px;">
+      <label for="category_id" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Категория</label>
+      <select name="category_id" id="category_id" style="width: 100%;">
+        <option value="">— без категории —</option>
+        {% for cat in categories %}
+        <option value="{{ cat.category_id }}" {% if cat.category_id == tx.category_id %}selected{% endif %}>
+          {{ cat.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    {# Описание #}
+    <div style="margin-bottom: 16px;">
+      <label for="description" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Описание</label>
+      <input type="text" name="description" id="description"
+             value="{{ tx.description }}" style="width: 100%;">
+    </div>
+
+    {# Дата #}
+    <div style="margin-bottom: 16px;">
+      <label for="occurred_at" style="font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px;">Дата и время</label>
+      <input type="datetime-local" name="occurred_at" id="occurred_at"
+             value="{{ tx.occurred_at.strftime('%Y-%m-%dT%H:%M') }}" style="width: 100%;">
+    </div>
+
+    {# Кнопки #}
+    <div style="display: flex; gap: 12px; margin-top: 20px;">
+      <button type="submit">Сохранить</button>
+      <a href="/transactions" class="secondary"
+         style="display: inline-flex; align-items: center; padding: 7px 16px; text-decoration: none;">
+        Отмена
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

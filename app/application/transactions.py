@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.infrastructure.eventlog.repository import EventLogRepository
-from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance
+from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance, CategoryInfo
 from app.domain.transaction import Transaction
-from app.domain.wallet import WALLET_TYPE_SAVINGS
+from app.domain.wallet import WALLET_TYPE_SAVINGS, WALLET_TYPE_REGULAR
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
 from app.readmodels.projectors.transactions_feed import TransactionsFeedProjector
 from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
@@ -336,29 +336,200 @@ class CreateTransactionUseCase:
 
         return transaction_id
 
+    def actualize_balance(
+        self,
+        account_id: int,
+        wallet_id: int,
+        target_balance: Decimal,
+        actor_user_id: int | None = None,
+    ) -> dict:
+        """
+        Актуализировать баланс кошелька: создать INCOME/EXPENSE на разницу.
+
+        Returns:
+            {"action": "income"|"expense"|"none", "delta": Decimal, "transaction_id": int|None}
+        """
+        wallet = self.db.query(WalletBalance).filter(
+            WalletBalance.wallet_id == wallet_id,
+            WalletBalance.account_id == account_id,
+        ).first()
+
+        if not wallet:
+            raise TransactionValidationError(f"Кошелёк #{wallet_id} не найден")
+        if wallet.is_archived:
+            raise TransactionValidationError("Нельзя актуализировать архивированный кошелёк")
+        if wallet.wallet_type != WALLET_TYPE_REGULAR:
+            raise TransactionValidationError(
+                "Актуализация баланса доступна только для обычных кошельков"
+            )
+
+        delta = target_balance - wallet.balance
+        if delta == 0:
+            return {"action": "none", "delta": Decimal(0), "transaction_id": None}
+
+        # Find system category
+        if delta > 0:
+            cat_type, cat_title = "INCOME", "Прочие доходы"
+        else:
+            cat_type, cat_title = "EXPENSE", "Прочие расходы"
+
+        category = self.db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == account_id,
+            CategoryInfo.is_system == True,
+            CategoryInfo.category_type == cat_type,
+            CategoryInfo.title == cat_title,
+        ).first()
+        category_id = category.category_id if category else None
+
+        if delta > 0:
+            tx_id = self.execute_income(
+                account_id, wallet_id, delta, wallet.currency,
+                category_id, "Актуализация баланса",
+                actor_user_id=actor_user_id,
+            )
+            return {"action": "income", "delta": delta, "transaction_id": tx_id}
+        else:
+            tx_id = self.execute_expense(
+                account_id, wallet_id, abs(delta), wallet.currency,
+                category_id, "Актуализация баланса",
+                actor_user_id=actor_user_id,
+            )
+            return {"action": "expense", "delta": abs(delta), "transaction_id": tx_id}
+
     def _generate_transaction_id(self) -> int:
         max_id = self.db.query(func.max(TransactionFeed.transaction_id)).scalar() or 0
         return max_id + 1
 
     def _run_projectors(self, account_id: int):
         """Запустить projector'ы: балансы + лента + цели"""
+        _TX_EVENTS = ["transaction_created", "transaction_updated"]
         WalletBalancesProjector(self.db).run(
             account_id,
-            event_types=["transaction_created"]
+            event_types=_TX_EVENTS,
         )
         TransactionsFeedProjector(self.db).run(
             account_id,
-            event_types=["transaction_created"]
+            event_types=_TX_EVENTS,
         )
         GoalWalletBalancesProjector(self.db).run(
             account_id,
-            event_types=["transaction_created", "wallet_created"]
+            event_types=_TX_EVENTS + ["wallet_created"],
         )
         XpProjector(self.db).run(
             account_id,
-            event_types=["transaction_created"]
+            event_types=["transaction_created"],
         )
         ActivityProjector(self.db).run(
             account_id,
-            event_types=["transaction_created"]
+            event_types=["transaction_created"],
+        )
+
+
+class UpdateTransactionUseCase:
+    """Use case: Изменить существующую операцию (кошелёк, сумму, категорию, описание, дату)."""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(
+        self,
+        transaction_id: int,
+        account_id: int,
+        actor_user_id: int | None = None,
+        **changes,
+    ) -> None:
+        tx = self.db.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == transaction_id,
+            TransactionFeed.account_id == account_id,
+        ).first()
+        if not tx:
+            raise TransactionValidationError("Операция не найдена")
+
+        op_type = tx.operation_type
+
+        # --- Validate new wallet ---
+        if op_type in ("INCOME", "EXPENSE"):
+            new_wallet_id = changes.get("wallet_id", tx.wallet_id)
+            wallet = self.db.query(WalletBalance).filter(
+                WalletBalance.wallet_id == new_wallet_id,
+                WalletBalance.account_id == account_id,
+            ).first()
+            if not wallet:
+                raise TransactionValidationError(f"Кошелёк #{new_wallet_id} не найден")
+            if wallet.is_archived:
+                raise TransactionValidationError("Нельзя использовать архивированный кошелёк")
+            if op_type == "EXPENSE" and wallet.wallet_type == WALLET_TYPE_SAVINGS:
+                raise TransactionValidationError(
+                    "Расходы из накопительного кошелька запрещены"
+                )
+            # Ensure currency stays the same
+            if wallet.currency != tx.currency:
+                raise TransactionValidationError(
+                    f"Валюта кошелька ({wallet.currency}) не совпадает с валютой операции ({tx.currency})"
+                )
+
+        elif op_type == "TRANSFER":
+            new_from = changes.get("from_wallet_id", tx.from_wallet_id)
+            new_to = changes.get("to_wallet_id", tx.to_wallet_id)
+            fw = self.db.query(WalletBalance).filter(
+                WalletBalance.wallet_id == new_from, WalletBalance.account_id == account_id,
+            ).first()
+            tw = self.db.query(WalletBalance).filter(
+                WalletBalance.wallet_id == new_to, WalletBalance.account_id == account_id,
+            ).first()
+            if not fw:
+                raise TransactionValidationError(f"Кошелёк-источник #{new_from} не найден")
+            if not tw:
+                raise TransactionValidationError(f"Кошелёк-получатель #{new_to} не найден")
+            if fw.is_archived or tw.is_archived:
+                raise TransactionValidationError("Нельзя использовать архивированный кошелёк")
+            if fw.currency != tw.currency:
+                raise TransactionValidationError("Кошельки в разных валютах")
+
+        # --- Validate amount ---
+        new_amount = changes.get("amount")
+        if new_amount is not None and new_amount <= 0:
+            raise TransactionValidationError("Сумма операции должна быть больше нуля")
+
+        # --- Build old snapshot ---
+        old_snapshot = {
+            "operation_type": tx.operation_type,
+            "amount": str(tx.amount),
+            "currency": tx.currency,
+            "wallet_id": tx.wallet_id,
+            "from_wallet_id": tx.from_wallet_id,
+            "to_wallet_id": tx.to_wallet_id,
+            "from_goal_id": tx.from_goal_id,
+            "to_goal_id": tx.to_goal_id,
+            "category_id": tx.category_id,
+        }
+
+        # Serialise amount for event payload
+        if new_amount is not None:
+            changes["amount"] = new_amount  # Decimal — serialised inside Transaction.update
+
+        event_payload = Transaction.update(
+            transaction_id=transaction_id,
+            account_id=account_id,
+            old_snapshot=old_snapshot,
+            **changes,
+        )
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="transaction_updated",
+            payload=event_payload,
+            actor_user_id=actor_user_id,
+        )
+
+        self.db.commit()
+        self._run_projectors(account_id)
+
+    def _run_projectors(self, account_id: int):
+        _TX_EVENTS = ["transaction_created", "transaction_updated"]
+        WalletBalancesProjector(self.db).run(account_id, event_types=_TX_EVENTS)
+        TransactionsFeedProjector(self.db).run(account_id, event_types=_TX_EVENTS)
+        GoalWalletBalancesProjector(self.db).run(
+            account_id, event_types=_TX_EVENTS + ["wallet_created"],
         )

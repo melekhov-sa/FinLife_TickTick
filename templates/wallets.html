@@ -6,6 +6,53 @@
 @media (max-width: 768px) {
   .col-wtype, .col-wcur, .col-wdelta, .col-wops, .col-wlast { display: none; }
 }
+/* ── Actualize modal ── */
+.act-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.35); align-items: center; justify-content: center;
+}
+.act-backdrop.act-open { display: flex; }
+.act-dialog {
+  background: var(--bg-card); border: 1px solid var(--border-color);
+  border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  width: min(360px, calc(100vw - 32px)); padding: 20px 22px;
+}
+.act-title {
+  font-size: 15px; font-weight: 600; margin: 0 0 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.act-close {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  color: var(--text-secondary); line-height: 1; padding: 0 2px; min-height: unset;
+}
+.act-close:hover { color: var(--text-primary); }
+.act-field { margin-bottom: 12px; }
+.act-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.act-field input {
+  width: 100%; padding: 8px 10px; font-size: 14px;
+  background: var(--bg-page); border: 1px solid var(--border-color);
+  border-radius: 8px; color: var(--text-primary); box-sizing: border-box;
+}
+.act-field input:focus { outline: none; border-color: var(--accent, #4a90d9); }
+.act-actions { display: flex; gap: 8px; margin-top: 16px; }
+.act-submit {
+  flex: 1; padding: 9px 0; font-size: 14px; font-weight: 600;
+  background: var(--accent, #4a90d9); color: #fff;
+  border: none; border-radius: 10px; cursor: pointer; transition: opacity .15s;
+}
+.act-submit:hover { opacity: .88; }
+.act-cancel {
+  padding: 9px 16px; font-size: 14px;
+  background: transparent; border: 1px solid var(--border-color);
+  border-radius: 10px; cursor: pointer; color: var(--text-secondary); min-height: unset;
+}
+.act-cancel:hover { background: var(--bg-hover, rgba(128,128,128,.1)); }
+.act-current {
+  font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;
+}
+.act-current strong {
+  font-size: 16px; color: var(--text-primary);
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -25,6 +72,13 @@
     <button type="button" onclick="toggleNewFolderForm()" class="secondary" style="font-size:13px; padding:6px 14px;">Отмена</button>
   </form>
 </div>
+
+{% set success = request.query_params.get('success') %}
+{% if success %}
+<div class="card" style="border-color: #2e7d32; background: #e8f5e9; margin-bottom: 16px;">
+  <p style="color: #1b5e20; margin: 0;">{{ success }}</p>
+</div>
+{% endif %}
 
 {% if error %}
   <div class="error-card">{{ error }}</div>
@@ -167,6 +221,12 @@
                   <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переместить</button>
                 </form>
               </div>
+              {% if wallet.wallet_type == 'REGULAR' %}
+              <div class="wallet-settings-row">
+                <button type="button" onclick="openActualize({{ wallet.wallet_id }}, '{{ wallet.balance }}', '{{ wallet.currency }}')"
+                        style="font-size: 12px; padding: 4px 12px;">Актуализация баланса</button>
+              </div>
+              {% endif %}
               <div class="wallet-settings-row">
                 <form method="POST" action="/wallets/{{ wallet.wallet_id }}/archive" onsubmit="return confirm('Вы уверены, что хотите архивировать кошелёк «{{ wallet.title }}»?')">
                   <button type="submit" class="danger" style="font-size: 12px; padding: 4px 12px;">Архивировать</button>
@@ -234,6 +294,12 @@
                   </select>
                   <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переместить</button>
                 </form>
+              </div>
+              {% endif %}
+              {% if wallet.wallet_type == 'REGULAR' %}
+              <div class="wallet-settings-row">
+                <button type="button" onclick="openActualize({{ wallet.wallet_id }}, '{{ wallet.balance }}', '{{ wallet.currency }}')"
+                        style="font-size: 12px; padding: 4px 12px;">Актуализация баланса</button>
               </div>
               {% endif %}
               <div class="wallet-settings-row">
@@ -309,6 +375,30 @@
 </div>
 {% endif %}
 
+{# ── Actualize Balance Modal ── #}
+<div class="act-backdrop" id="actBackdrop" role="dialog" aria-modal="true">
+  <div class="act-dialog">
+    <div class="act-title">
+      <span>Актуализация баланса</span>
+      <button class="act-close" type="button" onclick="closeActualize()" aria-label="Закрыть">&#x2715;</button>
+    </div>
+    <form method="POST" id="actForm">
+      <div class="act-current">
+        Текущий расчётный баланс: <strong id="actCurrentBalance"></strong>
+      </div>
+      <div class="act-field">
+        <label for="actTarget">Актуальный баланс</label>
+        <input type="number" name="target_balance" id="actTarget" step="0.01" required autofocus>
+      </div>
+      <div id="actDeltaHint" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; display: none;"></div>
+      <div class="act-actions">
+        <button type="button" class="act-cancel" onclick="closeActualize()">Отмена</button>
+        <button type="submit" class="act-submit">Применить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function toggleSettings(walletId) {
   var el = document.getElementById('wallet-settings-' + walletId);
@@ -320,12 +410,68 @@ function toggleRow(elementId) {
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
-
 function toggleNewFolderForm() {
   var form = document.getElementById('newFolderForm');
   var isVisible = form.style.display === 'flex' || form.style.display === '';
   form.style.display = isVisible ? 'none' : 'flex';
   if (!isVisible) form.querySelector('input[name="title"]').focus();
 }
+
+/* ── Actualize Balance ── */
+var _actCurrentBalance = 0;
+var _actCurrency = 'RUB';
+
+function fmtMoney(amount, currency) {
+  var n = Math.abs(Math.round(amount * 100) / 100);
+  var parts = n.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  var sym = currency === 'RUB' ? '\u00a0\u20bd' : '\u00a0' + currency;
+  return (amount < 0 ? '\u2212' : '') + parts[0] + ',' + parts[1] + sym;
+}
+
+function openActualize(walletId, balance, currency) {
+  _actCurrentBalance = parseFloat(balance);
+  _actCurrency = currency;
+  document.getElementById('actForm').action = '/wallets/' + walletId + '/actualize-balance';
+  document.getElementById('actCurrentBalance').textContent = fmtMoney(_actCurrentBalance, currency);
+  document.getElementById('actTarget').value = _actCurrentBalance;
+  updateDeltaHint();
+  document.getElementById('actBackdrop').classList.add('act-open');
+  setTimeout(function() { document.getElementById('actTarget').select(); }, 50);
+}
+
+function closeActualize() {
+  document.getElementById('actBackdrop').classList.remove('act-open');
+}
+
+function updateDeltaHint() {
+  var target = parseFloat(document.getElementById('actTarget').value);
+  var hint = document.getElementById('actDeltaHint');
+  if (isNaN(target)) { hint.style.display = 'none'; return; }
+  var delta = target - _actCurrentBalance;
+  if (Math.abs(delta) < 0.005) {
+    hint.textContent = 'Баланс уже актуален';
+    hint.style.color = 'var(--text-secondary)';
+  } else if (delta > 0) {
+    hint.textContent = 'Будет создан доход на ' + fmtMoney(delta, _actCurrency);
+    hint.style.color = '#2e7d32';
+  } else {
+    hint.textContent = 'Будет создан расход на ' + fmtMoney(Math.abs(delta), _actCurrency);
+    hint.style.color = '#c62828';
+  }
+  hint.style.display = 'block';
+}
+
+document.getElementById('actTarget').addEventListener('input', updateDeltaHint);
+
+document.getElementById('actBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeActualize();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('actBackdrop').classList.contains('act-open')) {
+    closeActualize();
+  }
+});
 </script>
 {% endblock %}
