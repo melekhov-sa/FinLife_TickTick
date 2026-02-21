@@ -61,10 +61,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color);
+  padding: 8px 0;
 }
-.fs-row:last-of-type { border-bottom: none; }
 .fs-label {
   font-size: 13px;
   color: var(--text-secondary);
@@ -96,6 +94,68 @@ a.fs-label:hover { color: var(--text-primary); }
   margin-top: 6px;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* ── Upcoming payments (#dash-upcoming) ── */
+.up-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+}
+.up-item + .up-item {
+  border-top: 1px solid var(--border-color);
+}
+.up-left { flex: 1; min-width: 0; }
+.up-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.up-icon {
+  flex: 0 0 18px;
+  font-size: 14px;
+  line-height: 1;
+}
+.up-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.up-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  padding-left: 24px;
+}
+.up-right {
+  flex: 0 0 auto;
+  padding-top: 1px;
+}
+.up-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.up-badge--expense  { background: #f8d7da; color: #721c24; }
+.up-badge--income   { background: #d4edda; color: #155724; }
+.up-badge--transfer { background: #d1ecf1; color: #0c5460; }
+[data-theme$="-dark"] .up-badge--expense  { background: #3d1a1a; color: #f85149; }
+[data-theme$="-dark"] .up-badge--income   { background: #1a4731; color: #3fb950; }
+[data-theme$="-dark"] .up-badge--transfer { background: #1a3040; color: #58a6ff; }
+
+@media (max-width: 767px) {
+  .up-item { flex-direction: column; gap: 4px; }
+  .up-right { padding-left: 24px; }
 }
 
 /* ── Progress bar (shared) ── */
@@ -875,17 +935,21 @@ a.dash-card-link {
       <div class="dash-card-title">Ближайшие платежи</div>
       {% if upcoming_payments %}
       {% for pay in upcoming_payments %}
-      <div class="dash-item" style="flex-direction:column;align-items:flex-start;gap:2px;">
-        <div class="dash-item-left">
-          &#128197;
-          <span>{{ pay.title }}</span>
-          <span class="badge clarity-mask {% if pay.kind == 'INCOME' %}badge-income{% elif pay.kind == 'EXPENSE' %}badge-expense{% else %}badge-transfer{% endif %}">
+      <div class="up-item">
+        <div class="up-left">
+          <div class="up-title-row">
+            <span class="up-icon">&#128197;</span>
+            <span class="up-title">{{ pay.title }}</span>
+          </div>
+          <div class="up-sub">
+            {%- if pay.days_until == 0 %}сегодня{% elif pay.days_until == 1 %}завтра{% else %}через {{ pay.days_until }} дн.{% endif %} ({{ pay.scheduled_date.strftime('%d.%m') }})
+          </div>
+        </div>
+        <div class="up-right">
+          <span class="up-badge clarity-mask up-badge--{% if pay.kind == 'INCOME' %}income{% elif pay.kind == 'EXPENSE' %}expense{% else %}transfer{% endif %}">
             {{ pay.kind_label }} {{ pay.amount_formatted }}
           </span>
         </div>
-        <small class="muted" style="font-size:11px;padding-left:22px;">
-          через {{ pay.days_until }} дн. ({{ pay.scheduled_date.strftime('%d.%m') }})
-        </small>
       </div>
       {% endfor %}
       <p style="margin-top:8px;margin-bottom:0;">
