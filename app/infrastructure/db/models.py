@@ -1210,3 +1210,39 @@ class ArticleLinkModel(Base):
     __table_args__ = (
         Index("ix_article_links_entity", "entity_type", "entity_id"),
     )
+
+
+# ── Project Tags ──
+
+class ProjectTagModel(Base):
+    """Tag scoped to a project."""
+    __tablename__ = "project_tags"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_project_tag_name"),
+    )
+
+
+class TaskProjectTagModel(Base):
+    """Many-to-many: task <-> project tag."""
+    __tablename__ = "task_project_tags"
+
+    task_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tasks.task_id", ondelete="CASCADE"),
+        nullable=False, primary_key=True, index=True,
+    )
+    project_tag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("project_tags.id", ondelete="CASCADE"),
+        nullable=False, primary_key=True, index=True,
+    )

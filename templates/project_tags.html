@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Теги проекта — {{ project.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ptag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.2px; }
+  .ptag-gray { background: #e9ecef; color: #555; }
+  .ptag-blue { background: #dbeafe; color: #1d4ed8; }
+  .ptag-green { background: #d1fae5; color: #065f46; }
+  .ptag-orange { background: #ffedd5; color: #c2410c; }
+  .ptag-purple { background: #ede9fe; color: #6d28d9; }
+
+  .tag-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-color, #f0f0f0); }
+  .tag-row:last-child { border-bottom: none; }
+  .tag-row-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .tag-edit-form { display: flex; gap: 6px; align-items: center; }
+  .tag-edit-form input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 120px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .tag-edit-form select { padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .tag-edit-form button { padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .tag-del-btn { background: none; border: 1px solid #dc3545; color: #dc3545; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+  .tag-create-form { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .tag-create-form input { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; min-width: 140px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .tag-create-form select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .tag-create-form button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+
+  {% set COLOR_LABELS = {"gray": "Серый", "blue": "Синий", "green": "Зелёный", "orange": "Оранжевый", "purple": "Фиолетовый"} %}
+
+  [data-theme$="-dark"] .tag-row { border-color: #21262d; }
+  [data-theme$="-dark"] .ptag-gray { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .ptag-blue { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .ptag-green { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .ptag-orange { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .ptag-purple { background: #2d1b69; color: #a78bfa; }
+</style>
+{% endblock %}
+
+{% set COLOR_LABELS = {"gray": "Серый", "blue": "Синий", "green": "Зелёный", "orange": "Оранжевый", "purple": "Фиолетовый"} %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="/projects/{{ project.id }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; {{ project.title }}</a>
+</div>
+
+<h1 style="font-size: 22px; margin-bottom: 16px;">Теги проекта: {{ project.title }}</h1>
+
+{% if error %}
+<div class="notice-error" style="padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px;">{{ error }}</div>
+{% endif %}
+
+{# ── Existing tags ── #}
+{% if tags %}
+<div class="card" style="padding: 0;">
+  {% for t in tags %}
+  <div class="tag-row">
+    <span class="ptag ptag-{{ t.color or 'gray' }}">{{ t.name }}</span>
+    <div class="tag-row-name"></div>
+    <form method="POST" action="/projects/{{ project.id }}/tags/{{ t.id }}/edit" class="tag-edit-form">
+      <input name="name" value="{{ t.name }}" required>
+      <select name="color">
+        <option value="">Без цвета</option>
+        {% for c in tag_colors %}
+        <option value="{{ c }}" {{ 'selected' if t.color == c }}>{{ COLOR_LABELS.get(c, c) }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Сохр.</button>
+    </form>
+    <form method="POST" action="/projects/{{ project.id }}/tags/{{ t.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить тег «{{ t.name }}»?')">
+      <button type="submit" class="tag-del-btn">Удалить</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding: 20px; text-align: center; color: #888; font-size: 14px;">
+  Тегов пока нет. Создайте первый тег ниже.
+</div>
+{% endif %}
+
+{# ── Create tag ── #}
+<form method="POST" action="/projects/{{ project.id }}/tags" class="tag-create-form">
+  <input name="name" placeholder="Название тега" required>
+  <select name="color">
+    <option value="">Без цвета</option>
+    {% for c in tag_colors %}
+    <option value="{{ c }}">{{ COLOR_LABELS.get(c, c) }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Создать</button>
+</form>
+{% endblock %}

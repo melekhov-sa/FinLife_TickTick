@@ -5,12 +5,14 @@ import pytest
 from datetime import datetime, date
 from decimal import Decimal
 
-from app.infrastructure.db.models import ProjectModel, TaskModel
+from app.infrastructure.db.models import ProjectModel, TaskModel, ProjectTagModel, TaskProjectTagModel
 from app.application.projects import (
     CreateProjectUseCase, UpdateProjectUseCase,
     ChangeProjectStatusUseCase, DeleteProjectUseCase,
     AssignTaskToProjectUseCase, ChangeTaskBoardStatusUseCase,
     CreateTaskInProjectUseCase,
+    CreateProjectTagUseCase, UpdateProjectTagUseCase, DeleteProjectTagUseCase,
+    AddTagToTaskUseCase, RemoveTagFromTaskUseCase,
     ProjectReadService, ProjectValidationError,
 )
 from app.application.tasks_usecases import TaskValidationError
@@ -347,3 +349,146 @@ class TestCreateTaskInProject:
         assert detail["total_tasks"] == 1
         assert len(detail["groups"]["backlog"]) == 1
         assert detail["groups"]["backlog"][0]["title"] == "Board task"
+
+
+# ── ProjectTags ──
+
+class TestProjectTags:
+    def test_create_project_tag(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug", "orange")
+        assert tag_id > 0
+        tag = db_session.query(ProjectTagModel).get(tag_id)
+        assert tag.name == "Bug"
+        assert tag.color == "orange"
+        assert tag.project_id == pid
+
+    def test_tag_unique_per_project(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug")
+        with pytest.raises(ProjectValidationError, match="уже существует"):
+            CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug")
+
+    def test_same_name_different_projects(self, db_session, sample_account_id):
+        pid1 = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj1",
+        )
+        pid2 = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj2",
+        )
+        t1 = CreateProjectTagUseCase(db_session).execute(pid1, sample_account_id, "Bug")
+        t2 = CreateProjectTagUseCase(db_session).execute(pid2, sample_account_id, "Bug")
+        assert t1 != t2
+
+    def test_update_tag(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug", "orange")
+        UpdateProjectTagUseCase(db_session).execute(tag_id, pid, sample_account_id, name="Feature", color="blue")
+        tag = db_session.query(ProjectTagModel).get(tag_id)
+        assert tag.name == "Feature"
+        assert tag.color == "blue"
+
+    def test_add_tag_to_task_same_project(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid, title="Task",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug")
+        AddTagToTaskUseCase(db_session).execute(task_id, tag_id, pid, sample_account_id)
+
+        link = db_session.query(TaskProjectTagModel).filter(
+            TaskProjectTagModel.task_id == task_id,
+            TaskProjectTagModel.project_tag_id == tag_id,
+        ).first()
+        assert link is not None
+
+    def test_add_tag_to_task_different_project(self, db_session, sample_account_id):
+        pid1 = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj1",
+        )
+        pid2 = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj2",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid1, title="Task",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid2, sample_account_id, "Bug")
+        with pytest.raises(ProjectValidationError, match="разным проектам"):
+            AddTagToTaskUseCase(db_session).execute(task_id, tag_id, pid2, sample_account_id)
+
+    def test_delete_tag_removes_links(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid, title="Task",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug")
+        AddTagToTaskUseCase(db_session).execute(task_id, tag_id, pid, sample_account_id)
+
+        DeleteProjectTagUseCase(db_session).execute(tag_id, pid, sample_account_id)
+
+        assert db_session.query(ProjectTagModel).get(tag_id) is None
+        assert db_session.query(TaskProjectTagModel).filter(
+            TaskProjectTagModel.project_tag_id == tag_id,
+        ).count() == 0
+
+    def test_filter_tasks_by_tag(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        t1 = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid, title="Tagged",
+        )
+        CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid, title="Untagged",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug")
+        AddTagToTaskUseCase(db_session).execute(t1, tag_id, pid, sample_account_id)
+
+        svc = ProjectReadService(db_session)
+
+        # Without filter: 2 tasks
+        detail_all = svc.get_project_detail(pid, sample_account_id)
+        assert detail_all["total_tasks"] == 2
+
+        # With filter: only tagged task
+        detail_filtered = svc.get_project_detail(pid, sample_account_id, tag_filter=tag_id)
+        assert detail_filtered["total_tasks"] == 1
+        all_tasks = []
+        for group in detail_filtered["groups"].values():
+            all_tasks.extend(group)
+        assert len(all_tasks) == 1
+        assert all_tasks[0]["title"] == "Tagged"
+
+    def test_tags_in_project_detail(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id, project_id=pid, title="Task",
+        )
+        tag_id = CreateProjectTagUseCase(db_session).execute(pid, sample_account_id, "Bug", "orange")
+        AddTagToTaskUseCase(db_session).execute(task_id, tag_id, pid, sample_account_id)
+
+        svc = ProjectReadService(db_session)
+        detail = svc.get_project_detail(pid, sample_account_id)
+
+        # Project tags are listed
+        assert len(detail["project_tags"]) == 1
+        assert detail["project_tags"][0]["name"] == "Bug"
+
+        # Task has tags
+        task = detail["groups"]["backlog"][0]
+        assert len(task["tags"]) == 1
+        assert task["tags"][0]["name"] == "Bug"
+        assert task["tags"][0]["color"] == "orange"
+        assert tag_id in task["tag_ids"]

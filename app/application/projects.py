@@ -7,7 +7,9 @@ from typing import List, Dict, Any
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import ProjectModel, TaskModel
+from app.infrastructure.db.models import (
+    ProjectModel, TaskModel, ProjectTagModel, TaskProjectTagModel,
+)
 from app.application.tasks_usecases import CreateTaskUseCase
 
 
@@ -17,6 +19,8 @@ PROJECT_STATUSES = ("planned", "active", "paused", "done", "archived")
 BOARD_STATUSES = ("backlog", "todo", "in_progress", "waiting", "done")
 
 BOARD_STATUS_ORDER = {s: i for i, s in enumerate(BOARD_STATUSES)}
+
+TAG_COLORS = ("gray", "blue", "green", "orange", "purple")
 
 
 # ── Errors ──
@@ -224,6 +228,164 @@ class ChangeTaskBoardStatusUseCase:
         self.db.commit()
 
 
+# ── Project Tag Use Cases ──
+
+class CreateProjectTagUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(self, project_id: int, account_id: int, name: str, color: str | None = None) -> int:
+        project = self.db.query(ProjectModel).filter(
+            ProjectModel.id == project_id,
+            ProjectModel.account_id == account_id,
+        ).first()
+        if not project:
+            raise ProjectValidationError("Проект не найден")
+
+        name = name.strip()
+        if not name:
+            raise ProjectValidationError("Название тега не может быть пустым")
+
+        if color and color not in TAG_COLORS:
+            raise ProjectValidationError(f"Недопустимый цвет: {color}")
+
+        existing = self.db.query(ProjectTagModel).filter(
+            ProjectTagModel.project_id == project_id,
+            ProjectTagModel.name == name,
+        ).first()
+        if existing:
+            raise ProjectValidationError(f"Тег '{name}' уже существует")
+
+        tag = ProjectTagModel(
+            project_id=project_id,
+            name=name,
+            color=color or None,
+        )
+        self.db.add(tag)
+        self.db.flush()
+        self.db.commit()
+        return tag.id
+
+
+class UpdateProjectTagUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(self, tag_id: int, project_id: int, account_id: int, name: str | None = None, color: str | None = ...) -> None:
+        tag = self._get_tag(tag_id, project_id, account_id)
+
+        if name is not None:
+            name = name.strip()
+            if not name:
+                raise ProjectValidationError("Название тега не может быть пустым")
+            dup = self.db.query(ProjectTagModel).filter(
+                ProjectTagModel.project_id == project_id,
+                ProjectTagModel.name == name,
+                ProjectTagModel.id != tag_id,
+            ).first()
+            if dup:
+                raise ProjectValidationError(f"Тег '{name}' уже существует")
+            tag.name = name
+
+        if color is not ...:
+            if color and color not in TAG_COLORS:
+                raise ProjectValidationError(f"Недопустимый цвет: {color}")
+            tag.color = color or None
+
+        self.db.commit()
+
+    def _get_tag(self, tag_id: int, project_id: int, account_id: int) -> ProjectTagModel:
+        tag = (
+            self.db.query(ProjectTagModel)
+            .join(ProjectModel, ProjectModel.id == ProjectTagModel.project_id)
+            .filter(
+                ProjectTagModel.id == tag_id,
+                ProjectTagModel.project_id == project_id,
+                ProjectModel.account_id == account_id,
+            )
+            .first()
+        )
+        if not tag:
+            raise ProjectValidationError("Тег не найден")
+        return tag
+
+
+class DeleteProjectTagUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(self, tag_id: int, project_id: int, account_id: int) -> None:
+        tag = (
+            self.db.query(ProjectTagModel)
+            .join(ProjectModel, ProjectModel.id == ProjectTagModel.project_id)
+            .filter(
+                ProjectTagModel.id == tag_id,
+                ProjectTagModel.project_id == project_id,
+                ProjectModel.account_id == account_id,
+            )
+            .first()
+        )
+        if not tag:
+            raise ProjectValidationError("Тег не найден")
+
+        self.db.query(TaskProjectTagModel).filter(
+            TaskProjectTagModel.project_tag_id == tag_id,
+        ).delete()
+        self.db.delete(tag)
+        self.db.commit()
+
+
+class AddTagToTaskUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(self, task_id: int, project_tag_id: int, project_id: int, account_id: int) -> None:
+        task = self.db.query(TaskModel).filter(
+            TaskModel.task_id == task_id,
+            TaskModel.account_id == account_id,
+        ).first()
+        if not task:
+            raise ProjectValidationError("Задача не найдена")
+
+        tag = (
+            self.db.query(ProjectTagModel)
+            .join(ProjectModel, ProjectModel.id == ProjectTagModel.project_id)
+            .filter(
+                ProjectTagModel.id == project_tag_id,
+                ProjectTagModel.project_id == project_id,
+                ProjectModel.account_id == account_id,
+            )
+            .first()
+        )
+        if not tag:
+            raise ProjectValidationError("Тег не найден")
+
+        if task.project_id != tag.project_id:
+            raise ProjectValidationError("Задача и тег принадлежат разным проектам")
+
+        existing = self.db.query(TaskProjectTagModel).filter(
+            TaskProjectTagModel.task_id == task_id,
+            TaskProjectTagModel.project_tag_id == project_tag_id,
+        ).first()
+        if existing:
+            return
+
+        self.db.add(TaskProjectTagModel(task_id=task_id, project_tag_id=project_tag_id))
+        self.db.commit()
+
+
+class RemoveTagFromTaskUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(self, task_id: int, project_tag_id: int, project_id: int, account_id: int) -> None:
+        self.db.query(TaskProjectTagModel).filter(
+            TaskProjectTagModel.task_id == task_id,
+            TaskProjectTagModel.project_tag_id == project_tag_id,
+        ).delete()
+        self.db.commit()
+
+
 # ── Read Service ──
 
 class ProjectReadService:
@@ -275,6 +437,7 @@ class ProjectReadService:
         self,
         project_id: int,
         account_id: int,
+        tag_filter: int | None = None,
     ) -> Dict[str, Any] | None:
         project = self.db.query(ProjectModel).filter(
             ProjectModel.id == project_id,
@@ -283,20 +446,28 @@ class ProjectReadService:
         if not project:
             return None
 
-        tasks = (
-            self.db.query(TaskModel)
-            .filter(TaskModel.project_id == project_id)
-            .order_by(TaskModel.created_at.desc())
-            .all()
-        )
+        q = self.db.query(TaskModel).filter(TaskModel.project_id == project_id)
+
+        if tag_filter:
+            q = (
+                q.join(TaskProjectTagModel, TaskProjectTagModel.task_id == TaskModel.task_id)
+                .filter(TaskProjectTagModel.project_tag_id == tag_filter)
+            )
+
+        tasks = q.order_by(TaskModel.created_at.desc()).all()
 
         total = len(tasks)
         done = sum(1 for t in tasks if t.board_status == "done")
+
+        # Batch-load task tags
+        task_ids = [t.task_id for t in tasks]
+        tags_map = self._task_tags(task_ids) if task_ids else {}
 
         # Group tasks by board_status
         grouped: Dict[str, list] = {s: [] for s in BOARD_STATUSES}
         for t in tasks:
             bs = t.board_status if t.board_status in grouped else "backlog"
+            task_tags = tags_map.get(t.task_id, [])
             grouped[bs].append({
                 "task_id": t.task_id,
                 "title": t.title,
@@ -309,7 +480,17 @@ class ProjectReadService:
                     and t.due_date < date_type.today()
                     and t.board_status != "done"
                 ),
+                "tags": task_tags,
+                "tag_ids": [tg["id"] for tg in task_tags],
             })
+
+        # Load project tags
+        project_tags = (
+            self.db.query(ProjectTagModel)
+            .filter(ProjectTagModel.project_id == project_id)
+            .order_by(ProjectTagModel.name)
+            .all()
+        )
 
         return {
             "id": project.id,
@@ -323,6 +504,10 @@ class ProjectReadService:
             "done_tasks": done,
             "progress": round(done / total * 100) if total else 0,
             "groups": grouped,
+            "project_tags": [
+                {"id": pt.id, "name": pt.name, "color": pt.color}
+                for pt in project_tags
+            ],
         }
 
     def get_unassigned_tasks(self, account_id: int) -> List[Dict[str, Any]]:
@@ -341,6 +526,46 @@ class ProjectReadService:
             {"task_id": t.task_id, "title": t.title, "due_date": t.due_date}
             for t in tasks
         ]
+
+    def get_project_tags(self, project_id: int, account_id: int) -> List[Dict[str, Any]]:
+        """All tags for a project."""
+        project = self.db.query(ProjectModel).filter(
+            ProjectModel.id == project_id,
+            ProjectModel.account_id == account_id,
+        ).first()
+        if not project:
+            return []
+        tags = (
+            self.db.query(ProjectTagModel)
+            .filter(ProjectTagModel.project_id == project_id)
+            .order_by(ProjectTagModel.name)
+            .all()
+        )
+        return [
+            {"id": t.id, "name": t.name, "color": t.color, "created_at": t.created_at}
+            for t in tags
+        ]
+
+    def _task_tags(self, task_ids: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+        """Batch-load project tags for tasks."""
+        rows = (
+            self.db.query(
+                TaskProjectTagModel.task_id,
+                ProjectTagModel.id,
+                ProjectTagModel.name,
+                ProjectTagModel.color,
+            )
+            .join(ProjectTagModel, TaskProjectTagModel.project_tag_id == ProjectTagModel.id)
+            .filter(TaskProjectTagModel.task_id.in_(task_ids))
+            .order_by(ProjectTagModel.name)
+            .all()
+        )
+        result: Dict[int, List[Dict[str, Any]]] = {}
+        for task_id, tag_id, tag_name, tag_color in rows:
+            result.setdefault(task_id, []).append({
+                "id": tag_id, "name": tag_name, "color": tag_color,
+            })
+        return result
 
     def _task_counts(self, project_ids: List[int]) -> Dict[int, Dict[str, int]]:
         rows = (

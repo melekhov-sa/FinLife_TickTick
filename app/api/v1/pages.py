@@ -114,8 +114,10 @@ from app.application.projects import (
     CreateProjectUseCase, UpdateProjectUseCase, ChangeProjectStatusUseCase,
     DeleteProjectUseCase, AssignTaskToProjectUseCase, ChangeTaskBoardStatusUseCase,
     CreateTaskInProjectUseCase,
+    CreateProjectTagUseCase, UpdateProjectTagUseCase, DeleteProjectTagUseCase,
+    AddTagToTaskUseCase, RemoveTagFromTaskUseCase,
     ProjectReadService, ProjectValidationError,
-    PROJECT_STATUSES, BOARD_STATUSES,
+    PROJECT_STATUSES, BOARD_STATUSES, TAG_COLORS,
 )
 from app.application.knowledge import (
     CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
@@ -3315,16 +3317,22 @@ def project_create(
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
-def project_detail(request: Request, project_id: int, db: Session = Depends(get_db)):
+def project_detail(request: Request, project_id: int, tag: int | None = None, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
     svc = ProjectReadService(db)
-    detail = svc.get_project_detail(project_id, user_id)
+    detail = svc.get_project_detail(project_id, user_id, tag_filter=tag)
     if not detail:
         return RedirectResponse("/projects", status_code=302)
     unassigned = svc.get_unassigned_tasks(user_id)
     related_articles = KnowledgeReadService(db).get_articles_for_entity(user_id, "project", project_id)
+    active_tag_filter = None
+    if tag:
+        for pt in detail.get("project_tags", []):
+            if pt["id"] == tag:
+                active_tag_filter = pt
+                break
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": detail,
@@ -3332,6 +3340,7 @@ def project_detail(request: Request, project_id: int, db: Session = Depends(get_
         "related_articles": related_articles,
         "all_statuses": PROJECT_STATUSES,
         "board_statuses": BOARD_STATUSES,
+        "active_tag_filter": active_tag_filter,
     })
 
 
@@ -3506,6 +3515,130 @@ def task_change_board_status(
     except ProjectValidationError:
         pass
     return RedirectResponse(redirect_to, status_code=302)
+
+
+# === Project Tags ===
+
+@router.get("/projects/{project_id}/tags", response_class=HTMLResponse)
+def project_tags_page(request: Request, project_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = ProjectReadService(db)
+    detail = svc.get_project_detail(project_id, user_id)
+    if not detail:
+        return RedirectResponse("/projects", status_code=302)
+    tags = svc.get_project_tags(project_id, user_id)
+    return templates.TemplateResponse("project_tags.html", {
+        "request": request,
+        "project": detail,
+        "tags": tags,
+        "tag_colors": TAG_COLORS,
+        "error": None,
+    })
+
+
+@router.post("/projects/{project_id}/tags")
+def project_tag_create(
+    request: Request,
+    project_id: int,
+    name: str = Form(""),
+    color: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        CreateProjectTagUseCase(db).execute(project_id, user_id, name, color or None)
+    except ProjectValidationError as e:
+        svc = ProjectReadService(db)
+        detail = svc.get_project_detail(project_id, user_id)
+        if not detail:
+            return RedirectResponse("/projects", status_code=302)
+        tags = svc.get_project_tags(project_id, user_id)
+        return templates.TemplateResponse("project_tags.html", {
+            "request": request,
+            "project": detail,
+            "tags": tags,
+            "tag_colors": TAG_COLORS,
+            "error": str(e),
+        })
+    return RedirectResponse(f"/projects/{project_id}/tags", status_code=302)
+
+
+@router.post("/projects/{project_id}/tags/{tag_id}/edit")
+def project_tag_edit(
+    request: Request,
+    project_id: int,
+    tag_id: int,
+    name: str = Form(""),
+    color: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        UpdateProjectTagUseCase(db).execute(tag_id, project_id, user_id, name=name or None, color=color or None)
+    except ProjectValidationError:
+        pass
+    return RedirectResponse(f"/projects/{project_id}/tags", status_code=302)
+
+
+@router.post("/projects/{project_id}/tags/{tag_id}/delete")
+def project_tag_delete(
+    request: Request,
+    project_id: int,
+    tag_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        DeleteProjectTagUseCase(db).execute(tag_id, project_id, user_id)
+    except ProjectValidationError:
+        pass
+    return RedirectResponse(f"/projects/{project_id}/tags", status_code=302)
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/tags/add")
+def task_tag_add(
+    request: Request,
+    project_id: int,
+    task_id: int,
+    project_tag_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    if project_tag_id:
+        try:
+            AddTagToTaskUseCase(db).execute(task_id, project_tag_id, project_id, user_id)
+        except ProjectValidationError:
+            pass
+    return RedirectResponse(f"/projects/{project_id}", status_code=302)
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/tags/remove")
+def task_tag_remove(
+    request: Request,
+    project_id: int,
+    task_id: int,
+    project_tag_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    if project_tag_id:
+        try:
+            RemoveTagFromTaskUseCase(db).execute(task_id, project_tag_id, project_id, user_id)
+        except ProjectValidationError:
+            pass
+    return RedirectResponse(f"/projects/{project_id}", status_code=302)
 
 
 # === Knowledge Base ===

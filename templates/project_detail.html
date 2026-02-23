@@ -56,6 +56,20 @@
   .task-unlink { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 2px 4px; line-height: 1; }
   .task-unlink:hover { color: #dc3545; }
 
+  /* Project tags */
+  .ptag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+  .ptag-gray { background: #e9ecef; color: #555; }
+  .ptag-blue { background: #dbeafe; color: #1d4ed8; }
+  .ptag-green { background: #d1fae5; color: #065f46; }
+  .ptag-orange { background: #ffedd5; color: #c2410c; }
+  .ptag-purple { background: #ede9fe; color: #6d28d9; }
+  .ptag-remove { cursor: pointer; margin-left: 2px; opacity: 0.6; }
+  .ptag-remove:hover { opacity: 1; }
+  .tag-add-select { font-size: 10px; padding: 1px 2px; border: 1px solid #ddd; border-radius: 3px; background: var(--bg-input, #fff); color: var(--text-secondary, #888); width: 28px; cursor: pointer; }
+  .task-tags { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+  .tag-filter-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .tag-filter-link { text-decoration: none; }
+
   /* Dark mode */
   [data-theme$="-dark"] .board-group-count { background: #21262d; color: #8b949e; }
   [data-theme$="-dark"] .task-row { border-bottom-color: #21262d; }
@@ -71,6 +85,12 @@
   [data-theme$="-dark"] .board-in_progress { background: #2d1b69; color: #a78bfa; }
   [data-theme$="-dark"] .board-waiting { background: #3d2200; color: #fb923c; }
   [data-theme$="-dark"] .board-done { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .ptag-gray { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .ptag-blue { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .ptag-green { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .ptag-orange { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .ptag-purple { background: #2d1b69; color: #a78bfa; }
+  [data-theme$="-dark"] .tag-add-select { background: #0d1117; border-color: #30363d; color: #8b949e; }
 </style>
 {% endblock %}
 
@@ -104,6 +124,7 @@
       <button type="submit" style="padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary);">OK</button>
     </form>
     <a href="/projects/{{ project.id }}/edit" style="padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666;">Ред.</a>
+    <a href="/projects/{{ project.id }}/tags" style="padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666;">Теги</a>
   </div>
 </div>
 
@@ -128,6 +149,21 @@
   {% endif %}
 </div>
 
+{# ── Tag filter ── #}
+{% if active_tag_filter %}
+<div class="tag-filter-bar">
+  <span style="font-size: 12px; color: var(--text-secondary, #888);">Фильтр:</span>
+  <span class="ptag ptag-{{ active_tag_filter.color or 'gray' }}">{{ active_tag_filter.name }}</span>
+  <a href="/projects/{{ project.id }}" style="font-size: 12px; color: #dc3545; text-decoration: none;">&times; сбросить</a>
+</div>
+{% elif project.project_tags %}
+<div class="tag-filter-bar">
+  {% for pt in project.project_tags %}
+  <a href="/projects/{{ project.id }}?tag={{ pt.id }}" class="tag-filter-link"><span class="ptag ptag-{{ pt.color or 'gray' }}">{{ pt.name }}</span></a>
+  {% endfor %}
+</div>
+{% endif %}
+
 {# ── Board groups ── #}
 {% for bs in board_statuses %}
 {% set tasks = project.groups.get(bs, []) %}
@@ -143,9 +179,26 @@
     <div class="task-row{% if t.board_status == 'done' %} task-row-done{% endif %}">
       <div class="task-row-title">
         {{ t.title }}
+        {% if t.tags %}
+        <div class="task-tags" style="margin-top: 2px;">
+          {% for tag in t.tags %}
+          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}<form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/remove" style="display: inline;"><input type="hidden" name="project_tag_id" value="{{ tag.id }}"><button type="submit" class="ptag-remove" title="Убрать тег">&times;</button></form></span>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
       {% if t.due_date %}
       <span class="task-row-due{% if t.is_overdue %} task-row-overdue{% endif %}">{{ t.due_date.strftime('%d.%m') }}</span>
+      {% endif %}
+      {% if project.project_tags %}
+      <form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/add" style="display: inline;">
+        <select name="project_tag_id" class="tag-add-select" onchange="if(this.value)this.form.submit()" title="Добавить тег">
+          <option value="">+</option>
+          {% for pt in project.project_tags if pt.id not in t.tag_ids %}
+          <option value="{{ pt.id }}">{{ pt.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
       {% endif %}
       <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display: inline;">
         <input type="hidden" name="project_id" value="{{ project.id }}">
