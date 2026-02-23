@@ -181,6 +181,7 @@ class CreateTaskInProjectUseCase:
         due_date: str | None = None,
         due_time: str | None = None,
         category_id: int | None = None,
+        board_status: str = "backlog",
     ) -> int:
         project = self.db.query(ProjectModel).filter(
             ProjectModel.id == project_id,
@@ -188,6 +189,9 @@ class CreateTaskInProjectUseCase:
         ).first()
         if not project:
             raise ProjectValidationError("Проект не найден")
+
+        if board_status not in BOARD_STATUSES:
+            board_status = "backlog"
 
         task_id = CreateTaskUseCase(self.db).execute(
             account_id=account_id,
@@ -200,6 +204,11 @@ class CreateTaskInProjectUseCase:
         )
 
         AssignTaskToProjectUseCase(self.db).execute(task_id, account_id, project_id)
+
+        # Set target board status if not default
+        if board_status != "backlog":
+            ChangeTaskBoardStatusUseCase(self.db).execute(task_id, account_id, board_status)
+
         return task_id
 
 

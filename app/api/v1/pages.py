@@ -3317,7 +3317,7 @@ def project_create(
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
-def project_detail(request: Request, project_id: int, tag: int | None = None, db: Session = Depends(get_db)):
+def project_detail(request: Request, project_id: int, tag: int | None = None, view: str | None = None, db: Session = Depends(get_db)):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
@@ -3333,6 +3333,7 @@ def project_detail(request: Request, project_id: int, tag: int | None = None, db
             if pt["id"] == tag:
                 active_tag_filter = pt
                 break
+    current_view = view if view in ("list", "kanban") else "kanban"
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": detail,
@@ -3341,6 +3342,7 @@ def project_detail(request: Request, project_id: int, tag: int | None = None, db
         "all_statuses": PROJECT_STATUSES,
         "board_statuses": BOARD_STATUSES,
         "active_tag_filter": active_tag_filter,
+        "current_view": current_view,
     })
 
 
@@ -3477,6 +3479,29 @@ def project_task_create(
             "work_categories": work_categories,
             "error": str(e),
         })
+
+
+@router.post("/projects/{project_id}/tasks/quick-add")
+def project_task_quick_add(
+    request: Request,
+    project_id: int,
+    title: str = Form(""),
+    board_status: str = Form("backlog"),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        CreateTaskInProjectUseCase(db).execute(
+            account_id=user_id,
+            project_id=project_id,
+            title=title,
+            board_status=board_status,
+        )
+    except (ProjectValidationError, Exception):
+        pass
+    return RedirectResponse(f"/projects/{project_id}", status_code=302)
 
 
 @router.post("/tasks/{task_id}/assign")

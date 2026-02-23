@@ -3,7 +3,7 @@
 
 {% block extra_head %}
 <style>
-  /* Status badges (shared with projects.html) */
+  /* Status badges */
   .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
   .badge-planned { background: #e9ecef; color: #555; }
   .badge-active { background: #dbeafe; color: #1d4ed8; }
@@ -30,31 +30,11 @@
   .prj-progress-fill { height: 100%; background: #22c55e; border-radius: 3px; transition: width 0.3s; }
   .prj-progress-text { font-size: 13px; font-weight: 600; color: var(--text-secondary, #888); }
 
-  /* Board groups */
-  .board-group { margin-bottom: 20px; }
-  .board-group-hdr { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .board-group-count { background: #eee; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; color: #666; }
-
-  /* Task rows */
-  .task-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
-  .task-row:last-child { border-bottom: none; }
-  .task-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .task-row-title a { color: inherit; text-decoration: none; }
-  .task-row-title a:hover { text-decoration: underline; }
-  .task-row-due { font-size: 12px; color: var(--text-secondary, #888); white-space: nowrap; }
-  .task-row-overdue { color: #dc3545; font-weight: 500; }
-  .task-row-done .task-row-title { text-decoration: line-through; color: var(--text-secondary, #999); }
-
-  .task-board-select { font-size: 11px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 3px; background: var(--bg-input, #fff); color: var(--text-primary); }
-
-  /* Add task form */
-  .add-task-form { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-  .add-task-form select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; background: var(--bg-input, #fff); color: var(--text-primary); }
-  .add-task-form button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-
-  /* Unlink button */
-  .task-unlink { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 2px 4px; line-height: 1; }
-  .task-unlink:hover { color: #dc3545; }
+  /* View switcher */
+  .view-switcher { display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; font-size: 12px; }
+  .view-switcher a { padding: 4px 12px; text-decoration: none; color: #666; background: var(--bg-input, #fff); }
+  .view-switcher a.active { background: #007AFF; color: #fff; }
+  .view-switcher a:not(:last-child) { border-right: 1px solid #ddd; }
 
   /* Project tags */
   .ptag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
@@ -70,8 +50,63 @@
   .tag-filter-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
   .tag-filter-link { text-decoration: none; }
 
+  /* Add task form (list view) */
+  .add-task-form { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .add-task-form select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .add-task-form button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  /* ── Kanban Board ── */
+  .kanban-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
+  .kanban-col { width: 280px; min-width: 280px; flex-shrink: 0; }
+  .kanban-col-hdr { position: sticky; top: 0; z-index: 2; padding: 10px 12px; display: flex; align-items: center; gap: 8px; background: var(--bg-card, #fff); border-radius: 8px 8px 0 0; border: 1px solid var(--border-color, #e5e7eb); border-bottom: none; }
+  .kanban-col-count { background: #eee; border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 600; color: #666; }
+  .kanban-col-body { background: var(--bg-secondary, #f6f8fa); border: 1px solid var(--border-color, #e5e7eb); border-top: none; border-radius: 0 0 8px 8px; padding: 8px; min-height: 60px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* WIP limit */
+  .wip-badge { font-size: 10px; color: #888; margin-left: auto; }
+  .wip-over { color: #dc3545; font-weight: 600; }
+
+  /* Kanban card */
+  .kanban-card { background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); position: relative; transition: box-shadow 0.15s; }
+  .kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .kanban-card-title { font-size: 13px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; color: var(--text-primary); }
+  .kanban-card-done .kanban-card-title { text-decoration: line-through; color: var(--text-secondary, #999); }
+  .kanban-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .kanban-card-due { font-size: 11px; color: var(--text-secondary, #888); }
+  .kanban-card-overdue { color: #dc3545; font-weight: 500; }
+  .kanban-card-arrows { display: flex; gap: 2px; margin-left: auto; }
+  .kanban-arrow { background: none; border: 1px solid #ddd; border-radius: 3px; width: 22px; height: 22px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #888; padding: 0; line-height: 1; }
+  .kanban-arrow:hover { background: #f0f0f0; color: #333; border-color: #bbb; }
+  .kanban-arrow:disabled { opacity: 0.3; cursor: default; }
+  .kanban-arrow:disabled:hover { background: none; color: #888; border-color: #ddd; }
+
+  /* Hover-reveal unlink × */
+  .kanban-card-unlink { position: absolute; top: 6px; right: 6px; background: none; border: none; cursor: pointer; font-size: 14px; color: #ccc; padding: 0 2px; line-height: 1; opacity: 0; transition: opacity 0.15s; }
+  .kanban-card:hover .kanban-card-unlink { opacity: 1; }
+  .kanban-card-unlink:hover { color: #dc3545; }
+
+  /* Quick-add form */
+  .kanban-quick-add { display: flex; gap: 4px; }
+  .kanban-quick-add input { flex: 1; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .kanban-quick-add input::placeholder { color: #bbb; }
+  .kanban-quick-add button { padding: 6px 10px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+
+  /* ── List view (vertical) ── */
+  .board-group { margin-bottom: 20px; }
+  .board-group-hdr { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .board-group-count { background: #eee; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; color: #666; }
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-row-due { font-size: 12px; color: var(--text-secondary, #888); white-space: nowrap; }
+  .task-row-overdue { color: #dc3545; font-weight: 500; }
+  .task-row-done .task-row-title { text-decoration: line-through; color: var(--text-secondary, #999); }
+  .task-board-select { font-size: 11px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 3px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .task-unlink { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 2px 4px; line-height: 1; }
+  .task-unlink:hover { color: #dc3545; }
+
   /* Dark mode */
-  [data-theme$="-dark"] .board-group-count { background: #21262d; color: #8b949e; }
+  [data-theme$="-dark"] .board-group-count, [data-theme$="-dark"] .kanban-col-count { background: #21262d; color: #8b949e; }
   [data-theme$="-dark"] .task-row { border-bottom-color: #21262d; }
   [data-theme$="-dark"] .task-board-select { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
   [data-theme$="-dark"] .prj-progress-bar { background: #21262d; }
@@ -91,11 +126,25 @@
   [data-theme$="-dark"] .ptag-orange { background: #3d2200; color: #fb923c; }
   [data-theme$="-dark"] .ptag-purple { background: #2d1b69; color: #a78bfa; }
   [data-theme$="-dark"] .tag-add-select { background: #0d1117; border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .view-switcher { border-color: #30363d; }
+  [data-theme$="-dark"] .view-switcher a { background: #0d1117; color: #8b949e; border-color: #30363d; }
+  [data-theme$="-dark"] .view-switcher a.active { background: #007AFF; color: #fff; }
+  [data-theme$="-dark"] .kanban-col-hdr { background: var(--bg-card, #161b22); border-color: #30363d; }
+  [data-theme$="-dark"] .kanban-col-body { background: #0d1117; border-color: #30363d; }
+  [data-theme$="-dark"] .kanban-card { background: var(--bg-card, #161b22); border-color: #30363d; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  [data-theme$="-dark"] .kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  [data-theme$="-dark"] .kanban-arrow { border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .kanban-arrow:hover { background: #21262d; color: #c9d1d9; border-color: #484f58; }
+  [data-theme$="-dark"] .kanban-quick-add input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+  [data-theme$="-dark"] .kanban-card-unlink { color: #484f58; }
+  [data-theme$="-dark"] .kanban-card-unlink:hover { color: #f85149; }
 </style>
 {% endblock %}
 
 {% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
 {% set BOARD_LABELS = {"backlog": "Backlog", "todo": "Todo", "in_progress": "In Progress", "waiting": "Waiting", "done": "Done"} %}
+{% set BOARD_ORDER = ["backlog", "todo", "in_progress", "waiting", "done"] %}
+{% set WIP_LIMIT = 5 %}
 
 {% block content %}
 
@@ -113,6 +162,10 @@
     <span style="font-size: 12px; color: var(--text-secondary, #888);">{{ project.done_tasks }}/{{ project.total_tasks }}</span>
   </div>
   <div class="prj-header-actions">
+    <div class="view-switcher">
+      <a href="/projects/{{ project.id }}?view=list{% if active_tag_filter %}&tag={{ active_tag_filter.id }}{% endif %}" class="{{ 'active' if current_view == 'list' }}">Список</a>
+      <a href="/projects/{{ project.id }}?view=kanban{% if active_tag_filter %}&tag={{ active_tag_filter.id }}{% endif %}" class="{{ 'active' if current_view == 'kanban' }}">Канбан</a>
+    </div>
     <form method="POST" action="/projects/{{ project.id }}/status" style="display: flex; gap: 4px;">
       <select name="status" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary);">
         {% for s in all_statuses %}
@@ -132,7 +185,7 @@
 <p style="font-size: 14px; color: var(--text-secondary, #888); margin: 0 0 16px;">{{ project.description }}</p>
 {% endif %}
 
-{# ── Create new task / Add existing task ── #}
+{# ── Actions bar ── #}
 <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
   <a href="/projects/{{ project.id }}/tasks/create"
      style="padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; text-decoration: none; white-space: nowrap;">+ Добавить задачу</a>
@@ -154,17 +207,101 @@
 <div class="tag-filter-bar">
   <span style="font-size: 12px; color: var(--text-secondary, #888);">Фильтр:</span>
   <span class="ptag ptag-{{ active_tag_filter.color or 'gray' }}">{{ active_tag_filter.name }}</span>
-  <a href="/projects/{{ project.id }}" style="font-size: 12px; color: #dc3545; text-decoration: none;">&times; сбросить</a>
+  <a href="/projects/{{ project.id }}?view={{ current_view }}" style="font-size: 12px; color: #dc3545; text-decoration: none;">&times; сбросить</a>
 </div>
 {% elif project.project_tags %}
 <div class="tag-filter-bar">
   {% for pt in project.project_tags %}
-  <a href="/projects/{{ project.id }}?tag={{ pt.id }}" class="tag-filter-link"><span class="ptag ptag-{{ pt.color or 'gray' }}">{{ pt.name }}</span></a>
+  <a href="/projects/{{ project.id }}?tag={{ pt.id }}&view={{ current_view }}" class="tag-filter-link"><span class="ptag ptag-{{ pt.color or 'gray' }}">{{ pt.name }}</span></a>
   {% endfor %}
 </div>
 {% endif %}
 
-{# ── Board groups ── #}
+{# ══════════════ KANBAN VIEW ══════════════ #}
+{% if current_view == 'kanban' %}
+
+<div class="kanban-board">
+  {% for bs in board_statuses %}
+  {% set tasks = project.groups.get(bs, []) %}
+  {% set col_count = tasks|length %}
+  <div class="kanban-col">
+    <div class="kanban-col-hdr">
+      <span class="board-badge board-{{ bs }}">{{ BOARD_LABELS.get(bs, bs) }}</span>
+      <span class="kanban-col-count">{{ col_count }}</span>
+      {% if bs == 'in_progress' %}
+      <span class="wip-badge{{ ' wip-over' if col_count > WIP_LIMIT }}">WIP {{ col_count }}/{{ WIP_LIMIT }}</span>
+      {% endif %}
+    </div>
+    <div class="kanban-col-body">
+      {% for t in tasks %}
+      <div class="kanban-card{{ ' kanban-card-done' if t.board_status == 'done' }}">
+        {# Hover-reveal × remove #}
+        <form method="POST" action="/tasks/{{ t.task_id }}/assign" style="display:inline;">
+          <input type="hidden" name="project_id" value="0">
+          <button type="submit" class="kanban-card-unlink" title="Убрать из проекта">&times;</button>
+        </form>
+
+        <div class="kanban-card-title">{{ t.title }}</div>
+
+        {# Tags #}
+        {% if t.tags %}
+        <div class="task-tags" style="margin-bottom: 6px;">
+          {% for tag in t.tags %}
+          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}<form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/remove" style="display:inline;"><input type="hidden" name="project_tag_id" value="{{ tag.id }}"><button type="submit" class="ptag-remove" title="Убрать тег">&times;</button></form></span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="kanban-card-meta">
+          {# Due date #}
+          {% if t.due_date %}
+          <span class="kanban-card-due{{ ' kanban-card-overdue' if t.is_overdue }}">{{ t.due_date.strftime('%d.%m') }}</span>
+          {% endif %}
+          {# Add tag #}
+          {% if project.project_tags %}
+          <form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/add" style="display:inline;">
+            <select name="project_tag_id" class="tag-add-select" onchange="if(this.value)this.form.submit()" title="Добавить тег">
+              <option value="">+</option>
+              {% for pt in project.project_tags if pt.id not in t.tag_ids %}
+              <option value="{{ pt.id }}">{{ pt.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% endif %}
+          {# ← → arrows #}
+          <div class="kanban-card-arrows">
+            {% set idx = BOARD_ORDER.index(bs) if bs in BOARD_ORDER else 0 %}
+            <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display:inline;">
+              <input type="hidden" name="project_id" value="{{ project.id }}">
+              <input type="hidden" name="board_status" value="{{ BOARD_ORDER[idx - 1] if idx > 0 else bs }}">
+              <button type="submit" class="kanban-arrow" title="{{ BOARD_LABELS.get(BOARD_ORDER[idx - 1], '') if idx > 0 else '' }}" {{ 'disabled' if idx == 0 }}>&larr;</button>
+            </form>
+            <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display:inline;">
+              <input type="hidden" name="project_id" value="{{ project.id }}">
+              <input type="hidden" name="board_status" value="{{ BOARD_ORDER[idx + 1] if idx < 4 else bs }}">
+              <button type="submit" class="kanban-arrow" title="{{ BOARD_LABELS.get(BOARD_ORDER[idx + 1], '') if idx < 4 else '' }}" {{ 'disabled' if idx == 4 }}>&rarr;</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {# Quick-add form in Backlog and Todo columns #}
+      {% if bs in ('backlog', 'todo') %}
+      <form method="POST" action="/projects/{{ project.id }}/tasks/quick-add" class="kanban-quick-add">
+        <input type="hidden" name="board_status" value="{{ bs }}">
+        <input name="title" placeholder="Новая задача..." required>
+        <button type="submit">+</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ══════════════ LIST VIEW ══════════════ #}
+{% else %}
+
 {% for bs in board_statuses %}
 {% set tasks = project.groups.get(bs, []) %}
 <div class="board-group">
@@ -218,6 +355,8 @@
   {% endif %}
 </div>
 {% endfor %}
+
+{% endif %}
 
 {# ── Related articles ── #}
 {% if related_articles %}
