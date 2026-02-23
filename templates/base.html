@@ -956,7 +956,9 @@ _updateThemeBtn();
 <script>
 window.__VAPID_PUBLIC_KEY__ = '{{ vapid_public_key }}';
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js');
+  navigator.serviceWorker.register('/service-worker.js').catch(function(e) {
+    console.warn('SW registration failed:', e);
+  });
 }
 </script>
 {% endif %}

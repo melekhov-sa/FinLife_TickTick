@@ -1,5 +1,14 @@
 /* Service Worker for FinLife PWA — push notifications */
 
+/* Activate immediately on install/update — critical for iOS PWA */
+self.addEventListener('install', function(event) {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function(event) {
   if (!event.data) return;
 

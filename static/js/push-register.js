@@ -52,6 +52,11 @@
 
   async function getRegistration() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    /* Ensure SW is registered before waiting for ready (iOS PWA may lose registration) */
+    var regs = await navigator.serviceWorker.getRegistrations();
+    if (regs.length === 0) {
+      await navigator.serviceWorker.register('/service-worker.js');
+    }
     return navigator.serviceWorker.ready;
   }
 
@@ -151,8 +156,18 @@
       updateUI('denied');
       return;
     }
-    var sub = await getCurrentSubscription();
-    updateUI(sub ? 'subscribed' : 'prompt');
+    try {
+      var sub = await Promise.race([
+        getCurrentSubscription(),
+        new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error('timeout')); }, 5000);
+        })
+      ]);
+      updateUI(sub ? 'subscribed' : 'prompt');
+    } catch (e) {
+      /* SW ready timed out — show button anyway so user can retry */
+      updateUI('prompt');
+    }
   }
 
   /* Public API */
