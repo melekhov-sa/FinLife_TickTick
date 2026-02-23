@@ -565,7 +565,7 @@ class DashboardService:
     def get_fin_state_summary(self, account_id: int, today: date) -> dict:
         """
         Wallet balance totals by type (REGULAR / CREDIT / SAVINGS) for RUB wallets.
-        financial_result = regular + savings - credits.
+        financial_result = regular + savings + credits (credit balances are negative).
         debt_load_pct = round(debt / assets * 100) if assets > 0.
         capital_delta_30 = net_worth_now - net_worth_30d_ago (via balance_30d_ago).
         """
@@ -592,7 +592,7 @@ class DashboardService:
         credit_total  = _total("CREDIT")
         savings_total = _total("SAVINGS")
 
-        financial_result = regular_total + savings_total - credit_total
+        financial_result = regular_total + savings_total + credit_total
 
         # ── Debt load ──
         assets = regular_total + savings_total
@@ -608,7 +608,7 @@ class DashboardService:
         savings_30 = _total_30d_ago("SAVINGS")
 
         if regular_30 is not None and credit_30 is not None and savings_30 is not None:
-            net_worth_30 = regular_30 + savings_30 - credit_30
+            net_worth_30 = regular_30 + savings_30 + credit_30
             capital_delta_30 = financial_result - net_worth_30
         else:
             capital_delta_30 = None

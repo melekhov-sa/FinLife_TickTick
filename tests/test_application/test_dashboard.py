@@ -591,12 +591,12 @@ class TestFinStateSummary:
         """Totals grouped correctly by wallet_type."""
         _add_wallet(db_session, 1, wallet_type="REGULAR",  balance="50000")
         _add_wallet(db_session, 2, wallet_type="REGULAR",  balance="30000")
-        _add_wallet(db_session, 3, wallet_type="CREDIT",   balance="15000")
+        _add_wallet(db_session, 3, wallet_type="CREDIT",   balance="-15000")
         _add_wallet(db_session, 4, wallet_type="SAVINGS",  balance="100000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         assert result["regular_total"] == 80000
-        assert result["credit_total"]  == 15000
+        assert result["credit_total"]  == -15000
         assert result["savings_total"] == 100000
 
     def test_archived_wallets_excluded(self, db_session):
@@ -616,20 +616,20 @@ class TestFinStateSummary:
         assert result["regular_total"] == 50000
 
     def test_financial_result_formula(self, db_session):
-        """financial_result = regular + savings - credits."""
+        """financial_result = regular + savings + credits (credits are negative)."""
         _add_wallet(db_session, 1, wallet_type="REGULAR", balance="65000")
-        _add_wallet(db_session, 2, wallet_type="CREDIT",  balance="494000")
+        _add_wallet(db_session, 2, wallet_type="CREDIT",  balance="-494000")
         _add_wallet(db_session, 3, wallet_type="SAVINGS", balance="287000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
-        # 65000 + 287000 - 494000 = -142000
+        # 65000 + 287000 + (-494000) = -142000
         assert result["financial_result"] == 65000 + 287000 - 494000
 
     def test_financial_result_positive(self, db_session):
         """Positive result when assets exceed credits."""
         _add_wallet(db_session, 1, wallet_type="REGULAR", balance="100000")
         _add_wallet(db_session, 2, wallet_type="SAVINGS", balance="200000")
-        _add_wallet(db_session, 3, wallet_type="CREDIT",  balance="50000")
+        _add_wallet(db_session, 3, wallet_type="CREDIT",  balance="-50000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         assert result["financial_result"] == 250000
@@ -638,7 +638,7 @@ class TestFinStateSummary:
         """debt_load_pct = round(debt / assets * 100)."""
         _add_wallet(db_session, 1, wallet_type="REGULAR", balance="60000")
         _add_wallet(db_session, 2, wallet_type="SAVINGS", balance="40000")
-        _add_wallet(db_session, 3, wallet_type="CREDIT",  balance="50000")
+        _add_wallet(db_session, 3, wallet_type="CREDIT",  balance="-50000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         # assets=100000, debt=50000 → 50%
@@ -646,7 +646,7 @@ class TestFinStateSummary:
 
     def test_debt_load_none_when_no_assets(self, db_session):
         """debt_load_pct is None when assets <= 0."""
-        _add_wallet(db_session, 1, wallet_type="CREDIT", balance="100000")
+        _add_wallet(db_session, 1, wallet_type="CREDIT", balance="-100000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
         assert result["debt_load_pct"] is None
@@ -661,10 +661,10 @@ class TestFinStateSummary:
     def test_capital_delta_30_positive(self, db_session):
         """Capital grew over 30 days."""
         _add_wallet(db_session, 1, wallet_type="REGULAR", balance="80000", balance_30d_ago="60000")
-        _add_wallet(db_session, 2, wallet_type="CREDIT",  balance="10000", balance_30d_ago="10000")
+        _add_wallet(db_session, 2, wallet_type="CREDIT",  balance="-10000", balance_30d_ago="-10000")
 
         result = DashboardService(db_session).get_fin_state_summary(ACCOUNT, TODAY)
-        # now: 80000 - 10000 = 70000; 30d ago: 60000 - 10000 = 50000; delta = 20000
+        # now: 80000 + (-10000) = 70000; 30d ago: 60000 + (-10000) = 50000; delta = 20000
         assert result["capital_delta_30"] == 20000
 
     def test_capital_delta_30_negative(self, db_session):
