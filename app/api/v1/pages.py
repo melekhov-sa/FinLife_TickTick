@@ -25,6 +25,7 @@ from app.infrastructure.db.models import (
     TaskRescheduleReason, TaskDueChangeLog,
     GoalInfo, GoalWalletBalance,
     BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
+    ProjectModel,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -108,6 +109,12 @@ from app.application.xp import XpService
 from app.application.activity import ActivityReadService
 from app.application.profile import ProfileService, get_level_title
 from app.application.xp_history import XpHistoryService, XP_REASON_FILTER_OPTIONS
+from app.application.projects import (
+    CreateProjectUseCase, UpdateProjectUseCase, ChangeProjectStatusUseCase,
+    DeleteProjectUseCase, AssignTaskToProjectUseCase, ChangeTaskBoardStatusUseCase,
+    ProjectReadService, ProjectValidationError,
+    PROJECT_STATUSES, BOARD_STATUSES,
+)
 from app.readmodels.projectors.xp import preview_task_xp
 from app.utils.validation import validate_and_normalize_amount
 
@@ -150,6 +157,7 @@ def _resolve_current_page(request: Request) -> str:
         ("/budget",           "budget"),
         ("/plan",             "plan"),
         ("/tasks",            "tasks"),
+        ("/projects",         "projects"),
         ("/habits",           "habits"),
         ("/planned-ops",      "planned-ops"),
         ("/wishes",           "wishes"),
@@ -3225,6 +3233,194 @@ def reschedule_reason_move(
         reason.sort_order, neighbor.sort_order = neighbor.sort_order, reason.sort_order
         db.commit()
     return RedirectResponse("/task-reschedule-reasons", status_code=302)
+
+
+# === Projects ===
+
+@router.get("/projects", response_class=HTMLResponse)
+def projects_list(request: Request, status: str | None = None, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = ProjectReadService(db)
+    projects = svc.list_projects(user_id, status_filter=status)
+    return templates.TemplateResponse("projects.html", {
+        "request": request,
+        "projects": projects,
+        "status_filter": status,
+        "all_statuses": PROJECT_STATUSES,
+    })
+
+
+@router.get("/projects/create", response_class=HTMLResponse)
+def project_create_form(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("project_form.html", {
+        "request": request,
+        "project": None,
+        "error": None,
+        "all_statuses": PROJECT_STATUSES,
+    })
+
+
+@router.post("/projects/create")
+def project_create(
+    request: Request,
+    title: str = Form(""),
+    description: str = Form(""),
+    status: str = Form("planned"),
+    start_date: str = Form(""),
+    due_date: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        sd = date.fromisoformat(start_date) if start_date else None
+        dd = date.fromisoformat(due_date) if due_date else None
+        pid = CreateProjectUseCase(db).execute(
+            account_id=user_id, title=title, description=description,
+            status=status, start_date=sd, due_date=dd,
+        )
+        return RedirectResponse(f"/projects/{pid}", status_code=302)
+    except (ProjectValidationError, ValueError) as e:
+        return templates.TemplateResponse("project_form.html", {
+            "request": request,
+            "project": None,
+            "error": str(e),
+            "all_statuses": PROJECT_STATUSES,
+        })
+
+
+@router.get("/projects/{project_id}", response_class=HTMLResponse)
+def project_detail(request: Request, project_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = ProjectReadService(db)
+    detail = svc.get_project_detail(project_id, user_id)
+    if not detail:
+        return RedirectResponse("/projects", status_code=302)
+    unassigned = svc.get_unassigned_tasks(user_id)
+    return templates.TemplateResponse("project_detail.html", {
+        "request": request,
+        "project": detail,
+        "unassigned_tasks": unassigned,
+        "all_statuses": PROJECT_STATUSES,
+        "board_statuses": BOARD_STATUSES,
+    })
+
+
+@router.get("/projects/{project_id}/edit", response_class=HTMLResponse)
+def project_edit_form(request: Request, project_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    project = db.query(ProjectModel).filter(
+        ProjectModel.id == project_id,
+        ProjectModel.account_id == user_id,
+    ).first()
+    if not project:
+        return RedirectResponse("/projects", status_code=302)
+    return templates.TemplateResponse("project_form.html", {
+        "request": request,
+        "project": project,
+        "error": None,
+        "all_statuses": PROJECT_STATUSES,
+    })
+
+
+@router.post("/projects/{project_id}/edit")
+def project_edit(
+    request: Request,
+    project_id: int,
+    title: str = Form(""),
+    description: str = Form(""),
+    status: str = Form("planned"),
+    start_date: str = Form(""),
+    due_date: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        sd = date.fromisoformat(start_date) if start_date else None
+        dd = date.fromisoformat(due_date) if due_date else None
+        UpdateProjectUseCase(db).execute(
+            project_id=project_id, account_id=user_id,
+            title=title, description=description, status=status,
+            start_date=sd, due_date=dd,
+        )
+        return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    except (ProjectValidationError, ValueError) as e:
+        project = db.query(ProjectModel).filter(
+            ProjectModel.id == project_id,
+            ProjectModel.account_id == user_id,
+        ).first()
+        return templates.TemplateResponse("project_form.html", {
+            "request": request,
+            "project": project,
+            "error": str(e),
+            "all_statuses": PROJECT_STATUSES,
+        })
+
+
+@router.post("/projects/{project_id}/status")
+def project_change_status(
+    request: Request,
+    project_id: int,
+    status: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        ChangeProjectStatusUseCase(db).execute(project_id, user_id, status)
+    except ProjectValidationError:
+        pass
+    return RedirectResponse(f"/projects/{project_id}", status_code=302)
+
+
+@router.post("/tasks/{task_id}/assign")
+def task_assign_to_project(
+    request: Request,
+    task_id: int,
+    project_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    pid = project_id if project_id else None
+    redirect_to = f"/projects/{project_id}" if pid else "/projects"
+    try:
+        AssignTaskToProjectUseCase(db).execute(task_id, user_id, pid)
+    except ProjectValidationError:
+        pass
+    return RedirectResponse(redirect_to, status_code=302)
+
+
+@router.post("/tasks/{task_id}/board-status")
+def task_change_board_status(
+    request: Request,
+    task_id: int,
+    board_status: str = Form(""),
+    project_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    redirect_to = f"/projects/{project_id}" if project_id else "/projects"
+    try:
+        ChangeTaskBoardStatusUseCase(db).execute(task_id, user_id, board_status)
+    except ProjectValidationError:
+        pass
+    return RedirectResponse(redirect_to, status_code=302)
 
 
 # === Habits ===

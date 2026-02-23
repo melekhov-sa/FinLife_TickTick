@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ "Редактировать проект" if project else "Новый проект" }} — FinLife{% endblock %}
+
+{% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
+
+{% block content %}
+<h1>{{ "Редактировать проект" if project else "Новый проект" }}</h1>
+
+{% if error %}
+<div class="notice-error" style="padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px;">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="{{ '/projects/' ~ project.id ~ '/edit' if project else '/projects/create' }}" class="card" style="padding: 20px; max-width: 600px;">
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Название</label>
+    <input name="title" type="text" value="{{ project.title if project else '' }}" required
+           style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+  </div>
+
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Описание</label>
+    <textarea name="description" rows="3"
+              style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary); resize: vertical;">{{ project.description or '' if project else '' }}</textarea>
+  </div>
+
+  <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 140px;">
+      <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Статус</label>
+      <select name="status" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+        {% for s in all_statuses %}
+        <option value="{{ s }}" {{ 'selected' if project and project.status == s }}>{{ STATUS_LABELS.get(s, s) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="flex: 1; min-width: 140px;">
+      <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Дата начала</label>
+      <input name="start_date" type="date" value="{{ project.start_date.isoformat() if project and project.start_date else '' }}"
+             style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+    </div>
+    <div style="flex: 1; min-width: 140px;">
+      <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Дедлайн</label>
+      <input name="due_date" type="date" value="{{ project.due_date.isoformat() if project and project.due_date else '' }}"
+             style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <button type="submit" style="padding: 8px 24px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+      {{ "Сохранить" if project else "Создать" }}
+    </button>
+    <a href="{{ '/projects/' ~ project.id if project else '/projects' }}" style="font-size: 14px; color: var(--text-secondary, #888); text-decoration: none;">Отмена</a>
+  </div>
+</form>
+{% endblock %}

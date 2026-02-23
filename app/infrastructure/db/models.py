@@ -302,10 +302,20 @@ class TaskModel(Base):
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     archived_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
+    # Project board
+    project_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    board_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="backlog")
+
     # Task-expense link
     requires_expense: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     suggested_expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     suggested_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+
+    __table_args__ = (
+        Index("ix_tasks_project_board", "project_id", "board_status"),
+    )
 
 
 class TaskReminderModel(Base):
@@ -1094,6 +1104,28 @@ class UserActivityDaily(Base):
     habits_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     goals_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     points: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ProjectModel(Base):
+    """Projects — containers for tasks with board statuses."""
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="planned", index=True)
+
+    start_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

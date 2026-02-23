@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Status badges (shared with projects.html) */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+  .badge-planned { background: #e9ecef; color: #555; }
+  .badge-active { background: #dbeafe; color: #1d4ed8; }
+  .badge-paused { background: #fef3c7; color: #92400e; }
+  .badge-done { background: #d1fae5; color: #065f46; }
+  .badge-archived { background: #374151; color: #d1d5db; }
+
+  /* Board status badges */
+  .board-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; text-transform: uppercase; }
+  .board-backlog { background: #e9ecef; color: #555; }
+  .board-todo { background: #dbeafe; color: #1d4ed8; }
+  .board-in_progress { background: #ede9fe; color: #6d28d9; }
+  .board-waiting { background: #ffedd5; color: #c2410c; }
+  .board-done { background: #d1fae5; color: #065f46; }
+
+  /* Project header */
+  .prj-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .prj-header h1 { margin: 0; font-size: 24px; }
+  .prj-header-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+  .prj-header-actions a, .prj-header-actions select { font-size: 13px; }
+
+  /* Progress bar */
+  .prj-progress-bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; flex: 1; min-width: 100px; max-width: 200px; }
+  .prj-progress-fill { height: 100%; background: #22c55e; border-radius: 3px; transition: width 0.3s; }
+  .prj-progress-text { font-size: 13px; font-weight: 600; color: var(--text-secondary, #888); }
+
+  /* Board groups */
+  .board-group { margin-bottom: 20px; }
+  .board-group-hdr { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .board-group-count { background: #eee; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; color: #666; }
+
+  /* Task rows */
+  .task-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-row-title a { color: inherit; text-decoration: none; }
+  .task-row-title a:hover { text-decoration: underline; }
+  .task-row-due { font-size: 12px; color: var(--text-secondary, #888); white-space: nowrap; }
+  .task-row-overdue { color: #dc3545; font-weight: 500; }
+  .task-row-done .task-row-title { text-decoration: line-through; color: var(--text-secondary, #999); }
+
+  .task-board-select { font-size: 11px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 3px; background: var(--bg-input, #fff); color: var(--text-primary); }
+
+  /* Add task form */
+  .add-task-form { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+  .add-task-form select { padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .add-task-form button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+
+  /* Unlink button */
+  .task-unlink { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 2px 4px; line-height: 1; }
+  .task-unlink:hover { color: #dc3545; }
+
+  /* Dark mode */
+  [data-theme$="-dark"] .board-group-count { background: #21262d; color: #8b949e; }
+  [data-theme$="-dark"] .task-row { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .task-board-select { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+  [data-theme$="-dark"] .prj-progress-bar { background: #21262d; }
+  [data-theme$="-dark"] .badge-planned { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-active { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .badge-paused { background: #3d2e00; color: #f5a623; }
+  [data-theme$="-dark"] .badge-done { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-archived { background: #21262d; color: #6e7681; }
+  [data-theme$="-dark"] .board-backlog { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .board-todo { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .board-in_progress { background: #2d1b69; color: #a78bfa; }
+  [data-theme$="-dark"] .board-waiting { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .board-done { background: #0d3320; color: #6fcf97; }
+</style>
+{% endblock %}
+
+{% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
+{% set BOARD_LABELS = {"backlog": "Backlog", "todo": "Todo", "in_progress": "In Progress", "waiting": "Waiting", "done": "Done"} %}
+
+{% block content %}
+
+{# ── Header ── #}
+<div style="margin-bottom: 4px;">
+  <a href="/projects" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; Проекты</a>
+</div>
+
+<div class="prj-header">
+  <h1>{{ project.title }}</h1>
+  <span class="badge badge-{{ project.status }}">{{ STATUS_LABELS.get(project.status, project.status) }}</span>
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <span class="prj-progress-text">{{ project.progress }}%</span>
+    <div class="prj-progress-bar"><div class="prj-progress-fill" style="width: {{ project.progress }}%"></div></div>
+    <span style="font-size: 12px; color: var(--text-secondary, #888);">{{ project.done_tasks }}/{{ project.total_tasks }}</span>
+  </div>
+  <div class="prj-header-actions">
+    <form method="POST" action="/projects/{{ project.id }}/status" style="display: flex; gap: 4px;">
+      <select name="status" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary);">
+        {% for s in all_statuses %}
+        {% if s != "archived" %}
+        <option value="{{ s }}" {{ 'selected' if project.status == s }}>{{ STATUS_LABELS.get(s, s) }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+      <button type="submit" style="padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary);">OK</button>
+    </form>
+    <a href="/projects/{{ project.id }}/edit" style="padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666;">Ред.</a>
+  </div>
+</div>
+
+{% if project.description %}
+<p style="font-size: 14px; color: var(--text-secondary, #888); margin: 0 0 16px;">{{ project.description }}</p>
+{% endif %}
+
+{# ── Add existing task ── #}
+{% if unassigned_tasks %}
+<form method="POST" class="add-task-form">
+  <select name="task_id_and_project" id="assignSelect">
+    <option value="">Добавить задачу в проект...</option>
+    {% for t in unassigned_tasks %}
+    <option value="{{ t.task_id }}">{{ t.title }}{% if t.due_date %} ({{ t.due_date.strftime('%d.%m') }}){% endif %}</option>
+    {% endfor %}
+  </select>
+  <button type="button" onclick="assignTask()">Добавить</button>
+</form>
+{% endif %}
+
+{# ── Board groups ── #}
+{% for bs in board_statuses %}
+{% set tasks = project.groups.get(bs, []) %}
+<div class="board-group">
+  <div class="board-group-hdr">
+    <span class="board-badge board-{{ bs }}">{{ BOARD_LABELS.get(bs, bs) }}</span>
+    <span class="board-group-count">{{ tasks|length }}</span>
+  </div>
+
+  {% if tasks %}
+  <div class="card" style="padding: 0;">
+    {% for t in tasks %}
+    <div class="task-row{% if t.board_status == 'done' %} task-row-done{% endif %}">
+      <div class="task-row-title">
+        {{ t.title }}
+      </div>
+      {% if t.due_date %}
+      <span class="task-row-due{% if t.is_overdue %} task-row-overdue{% endif %}">{{ t.due_date.strftime('%d.%m') }}</span>
+      {% endif %}
+      <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display: inline;">
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+        <select name="board_status" class="task-board-select" onchange="this.form.submit()">
+          {% for s in board_statuses %}
+          <option value="{{ s }}" {{ 'selected' if t.board_status == s }}>{{ BOARD_LABELS.get(s, s) }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <form method="POST" action="/tasks/{{ t.task_id }}/assign" style="display: inline;">
+        <input type="hidden" name="project_id" value="0">
+        <button type="submit" class="task-unlink" title="Убрать из проекта">&times;</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<script>
+function assignTask() {
+  var sel = document.getElementById('assignSelect');
+  var taskId = sel.value;
+  if (!taskId) return;
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/tasks/' + taskId + '/assign';
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'project_id';
+  input.value = '{{ project.id }}';
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
+{% endblock %}

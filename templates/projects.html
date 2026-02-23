@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Проекты — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .prj-grid { display: flex; flex-direction: column; gap: 12px; }
+  .prj-card { background: var(--bg-card); border-radius: 8px; padding: 16px 20px; box-shadow: var(--shadow-card); display: flex; justify-content: space-between; align-items: center; gap: 16px; text-decoration: none; color: inherit; transition: box-shadow 0.15s; }
+  .prj-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .prj-info { flex: 1; min-width: 0; }
+  .prj-title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .prj-meta { font-size: 12px; color: var(--text-secondary, #888); display: flex; gap: 12px; flex-wrap: wrap; }
+  .prj-right { text-align: right; min-width: 80px; }
+  .prj-progress { font-size: 22px; font-weight: 700; }
+  .prj-progress-label { font-size: 11px; color: var(--text-secondary, #888); }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+  .badge-planned { background: #e9ecef; color: #555; }
+  .badge-active { background: #dbeafe; color: #1d4ed8; }
+  .badge-paused { background: #fef3c7; color: #92400e; }
+  .badge-done { background: #d1fae5; color: #065f46; }
+  .badge-archived { background: #374151; color: #d1d5db; }
+
+  .prj-filter { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .prj-filter a { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666; }
+  .prj-filter a:hover { border-color: #999; }
+  .prj-filter a.active { background: #007AFF; color: #fff; border-color: #007AFF; }
+
+  .prj-bar { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; margin-top: 6px; width: 80px; }
+  .prj-bar-fill { height: 100%; background: #22c55e; border-radius: 2px; }
+
+  [data-theme$="-dark"] .prj-card { background: var(--bg-card); }
+  [data-theme$="-dark"] .prj-filter a { border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .prj-filter a.active { background: #007AFF; color: white; border-color: #007AFF; }
+  [data-theme$="-dark"] .prj-bar { background: #21262d; }
+  [data-theme$="-dark"] .badge-planned { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-active { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .badge-paused { background: #3d2e00; color: #f5a623; }
+  [data-theme$="-dark"] .badge-done { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-archived { background: #21262d; color: #6e7681; }
+</style>
+{% endblock %}
+
+{% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
+
+{% block content %}
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+  <h1 style="margin: 0;">Проекты</h1>
+  <a href="/projects/create" style="padding: 6px 16px; background: #007AFF; color: #fff; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">+ Новый</a>
+</div>
+
+<div class="prj-filter">
+  <a href="/projects" class="{{ 'active' if not status_filter }}">Все</a>
+  {% for s in all_statuses %}
+  {% if s != "archived" %}
+  <a href="/projects?status={{ s }}" class="{{ 'active' if status_filter == s }}">{{ STATUS_LABELS.get(s, s) }}</a>
+  {% endif %}
+  {% endfor %}
+  <a href="/projects?status=archived" class="{{ 'active' if status_filter == 'archived' }}">Архив</a>
+</div>
+
+{% if projects %}
+<div class="prj-grid">
+  {% for p in projects %}
+  <a href="/projects/{{ p.id }}" class="prj-card">
+    <div class="prj-info">
+      <div class="prj-title">{{ p.title }}</div>
+      <div class="prj-meta">
+        <span class="badge badge-{{ p.status }}">{{ STATUS_LABELS.get(p.status, p.status) }}</span>
+        <span>{{ p.done_tasks }}/{{ p.total_tasks }} задач</span>
+        {% if p.due_date %}<span>до {{ p.due_date.strftime('%d.%m.%Y') }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="prj-right">
+      <div class="prj-progress">{{ p.progress }}%</div>
+      <div class="prj-bar"><div class="prj-bar-fill" style="width: {{ p.progress }}%"></div></div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 40px 20px; color: #888;">
+  Проектов пока нет. <a href="/projects/create" style="color: #007AFF;">Создать первый</a>
+</div>
+{% endif %}
+{% endblock %}
