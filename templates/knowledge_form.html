@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ "Редактировать" if article else "Новая статья" }} — FinLife{% endblock %}
+
+{% set TYPE_LABELS = {"note": "Заметка", "instruction": "Инструкция", "checklist": "Чеклист", "template": "Шаблон", "reference": "Справка"} %}
+{% set STATUS_LABELS = {"draft": "Черновик", "published": "Опубликовано", "archived": "Архив"} %}
+
+{% block extra_head %}
+<style>
+  .kb-form { max-width: 720px; }
+  .kb-form label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: var(--text-secondary, #666); }
+  .kb-form input[type="text"],
+  .kb-form select,
+  .kb-form textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 14px; background: var(--bg-input, #fff); color: var(--text-primary); font-family: inherit; }
+  .kb-form textarea { resize: vertical; font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace; font-size: 13px; line-height: 1.5; }
+  .kb-form .row2 { display: flex; gap: 12px; }
+  .kb-form .row2 > div { flex: 1; }
+  .kb-form .actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+  .kb-form .actions button { padding: 8px 20px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+  .kb-form .actions a { font-size: 13px; color: #666; text-decoration: none; }
+  .kb-form .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; }
+
+  [data-theme$="-dark"] .kb-form input,
+  [data-theme$="-dark"] .kb-form select,
+  [data-theme$="-dark"] .kb-form textarea { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="{{ '/knowledge/' ~ article.id if article else '/knowledge' }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; {{ 'К статье' if article else 'База знаний' }}</a>
+</div>
+
+<h1 style="margin: 0 0 16px;">{{ "Редактировать статью" if article else "Новая статья" }}</h1>
+
+{% if error %}
+<div style="background: #fee2e2; color: #b91c1c; padding: 8px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 16px;">{{ error }}</div>
+{% endif %}
+
+<form method="POST" class="kb-form">
+  <label for="title">Название</label>
+  <input type="text" id="title" name="title" value="{{ article.title if article else '' }}" required>
+
+  <div class="row2">
+    <div>
+      <label for="type">Тип</label>
+      <select id="type" name="type">
+        {% for t in all_types %}
+        <option value="{{ t }}" {{ 'selected' if (article and article.type == t) or (not article and t == 'note') }}>{{ TYPE_LABELS.get(t, t) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="status">Статус</label>
+      <select id="status" name="status">
+        {% for s in all_statuses %}
+        <option value="{{ s }}" {{ 'selected' if (article and article.status == s) or (not article and s == 'draft') }}>{{ STATUS_LABELS.get(s, s) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="pinned" name="pinned" value="1" {{ 'checked' if article and article.pinned }}>
+    <label for="pinned" style="margin: 0;">Закрепить</label>
+  </div>
+
+  <label for="tags">Теги (через запятую)</label>
+  <input type="text" id="tags" name="tags" value="{{ article.tags_csv if article else '' }}" placeholder="python, devops, deploy">
+
+  <label for="content_md">Содержание (Markdown)</label>
+  <textarea id="content_md" name="content_md" rows="18">{{ article.content_md if article else '' }}</textarea>
+
+  <div class="actions">
+    <button type="submit">{{ "Сохранить" if article else "Создать" }}</button>
+    <a href="{{ '/knowledge/' ~ article.id if article else '/knowledge' }}">Отмена</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Type badges */
+  .badge-type { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+  .badge-type-note { background: #e9ecef; color: #555; }
+  .badge-type-instruction { background: #dbeafe; color: #1d4ed8; }
+  .badge-type-checklist { background: #d1fae5; color: #065f46; }
+  .badge-type-template { background: #ede9fe; color: #6d28d9; }
+  .badge-type-reference { background: #ffedd5; color: #c2410c; }
+
+  /* Status badges */
+  .badge-st { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+  .badge-st-draft { background: #e9ecef; color: #555; }
+  .badge-st-published { background: #d1fae5; color: #065f46; }
+  .badge-st-archived { background: #374151; color: #d1d5db; }
+
+  /* Header */
+  .kb-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .kb-header h1 { margin: 0; font-size: 22px; }
+  .kb-header-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+  .kb-header-actions a { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666; }
+  .kb-header-actions a.danger { color: #dc3545; border-color: #dc3545; }
+
+  .kb-pin { color: #f59e0b; font-size: 16px; }
+
+  /* Prose (markdown content) */
+  .kb-content { font-size: 14px; line-height: 1.7; }
+  .kb-content h1 { font-size: 20px; margin: 20px 0 10px; }
+  .kb-content h2 { font-size: 17px; margin: 18px 0 8px; }
+  .kb-content h3 { font-size: 15px; margin: 14px 0 6px; }
+  .kb-content p { margin: 0 0 10px; }
+  .kb-content ul, .kb-content ol { margin: 0 0 10px; padding-left: 22px; }
+  .kb-content li { margin-bottom: 4px; }
+  .kb-content pre { background: #f6f8fa; border-radius: 4px; padding: 10px 14px; overflow-x: auto; font-size: 13px; margin: 0 0 12px; }
+  .kb-content code { font-family: 'SF Mono', 'Menlo', monospace; font-size: 13px; }
+  .kb-content :not(pre) > code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
+  .kb-content table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 13px; }
+  .kb-content th, .kb-content td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  .kb-content th { background: #f6f8fa; font-weight: 600; }
+  .kb-content blockquote { border-left: 3px solid #ddd; margin: 0 0 12px; padding: 4px 14px; color: var(--text-secondary, #666); }
+  .kb-content hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
+
+  /* Tags */
+  .kb-tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; background: #f0f0f0; color: #666; text-decoration: none; }
+  .kb-tag:hover { background: #e0e0e0; }
+  .kb-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  /* Links section */
+  .kb-links { margin-top: 24px; }
+  .kb-links-hdr { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 8px; }
+  .kb-link-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
+  .kb-link-row:last-child { border-bottom: none; }
+  .kb-link-row a { color: inherit; text-decoration: none; flex: 1; }
+  .kb-link-row a:hover { text-decoration: underline; }
+  .kb-unlink { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; padding: 2px 4px; }
+  .kb-unlink:hover { color: #dc3545; }
+
+  .kb-attach-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .kb-attach-form select { padding: 5px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; flex: 1; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .kb-attach-form button { padding: 5px 12px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+  /* Status change form */
+  .kb-status-form { display: flex; gap: 4px; align-items: center; }
+  .kb-status-form select { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .kb-status-form button { padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary); }
+
+  /* Dark mode */
+  [data-theme$="-dark"] .kb-content pre { background: #161b22; }
+  [data-theme$="-dark"] .kb-content :not(pre) > code { background: #21262d; }
+  [data-theme$="-dark"] .kb-content th { background: #161b22; }
+  [data-theme$="-dark"] .kb-content th, [data-theme$="-dark"] .kb-content td { border-color: #30363d; }
+  [data-theme$="-dark"] .kb-content blockquote { border-color: #30363d; }
+  [data-theme$="-dark"] .kb-content hr { border-color: #21262d; }
+  [data-theme$="-dark"] .kb-tag { background: #21262d; color: #8b949e; }
+  [data-theme$="-dark"] .kb-link-row { border-color: #21262d; }
+  [data-theme$="-dark"] .badge-type-note { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-type-instruction { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .badge-type-checklist { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-type-template { background: #2d1b69; color: #a78bfa; }
+  [data-theme$="-dark"] .badge-type-reference { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .badge-st-draft { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-st-published { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-st-archived { background: #21262d; color: #6e7681; }
+</style>
+{% endblock %}
+
+{% set TYPE_LABELS = {"note": "Заметка", "instruction": "Инструкция", "checklist": "Чеклист", "template": "Шаблон", "reference": "Справка"} %}
+{% set STATUS_LABELS = {"draft": "Черновик", "published": "Опубликовано", "archived": "Архив"} %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="/knowledge" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; База знаний</a>
+</div>
+
+{# ── Header ── #}
+<div class="kb-header">
+  {% if article.pinned %}<span class="kb-pin" title="Закреплено">&#9733;</span>{% endif %}
+  <h1>{{ article.title }}</h1>
+  <span class="badge-type badge-type-{{ article.type }}">{{ TYPE_LABELS.get(article.type, article.type) }}</span>
+  <span class="badge-st badge-st-{{ article.status }}">{{ STATUS_LABELS.get(article.status, article.status) }}</span>
+
+  <div class="kb-header-actions">
+    <form method="POST" action="/knowledge/{{ article.id }}/status" class="kb-status-form">
+      <select name="status">
+        {% for s in ["draft", "published", "archived"] %}
+        <option value="{{ s }}" {{ 'selected' if article.status == s }}>{{ STATUS_LABELS.get(s, s) }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">OK</button>
+    </form>
+    <a href="/knowledge/{{ article.id }}/edit">Ред.</a>
+    <form method="POST" action="/knowledge/{{ article.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить статью?')">
+      <button type="submit" style="background: none; border: 1px solid #dc3545; color: #dc3545; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">Удалить</button>
+    </form>
+  </div>
+</div>
+
+{# ── Tags ── #}
+{% if article.tags %}
+<div class="kb-tags">
+  {% for t in article.tags %}
+  <a href="/knowledge?tag={{ t.name }}" class="kb-tag">{{ t.name }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Content ── #}
+{% if article.content_md %}
+<div class="card" style="padding: 20px 24px; margin-bottom: 20px;">
+  <div class="kb-content">
+    {{ article.content_md|markdown }}
+  </div>
+</div>
+{% else %}
+<div class="card" style="padding: 20px; color: #888; text-align: center; margin-bottom: 20px;">
+  Содержание пусто. <a href="/knowledge/{{ article.id }}/edit" style="color: #007AFF;">Добавить</a>
+</div>
+{% endif %}
+
+{# ── Linked projects ── #}
+<div class="kb-links">
+  <div class="kb-links-hdr">Связано с проектами</div>
+
+  {% if article.linked_projects %}
+  <div class="card" style="padding: 0;">
+    {% for p in article.linked_projects %}
+    <div class="kb-link-row">
+      <a href="/projects/{{ p.id }}">{{ p.title }}</a>
+      <form method="POST" action="/knowledge/{{ article.id }}/detach" style="display: inline;">
+        <input type="hidden" name="project_id" value="{{ p.id }}">
+        <button type="submit" class="kb-unlink" title="Отвязать">&times;</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if available_projects %}
+  <form method="POST" action="/knowledge/{{ article.id }}/attach" class="kb-attach-form">
+    <select name="project_id">
+      <option value="">Привязать к проекту...</option>
+      {% for p in available_projects %}
+      <option value="{{ p.id }}">{{ p.title }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Привязать</button>
+  </form>
+  {% endif %}
+</div>
+
+<div style="margin-top: 20px; font-size: 11px; color: var(--text-secondary, #999);">
+  Обновлено: {{ article.updated_at.strftime('%d.%m.%Y %H:%M') if article.updated_at else '—' }}
+</div>
+{% endblock %}

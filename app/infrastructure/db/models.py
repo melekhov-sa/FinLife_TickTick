@@ -1143,3 +1143,70 @@ class PushSubscription(Base):
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ── Knowledge Base ──
+
+class ArticleModel(Base):
+    """Knowledge base article."""
+    __tablename__ = "articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_md: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="note", index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="draft", index=True)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class TagModel(Base):
+    """Knowledge base tag."""
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "name", name="uq_tag_account_name"),
+    )
+
+
+class ArticleTagModel(Base):
+    """Many-to-many: article <-> tag."""
+    __tablename__ = "article_tags"
+
+    article_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("articles.id", ondelete="CASCADE"),
+        nullable=False, primary_key=True,
+    )
+    tag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tags.id", ondelete="CASCADE"),
+        nullable=False, primary_key=True,
+    )
+
+
+class ArticleLinkModel(Base):
+    """Polymorphic link: article -> any entity (project, task, etc.)."""
+    __tablename__ = "article_links"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    article_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("articles.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    entity_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        Index("ix_article_links_entity", "entity_type", "entity_id"),
+    )

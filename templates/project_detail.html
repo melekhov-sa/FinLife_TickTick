@@ -162,6 +162,22 @@
 </div>
 {% endfor %}
 
+{# ── Related articles ── #}
+{% if related_articles %}
+<div style="margin-top: 8px;">
+  <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 8px;">Связанные статьи</div>
+  <div class="card" style="padding: 0;">
+    {% set KB_TYPE_LABELS = {"note": "Заметка", "instruction": "Инструкция", "checklist": "Чеклист", "template": "Шаблон", "reference": "Справка"} %}
+    {% for a in related_articles %}
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px;">
+      <a href="/knowledge/{{ a.id }}" style="flex: 1; color: inherit; text-decoration: none;">{{ a.title }}</a>
+      <span class="board-badge" style="background: #e9ecef; color: #555; font-size: 9px;">{{ KB_TYPE_LABELS.get(a.type, a.type) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <script>
 function assignTask() {
   var sel = document.getElementById('assignSelect');

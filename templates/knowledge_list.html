@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}База знаний — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .kb-grid { display: flex; flex-direction: column; gap: 10px; }
+  .kb-card { background: var(--bg-card); border-radius: 8px; padding: 14px 18px; box-shadow: var(--shadow-card); display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; transition: box-shadow 0.15s; }
+  .kb-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .kb-info { flex: 1; min-width: 0; }
+  .kb-title { font-size: 15px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+  .kb-meta { font-size: 12px; color: var(--text-secondary, #888); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .kb-pin { color: #f59e0b; font-size: 13px; }
+
+  /* Type badges */
+  .badge-type { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+  .badge-type-note { background: #e9ecef; color: #555; }
+  .badge-type-instruction { background: #dbeafe; color: #1d4ed8; }
+  .badge-type-checklist { background: #d1fae5; color: #065f46; }
+  .badge-type-template { background: #ede9fe; color: #6d28d9; }
+  .badge-type-reference { background: #ffedd5; color: #c2410c; }
+
+  /* Status badges */
+  .badge-st { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+  .badge-st-draft { background: #e9ecef; color: #555; }
+  .badge-st-published { background: #d1fae5; color: #065f46; }
+  .badge-st-archived { background: #374151; color: #d1d5db; }
+
+  /* Tags */
+  .kb-tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; background: #f0f0f0; color: #666; text-decoration: none; }
+  .kb-tag:hover { background: #e0e0e0; }
+
+  /* Filters */
+  .kb-filters { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .kb-filters a { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666; }
+  .kb-filters a:hover { border-color: #999; }
+  .kb-filters a.active { background: #007AFF; color: #fff; border-color: #007AFF; }
+
+  .kb-search { display: flex; gap: 6px; margin-bottom: 16px; }
+  .kb-search input { flex: 1; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .kb-search button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+
+  /* Dark mode */
+  [data-theme$="-dark"] .kb-card { background: var(--bg-card); }
+  [data-theme$="-dark"] .kb-filters a { border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .kb-filters a.active { background: #007AFF; color: white; border-color: #007AFF; }
+  [data-theme$="-dark"] .kb-tag { background: #21262d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-type-note { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-type-instruction { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .badge-type-checklist { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-type-template { background: #2d1b69; color: #a78bfa; }
+  [data-theme$="-dark"] .badge-type-reference { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .badge-st-draft { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .badge-st-published { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .badge-st-archived { background: #21262d; color: #6e7681; }
+</style>
+{% endblock %}
+
+{% set TYPE_LABELS = {"note": "Заметка", "instruction": "Инструкция", "checklist": "Чеклист", "template": "Шаблон", "reference": "Справка"} %}
+{% set STATUS_LABELS = {"draft": "Черновик", "published": "Опубликовано", "archived": "Архив"} %}
+
+{% block content %}
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+  <h1 style="margin: 0;">База знаний</h1>
+  <a href="/knowledge/create" style="padding: 6px 16px; background: #007AFF; color: #fff; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">+ Новая</a>
+</div>
+
+{# ── Search ── #}
+<form class="kb-search" method="GET" action="/knowledge">
+  {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
+  {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+  {% if tag_filter %}<input type="hidden" name="tag" value="{{ tag_filter }}">{% endif %}
+  <input type="text" name="q" value="{{ search_query }}" placeholder="Поиск по статьям...">
+  <button type="submit">Найти</button>
+</form>
+
+{# ── Type filter ── #}
+<div class="kb-filters">
+  <a href="/knowledge{% if status_filter %}?status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="{{ 'active' if not type_filter }}">Все типы</a>
+  {% for t in all_types %}
+  <a href="/knowledge?type={{ t }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="{{ 'active' if type_filter == t }}">{{ TYPE_LABELS.get(t, t) }}</a>
+  {% endfor %}
+</div>
+
+{# ── Status filter ── #}
+<div class="kb-filters">
+  <a href="/knowledge{% if type_filter %}?type={{ type_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="{{ 'active' if not status_filter }}">Все</a>
+  {% for s in all_statuses %}
+  {% if s != "archived" %}
+  <a href="/knowledge?status={{ s }}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="{{ 'active' if status_filter == s }}">{{ STATUS_LABELS.get(s, s) }}</a>
+  {% endif %}
+  {% endfor %}
+  <a href="/knowledge?status=archived{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="{{ 'active' if status_filter == 'archived' }}">Архив</a>
+</div>
+
+{# ── Tag filter ── #}
+{% if all_tags %}
+<div class="kb-filters">
+  <span style="font-size: 12px; color: var(--text-secondary, #888);">Теги:</span>
+  {% for t in all_tags %}
+  <a href="/knowledge?tag={{ t }}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="{{ 'active' if tag_filter == t }}">{{ t }}</a>
+  {% endfor %}
+  {% if tag_filter %}
+  <a href="/knowledge{% if type_filter %}?type={{ type_filter }}{% endif %}{% if status_filter %}{% if type_filter %}&{% else %}?{% endif %}status={{ status_filter }}{% endif %}" style="font-size: 11px; color: #dc3545;">сбросить</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Articles grid ── #}
+{% if articles %}
+<div class="kb-grid">
+  {% for a in articles %}
+  <a href="/knowledge/{{ a.id }}" class="kb-card">
+    <div class="kb-info">
+      <div class="kb-title">
+        {% if a.pinned %}<span class="kb-pin" title="Закреплено">&#9733;</span>{% endif %}
+        {{ a.title }}
+      </div>
+      <div class="kb-meta">
+        <span class="badge-type badge-type-{{ a.type }}">{{ TYPE_LABELS.get(a.type, a.type) }}</span>
+        <span class="badge-st badge-st-{{ a.status }}">{{ STATUS_LABELS.get(a.status, a.status) }}</span>
+        {% for t in a.tags %}
+        <span class="kb-tag">{{ t }}</span>
+        {% endfor %}
+        <span>{{ a.updated_at.strftime('%d.%m.%Y') if a.updated_at else '' }}</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align: center; padding: 40px 20px; color: #888;">
+  Статей пока нет. <a href="/knowledge/create" style="color: #007AFF;">Создать первую</a>
+</div>
+{% endif %}
+{% endblock %}

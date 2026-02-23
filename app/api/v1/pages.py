@@ -26,6 +26,7 @@ from app.infrastructure.db.models import (
     GoalInfo, GoalWalletBalance,
     BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
     ProjectModel,
+    ArticleModel, ArticleLinkModel,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -115,6 +116,12 @@ from app.application.projects import (
     ProjectReadService, ProjectValidationError,
     PROJECT_STATUSES, BOARD_STATUSES,
 )
+from app.application.knowledge import (
+    CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
+    AttachArticleToProjectUseCase, DetachArticleFromProjectUseCase,
+    KnowledgeReadService, KnowledgeValidationError,
+    ARTICLE_TYPES, ARTICLE_STATUSES,
+)
 from app.readmodels.projectors.xp import preview_task_xp
 from app.utils.validation import validate_and_normalize_amount
 
@@ -138,6 +145,17 @@ templates.env.globals["clarity_project_id"] = _s.CLARITY_PROJECT_ID if _s.CLARIT
 
 # Web Push (VAPID) — expose public key to all templates
 templates.env.globals["vapid_public_key"] = _s.VAPID_PUBLIC_KEY
+
+# Markdown filter for knowledge base articles
+import markdown as _md
+from markupsafe import Markup as _Markup
+
+def _markdown_filter(text: str) -> _Markup:
+    if not text:
+        return _Markup("")
+    return _Markup(_md.markdown(text, extensions=["fenced_code", "tables", "nl2br"]))
+
+templates.env.filters["markdown"] = _markdown_filter
 
 
 def _resolve_current_page(request: Request) -> str:
@@ -167,6 +185,7 @@ def _resolve_current_page(request: Request) -> str:
         ("/task-categories",  "task-categories"),
         ("/task-presets",     "task-presets"),
         ("/task-reschedule-reasons", "task-reschedule-reasons"),
+        ("/knowledge",        "knowledge"),
         ("/profile",          "profile"),
         ("/admin",            "admin"),
     ]
@@ -3304,10 +3323,12 @@ def project_detail(request: Request, project_id: int, db: Session = Depends(get_
     if not detail:
         return RedirectResponse("/projects", status_code=302)
     unassigned = svc.get_unassigned_tasks(user_id)
+    related_articles = KnowledgeReadService(db).get_articles_for_entity(user_id, "project", project_id)
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": detail,
         "unassigned_tasks": unassigned,
+        "related_articles": related_articles,
         "all_statuses": PROJECT_STATUSES,
         "board_statuses": BOARD_STATUSES,
     })
@@ -3421,6 +3442,226 @@ def task_change_board_status(
     except ProjectValidationError:
         pass
     return RedirectResponse(redirect_to, status_code=302)
+
+
+# === Knowledge Base ===
+
+@router.get("/knowledge", response_class=HTMLResponse)
+def knowledge_list(
+    request: Request,
+    type: str | None = None,
+    status: str | None = None,
+    tag: str | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = KnowledgeReadService(db)
+    articles = svc.list_articles(
+        user_id, type_filter=type, status_filter=status,
+        tag_filter=tag, search=q,
+    )
+    all_tags = svc.get_all_tags(user_id)
+    return templates.TemplateResponse("knowledge_list.html", {
+        "request": request,
+        "articles": articles,
+        "type_filter": type,
+        "status_filter": status,
+        "tag_filter": tag,
+        "search_query": q or "",
+        "all_types": ARTICLE_TYPES,
+        "all_statuses": ARTICLE_STATUSES,
+        "all_tags": all_tags,
+    })
+
+
+@router.get("/knowledge/create", response_class=HTMLResponse)
+def knowledge_create_form(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse("knowledge_form.html", {
+        "request": request,
+        "article": None,
+        "error": None,
+        "all_types": ARTICLE_TYPES,
+        "all_statuses": ARTICLE_STATUSES,
+    })
+
+
+@router.post("/knowledge/create")
+def knowledge_create(
+    request: Request,
+    title: str = Form(""),
+    content_md: str = Form(""),
+    type: str = Form("note"),
+    status: str = Form("draft"),
+    pinned: str = Form(""),
+    tags: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        aid = CreateArticleUseCase(db).execute(
+            account_id=user_id, title=title, content_md=content_md,
+            type=type, status=status, pinned=bool(pinned),
+            tags_csv=tags,
+        )
+        return RedirectResponse(f"/knowledge/{aid}", status_code=302)
+    except (KnowledgeValidationError, ValueError) as e:
+        return templates.TemplateResponse("knowledge_form.html", {
+            "request": request,
+            "article": None,
+            "error": str(e),
+            "all_types": ARTICLE_TYPES,
+            "all_statuses": ARTICLE_STATUSES,
+        })
+
+
+@router.get("/knowledge/{article_id}", response_class=HTMLResponse)
+def knowledge_view(request: Request, article_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = KnowledgeReadService(db)
+    detail = svc.get_article_detail(article_id, user_id)
+    if not detail:
+        return RedirectResponse("/knowledge", status_code=302)
+    all_projects = (
+        db.query(ProjectModel)
+        .filter(ProjectModel.account_id == user_id, ProjectModel.status != "archived")
+        .order_by(ProjectModel.title)
+        .all()
+    )
+    linked_ids = {p["id"] for p in detail["linked_projects"]}
+    available_projects = [
+        {"id": p.id, "title": p.title} for p in all_projects if p.id not in linked_ids
+    ]
+    return templates.TemplateResponse("knowledge_view.html", {
+        "request": request,
+        "article": detail,
+        "available_projects": available_projects,
+    })
+
+
+@router.get("/knowledge/{article_id}/edit", response_class=HTMLResponse)
+def knowledge_edit_form(request: Request, article_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    detail = KnowledgeReadService(db).get_article_detail(article_id, user_id)
+    if not detail:
+        return RedirectResponse("/knowledge", status_code=302)
+    return templates.TemplateResponse("knowledge_form.html", {
+        "request": request,
+        "article": detail,
+        "error": None,
+        "all_types": ARTICLE_TYPES,
+        "all_statuses": ARTICLE_STATUSES,
+    })
+
+
+@router.post("/knowledge/{article_id}/edit")
+def knowledge_edit(
+    request: Request,
+    article_id: int,
+    title: str = Form(""),
+    content_md: str = Form(""),
+    type: str = Form("note"),
+    status: str = Form("draft"),
+    pinned: str = Form(""),
+    tags: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        UpdateArticleUseCase(db).execute(
+            article_id=article_id, account_id=user_id,
+            title=title, content_md=content_md, type=type,
+            status=status, pinned=bool(pinned), tags_csv=tags,
+        )
+        return RedirectResponse(f"/knowledge/{article_id}", status_code=302)
+    except (KnowledgeValidationError, ValueError) as e:
+        detail = KnowledgeReadService(db).get_article_detail(article_id, user_id)
+        return templates.TemplateResponse("knowledge_form.html", {
+            "request": request,
+            "article": detail,
+            "error": str(e),
+            "all_types": ARTICLE_TYPES,
+            "all_statuses": ARTICLE_STATUSES,
+        })
+
+
+@router.post("/knowledge/{article_id}/delete")
+def knowledge_delete(request: Request, article_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        DeleteArticleUseCase(db).execute(article_id, user_id)
+    except KnowledgeValidationError:
+        pass
+    return RedirectResponse("/knowledge", status_code=302)
+
+
+@router.post("/knowledge/{article_id}/status")
+def knowledge_change_status(
+    request: Request,
+    article_id: int,
+    status: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        UpdateArticleUseCase(db).execute(
+            article_id=article_id, account_id=user_id, status=status,
+        )
+    except KnowledgeValidationError:
+        pass
+    return RedirectResponse(f"/knowledge/{article_id}", status_code=302)
+
+
+@router.post("/knowledge/{article_id}/attach")
+def knowledge_attach(
+    request: Request,
+    article_id: int,
+    project_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    if project_id:
+        try:
+            AttachArticleToProjectUseCase(db).execute(article_id, user_id, project_id)
+        except KnowledgeValidationError:
+            pass
+    return RedirectResponse(f"/knowledge/{article_id}", status_code=302)
+
+
+@router.post("/knowledge/{article_id}/detach")
+def knowledge_detach(
+    request: Request,
+    article_id: int,
+    project_id: int = Form(0),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    if project_id:
+        try:
+            DetachArticleFromProjectUseCase(db).execute(article_id, user_id, project_id)
+        except KnowledgeValidationError:
+            pass
+    return RedirectResponse(f"/knowledge/{article_id}", status_code=302)
 
 
 # === Habits ===
