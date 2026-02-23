@@ -10,8 +10,10 @@ from app.application.projects import (
     CreateProjectUseCase, UpdateProjectUseCase,
     ChangeProjectStatusUseCase, DeleteProjectUseCase,
     AssignTaskToProjectUseCase, ChangeTaskBoardStatusUseCase,
+    CreateTaskInProjectUseCase,
     ProjectReadService, ProjectValidationError,
 )
+from app.application.tasks_usecases import TaskValidationError
 
 
 _NOW = datetime(2025, 10, 15, 12, 0, 0)
@@ -275,3 +277,73 @@ class TestProjectReadService:
     def test_detail_not_found(self, db_session, sample_account_id):
         svc = ProjectReadService(db_session)
         assert svc.get_project_detail(9999, sample_account_id) is None
+
+
+# ── CreateTaskInProject ──
+
+class TestCreateTaskInProject:
+    def test_create_task_in_project(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id,
+            project_id=pid,
+            title="New task",
+        )
+        assert task_id > 0
+        t = db_session.query(TaskModel).filter(TaskModel.task_id == task_id).first()
+        assert t is not None
+        assert t.project_id == pid
+        assert t.board_status == "backlog"
+        assert t.title == "New task"
+        assert t.status == "ACTIVE"
+
+    def test_create_with_due_date(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        task_id = CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id,
+            project_id=pid,
+            title="Dated task",
+            due_kind="DATE",
+            due_date="2026-03-15",
+        )
+        t = db_session.query(TaskModel).filter(TaskModel.task_id == task_id).first()
+        assert t.due_kind == "DATE"
+        assert t.due_date == date(2026, 3, 15)
+
+    def test_project_not_found(self, db_session, sample_account_id):
+        with pytest.raises(ProjectValidationError, match="Проект не найден"):
+            CreateTaskInProjectUseCase(db_session).execute(
+                account_id=sample_account_id,
+                project_id=9999,
+                title="Task",
+            )
+
+    def test_empty_title_rejected(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        with pytest.raises(TaskValidationError, match="пустым"):
+            CreateTaskInProjectUseCase(db_session).execute(
+                account_id=sample_account_id,
+                project_id=pid,
+                title="   ",
+            )
+
+    def test_task_appears_in_project_detail(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        CreateTaskInProjectUseCase(db_session).execute(
+            account_id=sample_account_id,
+            project_id=pid,
+            title="Board task",
+        )
+        svc = ProjectReadService(db_session)
+        detail = svc.get_project_detail(pid, sample_account_id)
+        assert detail["total_tasks"] == 1
+        assert len(detail["groups"]["backlog"]) == 1
+        assert detail["groups"]["backlog"][0]["title"] == "Board task"

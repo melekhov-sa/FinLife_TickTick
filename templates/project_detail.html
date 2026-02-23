@@ -111,9 +111,12 @@
 <p style="font-size: 14px; color: var(--text-secondary, #888); margin: 0 0 16px;">{{ project.description }}</p>
 {% endif %}
 
-{# ── Add existing task ── #}
-{% if unassigned_tasks %}
-<form method="POST" class="add-task-form">
+{# ── Create new task / Add existing task ── #}
+<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+  <a href="/projects/{{ project.id }}/tasks/create"
+     style="padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; text-decoration: none; white-space: nowrap;">+ Добавить задачу</a>
+  {% if unassigned_tasks %}
+  <form method="POST" class="add-task-form" style="margin-bottom: 0;">
   <select name="task_id_and_project" id="assignSelect">
     <option value="">Добавить задачу в проект...</option>
     {% for t in unassigned_tasks %}
@@ -121,8 +124,9 @@
     {% endfor %}
   </select>
   <button type="button" onclick="assignTask()">Добавить</button>
-</form>
-{% endif %}
+  </form>
+  {% endif %}
+</div>
 
 {# ── Board groups ── #}
 {% for bs in board_statuses %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Новая задача — {{ project.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .due-toggle { display: inline-flex; gap: 0; border: 1px solid var(--border-color, #ddd); border-radius: 6px; overflow: hidden; }
+  .due-toggle label { padding: 6px 12px; font-size: 12px; cursor: pointer; border-right: 1px solid var(--border-color, #ddd); user-select: none; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .due-toggle label:last-child { border-right: none; }
+  .due-toggle input { display: none; }
+  .due-toggle input:checked + span { background: #007AFF; color: #fff; }
+  .due-toggle label:has(input:checked) { background: #007AFF; color: #fff; }
+  [data-theme$="-dark"] .due-toggle { border-color: #30363d; }
+  [data-theme$="-dark"] .due-toggle label { background: #0d1117; color: #c9d1d9; border-color: #30363d; }
+  [data-theme$="-dark"] .due-toggle label:has(input:checked) { background: #007AFF; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="/projects/{{ project.id }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; {{ project.title }}</a>
+</div>
+
+<h1 style="font-size: 22px; margin-bottom: 16px;">Новая задача для проекта: {{ project.title }}</h1>
+
+{% if error %}
+<div class="notice-error" style="padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px;">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="/projects/{{ project.id }}/tasks/create" class="card" style="padding: 20px; max-width: 600px;">
+  {# Title #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Название задачи</label>
+    <input name="title" type="text" required placeholder="Что нужно сделать?"
+           style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+  </div>
+
+  {# Category #}
+  {% if work_categories %}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Категория</label>
+    <select name="category_id"
+            style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      <option value="">Без категории</option>
+      {% for c in work_categories %}
+      <option value="{{ c.category_id }}">{{ c.title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {# Due kind toggle #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Срок</label>
+    <input type="hidden" name="due_kind" id="dueKindInput" value="NONE">
+    <div class="due-toggle">
+      <label onclick="setDueKind('NONE')"><input type="radio" name="_dk" checked><span>Без срока</span></label>
+      <label onclick="setDueKind('DATE')"><input type="radio" name="_dk"><span>Дата</span></label>
+      <label onclick="setDueKind('DATETIME')"><input type="radio" name="_dk"><span>Дата и время</span></label>
+    </div>
+  </div>
+
+  {# Date field #}
+  <div id="dueDateBlock" style="margin-bottom: 16px; display: none;">
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 160px;">
+        <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Дата</label>
+        <input name="due_date" type="date" id="dueDateInput"
+               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      </div>
+      <div id="dueTimeBlock" style="flex: 1; min-width: 120px; display: none;">
+        <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Время</label>
+        <input name="due_time" type="time" id="dueTimeInput"
+               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      </div>
+    </div>
+  </div>
+
+  {# Note #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Заметка</label>
+    <textarea name="note" rows="3" placeholder="Дополнительные детали..."
+              style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary); resize: vertical;"></textarea>
+  </div>
+
+  {# Buttons #}
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <button type="submit" style="padding: 8px 24px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Создать</button>
+    <a href="/projects/{{ project.id }}" style="font-size: 14px; color: var(--text-secondary, #888); text-decoration: none;">Отмена</a>
+  </div>
+</form>
+
+<script>
+function setDueKind(kind) {
+  document.getElementById('dueKindInput').value = kind;
+  document.getElementById('dueDateBlock').style.display = (kind === 'NONE') ? 'none' : '';
+  document.getElementById('dueTimeBlock').style.display = (kind === 'DATETIME') ? '' : 'none';
+}
+</script>
+{% endblock %}

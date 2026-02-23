@@ -113,6 +113,7 @@ from app.application.xp_history import XpHistoryService, XP_REASON_FILTER_OPTION
 from app.application.projects import (
     CreateProjectUseCase, UpdateProjectUseCase, ChangeProjectStatusUseCase,
     DeleteProjectUseCase, AssignTaskToProjectUseCase, ChangeTaskBoardStatusUseCase,
+    CreateTaskInProjectUseCase,
     ProjectReadService, ProjectValidationError,
     PROJECT_STATUSES, BOARD_STATUSES,
 )
@@ -3404,6 +3405,69 @@ def project_change_status(
     except ProjectValidationError:
         pass
     return RedirectResponse(f"/projects/{project_id}", status_code=302)
+
+
+@router.get("/projects/{project_id}/tasks/create", response_class=HTMLResponse)
+def project_task_create_form(request: Request, project_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = ProjectReadService(db)
+    detail = svc.get_project_detail(project_id, user_id)
+    if not detail:
+        return RedirectResponse("/projects", status_code=302)
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+    ).order_by(WorkCategory.title).all()
+    return templates.TemplateResponse("project_task_form.html", {
+        "request": request,
+        "project": detail,
+        "work_categories": work_categories,
+        "error": None,
+    })
+
+
+@router.post("/projects/{project_id}/tasks/create")
+def project_task_create(
+    request: Request,
+    project_id: int,
+    title: str = Form(""),
+    note: str = Form(""),
+    due_kind: str = Form("NONE"),
+    due_date: str = Form(""),
+    due_time: str = Form(""),
+    category_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        CreateTaskInProjectUseCase(db).execute(
+            account_id=user_id,
+            project_id=project_id,
+            title=title,
+            note=note.strip() or None,
+            due_kind=due_kind.strip() or "NONE",
+            due_date=due_date.strip() or None,
+            due_time=due_time.strip() or None,
+            category_id=category_id,
+        )
+        return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    except (ProjectValidationError, Exception) as e:
+        svc = ProjectReadService(db)
+        detail = svc.get_project_detail(project_id, user_id)
+        if not detail:
+            return RedirectResponse("/projects", status_code=302)
+        work_categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False
+        ).order_by(WorkCategory.title).all()
+        return templates.TemplateResponse("project_task_form.html", {
+            "request": request,
+            "project": detail,
+            "work_categories": work_categories,
+            "error": str(e),
+        })
 
 
 @router.post("/tasks/{task_id}/assign")

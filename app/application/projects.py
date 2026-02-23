@@ -8,6 +8,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import ProjectModel, TaskModel
+from app.application.tasks_usecases import CreateTaskUseCase
 
 
 # ── Constants ──
@@ -158,6 +159,44 @@ class AssignTaskToProjectUseCase:
 
         task.project_id = project_id
         self.db.commit()
+
+
+class CreateTaskInProjectUseCase:
+    """Create a new task and assign it to a project."""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(
+        self,
+        account_id: int,
+        project_id: int,
+        title: str,
+        note: str | None = None,
+        due_kind: str = "NONE",
+        due_date: str | None = None,
+        due_time: str | None = None,
+        category_id: int | None = None,
+    ) -> int:
+        project = self.db.query(ProjectModel).filter(
+            ProjectModel.id == project_id,
+            ProjectModel.account_id == account_id,
+        ).first()
+        if not project:
+            raise ProjectValidationError("Проект не найден")
+
+        task_id = CreateTaskUseCase(self.db).execute(
+            account_id=account_id,
+            title=title,
+            note=note,
+            due_kind=due_kind,
+            due_date=due_date,
+            due_time=due_time,
+            category_id=category_id,
+        )
+
+        AssignTaskToProjectUseCase(self.db).execute(task_id, account_id, project_id)
+        return task_id
 
 
 class ChangeTaskBoardStatusUseCase:
