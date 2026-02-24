@@ -1234,6 +1234,47 @@ class StrategicScoreBreakdown(Base):
     link_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class StrategicDailySnapshot(Base):
+    """Daily Life Score snapshot for intra-month dynamics."""
+    __tablename__ = "strategic_daily_snapshot"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    life_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    finance_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    discipline_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    project_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    focus_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    created_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "date", name="uq_strategic_daily_ad"),
+    )
+
+
+class StrategicWeeklyReview(Base):
+    """Weekly review aggregation."""
+    __tablename__ = "strategic_weekly_review"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    week_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    life_score_avg = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    finance_avg = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    discipline_avg = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    project_avg = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    focus_avg = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    main_problem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    improvement_trend = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "year", "week_number", name="uq_strategic_weekly_ayw"),
+    )
+
+
 class PushSubscription(Base):
     """Web Push subscription for a user device."""
     __tablename__ = "push_subscriptions"

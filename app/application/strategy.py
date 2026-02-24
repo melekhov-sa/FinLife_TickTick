@@ -17,6 +17,8 @@ from app.infrastructure.db.models import (
     TaskModel,
     StrategicMonthSnapshot,
     StrategicScoreBreakdown,
+    StrategicDailySnapshot,
+    StrategicWeeklyReview,
 )
 from app.application.dashboard import DashboardService
 from app.application.project_analytics import ProjectAnalyticsService, _month_range
@@ -357,6 +359,259 @@ class StrategyService:
             "savings_rate": sr,
             "discipline_target": disc,
             "focus_target": foc,
+        }
+
+    # ------------------------------------------------------------------
+    # Daily snapshot
+    # ------------------------------------------------------------------
+
+    def ensure_daily_snapshot(self, account_id: int, data: dict[str, Any]) -> None:
+        """Create today's daily snapshot if it doesn't exist yet."""
+        today = date.today()
+        existing = (
+            self.db.query(StrategicDailySnapshot)
+            .filter(
+                StrategicDailySnapshot.account_id == account_id,
+                StrategicDailySnapshot.date == today,
+            )
+            .first()
+        )
+        if existing is not None:
+            return
+
+        self.db.add(StrategicDailySnapshot(
+            account_id=account_id,
+            date=today,
+            life_score=data["life_score"],
+            finance_score=data["finance_score"],
+            discipline_score=data["discipline_score"],
+            project_score=data["project_score"],
+            focus_score=data["focus_score"],
+        ))
+        self.db.flush()
+
+    def get_month_dynamics(self, account_id: int, year: int, month: int) -> list[dict]:
+        """Return daily snapshots for the given month, with delta from previous day."""
+        month_start, month_end = _month_range(year, month)
+
+        rows = (
+            self.db.query(StrategicDailySnapshot)
+            .filter(
+                StrategicDailySnapshot.account_id == account_id,
+                StrategicDailySnapshot.date >= month_start,
+                StrategicDailySnapshot.date < month_end,
+            )
+            .order_by(StrategicDailySnapshot.date)
+            .all()
+        )
+
+        result: list[dict] = []
+        prev_score: float | None = None
+        for r in rows:
+            ls = float(r.life_score)
+            delta = round(ls - prev_score, 1) if prev_score is not None else 0.0
+            result.append({
+                "date": r.date,
+                "life_score": ls,
+                "finance_score": float(r.finance_score),
+                "discipline_score": float(r.discipline_score),
+                "project_score": float(r.project_score),
+                "focus_score": float(r.focus_score),
+                "delta": delta,
+            })
+            prev_score = ls
+
+        return result
+
+    # ------------------------------------------------------------------
+    # Weekly review
+    # ------------------------------------------------------------------
+
+    def ensure_weekly_review(self, account_id: int) -> None:
+        """Create weekly review if today is Monday and none exists for this week."""
+        today = date.today()
+        if today.weekday() != 0:  # 0 = Monday
+            return
+
+        iso = today.isocalendar()
+        year, week = iso[0], iso[1]
+
+        existing = (
+            self.db.query(StrategicWeeklyReview)
+            .filter(
+                StrategicWeeklyReview.account_id == account_id,
+                StrategicWeeklyReview.year == year,
+                StrategicWeeklyReview.week_number == week,
+            )
+            .first()
+        )
+        if existing is not None:
+            return
+
+        self._create_weekly_review(account_id, year, week, today)
+
+    def _create_weekly_review(
+        self, account_id: int, year: int, week: int, today: date,
+    ) -> StrategicWeeklyReview:
+        """Build a weekly review from last week's daily snapshots."""
+        from datetime import timedelta
+        last_mon = today - timedelta(days=7)
+        last_sun = today - timedelta(days=1)
+
+        last_week_rows = (
+            self.db.query(StrategicDailySnapshot)
+            .filter(
+                StrategicDailySnapshot.account_id == account_id,
+                StrategicDailySnapshot.date >= last_mon,
+                StrategicDailySnapshot.date <= last_sun,
+            )
+            .all()
+        )
+
+        if last_week_rows:
+            n = len(last_week_rows)
+            life_avg = round(sum(float(r.life_score) for r in last_week_rows) / n, 1)
+            fin_avg = round(sum(float(r.finance_score) for r in last_week_rows) / n, 1)
+            disc_avg = round(sum(float(r.discipline_score) for r in last_week_rows) / n, 1)
+            proj_avg = round(sum(float(r.project_score) for r in last_week_rows) / n, 1)
+            foc_avg = round(sum(float(r.focus_score) for r in last_week_rows) / n, 1)
+
+            component_avgs = {
+                "finance": fin_avg,
+                "discipline": disc_avg,
+                "projects": proj_avg,
+                "focus": foc_avg,
+            }
+            main_problem = min(component_avgs, key=component_avgs.get)
+        else:
+            life_avg = fin_avg = disc_avg = proj_avg = foc_avg = 0.0
+            main_problem = "finance"
+
+        # Previous week's review for trend
+        prev = (
+            self.db.query(StrategicWeeklyReview)
+            .filter(
+                StrategicWeeklyReview.account_id == account_id,
+            )
+            .order_by(
+                StrategicWeeklyReview.year.desc(),
+                StrategicWeeklyReview.week_number.desc(),
+            )
+            .first()
+        )
+        improvement = round(life_avg - float(prev.life_score_avg), 1) if prev else 0.0
+
+        review = StrategicWeeklyReview(
+            account_id=account_id,
+            year=year,
+            week_number=week,
+            life_score_avg=life_avg,
+            finance_avg=fin_avg,
+            discipline_avg=disc_avg,
+            project_avg=proj_avg,
+            focus_avg=foc_avg,
+            main_problem=main_problem,
+            improvement_trend=improvement,
+        )
+        self.db.add(review)
+        self.db.flush()
+        return review
+
+    def get_latest_weekly_review(self, account_id: int) -> dict | None:
+        """Return the most recent weekly review."""
+        review = (
+            self.db.query(StrategicWeeklyReview)
+            .filter(StrategicWeeklyReview.account_id == account_id)
+            .order_by(
+                StrategicWeeklyReview.year.desc(),
+                StrategicWeeklyReview.week_number.desc(),
+            )
+            .first()
+        )
+        if review is None:
+            return None
+
+        _PROBLEM_LABELS = {
+            "finance": "Финансы",
+            "discipline": "Дисциплина",
+            "projects": "Проекты",
+            "focus": "Фокус",
+        }
+        _RECOMMENDATIONS = {
+            "finance": "Сфокусироваться на снижении долга и увеличении сбережений",
+            "discipline": "Снизить WIP и закрыть просрочки",
+            "projects": "Довести до конца текущие проекты перед стартом новых",
+            "focus": "Сократить количество задач в работе до 3",
+        }
+
+        problem_key = review.main_problem or "finance"
+        return {
+            "year": review.year,
+            "week_number": review.week_number,
+            "life_score_avg": float(review.life_score_avg),
+            "finance_avg": float(review.finance_avg),
+            "discipline_avg": float(review.discipline_avg),
+            "project_avg": float(review.project_avg),
+            "focus_avg": float(review.focus_avg),
+            "main_problem": _PROBLEM_LABELS.get(problem_key, problem_key),
+            "improvement_trend": float(review.improvement_trend),
+            "recommendation": _RECOMMENDATIONS.get(problem_key, ""),
+        }
+
+    # ------------------------------------------------------------------
+    # Risk mode
+    # ------------------------------------------------------------------
+
+    def detect_risk_mode(self, account_id: int, data: dict[str, Any]) -> dict | None:
+        """Detect if risk mode should be activated.
+
+        Triggers:
+        - life_score dropped 3 consecutive days
+        - discipline_score < 50
+        - overdue tasks > 5
+        """
+        reasons: list[str] = []
+
+        # Check discipline
+        if data["discipline_score"] < 50:
+            reasons.append("Дисциплина критически низкая")
+
+        # Check overdue
+        if data["projects_overdue_total"] > 5:
+            reasons.append(f"Просрочено {data['projects_overdue_total']} задач")
+
+        # Check 3-day decline
+        today = date.today()
+        from datetime import timedelta
+        three_days_ago = today - timedelta(days=3)
+        recent = (
+            self.db.query(StrategicDailySnapshot)
+            .filter(
+                StrategicDailySnapshot.account_id == account_id,
+                StrategicDailySnapshot.date >= three_days_ago,
+                StrategicDailySnapshot.date <= today,
+            )
+            .order_by(StrategicDailySnapshot.date)
+            .all()
+        )
+
+        if len(recent) >= 3:
+            scores = [float(r.life_score) for r in recent]
+            declining = all(scores[i] > scores[i + 1] for i in range(len(scores) - 1))
+            if declining:
+                reasons.append("Life Score падает 3 дня подряд")
+
+        if not reasons:
+            return None
+
+        return {
+            "active": True,
+            "reasons": reasons,
+            "tips": [
+                "Сократить активные проекты",
+                "Закрыть 3 просрочки",
+                "Не создавать новые задачи",
+            ],
         }
 
     # ------------------------------------------------------------------

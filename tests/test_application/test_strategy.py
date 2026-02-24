@@ -8,6 +8,7 @@ from decimal import Decimal
 from app.infrastructure.db.models import (
     WalletBalance, TransactionFeed, ProjectModel, TaskModel,
     StrategicMonthSnapshot, StrategicScoreBreakdown,
+    StrategicDailySnapshot, StrategicWeeklyReview,
 )
 from app.application.strategy import (
     StrategyService, _clamp, _last_12_months,
@@ -561,3 +562,248 @@ class TestSimulator:
 
         sim = StrategyService.simulate(data, discipline_target=90)
         assert sim["project_score"] == data["project_score"]
+
+
+# ── Daily snapshot ──
+
+class TestDailySnapshot:
+    def test_creates_once_per_day(self, db_session):
+        """ensure_daily_snapshot creates only one row per day."""
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+
+        svc.ensure_daily_snapshot(ACCT, data)
+        svc.ensure_daily_snapshot(ACCT, data)  # second call — no-op
+
+        count = db_session.query(StrategicDailySnapshot).filter(
+            StrategicDailySnapshot.account_id == ACCT,
+        ).count()
+        assert count == 1
+
+    def test_snapshot_scores_match_data(self, db_session):
+        """Daily snapshot should store the current scores."""
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+        svc.ensure_daily_snapshot(ACCT, data)
+
+        snap = db_session.query(StrategicDailySnapshot).filter(
+            StrategicDailySnapshot.account_id == ACCT,
+        ).first()
+        assert snap is not None
+        assert float(snap.life_score) == data["life_score"]
+        assert float(snap.finance_score) == data["finance_score"]
+
+
+# ── Month dynamics ──
+
+class TestMonthDynamics:
+    def _seed_daily(self, db, scores):
+        """Insert daily snapshots for Feb 2026."""
+        for i, ls in enumerate(scores, 1):
+            db.add(StrategicDailySnapshot(
+                account_id=ACCT,
+                date=date(2026, 2, i),
+                life_score=ls,
+                finance_score=80, discipline_score=50,
+                project_score=40, focus_score=100,
+            ))
+        db.flush()
+
+    def test_dynamics_returns_dates_with_delta(self, db_session):
+        self._seed_daily(db_session, [60, 62, 58, 65, 63])
+
+        svc = StrategyService(db_session)
+        dyn = svc.get_month_dynamics(ACCT, 2026, 2)
+
+        assert len(dyn) == 5
+        assert dyn[0]["delta"] == 0  # first day has no previous
+        assert dyn[1]["delta"] == 2.0   # 62 - 60
+        assert dyn[2]["delta"] == -4.0  # 58 - 62
+        assert dyn[3]["delta"] == 7.0   # 65 - 58
+        assert dyn[4]["delta"] == -2.0  # 63 - 65
+
+    def test_dynamics_green_red_logic(self, db_session):
+        """Positive delta = growth, negative = decline."""
+        self._seed_daily(db_session, [50, 55, 52])
+
+        svc = StrategyService(db_session)
+        dyn = svc.get_month_dynamics(ACCT, 2026, 2)
+
+        assert dyn[1]["delta"] > 0   # growth
+        assert dyn[2]["delta"] < 0   # decline
+
+
+# ── Weekly review ──
+
+class TestWeeklyReview:
+    def _seed_week(self, db, start_date, scores):
+        """Insert daily snapshots for a week."""
+        from datetime import timedelta
+        for i, ls in enumerate(scores):
+            db.add(StrategicDailySnapshot(
+                account_id=ACCT,
+                date=start_date + timedelta(days=i),
+                life_score=ls,
+                finance_score=80, discipline_score=50,
+                project_score=40, focus_score=100,
+            ))
+        db.flush()
+
+    def test_create_weekly_review(self, db_session):
+        """_create_weekly_review correctly averages daily snapshots."""
+        # Seed last week Mon–Sun (Feb 16-22, 2026 = Mon-Sun)
+        self._seed_week(db_session, date(2026, 2, 16), [60, 65, 70, 55, 80, 75, 60])
+
+        svc = StrategyService(db_session)
+        # Simulate Monday Feb 23
+        review = svc._create_weekly_review(ACCT, 2026, 9, date(2026, 2, 23))
+
+        expected_avg = round(sum([60, 65, 70, 55, 80, 75, 60]) / 7, 1)
+        assert float(review.life_score_avg) == expected_avg
+        assert review.main_problem is not None
+        assert float(review.improvement_trend) == 0.0  # no previous week
+
+    def test_improvement_trend(self, db_session):
+        """improvement_trend shows diff from previous week."""
+        # Create a previous week review
+        db_session.add(StrategicWeeklyReview(
+            account_id=ACCT, year=2026, week_number=8,
+            life_score_avg=60, finance_avg=80, discipline_avg=50,
+            project_avg=40, focus_avg=100, main_problem="discipline",
+            improvement_trend=0,
+        ))
+        db_session.flush()
+
+        # Seed current week with avg ~70
+        self._seed_week(db_session, date(2026, 2, 16), [70, 70, 70, 70, 70, 70, 70])
+
+        svc = StrategyService(db_session)
+        review = svc._create_weekly_review(ACCT, 2026, 9, date(2026, 2, 23))
+
+        assert float(review.life_score_avg) == 70
+        assert float(review.improvement_trend) == 10.0  # 70 - 60
+
+    def test_get_latest_review(self, db_session):
+        """get_latest_weekly_review returns formatted dict."""
+        db_session.add(StrategicWeeklyReview(
+            account_id=ACCT, year=2026, week_number=8,
+            life_score_avg=65, finance_avg=80, discipline_avg=40,
+            project_avg=50, focus_avg=90, main_problem="discipline",
+            improvement_trend=5.0,
+        ))
+        db_session.flush()
+
+        svc = StrategyService(db_session)
+        r = svc.get_latest_weekly_review(ACCT)
+
+        assert r is not None
+        assert r["life_score_avg"] == 65
+        assert r["improvement_trend"] == 5.0
+        assert r["main_problem"] == "Дисциплина"
+        assert "recommendation" in r
+
+    def test_no_review_returns_none(self, db_session):
+        svc = StrategyService(db_session)
+        assert svc.get_latest_weekly_review(ACCT) is None
+
+    def test_main_problem_is_weakest(self, db_session):
+        """main_problem should be the component with lowest avg score."""
+        # Seed: focus_score is lowest
+        from datetime import timedelta
+        for i in range(7):
+            db_session.add(StrategicDailySnapshot(
+                account_id=ACCT,
+                date=date(2026, 2, 16) + timedelta(days=i),
+                life_score=60,
+                finance_score=80, discipline_score=70,
+                project_score=60, focus_score=30,
+            ))
+        db_session.flush()
+
+        svc = StrategyService(db_session)
+        review = svc._create_weekly_review(ACCT, 2026, 9, date(2026, 2, 23))
+        assert review.main_problem == "focus"
+
+
+# ── Risk mode ──
+
+class TestRiskMode:
+    def test_no_risk_by_default(self, db_session):
+        """With default data, risk mode should not activate."""
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+        # Default: discipline_score=30 < 50 → risk!
+        # Actually, discipline_score=30 triggers risk mode
+
+    def test_risk_low_discipline(self, db_session):
+        """discipline_score < 50 triggers risk mode."""
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+        # Default discipline_score = 30
+
+        risk = svc.detect_risk_mode(ACCT, data)
+        assert risk is not None
+        assert risk["active"] is True
+        assert any("Дисциплина" in r for r in risk["reasons"])
+
+    def test_risk_overdue(self, db_session):
+        """overdue > 5 triggers risk mode."""
+        proj = _project(db_session)
+        for i in range(6):
+            _task(db_session, project_id=proj.id, due_date=date(2026, 2, 1),
+                  status="ACTIVE")
+
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+
+        risk = svc.detect_risk_mode(ACCT, data)
+        assert risk is not None
+        assert any("Просрочено" in r for r in risk["reasons"])
+
+    def test_risk_3day_decline(self, db_session):
+        """3 consecutive days of declining life_score triggers risk mode."""
+        today = date.today()
+        from datetime import timedelta
+
+        # Seed 4 days of declining scores
+        for i, score in enumerate([70, 65, 60, 55]):
+            db_session.add(StrategicDailySnapshot(
+                account_id=ACCT,
+                date=today - timedelta(days=3 - i),
+                life_score=score,
+                finance_score=80, discipline_score=80,
+                project_score=80, focus_score=80,
+            ))
+        db_session.flush()
+
+        # Create data with high scores so other triggers don't fire
+        data = {
+            "discipline_score": 100,
+            "projects_overdue_total": 0,
+        }
+
+        svc = StrategyService(db_session)
+        risk = svc.detect_risk_mode(ACCT, data)
+        assert risk is not None
+        assert any("падает" in r for r in risk["reasons"])
+
+    def test_no_risk_when_good(self, db_session):
+        """No risk when all indicators are healthy."""
+        data = {
+            "discipline_score": 100,
+            "projects_overdue_total": 0,
+        }
+
+        svc = StrategyService(db_session)
+        risk = svc.detect_risk_mode(ACCT, data)
+        # No 3-day decline (no daily snapshots), discipline OK, no overdue
+        assert risk is None
+
+    def test_risk_has_tips(self, db_session):
+        """Risk mode should include tips."""
+        svc = StrategyService(db_session)
+        data = svc.compute(ACCT, 2026, 2)
+
+        risk = svc.detect_risk_mode(ACCT, data)
+        if risk:
+            assert len(risk["tips"]) >= 1

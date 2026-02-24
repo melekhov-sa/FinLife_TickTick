@@ -100,6 +100,35 @@
   [data-theme$="-dark"] .st-sim-result { background: #21262d; }
   [data-theme$="-dark"] .st-sim-field input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
   [data-theme$="-dark"] .st-bd-component { background: #21262d; }
+
+  /* Risk mode */
+  .st-risk {
+    background: #dc3545;
+    color: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .st-risk-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .st-risk-reasons { font-size: 13px; margin-bottom: 8px; opacity: 0.9; }
+  .st-risk-tips { font-size: 13px; opacity: 0.85; }
+  .st-risk-tips li { margin-bottom: 2px; }
+
+  /* Dynamics */
+  .st-dyn-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .st-dyn-date { width: 44px; font-size: 12px; color: var(--text-secondary, #888); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .st-dyn-track { flex: 1; background: var(--border-color, #eee); border-radius: 3px; height: 14px; overflow: hidden; }
+  .st-dyn-fill { height: 100%; border-radius: 3px; }
+  .st-dyn-num { width: 28px; text-align: right; font-size: 12px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .st-dyn-delta { width: 40px; text-align: right; font-size: 11px; font-weight: 600; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  /* Weekly review */
+  .st-wr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .st-wr-metric { text-align: center; }
+  .st-wr-metric-val { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .st-wr-metric-label { font-size: 11px; color: var(--text-secondary, #888); text-transform: uppercase; }
+  .st-wr-rec { font-size: 13px; padding: 10px 12px; border-radius: 6px; background: var(--border-color, #f5f5f5); margin-top: 8px; }
+  [data-theme$="-dark"] .st-wr-rec { background: #21262d; }
 </style>
 {% endblock %}
 
@@ -115,6 +144,21 @@
   <span class="st-nav-month">{{ month_label }}</span>
   <a href="/strategy?year={{ next_year }}&month={{ next_month }}">&rarr;</a>
 </div>
+
+{# ── Risk mode banner ── #}
+{% if risk %}
+<div class="st-risk">
+  <div class="st-risk-title">&#9888; Risk Mode</div>
+  <div class="st-risk-reasons">
+    {% for r in risk.reasons %}{{ r }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
+  </div>
+  <div class="st-risk-tips">
+    <ul style="margin: 0; padding-left: 18px;">
+      {% for tip in risk.tips %}<li>{{ tip }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
 
 {# ── Life Score hero ── #}
 <div class="st-hero">
@@ -191,6 +235,53 @@
   </div>
 
 </div>
+
+{# ── Month dynamics (daily) ── #}
+{% if dynamics %}
+<div class="st-section">
+  <div class="st-card-title">Динамика месяца</div>
+  {% for d in dynamics %}
+  <div class="st-dyn-row">
+    <span class="st-dyn-date">{{ d.date.strftime('%d.%m') }}</span>
+    <div class="st-dyn-track">
+      <div class="st-dyn-fill" style="width: {{ d.life_score }}%; background: {{ bar_color(d.life_score) }};"></div>
+    </div>
+    <span class="st-dyn-num {{ score_color(d.life_score) }}">{{ d.life_score|round(0)|int }}</span>
+    <span class="st-dyn-delta {% if d.delta > 0 %}clr-pos{% elif d.delta < 0 %}clr-neg{% endif %}">
+      {% if d.delta > 0 %}+{% endif %}{% if d.delta != 0 %}{{ d.delta }}{% else %}&mdash;{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Weekly Review ── #}
+{% if weekly_review %}
+<div class="st-section">
+  <div class="st-card-title">Еженедельный отч&#1105;т (неделя {{ weekly_review.week_number }})</div>
+  <div class="st-wr-grid">
+    <div class="st-wr-metric">
+      <div class="st-wr-metric-val {{ score_color(weekly_review.life_score_avg) }}">{{ weekly_review.life_score_avg|round(0)|int }}</div>
+      <div class="st-wr-metric-label">Life Score (&#216;)</div>
+    </div>
+    <div class="st-wr-metric">
+      <div class="st-wr-metric-val {% if weekly_review.improvement_trend > 0 %}clr-pos{% elif weekly_review.improvement_trend < 0 %}clr-neg{% endif %}">
+        {% if weekly_review.improvement_trend > 0 %}+{% endif %}{{ weekly_review.improvement_trend }}
+      </div>
+      <div class="st-wr-metric-label">&#916; к пред. неделе</div>
+    </div>
+    <div class="st-wr-metric">
+      <div class="st-wr-metric-val clr-bad" style="font-size: 18px;">{{ weekly_review.main_problem }}</div>
+      <div class="st-wr-metric-label">Слабая зона</div>
+    </div>
+  </div>
+  {% if weekly_review.recommendation %}
+  <div class="st-wr-rec">
+    &#128161; {{ weekly_review.recommendation }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
 {# ── Trend (12 months) ── #}
 {% if history %}

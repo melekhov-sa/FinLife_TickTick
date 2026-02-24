@@ -5991,6 +5991,13 @@ def strategy_page(
     breakdown = svc.get_breakdown(user_id, sel_year, sel_month)
     history = svc.get_history(user_id, sel_year, sel_month)
 
+    # Daily snapshot + weekly review + risk mode
+    svc.ensure_daily_snapshot(user_id, data)
+    svc.ensure_weekly_review(user_id)
+    dynamics = svc.get_month_dynamics(user_id, sel_year, sel_month)
+    weekly_review = svc.get_latest_weekly_review(user_id)
+    risk = svc.detect_risk_mode(user_id, data)
+
     # Simulator
     sim_result = None
     if simulate:
@@ -6023,6 +6030,9 @@ def strategy_page(
         "s": data,
         "breakdown": breakdown,
         "history": history,
+        "dynamics": dynamics,
+        "weekly_review": weekly_review,
+        "risk": risk,
         "sim": sim_result,
         "simulate": simulate,
         "month_label": month_label,
