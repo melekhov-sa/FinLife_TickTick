@@ -63,6 +63,22 @@
   .kanban-col-count { background: #eee; border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 600; color: #666; }
   .kanban-col-body { background: var(--bg-secondary, #f6f8fa); border: 1px solid var(--border-color, #e5e7eb); border-top: none; border-radius: 0 0 8px 8px; padding: 8px; min-height: 60px; display: flex; flex-direction: column; gap: 8px; }
 
+  /* Mobile column tabs */
+  .kanban-tabs { display: none; }
+
+  /* Mobile: snap-scroll one column at a time */
+  @media (max-width: 640px) {
+    .kanban-tabs { display: flex; gap: 4px; margin-bottom: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .kanban-tab { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2px; cursor: pointer; white-space: nowrap; background: var(--bg-input, #fff); color: var(--text-secondary, #888); flex-shrink: 0; }
+    .kanban-tab.active { background: #007AFF; color: #fff; border-color: #007AFF; }
+    .kanban-board { scroll-snap-type: x mandatory; gap: 0; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
+    .kanban-board::-webkit-scrollbar { display: none; }
+    .kanban-col { width: calc(100vw - 40px); min-width: calc(100vw - 40px); scroll-snap-align: start; padding: 0 6px; }
+    .kanban-col:first-child { padding-left: 0; }
+    .kanban-col:last-child { padding-right: 0; }
+    .kanban-card-unlink { opacity: 0.5; }
+  }
+
   /* WIP limit */
   .wip-badge { font-size: 10px; color: #888; margin-left: auto; }
   .wip-over { color: #dc3545; font-weight: 600; }
@@ -140,6 +156,8 @@
   [data-theme$="-dark"] .kanban-quick-add input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
   [data-theme$="-dark"] .kanban-card-unlink { color: #484f58; }
   [data-theme$="-dark"] .kanban-card-unlink:hover { color: #f85149; }
+  [data-theme$="-dark"] .kanban-tab { background: #0d1117; border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .kanban-tab.active { background: #007AFF; color: #fff; border-color: #007AFF; }
 </style>
 {% endblock %}
 
@@ -221,7 +239,15 @@
 {# ══════════════ KANBAN VIEW ══════════════ #}
 {% if current_view == 'kanban' %}
 
-<div class="kanban-board">
+{# Mobile column tabs #}
+<div class="kanban-tabs" id="kanbanTabs">
+  {% for bs in board_statuses %}
+  {% set col_count = project.groups.get(bs, [])|length %}
+  <button type="button" class="kanban-tab{{ ' active' if loop.first }}" data-col="{{ loop.index0 }}">{{ board_labels.get(bs, bs) }} <span style="opacity:0.6;">{{ col_count }}</span></button>
+  {% endfor %}
+</div>
+
+<div class="kanban-board" id="kanbanBoard">
   {% for bs in board_statuses %}
   {% set tasks = project.groups.get(bs, []) %}
   {% set col_count = tasks|length %}
@@ -392,5 +418,41 @@ function assignTask() {
   document.body.appendChild(form);
   form.submit();
 }
+
+// Mobile kanban tab ↔ scroll sync
+(function() {
+  var board = document.getElementById('kanbanBoard');
+  var tabs = document.getElementById('kanbanTabs');
+  if (!board || !tabs) return;
+  var tabBtns = tabs.querySelectorAll('.kanban-tab');
+  var cols = board.querySelectorAll('.kanban-col');
+
+  // Click tab → scroll to column
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = parseInt(btn.dataset.col);
+      if (cols[idx]) cols[idx].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    });
+  });
+
+  // Scroll → update active tab
+  var scrollTimer;
+  board.addEventListener('scroll', function() {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(function() {
+      var boardRect = board.getBoundingClientRect();
+      var center = boardRect.left + boardRect.width / 2;
+      var closest = 0, minDist = Infinity;
+      cols.forEach(function(col, i) {
+        var colRect = col.getBoundingClientRect();
+        var dist = Math.abs(colRect.left + colRect.width / 2 - center);
+        if (dist < minDist) { minDist = dist; closest = i; }
+      });
+      tabBtns.forEach(function(b, i) {
+        b.classList.toggle('active', i === closest);
+      });
+    }, 50);
+  });
+})();
 </script>
 {% endblock %}
