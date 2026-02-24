@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Стратегия — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .st-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .st-nav a { text-decoration: none; color: #007AFF; font-size: 14px; }
+  .st-nav-month { font-size: 18px; font-weight: 700; }
+
+  /* Life Score hero */
+  .st-hero {
+    background: var(--bg-card, #fff);
+    border-radius: 12px;
+    padding: 28px 32px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .st-hero-score { font-size: 64px; font-weight: 900; line-height: 1; }
+  .st-hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 4px; }
+  .st-hero-proj { font-size: 14px; color: var(--text-secondary, #888); }
+  .st-hero-proj b { font-weight: 700; }
+
+  /* Grid */
+  .st-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .st-card {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+  }
+  .st-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 14px; }
+  .st-card-score { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 12px; }
+  .st-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
+  .st-row:not(:last-child) { border-bottom: 1px solid var(--border-color, #f0f0f0); }
+  .st-row-label { color: var(--text-secondary, #888); }
+  .st-row-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Section card */
+  .st-section {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    margin-bottom: 16px;
+  }
+
+  /* Trend bars */
+  .st-trend-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .st-trend-label { width: 52px; font-size: 12px; color: var(--text-secondary, #888); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .st-trend-track { flex: 1; background: var(--border-color, #eee); border-radius: 3px; height: 18px; overflow: hidden; position: relative; }
+  .st-trend-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .st-trend-num { width: 30px; text-align: right; font-size: 12px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  /* Breakdown */
+  .st-bd-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; font-size: 14px; }
+  .st-bd-item:not(:last-child) { border-bottom: 1px solid var(--border-color, #f0f0f0); }
+  .st-bd-reason { flex: 1; }
+  .st-bd-penalty { font-weight: 700; color: #dc3545; width: 60px; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .st-bd-fix { font-size: 12px; text-decoration: none; color: #007AFF; flex-shrink: 0; }
+  .st-bd-component { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary, #888); display: inline-block; background: var(--border-color, #f0f0f0); border-radius: 3px; padding: 1px 6px; margin-right: 6px; }
+
+  /* Simulator */
+  .st-sim { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: end; }
+  .st-sim-field label { display: block; font-size: 12px; color: var(--text-secondary, #888); margin-bottom: 4px; }
+  .st-sim-field input { width: 100%; padding: 6px 8px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; font-variant-numeric: tabular-nums; background: var(--bg-card, #fff); color: var(--text-primary, #333); }
+  .st-sim-btn { padding: 7px 16px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .st-sim-btn:hover { background: #0060d0; }
+  .st-sim-result { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 12px; border-radius: 8px; background: var(--border-color, #f5f5f5); }
+  .st-sim-big { font-size: 32px; font-weight: 800; line-height: 1; }
+  .st-sim-delta { font-size: 18px; font-weight: 700; }
+  .st-sim-detail { font-size: 13px; color: var(--text-secondary, #888); }
+
+  .clr-good { color: #22c55e; }
+  .clr-ok   { color: #eab308; }
+  .clr-bad  { color: #dc3545; }
+  .clr-pos  { color: #22c55e; }
+  .clr-neg  { color: #dc3545; }
+
+  @media (max-width: 800px) {
+    .st-grid { grid-template-columns: repeat(2, 1fr); }
+    .st-sim { grid-template-columns: repeat(2, 1fr); }
+    .st-hero { flex-direction: column; text-align: center; gap: 12px; padding: 20px; }
+    .st-hero-score { font-size: 48px; }
+    .st-card-score { font-size: 28px; }
+  }
+  @media (max-width: 480px) {
+    .st-grid { grid-template-columns: 1fr; }
+    .st-sim { grid-template-columns: 1fr; }
+  }
+
+  [data-theme$="-dark"] .st-hero,
+  [data-theme$="-dark"] .st-card,
+  [data-theme$="-dark"] .st-section { background: var(--bg-card, #161b22); }
+  [data-theme$="-dark"] .st-row:not(:last-child),
+  [data-theme$="-dark"] .st-bd-item:not(:last-child) { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .st-trend-track { background: #21262d; }
+  [data-theme$="-dark"] .st-sim-result { background: #21262d; }
+  [data-theme$="-dark"] .st-sim-field input { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+  [data-theme$="-dark"] .st-bd-component { background: #21262d; }
+</style>
+{% endblock %}
+
+{% macro score_color(val) %}{% if val >= 75 %}clr-good{% elif val >= 55 %}clr-ok{% else %}clr-bad{% endif %}{% endmacro %}
+{% macro bar_color(val) %}{% if val >= 75 %}#22c55e{% elif val >= 55 %}#eab308{% else %}#dc3545{% endif %}{% endmacro %}
+
+{% block content %}
+<h1 style="font-size: 22px; margin-bottom: 16px;">Стратегия</h1>
+
+{# ── Month navigation ── #}
+<div class="st-nav">
+  <a href="/strategy?year={{ prev_year }}&month={{ prev_month }}">&larr;</a>
+  <span class="st-nav-month">{{ month_label }}</span>
+  <a href="/strategy?year={{ next_year }}&month={{ next_month }}">&rarr;</a>
+</div>
+
+{# ── Life Score hero ── #}
+<div class="st-hero">
+  <div>
+    <div class="st-hero-label">Life Score</div>
+    <div class="st-hero-score {{ score_color(s.life_score) }}">{{ s.life_score|round(0)|int }}</div>
+  </div>
+  <div>
+    <div class="st-hero-proj">Прогноз: <b>{{ s.life_score_projection|round(0)|int }}</b></div>
+  </div>
+</div>
+
+{# ── Score cards ── #}
+<div class="st-grid">
+
+  {# Finance #}
+  <div class="st-card">
+    <div class="st-card-title">Финансы</div>
+    <div class="st-card-score {{ score_color(s.finance_score) }}">{{ s.finance_score|round(0)|int }}</div>
+    <div class="st-row">
+      <span class="st-row-label">Капитал</span>
+      <span class="st-row-val">{{ "{:,.0f}".format(s.assets_total) }} &#8381;</span>
+    </div>
+    <div class="st-row">
+      <span class="st-row-label">Долг</span>
+      <span class="st-row-val" style="color: {% if s.debt_total > 0 %}#dc3545{% else %}inherit{% endif %};">{{ "{:,.0f}".format(s.debt_total) }} &#8381;</span>
+    </div>
+    <div class="st-row">
+      <span class="st-row-label">Долговая нагрузка</span>
+      <span class="st-row-val">{{ s.debt_ratio }}%</span>
+    </div>
+    <div class="st-row">
+      <span class="st-row-label">Норма сбережений</span>
+      <span class="st-row-val" style="color: {% if s.savings_rate >= 25 %}#22c55e{% elif s.savings_rate <= 0 %}#dc3545{% else %}inherit{% endif %};">{{ s.savings_rate }}%</span>
+    </div>
+  </div>
+
+  {# Discipline #}
+  <div class="st-card">
+    <div class="st-card-title">Дисциплина</div>
+    <div class="st-card-score {{ score_color(s.discipline_score) }}">{{ s.discipline_score|round(0)|int }}</div>
+    <div class="st-row">
+      <span class="st-row-label">Выполнение в срок</span>
+      <span class="st-row-val {{ score_color(s.global_discipline_percent) }}">{{ s.global_discipline_percent }}%</span>
+    </div>
+  </div>
+
+  {# Projects #}
+  <div class="st-card">
+    <div class="st-card-title">Проекты</div>
+    <div class="st-card-score {{ score_color(s.project_score) }}">{{ s.project_score|round(0)|int }}</div>
+    <div class="st-row">
+      <span class="st-row-label">Активных</span>
+      <span class="st-row-val">{{ s.active_projects_count }}</span>
+    </div>
+    <div class="st-row">
+      <span class="st-row-label">Средн. дисциплина</span>
+      <span class="st-row-val {{ score_color(s.projects_avg_discipline) }}">{{ s.projects_avg_discipline }}%</span>
+    </div>
+    <div class="st-row">
+      <span class="st-row-label">Просрочено</span>
+      <span class="st-row-val" style="color: {% if s.projects_overdue_total > 0 %}#dc3545{% else %}inherit{% endif %};">{{ s.projects_overdue_total }}</span>
+    </div>
+  </div>
+
+  {# Focus #}
+  <div class="st-card">
+    <div class="st-card-title">Фокус</div>
+    <div class="st-card-score {{ score_color(s.focus_score) }}">{{ s.focus_score|round(0)|int }}</div>
+    <div class="st-row">
+      <span class="st-row-label">Задач в работе</span>
+      <span class="st-row-val" style="color: {% if s.in_progress_total > 5 %}#dc3545{% elif s.in_progress_total > 3 %}#eab308{% else %}#22c55e{% endif %};">{{ s.in_progress_total }}</span>
+    </div>
+  </div>
+
+</div>
+
+{# ── Trend (12 months) ── #}
+{% if history %}
+<div class="st-section">
+  <div class="st-card-title">Тренд Life Score (12 мес.)</div>
+  {% for h in history %}
+  <div class="st-trend-row">
+    <span class="st-trend-label">{{ h.month_label }}</span>
+    <div class="st-trend-track">
+      <div class="st-trend-fill" style="width: {{ h.life_score }}%; background: {{ bar_color(h.life_score) }};"></div>
+    </div>
+    <span class="st-trend-num {{ score_color(h.life_score) }}">{{ h.life_score|round(0)|int }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Breakdown ("Что тянет вниз") ── #}
+{% if breakdown %}
+<div class="st-section">
+  <div class="st-card-title">Что тянет вниз</div>
+  {% for b in breakdown %}
+  <div class="st-bd-item">
+    <div class="st-bd-reason">
+      <span class="st-bd-component">{{ b.component }}</span>
+      {{ b.penalty_reason or b.metric_key }}
+    </div>
+    <span class="st-bd-penalty">&minus;{{ b.penalty_value }}</span>
+    {% if b.link_url %}
+    <a href="{{ b.link_url }}" class="st-bd-fix">Исправить &rarr;</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Simulator "Что если" ── #}
+<div class="st-section">
+  <div class="st-card-title">Что если улучшить&hellip;</div>
+  <form method="get" action="/strategy">
+    <input type="hidden" name="year" value="{{ sel_year }}">
+    <input type="hidden" name="month" value="{{ sel_month }}">
+    <input type="hidden" name="simulate" value="1">
+    <div class="st-sim">
+      <div class="st-sim-field">
+        <label>Дисциплина, %</label>
+        <input type="number" name="discipline_target" min="0" max="100" step="1"
+               value="{{ sim.discipline_target|round(0)|int if sim else s.global_discipline_percent|round(0)|int }}">
+      </div>
+      <div class="st-sim-field">
+        <label>Задач в работе</label>
+        <input type="number" name="focus_target" min="0" max="50" step="1"
+               value="{{ sim.focus_target if sim else s.in_progress_total }}">
+      </div>
+      <div class="st-sim-field">
+        <label>Долг. нагрузка, %</label>
+        <input type="number" name="debt_ratio_target" min="0" max="100" step="0.1"
+               value="{{ sim.debt_ratio if sim else s.debt_ratio }}">
+      </div>
+      <div class="st-sim-field">
+        <label>Норма сбереж., %</label>
+        <input type="number" name="savings_rate_target" min="-100" max="100" step="0.1"
+               value="{{ sim.savings_rate if sim else s.savings_rate }}">
+      </div>
+    </div>
+    <div style="margin-top: 12px;">
+      <button type="submit" class="st-sim-btn">Рассчитать</button>
+    </div>
+  </form>
+
+  {% if sim %}
+  <div class="st-sim-result">
+    <div>
+      <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary, #888); margin-bottom: 2px;">Было</div>
+      <div class="st-sim-big {{ score_color(s.life_score) }}">{{ s.life_score|round(0)|int }}</div>
+    </div>
+    <div style="font-size: 24px; color: var(--text-secondary, #888);">&rarr;</div>
+    <div>
+      <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary, #888); margin-bottom: 2px;">Станет</div>
+      <div class="st-sim-big {{ score_color(sim.life_score) }}">{{ sim.life_score|round(0)|int }}</div>
+    </div>
+    <div>
+      <span class="st-sim-delta {% if sim.delta > 0 %}clr-pos{% elif sim.delta < 0 %}clr-neg{% endif %}">
+        {% if sim.delta > 0 %}+{% endif %}{{ sim.delta }}
+      </span>
+    </div>
+    <div class="st-sim-detail">
+      Фин: {{ sim.finance_score|round(0)|int }}
+      &middot; Дисц: {{ sim.discipline_score|round(0)|int }}
+      &middot; Проекты: {{ sim.project_score|round(0)|int }}
+      &middot; Фокус: {{ sim.focus_score|round(0)|int }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

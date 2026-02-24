@@ -120,6 +120,8 @@ from app.application.projects import (
     PROJECT_STATUSES, BOARD_STATUSES, TAG_COLORS,
     DEFAULT_BOARD_COLUMNS, get_board_columns,
 )
+from app.application.project_analytics import ProjectAnalyticsService
+from app.application.strategy import StrategyService
 from app.application.knowledge import (
     CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
     AttachArticleToProjectUseCase, DetachArticleFromProjectUseCase,
@@ -177,6 +179,7 @@ def _resolve_current_page(request: Request) -> str:
         ("/categories",       "categories"),
         ("/transactions",     "transactions"),
         ("/budget",           "budget"),
+        ("/strategy",         "strategy"),
         ("/plan",             "plan"),
         ("/tasks",            "tasks"),
         ("/projects",         "projects"),
@@ -3367,6 +3370,7 @@ def project_detail(request: Request, project_id: int, tag: int | None = None, vi
                 break
     current_view = view if view in ("list", "kanban") else "kanban"
     cols = detail.get("board_columns", DEFAULT_BOARD_COLUMNS)
+    analytics = ProjectAnalyticsService(db).get_mini_summary(project_id, user_id)
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": detail,
@@ -3377,6 +3381,55 @@ def project_detail(request: Request, project_id: int, tag: int | None = None, vi
         "board_labels": {c["key"]: c["label"] for c in cols},
         "active_tag_filter": active_tag_filter,
         "current_view": current_view,
+        "analytics": analytics,
+    })
+
+
+@router.get("/projects/{project_id}/analytics", response_class=HTMLResponse)
+def project_analytics_page(
+    request: Request,
+    project_id: int,
+    year: int | None = None,
+    month: int | None = None,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    project = db.query(ProjectModel).filter(
+        ProjectModel.id == project_id,
+        ProjectModel.account_id == user_id,
+    ).first()
+    if not project:
+        return RedirectResponse("/projects", status_code=302)
+
+    today = date.today()
+    sel_year = year or today.year
+    sel_month = month or today.month
+
+    analytics = ProjectAnalyticsService(db).compute(project_id, user_id, sel_year, sel_month)
+
+    # Navigation: prev/next month
+    if sel_month == 1:
+        prev_year, prev_month = sel_year - 1, 12
+    else:
+        prev_year, prev_month = sel_year, sel_month - 1
+    if sel_month == 12:
+        next_year, next_month = sel_year + 1, 1
+    else:
+        next_year, next_month = sel_year, sel_month + 1
+
+    return templates.TemplateResponse("project_analytics.html", {
+        "request": request,
+        "project": project,
+        "a": analytics,
+        "sel_year": sel_year,
+        "sel_month": sel_month,
+        "month_label": f"{MONTH_NAMES_RU[sel_month]} {sel_year}",
+        "prev_year": prev_year,
+        "prev_month": prev_month,
+        "next_year": next_year,
+        "next_month": next_month,
     })
 
 
@@ -5907,6 +5960,79 @@ def event_update(
             "form_start_date": start_date, "form_start_time": start_time,
             "form_end_date": end_date, "form_end_time": end_time,
         })
+
+
+# === Strategy (CEO Dashboard) ===
+
+
+@router.get("/strategy", response_class=HTMLResponse)
+def strategy_page(
+    request: Request,
+    year: int | None = None,
+    month: int | None = None,
+    # Simulator params
+    simulate: int = 0,
+    discipline_target: float | None = None,
+    focus_target: int | None = None,
+    debt_ratio_target: float | None = None,
+    savings_rate_target: float | None = None,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    today = date.today()
+    sel_year = year or today.year
+    sel_month = month or today.month
+
+    svc = StrategyService(db)
+    data = svc.compute(user_id, sel_year, sel_month)
+    breakdown = svc.get_breakdown(user_id, sel_year, sel_month)
+    history = svc.get_history(user_id, sel_year, sel_month)
+
+    # Simulator
+    sim_result = None
+    if simulate:
+        sim_result = StrategyService.simulate(
+            data,
+            discipline_target=discipline_target,
+            focus_target=focus_target,
+            debt_ratio_target=debt_ratio_target,
+            savings_rate_target=savings_rate_target,
+        )
+
+    # Month nav
+    if sel_month == 1:
+        prev_year, prev_month = sel_year - 1, 12
+    else:
+        prev_year, prev_month = sel_year, sel_month - 1
+    if sel_month == 12:
+        next_year, next_month = sel_year + 1, 1
+    else:
+        next_year, next_month = sel_year, sel_month + 1
+
+    month_label = f"{MONTH_NAMES_RU[sel_month]} {sel_year}"
+
+    from app.application.strategy import _MONTH_NAMES_SHORT
+    for h in history:
+        h["month_label"] = f"{_MONTH_NAMES_SHORT[h['month']]} {h['year'] % 100:02d}"
+
+    return templates.TemplateResponse("strategy.html", {
+        "request": request,
+        "s": data,
+        "breakdown": breakdown,
+        "history": history,
+        "sim": sim_result,
+        "simulate": simulate,
+        "month_label": month_label,
+        "sel_year": sel_year,
+        "sel_month": sel_month,
+        "prev_year": prev_year,
+        "prev_month": prev_month,
+        "next_year": next_year,
+        "next_month": next_month,
+    })
 
 
 # === Budget ===

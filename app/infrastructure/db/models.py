@@ -1135,6 +1135,105 @@ class ProjectModel(Base):
     )
 
 
+class ProjectAnalyticsSnapshot(Base):
+    """Monthly analytics snapshot for a project."""
+    __tablename__ = "project_analytics_snapshot"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False,
+    )
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    calculated_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    # discipline
+    tasks_completed_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    tasks_completed_on_time: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    tasks_completed_late: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    discipline_percent = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    overdue_open_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    # reschedule
+    reschedule_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    # velocity (weeks 1-5 of the month)
+    velocity_week1: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    velocity_week2: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    velocity_week3: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    velocity_week4: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    velocity_week5: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    # cycle time
+    avg_cycle_time_days = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "year", "month", name="uq_project_analytics_ym"),
+    )
+
+
+class StrategicMonthSnapshot(Base):
+    """Monthly strategic dashboard snapshot (Life Score)."""
+    __tablename__ = "strategic_month_snapshot"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    calculated_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    # Finance
+    assets_total = mapped_column(Numeric(14, 2), nullable=False, server_default="0")
+    debt_total = mapped_column(Numeric(14, 2), nullable=False, server_default="0")
+    debt_ratio = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    savings_total = mapped_column(Numeric(14, 2), nullable=False, server_default="0")
+    income_mtd = mapped_column(Numeric(14, 2), nullable=False, server_default="0")
+    expense_mtd = mapped_column(Numeric(14, 2), nullable=False, server_default="0")
+    savings_rate = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    # Projects
+    active_projects_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    projects_avg_discipline = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    projects_overdue_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    # Discipline
+    global_discipline_percent = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    # Focus
+    in_progress_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    focus_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    # Scores
+    finance_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    discipline_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    project_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    life_score = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    life_score_projection = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "year", "month", name="uq_strategic_snapshot_aym"),
+    )
+
+
+class StrategicScoreBreakdown(Base):
+    """Per-metric breakdown for a strategic snapshot."""
+    __tablename__ = "strategic_score_breakdown"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("strategic_month_snapshot.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    component: Mapped[str] = mapped_column(String(20), nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(50), nullable=False)
+    raw_value = mapped_column(Numeric(14, 2), nullable=True)
+    normalized_score = mapped_column(Numeric(6, 2), nullable=False)
+    weight = mapped_column(Numeric(6, 3), nullable=False)
+    penalty_value = mapped_column(Numeric(6, 2), nullable=False, server_default="0")
+    penalty_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    link_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class PushSubscription(Base):
     """Web Push subscription for a user device."""
     __tablename__ = "push_subscriptions"

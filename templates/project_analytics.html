@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Аналитика — {{ project.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .pa-card { background: var(--bg-card, #fff); border-radius: 10px; padding: 20px; box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06)); }
+  .pa-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary, #888); margin-bottom: 14px; }
+  .pa-big { font-size: 42px; font-weight: 800; line-height: 1; margin-bottom: 12px; }
+  .pa-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
+  .pa-row:not(:last-child) { border-bottom: 1px solid var(--border-color, #f0f0f0); }
+  .pa-row-label { color: var(--text-secondary, #888); }
+  .pa-row-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pa-vel-bar { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .pa-vel-label { width: 50px; font-size: 13px; color: var(--text-secondary, #888); flex-shrink: 0; }
+  .pa-vel-track { flex: 1; background: var(--border-color, #eee); border-radius: 3px; height: 14px; overflow: hidden; }
+  .pa-vel-fill { height: 100%; background: #007AFF; border-radius: 3px; transition: width 0.3s; }
+  .pa-vel-num { width: 28px; text-align: right; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .pa-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .pa-nav a { text-decoration: none; color: #007AFF; font-size: 14px; }
+  .pa-nav-month { font-size: 18px; font-weight: 700; }
+
+  .clr-good { color: #22c55e; }
+  .clr-ok   { color: #eab308; }
+  .clr-bad  { color: #dc3545; }
+
+  @media (max-width: 640px) {
+    .pa-grid { grid-template-columns: 1fr; }
+    .pa-big { font-size: 32px; }
+  }
+
+  [data-theme$="-dark"] .pa-card { background: var(--bg-card, #161b22); }
+  [data-theme$="-dark"] .pa-row:not(:last-child) { border-bottom-color: #21262d; }
+  [data-theme$="-dark"] .pa-vel-track { background: #21262d; }
+</style>
+{% endblock %}
+
+{% macro disc_color(pct) %}{% if pct >= 75 %}clr-good{% elif pct >= 55 %}clr-ok{% else %}clr-bad{% endif %}{% endmacro %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="/projects/{{ project.id }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; {{ project.title }}</a>
+</div>
+
+<h1 style="font-size: 22px; margin-bottom: 16px;">Аналитика проекта</h1>
+
+{# ── Month navigation ── #}
+<div class="pa-nav">
+  <a href="/projects/{{ project.id }}/analytics?year={{ prev_year }}&month={{ prev_month }}">&larr;</a>
+  <span class="pa-nav-month">{{ month_label }}</span>
+  <a href="/projects/{{ project.id }}/analytics?year={{ next_year }}&month={{ next_month }}">&rarr;</a>
+</div>
+
+<div class="pa-grid">
+
+  {# ── Discipline ── #}
+  <div class="pa-card">
+    <div class="pa-card-title">Дисциплина</div>
+    <div class="pa-big {{ disc_color(a.discipline_percent) }}">{{ a.discipline_percent|round(0)|int }}%</div>
+    <div class="pa-row">
+      <span class="pa-row-label">Вовремя</span>
+      <span class="pa-row-val" style="color: #22c55e;">{{ a.tasks_completed_on_time }}</span>
+    </div>
+    <div class="pa-row">
+      <span class="pa-row-label">С опозданием</span>
+      <span class="pa-row-val" style="color: #dc3545;">{{ a.tasks_completed_late }}</span>
+    </div>
+    <div class="pa-row">
+      <span class="pa-row-label">Всего закрыто (с due)</span>
+      <span class="pa-row-val">{{ a.tasks_completed_on_time + a.tasks_completed_late }}</span>
+    </div>
+    <div class="pa-row">
+      <span class="pa-row-label">Просрочено (открытые)</span>
+      <span class="pa-row-val" style="color: {% if a.overdue_open_count > 0 %}#dc3545{% else %}inherit{% endif %};">{{ a.overdue_open_count }}</span>
+    </div>
+  </div>
+
+  {# ── Reschedules ── #}
+  <div class="pa-card">
+    <div class="pa-card-title">Переносы</div>
+    <div class="pa-big">{{ a.reschedule_count }}</div>
+    <div class="pa-row">
+      <span class="pa-row-label">Изменений due-date за месяц</span>
+    </div>
+  </div>
+
+  {# ── Velocity ── #}
+  <div class="pa-card">
+    <div class="pa-card-title">Скорость</div>
+    {% set vel_max = [a.velocity_week1, a.velocity_week2, a.velocity_week3, a.velocity_week4, a.velocity_week5] | max or 1 %}
+    {% for wk in [("Нед. 1", a.velocity_week1), ("Нед. 2", a.velocity_week2), ("Нед. 3", a.velocity_week3), ("Нед. 4", a.velocity_week4), ("Нед. 5", a.velocity_week5)] %}
+    <div class="pa-vel-bar">
+      <span class="pa-vel-label">{{ wk[0] }}</span>
+      <div class="pa-vel-track"><div class="pa-vel-fill" style="width: {{ (wk[1] / vel_max * 100)|round(0)|int }}%"></div></div>
+      <span class="pa-vel-num">{{ wk[1] }}</span>
+    </div>
+    {% endfor %}
+    <div class="pa-row" style="margin-top: 8px; border-top: 1px solid var(--border-color, #f0f0f0); padding-top: 8px;">
+      <span class="pa-row-label">Итого за месяц</span>
+      <span class="pa-row-val">{{ a.velocity_total }}</span>
+    </div>
+  </div>
+
+  {# ── Cycle Time ── #}
+  <div class="pa-card">
+    <div class="pa-card-title">Cycle Time</div>
+    <div class="pa-big">{{ a.avg_cycle_time_days }}<span style="font-size: 20px; font-weight: 600; opacity: 0.5;"> дн.</span></div>
+    <div class="pa-row">
+      <span class="pa-row-label">Среднее время выполнения задачи</span>
+    </div>
+    <div class="pa-row">
+      <span class="pa-row-label">Всего закрыто задач</span>
+      <span class="pa-row-val">{{ a.tasks_completed_total }}</span>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -54,11 +54,11 @@
   .add-task-form button { padding: 6px 14px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 
   /* ── Kanban Board ── */
-  .kanban-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start; }
-  .kanban-col { width: 280px; min-width: 280px; flex-shrink: 0; }
+  .kanban-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 0; align-items: stretch; flex: 1 1 0; min-height: 0; }
+  .kanban-col { width: 280px; min-width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
   .kanban-col-hdr { position: sticky; top: 0; z-index: 2; padding: 10px 12px; display: flex; align-items: center; gap: 8px; background: var(--bg-card, #fff); border-radius: 8px 8px 0 0; border: 1px solid var(--border-color, #e5e7eb); border-bottom: none; }
   .kanban-col-count { background: #eee; border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 600; color: #666; }
-  .kanban-col-body { background: var(--bg-secondary, #f6f8fa); border: 1px solid var(--border-color, #e5e7eb); border-top: none; border-radius: 0 0 8px 8px; padding: 8px; min-height: 60px; display: flex; flex-direction: column; gap: 8px; }
+  .kanban-col-body { background: var(--bg-secondary, #f6f8fa); border: 1px solid var(--border-color, #e5e7eb); border-top: none; border-radius: 0 0 8px 8px; padding: 8px; min-height: 0; display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; overflow-y: auto; }
 
   /* Mobile column tabs */
   .kanban-tabs { display: none; }
@@ -104,6 +104,11 @@
   .kanban-quick-add input { flex: 1; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary); }
   .kanban-quick-add input::placeholder { color: #bbb; }
   .kanban-quick-add button { padding: 6px 10px; background: #007AFF; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+
+  /* Full-page kanban: fill viewport height */
+  {% if current_view == 'kanban' %}
+  .main-content { display: flex; flex-direction: column; max-width: none; height: 100vh; height: 100dvh; overflow: hidden; }
+  {% endif %}
 
   /* ── List view (vertical) ── */
   .board-group { margin-bottom: 20px; }
@@ -198,6 +203,22 @@
 
 {% if project.description %}
 <p style="font-size: 14px; color: var(--text-secondary, #888); margin: 0 0 16px;">{{ project.description }}</p>
+{% endif %}
+
+{# ── Mini analytics summary ── #}
+{% if analytics %}
+{% macro _disc_clr(p) %}{% if p >= 75 %}#22c55e{% elif p >= 55 %}#eab308{% else %}#dc3545{% endif %}{% endmacro %}
+<div style="display: flex; gap: 16px; align-items: center; font-size: 13px; margin-bottom: 12px; flex-wrap: wrap; color: var(--text-secondary, #888);">
+  <span>Дисциплина: <b style="color: {{ _disc_clr(analytics.discipline_percent) }};">{{ analytics.discipline_percent }}%</b></span>
+  {% if analytics.overdue_open_count > 0 %}
+  <span>Просрочено: <b style="color: #dc3545;">{{ analytics.overdue_open_count }}</b></span>
+  {% endif %}
+  <span>Скорость: <b style="color: var(--text-primary);">{{ analytics.velocity_total }} задач/мес</b></span>
+  {% if analytics.avg_cycle_time_days > 0 %}
+  <span>Цикл: <b style="color: var(--text-primary);">{{ analytics.avg_cycle_time_days }} д</b></span>
+  {% endif %}
+  <a href="/projects/{{ project.id }}/analytics" style="color: #007AFF; text-decoration: none; font-size: 12px;">Подробнее &rarr;</a>
+</div>
 {% endif %}
 
 {# ── Actions bar ── #}
