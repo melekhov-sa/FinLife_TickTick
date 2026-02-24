@@ -1,6 +1,7 @@
 """
 Projects use-cases and read service.
 """
+import json
 from datetime import datetime, date as date_type
 from typing import List, Dict, Any
 
@@ -21,6 +22,52 @@ BOARD_STATUSES = ("backlog", "todo", "in_progress", "waiting", "done")
 BOARD_STATUS_ORDER = {s: i for i, s in enumerate(BOARD_STATUSES)}
 
 TAG_COLORS = ("gray", "blue", "green", "orange", "purple")
+
+DEFAULT_BOARD_COLUMNS = [
+    {"key": "backlog", "label": "Backlog"},
+    {"key": "todo", "label": "Todo"},
+    {"key": "in_progress", "label": "In Progress"},
+    {"key": "waiting", "label": "Waiting"},
+    {"key": "done", "label": "Done"},
+]
+
+
+def get_board_columns(project: ProjectModel) -> list[dict]:
+    """Return resolved board columns for a project. NULL means defaults."""
+    if project.board_columns:
+        try:
+            return json.loads(project.board_columns)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return list(DEFAULT_BOARD_COLUMNS)
+
+
+def get_board_keys(project: ProjectModel) -> tuple[str, ...]:
+    """Return just the column keys for a project."""
+    return tuple(col["key"] for col in get_board_columns(project))
+
+
+def validate_board_columns(columns: list[dict]) -> None:
+    """Validate a board_columns structure."""
+    if not columns or not isinstance(columns, list):
+        raise ProjectValidationError("Колонки доски не могут быть пустыми")
+    keys_seen: set[str] = set()
+    for col in columns:
+        if not isinstance(col, dict):
+            raise ProjectValidationError("Каждая колонка должна быть объектом")
+        key = (col.get("key") or "").strip()
+        label = (col.get("label") or "").strip()
+        if not key:
+            raise ProjectValidationError("Ключ колонки не может быть пустым")
+        if not label:
+            raise ProjectValidationError("Название колонки не может быть пустым")
+        if not key.replace("_", "").isalnum():
+            raise ProjectValidationError(f"Ключ '{key}' содержит недопустимые символы")
+        if len(key) > 20:
+            raise ProjectValidationError(f"Ключ '{key}' слишком длинный (макс 20)")
+        if key in keys_seen:
+            raise ProjectValidationError(f"Дублирующийся ключ колонки: {key}")
+        keys_seen.add(key)
 
 
 # ── Errors ──
@@ -43,12 +90,18 @@ class CreateProjectUseCase:
         status: str = "planned",
         start_date: date_type | None = None,
         due_date: date_type | None = None,
+        board_columns: list[dict] | None = None,
     ) -> int:
         title = title.strip()
         if not title:
             raise ProjectValidationError("Название проекта не может быть пустым")
         if status not in PROJECT_STATUSES:
             raise ProjectValidationError(f"Недопустимый статус: {status}")
+
+        columns_json = None
+        if board_columns is not None:
+            validate_board_columns(board_columns)
+            columns_json = json.dumps(board_columns, ensure_ascii=False)
 
         project = ProjectModel(
             account_id=account_id,
@@ -57,6 +110,7 @@ class CreateProjectUseCase:
             status=status,
             start_date=start_date,
             due_date=due_date,
+            board_columns=columns_json,
         )
         self.db.add(project)
         self.db.flush()
@@ -86,6 +140,13 @@ class UpdateProjectUseCase:
             project.start_date = changes["start_date"]
         if "due_date" in changes:
             project.due_date = changes["due_date"]
+        if "board_columns" in changes:
+            bc = changes["board_columns"]
+            if bc is not None:
+                validate_board_columns(bc)
+                project.board_columns = json.dumps(bc, ensure_ascii=False)
+            else:
+                project.board_columns = None
 
         self.db.commit()
 
@@ -190,8 +251,9 @@ class CreateTaskInProjectUseCase:
         if not project:
             raise ProjectValidationError("Проект не найден")
 
-        if board_status not in BOARD_STATUSES:
-            board_status = "backlog"
+        allowed = get_board_keys(project)
+        if board_status not in allowed:
+            board_status = allowed[0]
 
         task_id = CreateTaskUseCase(self.db).execute(
             account_id=account_id,
@@ -205,8 +267,8 @@ class CreateTaskInProjectUseCase:
 
         AssignTaskToProjectUseCase(self.db).execute(task_id, account_id, project_id)
 
-        # Set target board status if not default
-        if board_status != "backlog":
+        # Set target board status if not the first column
+        if board_status != allowed[0]:
             ChangeTaskBoardStatusUseCase(self.db).execute(task_id, account_id, board_status)
 
         return task_id
@@ -217,9 +279,6 @@ class ChangeTaskBoardStatusUseCase:
         self.db = db
 
     def execute(self, task_id: int, account_id: int, new_status: str) -> None:
-        if new_status not in BOARD_STATUSES:
-            raise ProjectValidationError(f"Недопустимый board_status: {new_status}")
-
         task = self.db.query(TaskModel).filter(
             TaskModel.task_id == task_id,
             TaskModel.account_id == account_id,
@@ -227,9 +286,21 @@ class ChangeTaskBoardStatusUseCase:
         if not task:
             raise ProjectValidationError("Задача не найдена")
 
+        # Validate against project-specific columns or global defaults
+        if task.project_id:
+            project = self.db.query(ProjectModel).filter(
+                ProjectModel.id == task.project_id,
+            ).first()
+            allowed = get_board_keys(project) if project else BOARD_STATUSES
+        else:
+            allowed = BOARD_STATUSES
+
+        if new_status not in allowed:
+            raise ProjectValidationError(f"Недопустимый board_status: {new_status}")
+
         task.board_status = new_status
 
-        # Auto-complete task when moved to done
+        # Auto-complete task when moved to "done" column
         if new_status == "done" and task.completed_at is None:
             task.completed_at = func.now()
             task.status = "DONE"
@@ -472,10 +543,14 @@ class ProjectReadService:
         task_ids = [t.task_id for t in tasks]
         tags_map = self._task_tags(task_ids) if task_ids else {}
 
+        # Resolve board columns
+        columns = get_board_columns(project)
+        column_keys = [c["key"] for c in columns]
+
         # Group tasks by board_status
-        grouped: Dict[str, list] = {s: [] for s in BOARD_STATUSES}
+        grouped: Dict[str, list] = {k: [] for k in column_keys}
         for t in tasks:
-            bs = t.board_status if t.board_status in grouped else "backlog"
+            bs = t.board_status if t.board_status in grouped else column_keys[0]
             task_tags = tags_map.get(t.task_id, [])
             grouped[bs].append({
                 "task_id": t.task_id,
@@ -513,6 +588,7 @@ class ProjectReadService:
             "done_tasks": done,
             "progress": round(done / total * 100) if total else 0,
             "groups": grouped,
+            "board_columns": columns,
             "project_tags": [
                 {"id": pt.id, "name": pt.name, "color": pt.color}
                 for pt in project_tags

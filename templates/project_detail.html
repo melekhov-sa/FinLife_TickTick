@@ -18,6 +18,7 @@
   .board-in_progress { background: #ede9fe; color: #6d28d9; }
   .board-waiting { background: #ffedd5; color: #c2410c; }
   .board-done { background: #d1fae5; color: #065f46; }
+  .board-badge:not(.board-backlog):not(.board-todo):not(.board-in_progress):not(.board-waiting):not(.board-done) { background: #e9ecef; color: #555; }
 
   /* Project header */
   .prj-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -120,6 +121,7 @@
   [data-theme$="-dark"] .board-in_progress { background: #2d1b69; color: #a78bfa; }
   [data-theme$="-dark"] .board-waiting { background: #3d2200; color: #fb923c; }
   [data-theme$="-dark"] .board-done { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .board-badge:not(.board-backlog):not(.board-todo):not(.board-in_progress):not(.board-waiting):not(.board-done) { background: #30363d; color: #8b949e; }
   [data-theme$="-dark"] .ptag-gray { background: #30363d; color: #8b949e; }
   [data-theme$="-dark"] .ptag-blue { background: #1e3a5f; color: #58a6ff; }
   [data-theme$="-dark"] .ptag-green { background: #0d3320; color: #6fcf97; }
@@ -142,8 +144,7 @@
 {% endblock %}
 
 {% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
-{% set BOARD_LABELS = {"backlog": "Backlog", "todo": "Todo", "in_progress": "In Progress", "waiting": "Waiting", "done": "Done"} %}
-{% set BOARD_ORDER = ["backlog", "todo", "in_progress", "waiting", "done"] %}
+{# board_labels and board_statuses come from route context (dynamic per project) #}
 {% set WIP_LIMIT = 5 %}
 
 {% block content %}
@@ -226,7 +227,7 @@
   {% set col_count = tasks|length %}
   <div class="kanban-col">
     <div class="kanban-col-hdr">
-      <span class="board-badge board-{{ bs }}">{{ BOARD_LABELS.get(bs, bs) }}</span>
+      <span class="board-badge board-{{ bs }}">{{ board_labels.get(bs, bs) }}</span>
       <span class="kanban-col-count">{{ col_count }}</span>
       {% if bs == 'in_progress' %}
       <span class="wip-badge{{ ' wip-over' if col_count > WIP_LIMIT }}">WIP {{ col_count }}/{{ WIP_LIMIT }}</span>
@@ -269,25 +270,26 @@
           </form>
           {% endif %}
           {# ← → arrows #}
+          {% set last_idx = board_statuses|length - 1 %}
           <div class="kanban-card-arrows">
-            {% set idx = BOARD_ORDER.index(bs) if bs in BOARD_ORDER else 0 %}
+            {% set idx = board_statuses.index(bs) if bs in board_statuses else 0 %}
             <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display:inline;">
               <input type="hidden" name="project_id" value="{{ project.id }}">
-              <input type="hidden" name="board_status" value="{{ BOARD_ORDER[idx - 1] if idx > 0 else bs }}">
-              <button type="submit" class="kanban-arrow" title="{{ BOARD_LABELS.get(BOARD_ORDER[idx - 1], '') if idx > 0 else '' }}" {{ 'disabled' if idx == 0 }}>&larr;</button>
+              <input type="hidden" name="board_status" value="{{ board_statuses[idx - 1] if idx > 0 else bs }}">
+              <button type="submit" class="kanban-arrow" title="{{ board_labels.get(board_statuses[idx - 1], '') if idx > 0 else '' }}" {{ 'disabled' if idx == 0 }}>&larr;</button>
             </form>
             <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display:inline;">
               <input type="hidden" name="project_id" value="{{ project.id }}">
-              <input type="hidden" name="board_status" value="{{ BOARD_ORDER[idx + 1] if idx < 4 else bs }}">
-              <button type="submit" class="kanban-arrow" title="{{ BOARD_LABELS.get(BOARD_ORDER[idx + 1], '') if idx < 4 else '' }}" {{ 'disabled' if idx == 4 }}>&rarr;</button>
+              <input type="hidden" name="board_status" value="{{ board_statuses[idx + 1] if idx < last_idx else bs }}">
+              <button type="submit" class="kanban-arrow" title="{{ board_labels.get(board_statuses[idx + 1], '') if idx < last_idx else '' }}" {{ 'disabled' if idx == last_idx }}>&rarr;</button>
             </form>
           </div>
         </div>
       </div>
       {% endfor %}
 
-      {# Quick-add form in Backlog and Todo columns #}
-      {% if bs in ('backlog', 'todo') %}
+      {# Quick-add form in all columns except done #}
+      {% if bs != 'done' %}
       <form method="POST" action="/projects/{{ project.id }}/tasks/quick-add" class="kanban-quick-add">
         <input type="hidden" name="board_status" value="{{ bs }}">
         <input name="title" placeholder="Новая задача..." required>
@@ -306,7 +308,7 @@
 {% set tasks = project.groups.get(bs, []) %}
 <div class="board-group">
   <div class="board-group-hdr">
-    <span class="board-badge board-{{ bs }}">{{ BOARD_LABELS.get(bs, bs) }}</span>
+    <span class="board-badge board-{{ bs }}">{{ board_labels.get(bs, bs) }}</span>
     <span class="board-group-count">{{ tasks|length }}</span>
   </div>
 
@@ -341,7 +343,7 @@
         <input type="hidden" name="project_id" value="{{ project.id }}">
         <select name="board_status" class="task-board-select" onchange="this.form.submit()">
           {% for s in board_statuses %}
-          <option value="{{ s }}" {{ 'selected' if t.board_status == s }}>{{ BOARD_LABELS.get(s, s) }}</option>
+          <option value="{{ s }}" {{ 'selected' if t.board_status == s }}>{{ board_labels.get(s, s) }}</option>
           {% endfor %}
         </select>
       </form>

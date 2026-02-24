@@ -118,6 +118,7 @@ from app.application.projects import (
     AddTagToTaskUseCase, RemoveTagFromTaskUseCase,
     ProjectReadService, ProjectValidationError,
     PROJECT_STATUSES, BOARD_STATUSES, TAG_COLORS,
+    DEFAULT_BOARD_COLUMNS, get_board_columns,
 )
 from app.application.knowledge import (
     CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
@@ -3299,6 +3300,7 @@ def project_create_form(request: Request, db: Session = Depends(get_db)):
         "project": None,
         "error": None,
         "all_statuses": PROJECT_STATUSES,
+        "board_columns": DEFAULT_BOARD_COLUMNS,
     })
 
 
@@ -3310,17 +3312,26 @@ def project_create(
     status: str = Form("planned"),
     start_date: str = Form(""),
     due_date: str = Form(""),
+    board_columns_json: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
     try:
+        import json as _json
         sd = date.fromisoformat(start_date) if start_date else None
         dd = date.fromisoformat(due_date) if due_date else None
+        board_columns = None
+        if board_columns_json.strip():
+            try:
+                board_columns = _json.loads(board_columns_json)
+            except _json.JSONDecodeError:
+                pass
         pid = CreateProjectUseCase(db).execute(
             account_id=user_id, title=title, description=description,
             status=status, start_date=sd, due_date=dd,
+            board_columns=board_columns,
         )
         return RedirectResponse(f"/projects/{pid}", status_code=302)
     except (ProjectValidationError, ValueError) as e:
@@ -3329,6 +3340,7 @@ def project_create(
             "project": None,
             "error": str(e),
             "all_statuses": PROJECT_STATUSES,
+            "board_columns": DEFAULT_BOARD_COLUMNS,
         })
 
 
@@ -3350,13 +3362,15 @@ def project_detail(request: Request, project_id: int, tag: int | None = None, vi
                 active_tag_filter = pt
                 break
     current_view = view if view in ("list", "kanban") else "kanban"
+    cols = detail.get("board_columns", DEFAULT_BOARD_COLUMNS)
     return templates.TemplateResponse("project_detail.html", {
         "request": request,
         "project": detail,
         "unassigned_tasks": unassigned,
         "related_articles": related_articles,
         "all_statuses": PROJECT_STATUSES,
-        "board_statuses": BOARD_STATUSES,
+        "board_statuses": [c["key"] for c in cols],
+        "board_labels": {c["key"]: c["label"] for c in cols},
         "active_tag_filter": active_tag_filter,
         "current_view": current_view,
     })
@@ -3378,6 +3392,7 @@ def project_edit_form(request: Request, project_id: int, db: Session = Depends(g
         "project": project,
         "error": None,
         "all_statuses": PROJECT_STATUSES,
+        "board_columns": get_board_columns(project),
     })
 
 
@@ -3390,18 +3405,27 @@ def project_edit(
     status: str = Form("planned"),
     start_date: str = Form(""),
     due_date: str = Form(""),
+    board_columns_json: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
     try:
+        import json as _json
         sd = date.fromisoformat(start_date) if start_date else None
         dd = date.fromisoformat(due_date) if due_date else None
+        board_columns = None
+        if board_columns_json.strip():
+            try:
+                board_columns = _json.loads(board_columns_json)
+            except _json.JSONDecodeError:
+                pass
         UpdateProjectUseCase(db).execute(
             project_id=project_id, account_id=user_id,
             title=title, description=description, status=status,
             start_date=sd, due_date=dd,
+            board_columns=board_columns,
         )
         return RedirectResponse(f"/projects/{project_id}", status_code=302)
     except (ProjectValidationError, ValueError) as e:
@@ -3414,6 +3438,7 @@ def project_edit(
             "project": project,
             "error": str(e),
             "all_statuses": PROJECT_STATUSES,
+            "board_columns": get_board_columns(project) if project else DEFAULT_BOARD_COLUMNS,
         })
 
 

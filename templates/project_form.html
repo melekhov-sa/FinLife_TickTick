@@ -3,6 +3,20 @@
 
 {% set STATUS_LABELS = {"planned": "Запланирован", "active": "Активный", "paused": "Пауза", "done": "Завершён", "archived": "Архив"} %}
 
+{% block extra_head %}
+<style>
+  .col-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .col-row input { padding: 6px 8px; border: 1px solid var(--border-color, #ddd); border-radius: 4px; font-size: 13px; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .col-row .col-key { width: 120px; font-family: monospace; font-size: 12px; }
+  .col-row .col-label { flex: 1; }
+  .col-btn { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-secondary, #888); line-height: 1; }
+  .col-btn:hover { border-color: #bbb; color: var(--text-primary); }
+  .col-btn-danger:hover { color: #dc3545; border-color: #dc3545; }
+  [data-theme$="-dark"] .col-btn { background: #0d1117; border-color: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .col-btn:hover { border-color: #484f58; color: #c9d1d9; }
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>{{ "Редактировать проект" if project else "Новый проект" }}</h1>
 
@@ -10,7 +24,7 @@
 <div class="notice-error" style="padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px;">{{ error }}</div>
 {% endif %}
 
-<form method="POST" action="{{ '/projects/' ~ project.id ~ '/edit' if project else '/projects/create' }}" class="card" style="padding: 20px; max-width: 600px;">
+<form method="POST" action="{{ '/projects/' ~ project.id ~ '/edit' if project else '/projects/create' }}" class="card" style="padding: 20px; max-width: 600px;" onsubmit="serializeColumns()">
   <div style="margin-bottom: 16px;">
     <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Название</label>
     <input name="title" type="text" value="{{ project.title if project else '' }}" required
@@ -44,6 +58,22 @@
     </div>
   </div>
 
+  {# ── Board Columns ── #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Колонки доски</label>
+    <p style="font-size: 12px; color: var(--text-secondary, #888); margin: 0 0 8px;">
+      Колонка с ключом <code style="background: #eee; padding: 1px 4px; border-radius: 2px;">done</code> автоматически завершает задачу при перемещении.
+    </p>
+
+    <input type="hidden" name="board_columns_json" id="boardColumnsJson">
+
+    <div id="columnsContainer"></div>
+
+    <button type="button" onclick="addRow('', '')" class="col-btn" style="margin-top: 4px;">
+      + Добавить колонку
+    </button>
+  </div>
+
   <div style="display: flex; gap: 12px; align-items: center;">
     <button type="submit" style="padding: 8px 24px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
       {{ "Сохранить" if project else "Создать" }}
@@ -51,4 +81,61 @@
     <a href="{{ '/projects/' ~ project.id if project else '/projects' }}" style="font-size: 14px; color: var(--text-secondary, #888); text-decoration: none;">Отмена</a>
   </div>
 </form>
+
+<script>
+var container = document.getElementById('columnsContainer');
+var initialColumns = {{ board_columns | tojson }};
+
+function slugify(s) {
+  return s.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '_').replace(/^_|_$/g, '').substring(0, 20);
+}
+
+function addRow(key, label, autoKey) {
+  var div = document.createElement('div');
+  div.className = 'col-row';
+  var keyInp = document.createElement('input');
+  keyInp.className = 'col-key';
+  keyInp.placeholder = 'ключ';
+  keyInp.value = key;
+  var labelInp = document.createElement('input');
+  labelInp.className = 'col-label';
+  labelInp.placeholder = 'Название';
+  labelInp.value = label;
+  if (autoKey !== false) {
+    labelInp.addEventListener('input', function() {
+      if (!keyInp.dataset.manual) keyInp.value = slugify(labelInp.value);
+    });
+    keyInp.addEventListener('input', function() { keyInp.dataset.manual = '1'; });
+  }
+  var upBtn = document.createElement('button');
+  upBtn.type = 'button'; upBtn.className = 'col-btn'; upBtn.textContent = '\u2191';
+  upBtn.onclick = function() { var prev = div.previousElementSibling; if (prev) container.insertBefore(div, prev); };
+  var downBtn = document.createElement('button');
+  downBtn.type = 'button'; downBtn.className = 'col-btn'; downBtn.textContent = '\u2193';
+  downBtn.onclick = function() { var next = div.nextElementSibling; if (next) container.insertBefore(next, div); };
+  var delBtn = document.createElement('button');
+  delBtn.type = 'button'; delBtn.className = 'col-btn col-btn-danger'; delBtn.textContent = '\u00d7';
+  delBtn.onclick = function() { container.removeChild(div); };
+  div.appendChild(keyInp);
+  div.appendChild(labelInp);
+  div.appendChild(upBtn);
+  div.appendChild(downBtn);
+  div.appendChild(delBtn);
+  container.appendChild(div);
+}
+
+function serializeColumns() {
+  var rows = container.querySelectorAll('.col-row');
+  var cols = [];
+  rows.forEach(function(r) {
+    var k = r.querySelector('.col-key').value.trim();
+    var l = r.querySelector('.col-label').value.trim();
+    if (k && l) cols.push({key: k, label: l});
+  });
+  document.getElementById('boardColumnsJson').value = JSON.stringify(cols);
+}
+
+// Init rows
+initialColumns.forEach(function(c) { addRow(c.key, c.label, false); });
+</script>
 {% endblock %}

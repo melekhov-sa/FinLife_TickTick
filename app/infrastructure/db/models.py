@@ -1123,6 +1123,8 @@ class ProjectModel(Base):
     start_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
 
+    board_columns: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

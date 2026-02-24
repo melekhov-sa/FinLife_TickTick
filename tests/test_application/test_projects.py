@@ -1,6 +1,7 @@
 """
 Tests for Projects use-cases and read service.
 """
+import json
 import pytest
 from datetime import datetime, date
 from decimal import Decimal
@@ -14,6 +15,7 @@ from app.application.projects import (
     CreateProjectTagUseCase, UpdateProjectTagUseCase, DeleteProjectTagUseCase,
     AddTagToTaskUseCase, RemoveTagFromTaskUseCase,
     ProjectReadService, ProjectValidationError,
+    DEFAULT_BOARD_COLUMNS, get_board_columns, get_board_keys,
 )
 from app.application.tasks_usecases import TaskValidationError
 
@@ -492,3 +494,142 @@ class TestProjectTags:
         assert task["tags"][0]["name"] == "Bug"
         assert task["tags"][0]["color"] == "orange"
         assert tag_id in task["tag_ids"]
+
+
+# ── Custom Board Columns ──
+
+class TestCustomBoardColumns:
+    def test_create_project_with_custom_columns(self, db_session, sample_account_id):
+        cols = [
+            {"key": "inbox", "label": "Inbox"},
+            {"key": "doing", "label": "Doing"},
+            {"key": "done", "label": "Done"},
+        ]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=cols,
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        assert p.board_columns is not None
+        parsed = json.loads(p.board_columns)
+        assert len(parsed) == 3
+        assert parsed[0]["key"] == "inbox"
+
+    def test_create_without_columns_stores_null(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Default",
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        assert p.board_columns is None
+
+    def test_get_board_columns_null_returns_defaults(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Default",
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        cols = get_board_columns(p)
+        assert len(cols) == 5
+        assert cols[0]["key"] == "backlog"
+
+    def test_get_board_columns_custom(self, db_session, sample_account_id):
+        custom = [{"key": "a", "label": "A"}, {"key": "b", "label": "B"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        cols = get_board_columns(p)
+        assert cols == custom
+
+    def test_get_board_keys(self, db_session, sample_account_id):
+        custom = [{"key": "x", "label": "X"}, {"key": "y", "label": "Y"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        assert get_board_keys(p) == ("x", "y")
+
+    def test_change_board_status_custom_valid(self, db_session, sample_account_id):
+        custom = [{"key": "inbox", "label": "Inbox"}, {"key": "done", "label": "Done"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        t = _add_task(db_session, sample_account_id, "T", project_id=pid, board_status="inbox")
+        ChangeTaskBoardStatusUseCase(db_session).execute(t.task_id, sample_account_id, "done")
+        db_session.refresh(t)
+        assert t.board_status == "done"
+        assert t.status == "DONE"
+
+    def test_change_board_status_custom_invalid(self, db_session, sample_account_id):
+        custom = [{"key": "inbox", "label": "Inbox"}, {"key": "done", "label": "Done"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        t = _add_task(db_session, sample_account_id, "T", project_id=pid, board_status="inbox")
+        with pytest.raises(ProjectValidationError, match="board_status"):
+            ChangeTaskBoardStatusUseCase(db_session).execute(t.task_id, sample_account_id, "backlog")
+
+    def test_detail_groups_by_custom_columns(self, db_session, sample_account_id):
+        custom = [{"key": "x", "label": "X"}, {"key": "y", "label": "Y"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        _add_task(db_session, sample_account_id, "T1", project_id=pid, board_status="x")
+        _add_task(db_session, sample_account_id, "T2", project_id=pid, board_status="y")
+
+        detail = ProjectReadService(db_session).get_project_detail(pid, sample_account_id)
+        assert "x" in detail["groups"]
+        assert "y" in detail["groups"]
+        assert "backlog" not in detail["groups"]
+        assert len(detail["groups"]["x"]) == 1
+        assert len(detail["groups"]["y"]) == 1
+
+    def test_orphaned_task_falls_to_first_column(self, db_session, sample_account_id):
+        custom = [{"key": "a", "label": "A"}, {"key": "b", "label": "B"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        _add_task(db_session, sample_account_id, "Orphan", project_id=pid, board_status="backlog")
+
+        detail = ProjectReadService(db_session).get_project_detail(pid, sample_account_id)
+        assert len(detail["groups"]["a"]) == 1
+
+    def test_validate_empty_columns_rejected(self, db_session, sample_account_id):
+        with pytest.raises(ProjectValidationError):
+            CreateProjectUseCase(db_session).execute(
+                account_id=sample_account_id, title="Bad",
+                board_columns=[],
+            )
+
+    def test_validate_duplicate_keys_rejected(self, db_session, sample_account_id):
+        with pytest.raises(ProjectValidationError, match="Дублирующийся"):
+            CreateProjectUseCase(db_session).execute(
+                account_id=sample_account_id, title="Bad",
+                board_columns=[{"key": "a", "label": "A"}, {"key": "a", "label": "AA"}],
+            )
+
+    def test_update_project_columns(self, db_session, sample_account_id):
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Proj",
+        )
+        new_cols = [{"key": "new1", "label": "New 1"}, {"key": "done", "label": "Done"}]
+        UpdateProjectUseCase(db_session).execute(
+            project_id=pid, account_id=sample_account_id,
+            board_columns=new_cols,
+        )
+        p = db_session.query(ProjectModel).get(pid)
+        assert json.loads(p.board_columns) == new_cols
+
+    def test_board_columns_in_detail_response(self, db_session, sample_account_id):
+        custom = [{"key": "a", "label": "A"}, {"key": "done", "label": "Done"}]
+        pid = CreateProjectUseCase(db_session).execute(
+            account_id=sample_account_id, title="Custom",
+            board_columns=custom,
+        )
+        detail = ProjectReadService(db_session).get_project_detail(pid, sample_account_id)
+        assert detail["board_columns"] == custom
