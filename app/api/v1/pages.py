@@ -2002,7 +2002,23 @@ def work_categories_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
     categories = db.query(WorkCategory).filter(WorkCategory.account_id == user_id).order_by(WorkCategory.title).all()
-    return templates.TemplateResponse("work_categories.html", {"request": request, "categories": categories})
+
+    # Usage stats: count tasks per category
+    rows = (
+        db.query(TaskModel.category_id, func.count(TaskModel.task_id))
+        .filter(TaskModel.account_id == user_id, TaskModel.category_id.isnot(None))
+        .group_by(TaskModel.category_id)
+        .all()
+    )
+    usage_counts = {cid: cnt for cid, cnt in rows}
+    total_with_cat = sum(usage_counts.values())
+
+    return templates.TemplateResponse("work_categories.html", {
+        "request": request,
+        "categories": categories,
+        "usage_counts": usage_counts,
+        "total_with_cat": total_with_cat,
+    })
 
 
 @router.post("/work-categories/create", response_class=HTMLResponse)
