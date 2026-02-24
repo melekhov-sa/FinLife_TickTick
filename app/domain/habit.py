@@ -15,6 +15,7 @@ class Habit:
         active_until: str | None = None,
         category_id: int | None = None,
         level: int = 1,
+        reminder_time: str | None = None,
     ) -> Dict[str, Any]:
         return {
             "habit_id": habit_id,
@@ -26,13 +27,14 @@ class Habit:
             "level": level,
             "active_from": active_from,
             "active_until": active_until,
+            "reminder_time": reminder_time,
             "created_at": datetime.utcnow().isoformat()
         }
 
     @staticmethod
     def update(habit_id: int, **changes) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"habit_id": habit_id, "updated_at": datetime.utcnow().isoformat()}
-        for key in ("title", "note", "active_until", "category_id", "is_archived", "level"):
+        for key in ("title", "note", "active_until", "category_id", "is_archived", "level", "reminder_time"):
             if key in changes:
                 payload[key] = changes[key]
         return payload

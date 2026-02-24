@@ -44,9 +44,6 @@
   .ptag-green { background: #d1fae5; color: #065f46; }
   .ptag-orange { background: #ffedd5; color: #c2410c; }
   .ptag-purple { background: #ede9fe; color: #6d28d9; }
-  .ptag-remove { cursor: pointer; margin-left: 2px; opacity: 0.6; }
-  .ptag-remove:hover { opacity: 1; }
-  .tag-add-select { font-size: 10px; padding: 1px 2px; border: 1px solid #ddd; border-radius: 3px; background: var(--bg-input, #fff); color: var(--text-secondary, #888); width: 28px; cursor: pointer; }
   .task-tags { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
   .tag-filter-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
   .tag-filter-link { text-decoration: none; }
@@ -86,7 +83,7 @@
   /* Kanban card */
   .kanban-card { background: var(--bg-card, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 6px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); position: relative; transition: box-shadow 0.15s; }
   .kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-  .kanban-card-title { font-size: 13px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; color: var(--text-primary); }
+  .kanban-card-title { font-size: 13px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; color: var(--text-primary); text-decoration: none; display: block; }
   .kanban-card-done .kanban-card-title { text-decoration: line-through; color: var(--text-secondary, #999); }
   .kanban-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .kanban-card-due { font-size: 11px; color: var(--text-secondary, #888); }
@@ -115,6 +112,7 @@
   .task-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border-color, #f0f0f0); font-size: 14px; }
   .task-row:last-child { border-bottom: none; }
   .task-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-row-title a { color: inherit; text-decoration: none; }
   .task-row-due { font-size: 12px; color: var(--text-secondary, #888); white-space: nowrap; }
   .task-row-overdue { color: #dc3545; font-weight: 500; }
   .task-row-done .task-row-title { text-decoration: line-through; color: var(--text-secondary, #999); }
@@ -143,7 +141,6 @@
   [data-theme$="-dark"] .ptag-green { background: #0d3320; color: #6fcf97; }
   [data-theme$="-dark"] .ptag-orange { background: #3d2200; color: #fb923c; }
   [data-theme$="-dark"] .ptag-purple { background: #2d1b69; color: #a78bfa; }
-  [data-theme$="-dark"] .tag-add-select { background: #0d1117; border-color: #30363d; color: #8b949e; }
   [data-theme$="-dark"] .view-switcher { border-color: #30363d; }
   [data-theme$="-dark"] .view-switcher a { background: #0d1117; color: #8b949e; border-color: #30363d; }
   [data-theme$="-dark"] .view-switcher a.active { background: #007AFF; color: #fff; }
@@ -196,7 +193,6 @@
       <button type="submit" style="padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary);">OK</button>
     </form>
     <a href="/projects/{{ project.id }}/edit" style="padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666;">Ред.</a>
-    <a href="/projects/{{ project.id }}/tags" style="padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-decoration: none; color: #666;">Теги</a>
   </div>
 </div>
 
@@ -268,13 +264,13 @@
           <button type="submit" class="kanban-card-unlink" title="Убрать из проекта">&times;</button>
         </form>
 
-        <div class="kanban-card-title">{{ t.title }}</div>
+        <a href="/projects/{{ project.id }}/tasks/{{ t.task_id }}/edit" class="kanban-card-title">{{ t.title }}</a>
 
         {# Tags #}
         {% if t.tags %}
         <div class="task-tags" style="margin-bottom: 6px;">
           {% for tag in t.tags %}
-          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}<form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/remove" style="display:inline;"><input type="hidden" name="project_tag_id" value="{{ tag.id }}"><button type="submit" class="ptag-remove" title="Убрать тег">&times;</button></form></span>
+          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}</span>
           {% endfor %}
         </div>
         {% endif %}
@@ -283,17 +279,6 @@
           {# Due date #}
           {% if t.due_date %}
           <span class="kanban-card-due{{ ' kanban-card-overdue' if t.is_overdue }}">{{ t.due_date.strftime('%d.%m') }}</span>
-          {% endif %}
-          {# Add tag #}
-          {% if project.project_tags %}
-          <form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/add" style="display:inline;">
-            <select name="project_tag_id" class="tag-add-select" onchange="if(this.value)this.form.submit()" title="Добавить тег">
-              <option value="">+</option>
-              {% for pt in project.project_tags if pt.id not in t.tag_ids %}
-              <option value="{{ pt.id }}">{{ pt.name }}</option>
-              {% endfor %}
-            </select>
-          </form>
           {% endif %}
           {# ← → arrows #}
           {% set last_idx = board_statuses|length - 1 %}
@@ -343,27 +328,17 @@
     {% for t in tasks %}
     <div class="task-row{% if t.board_status == 'done' %} task-row-done{% endif %}">
       <div class="task-row-title">
-        {{ t.title }}
+        <a href="/projects/{{ project.id }}/tasks/{{ t.task_id }}/edit">{{ t.title }}</a>
         {% if t.tags %}
         <div class="task-tags" style="margin-top: 2px;">
           {% for tag in t.tags %}
-          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}<form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/remove" style="display: inline;"><input type="hidden" name="project_tag_id" value="{{ tag.id }}"><button type="submit" class="ptag-remove" title="Убрать тег">&times;</button></form></span>
+          <span class="ptag ptag-{{ tag.color or 'gray' }}">{{ tag.name }}</span>
           {% endfor %}
         </div>
         {% endif %}
       </div>
       {% if t.due_date %}
       <span class="task-row-due{% if t.is_overdue %} task-row-overdue{% endif %}">{{ t.due_date.strftime('%d.%m') }}</span>
-      {% endif %}
-      {% if project.project_tags %}
-      <form method="POST" action="/projects/{{ project.id }}/tasks/{{ t.task_id }}/tags/add" style="display: inline;">
-        <select name="project_tag_id" class="tag-add-select" onchange="if(this.value)this.form.submit()" title="Добавить тег">
-          <option value="">+</option>
-          {% for pt in project.project_tags if pt.id not in t.tag_ids %}
-          <option value="{{ pt.id }}">{{ pt.name }}</option>
-          {% endfor %}
-        </select>
-      </form>
       {% endif %}
       <form method="POST" action="/tasks/{{ t.task_id }}/board-status" style="display: inline;">
         <input type="hidden" name="project_id" value="{{ project.id }}">

@@ -1,6 +1,6 @@
 """HabitsProjector - builds habits read model from events, including streak calculation.
 Ported from FinLife OS apps/projector/habits.py."""
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from app.readmodels.projectors.base import BaseProjector
 from app.infrastructure.db.models import (
     HabitModel, HabitOccurrence, RecurrenceRuleModel, EventLog
@@ -34,6 +34,7 @@ class HabitsProjector(BaseProjector):
         ).first()
         if existing:
             return
+        rt = payload.get("reminder_time")
         habit = HabitModel(
             habit_id=payload["habit_id"],
             account_id=payload["account_id"],
@@ -48,6 +49,7 @@ class HabitsProjector(BaseProjector):
             current_streak=0,
             best_streak=0,
             done_count_30d=0,
+            reminder_time=time.fromisoformat(rt) if rt else None,
         )
         self.db.add(habit)
         self.db.flush()
@@ -71,6 +73,9 @@ class HabitsProjector(BaseProjector):
             habit.is_archived = payload["is_archived"]
         if "level" in payload:
             habit.level = payload["level"]
+        if "reminder_time" in payload:
+            rt = payload["reminder_time"]
+            habit.reminder_time = time.fromisoformat(rt) if rt else None
 
     def _handle_archived(self, event: EventLog) -> None:
         payload = event.payload_json

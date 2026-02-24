@@ -194,8 +194,8 @@
   </form>
 </div>
 
-<!-- Таблица операций -->
-<div class="card">
+<!-- Таблица операций (desktop) -->
+<div class="card tx-desktop-table">
   {% if transactions %}
   <div class="matrix-scroll-wrapper">
     <table>
@@ -262,6 +262,63 @@
     <a href="/transactions?page={{ page - 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">&laquo; Пред</a>
     {% endif %}
     <span>Стр {{ page }} из {{ total_pages }} ({{ total_count }} операций)</span>
+    {% if page < total_pages %}
+    <a href="/transactions?page={{ page + 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">След &raquo;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <p class="muted" style="text-align: center; padding: 24px 0;">Нет операций</p>
+  {% endif %}
+</div>
+
+<!-- Список операций (mobile) -->
+<div class="tx-mobile-list">
+  {% if transactions %}
+  {% for tx in transactions %}
+  <a href="/transactions/{{ tx.transaction_id }}/edit" class="tx-mob-card">
+    <div class="tx-mob-row1">
+      {% if tx.operation_type == 'INCOME' %}
+      <span class="badge badge-income">Доход</span>
+      {% elif tx.operation_type == 'EXPENSE' %}
+      <span class="badge badge-expense">Расход</span>
+      {% else %}
+      <span class="badge badge-transfer">Перевод</span>
+      {% endif %}
+      <span class="tx-mob-amount {% if tx.operation_type == 'INCOME' %}positive{% elif tx.operation_type == 'EXPENSE' %}negative{% endif %}">
+        {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}-{% endif %}{{ format_money(tx.amount, tx.currency) }}
+      </span>
+    </div>
+    <div class="tx-mob-row2">
+      <span class="tx-mob-wallet">
+        {% if tx.operation_type == 'TRANSFER' %}
+          {% set fw = wallet_map.get(tx.from_wallet_id) %}
+          {% set tw = wallet_map.get(tx.to_wallet_id) %}
+          {{ fw.title if fw else '?' }} &rarr; {{ tw.title if tw else '?' }}
+        {% else %}
+          {% set w = wallet_map.get(tx.wallet_id) %}
+          {{ w.title if w else '—' }}
+        {% endif %}
+      </span>
+      {% if tx.category_id %}
+        {% set cat = category_map.get(tx.category_id) %}
+        {% if cat %}<span class="tx-mob-cat">{{ cat.title }}</span>{% endif %}
+      {% endif %}
+    </div>
+    <div class="tx-mob-row3">
+      <span class="tx-mob-date">{{ tx.occurred_at.strftime('%d.%m.%Y %H:%M') }}</span>
+      {% if tx.description %}<span class="tx-mob-desc">{{ tx.description }}</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+
+  {% if total_pages > 1 %}
+  <div class="pagination" style="padding: 12px 0;">
+    {% if page > 1 %}
+    <a href="/transactions?page={{ page - 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">&laquo; Пред</a>
+    {% endif %}
+    <span>{{ page }} / {{ total_pages }}</span>
     {% if page < total_pages %}
     <a href="/transactions?page={{ page + 1 }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">След &raquo;</a>
     {% endif %}
@@ -358,14 +415,32 @@ function updateGoalFields() {
   }
 }
 
-function filterCategories(opType) {
+var _allCategoryOpts = [];
+(function() {
   var sel = document.getElementById('categorySelect');
   var opts = sel.querySelectorAll('option[data-type]');
-  var match = opType === 'INCOME' ? 'INCOME' : 'EXPENSE';
-  sel.value = '';
   for (var i = 0; i < opts.length; i++) {
-    opts[i].style.display = opts[i].dataset.type === match ? '' : 'none';
+    _allCategoryOpts.push({ value: opts[i].value, label: opts[i].textContent, type: opts[i].dataset.type });
   }
+})();
+
+function filterCategories(opType) {
+  var sel = document.getElementById('categorySelect');
+  var match = opType === 'INCOME' ? 'INCOME' : 'EXPENSE';
+  // Rebuild options instead of display:none (unreliable on mobile)
+  while (sel.options.length > 1) {
+    sel.removeChild(sel.options[1]);
+  }
+  for (var i = 0; i < _allCategoryOpts.length; i++) {
+    if (_allCategoryOpts[i].type === match) {
+      var opt = document.createElement('option');
+      opt.value = _allCategoryOpts[i].value;
+      opt.textContent = _allCategoryOpts[i].label;
+      opt.dataset.type = _allCategoryOpts[i].type;
+      sel.appendChild(opt);
+    }
+  }
+  sel.value = '';
 }
 
 function updateFormFields() {
@@ -446,4 +521,83 @@ filterCategories(document.getElementById('operationType').value);
 updateWalletHint();
 {% if new_type %}updateFormFields();{% endif %}
 </script>
+
+<style>
+  /* Mobile transaction cards — hidden on desktop */
+  .tx-mobile-list { display: none; }
+
+  @media (max-width: 768px) {
+    .tx-desktop-table { display: none; }
+    .tx-mobile-list { display: block; }
+
+    .tx-mob-card {
+      display: block;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color, #eee);
+      text-decoration: none;
+      color: inherit;
+      -webkit-tap-highlight-color: rgba(0,0,0,.05);
+    }
+    .tx-mob-card:active {
+      background: var(--bg-hover, rgba(0,0,0,.03));
+    }
+    .tx-mob-row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .tx-mob-row1 .badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      min-height: auto;
+    }
+    .tx-mob-amount {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tx-mob-row2 {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .tx-mob-wallet {
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-mob-cat {
+      color: var(--text-secondary, #888);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+    .tx-mob-cat::before {
+      content: "· ";
+    }
+    .tx-mob-row3 {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      font-size: 12px;
+      color: var(--text-secondary, #888);
+    }
+    .tx-mob-date {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tx-mob-desc {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+  }
+</style>
 {% endblock %}

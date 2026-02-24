@@ -433,6 +433,8 @@ class HabitModel(Base):
     best_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     done_count_30d: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
+    reminder_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

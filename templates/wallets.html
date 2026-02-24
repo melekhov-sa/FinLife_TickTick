@@ -59,18 +59,6 @@
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
   <h1 style="margin: 0;">Кошельки</h1>
   <a href="/wallets/new" class="btn" style="font-size: 13px;">+ Создать кошелёк</a>
-  <button onclick="toggleNewFolderForm()" class="btn secondary" style="font-size: 13px;">📁 + Папка</button>
-  <form id="newFolderForm" method="POST" action="/wallets/folders/create"
-        style="display:none; gap:8px; align-items:center; flex-wrap:wrap;">
-    <input name="title" placeholder="Название папки" required style="max-width:160px; font-size:13px;">
-    <select name="wallet_type" style="font-size:13px;">
-      <option value="REGULAR">Обычные</option>
-      <option value="CREDIT">Кредитные</option>
-      <option value="SAVINGS">Накопления</option>
-    </select>
-    <button type="submit" style="font-size:13px; padding:6px 14px;">Создать</button>
-    <button type="button" onclick="toggleNewFolderForm()" class="secondary" style="font-size:13px; padding:6px 14px;">Отмена</button>
-  </form>
 </div>
 
 {% set success = request.query_params.get('success') %}
@@ -107,10 +95,11 @@
 {% endif %}
 
 {% set archived_wallet_data = wallet_data | selectattr('wallet.is_archived') | list %}
+{% set active_wallet_data = wallet_data | rejectattr('wallet.is_archived') | list %}
 
 <div class="card">
   <h2>Мои кошельки</h2>
-  {% if grouped_wallets or ungrouped_wallets %}
+  {% if active_wallet_data %}
     <div class="matrix-scroll-wrapper">
     <table>
       <thead>
@@ -126,126 +115,7 @@
         </tr>
       </thead>
       <tbody>
-
-        {# ── Grouped wallets ── #}
-        {% for group in grouped_wallets %}
-        {# Folder header row #}
-        <tr class="wallet-folder-row">
-          <td style="padding: 8px 12px; font-weight: 600; font-size: 13px;">
-            📁 {{ group.folder.title }}
-            <span class="muted" style="font-weight: 400; font-size: 12px; margin-left: 4px;">({{ group.wallets|length }})</span>
-          </td>
-          <td class="col-wtype muted" style="font-size: 12px;"></td>
-          <td class="col-wcur muted" style="font-size: 12px;">{{ group.currency if group.currency else '—' }}</td>
-          <td style="font-weight: 600;" class="{% if group.total_balance is not none %}{% if group.total_balance|float >= 0 %}positive{% else %}negative{% endif %}{% endif %}">
-            {% if group.total_balance is not none %}{{ format_money2(group.total_balance, group.currency) }}{% else %}—{% endif %}
-          </td>
-          <td class="col-wdelta {% if group.total_delta_30d is not none %}{% if group.total_delta_30d|float > 0 %}positive{% elif group.total_delta_30d|float < 0 %}negative{% endif %}{% endif %}">
-            {% if group.total_delta_30d is not none %}{% if group.total_delta_30d|float > 0 %}+{% endif %}{{ format_money2(group.total_delta_30d, group.currency) }}{% else %}—{% endif %}
-          </td>
-          <td class="col-wops muted" style="font-size: 12px;">{{ group.total_ops_30d }}</td>
-          <td class="col-wlast muted" style="font-size: 12px;">
-            {% if group.last_op_at %}{{ group.last_op_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
-          </td>
-          <td>
-            <button type="button" class="btn-gear" onclick="toggleRow('folder-settings-{{ group.folder.id }}')" title="Настройки папки">&#9881;</button>
-          </td>
-        </tr>
-        {# Folder settings row (hidden) #}
-        <tr id="folder-settings-{{ group.folder.id }}" style="display: none;">
-          <td colspan="8" style="padding: 0;">
-            <div class="wallet-settings">
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/folders/{{ group.folder.id }}/rename"
-                      style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                  <input name="title" value="{{ group.folder.title }}" style="max-width: 250px;" required>
-                  <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переименовать</button>
-                </form>
-              </div>
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/folders/{{ group.folder.id }}/delete"
-                      onsubmit="return confirm('Удалить папку «{{ group.folder.title }}»?\nКошельки переместятся в «Без папки».')">
-                  <button type="submit" class="danger" style="font-size: 12px; padding: 4px 12px;">Удалить папку</button>
-                </form>
-              </div>
-            </div>
-          </td>
-        </tr>
-        {# Wallet rows inside folder #}
-        {% for wd in group.wallets %}
-        {% set wallet = wd.wallet %}
-        <tr>
-          <td>{{ wallet.title }}</td>
-          <td class="col-wtype">
-            {% if wallet.wallet_type == 'REGULAR' %}Обычный
-            {% elif wallet.wallet_type == 'CREDIT' %}Кредит
-            {% elif wallet.wallet_type == 'SAVINGS' %}Накопления
-            {% else %}{{ wallet.wallet_type }}{% endif %}
-          </td>
-          <td class="col-wcur">{{ currency_label(wallet.currency) }}</td>
-          <td class="{% if wallet.balance|float >= 0 %}positive{% else %}negative{% endif %}">
-            {{ format_money2(wallet.balance, wallet.currency) }}
-          </td>
-          <td class="col-wdelta {% if wd.delta_30d|float > 0 %}positive{% elif wd.delta_30d|float < 0 %}negative{% endif %}">
-            {% if wd.delta_30d|float > 0 %}+{% endif %}{{ format_money2(wd.delta_30d, wallet.currency) }}
-          </td>
-          <td class="col-wops">{{ wd.operations_count_30d }}</td>
-          <td class="col-wlast muted" style="font-size: 12px;">
-            {% if wallet.last_operation_at %}
-              {{ wallet.last_operation_at.strftime('%d.%m.%Y %H:%M') }}
-            {% else %}—{% endif %}
-          </td>
-          <td>
-            <button type="button" class="btn-gear" onclick="toggleSettings({{ wallet.wallet_id }})" title="Настройки">&#9881;</button>
-          </td>
-        </tr>
-        <tr class="wf{{ group.folder.id }}" id="wallet-settings-{{ wallet.wallet_id }}" style="display: none;">
-          <td colspan="8" style="padding: 0;">
-            <div class="wallet-settings">
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/rename" style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                  <input name="title" value="{{ wallet.title }}" style="max-width: 250px;" required>
-                  <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переименовать</button>
-                </form>
-              </div>
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/set-folder"
-                      style="display: flex; gap: 8px; align-items: center;">
-                  <label style="font-size: 13px; font-weight: 500; margin: 0; white-space: nowrap;">Папка:</label>
-                  <select name="folder_id" style="max-width: 200px; font-size: 12px;">
-                    <option value="0" {% if not wallet.folder_id %}selected{% endif %}>— без папки —</option>
-                    {% for f in folders %}{% if f.wallet_type == wallet.wallet_type %}
-                    <option value="{{ f.id }}" {% if wallet.folder_id == f.id %}selected{% endif %}>{{ f.title }}</option>
-                    {% endif %}{% endfor %}
-                  </select>
-                  <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переместить</button>
-                </form>
-              </div>
-              {% if wallet.wallet_type == 'REGULAR' %}
-              <div class="wallet-settings-row">
-                <button type="button" onclick="openActualize({{ wallet.wallet_id }}, '{{ wallet.balance }}', '{{ wallet.currency }}')"
-                        style="font-size: 12px; padding: 4px 12px;">Актуализация баланса</button>
-              </div>
-              {% endif %}
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/archive" onsubmit="return confirm('Вы уверены, что хотите архивировать кошелёк «{{ wallet.title }}»?')">
-                  <button type="submit" class="danger" style="font-size: 12px; padding: 4px 12px;">Архивировать</button>
-                </form>
-              </div>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% endfor %}
-
-        {# ── Ungrouped wallets ── #}
-        {% if ungrouped_wallets %}
-        {% if grouped_wallets %}
-        <tr class="wallet-folder-row">
-          <td colspan="8" style="padding: 6px 12px; font-size: 12px; color: #999;">Без папки</td>
-        </tr>
-        {% endif %}
-        {% for wd in ungrouped_wallets %}
+        {% for wd in active_wallet_data %}
         {% set wallet = wd.wallet %}
         <tr>
           <td>{{ wallet.title }}</td>
@@ -281,21 +151,6 @@
                   <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переименовать</button>
                 </form>
               </div>
-              {% if folders %}
-              <div class="wallet-settings-row">
-                <form method="POST" action="/wallets/{{ wallet.wallet_id }}/set-folder"
-                      style="display: flex; gap: 8px; align-items: center;">
-                  <label style="font-size: 13px; font-weight: 500; margin: 0; white-space: nowrap;">Папка:</label>
-                  <select name="folder_id" style="max-width: 200px; font-size: 12px;">
-                    <option value="0" selected>— без папки —</option>
-                    {% for f in folders %}{% if f.wallet_type == wallet.wallet_type %}
-                    <option value="{{ f.id }}">{{ f.title }}</option>
-                    {% endif %}{% endfor %}
-                  </select>
-                  <button type="submit" style="font-size: 12px; padding: 4px 12px;">Переместить</button>
-                </form>
-              </div>
-              {% endif %}
               {% if wallet.wallet_type == 'REGULAR' %}
               <div class="wallet-settings-row">
                 <button type="button" onclick="openActualize({{ wallet.wallet_id }}, '{{ wallet.balance }}', '{{ wallet.currency }}')"
@@ -311,8 +166,6 @@
           </td>
         </tr>
         {% endfor %}
-        {% endif %}
-
       </tbody>
     </table>
     </div>
@@ -403,18 +256,6 @@
 function toggleSettings(walletId) {
   var el = document.getElementById('wallet-settings-' + walletId);
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
-}
-
-function toggleRow(elementId) {
-  var el = document.getElementById(elementId);
-  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
-}
-
-function toggleNewFolderForm() {
-  var form = document.getElementById('newFolderForm');
-  var isVisible = form.style.display === 'flex' || form.style.display === '';
-  form.style.display = isVisible ? 'none' : 'flex';
-  if (!isVisible) form.querySelector('input[name="title"]').focus();
 }
 
 /* ── Actualize Balance ── */

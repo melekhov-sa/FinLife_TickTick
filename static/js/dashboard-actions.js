@@ -19,6 +19,9 @@
       qopCategoryRow, qopCategory, qopOccurredAt,
       qopClose, qopCancelBtn;
 
+  // All category options stored at init for rebuilding
+  var allCategoryOptions = [];
+
   function init() {
     wrapper     = document.getElementById('quickOpWrapper');
     btn         = wrapper && wrapper.querySelector('.quick-op-btn');
@@ -42,6 +45,13 @@
     qopCancelBtn = document.getElementById('qopCancelBtn');
 
     if (!wrapper || !backdrop) return;
+
+    // Store all category options for later filtering (display:none on <option> is unreliable)
+    if (qopCategory) {
+      qopCategory.querySelectorAll('option[data-type]').forEach(function (opt) {
+        allCategoryOptions.push({ value: opt.value, label: opt.textContent, type: opt.dataset.type });
+      });
+    }
 
     // Dropdown toggle
     btn.addEventListener('click', function (e) {
@@ -102,14 +112,20 @@
       return;
     }
 
-    // Show only matching categories, hide others
-    var options = qopCategory.querySelectorAll('option[data-type]');
-    options.forEach(function (opt) {
-      opt.style.display = (opt.dataset.type === type) ? '' : 'none';
-      if (opt.selected && opt.style.display === 'none') {
-        qopCategory.value = '';
+    // Rebuild options: keep "Без категории" placeholder, add only matching type
+    // (display:none on <option> does not work on mobile browsers)
+    while (qopCategory.options.length > 1) {
+      qopCategory.removeChild(qopCategory.options[1]);
+    }
+    allCategoryOptions.forEach(function (cat) {
+      if (cat.type === type) {
+        var opt = document.createElement('option');
+        opt.value = cat.value;
+        opt.textContent = cat.label;
+        qopCategory.appendChild(opt);
       }
     });
+    qopCategory.value = '';
   }
 
   function openModal(type) {

@@ -17,7 +17,6 @@
   .tag-edit-form input { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 120px; background: var(--bg-input, #fff); color: var(--text-primary); }
   .tag-edit-form select { padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: var(--bg-input, #fff); color: var(--text-primary); }
   .tag-edit-form button { padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; cursor: pointer; background: var(--bg-input, #fff); color: var(--text-primary); }
-  .tag-del-btn { background: none; border: 1px solid #dc3545; color: #dc3545; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 
   .tag-create-form { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
   .tag-create-form input { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; min-width: 140px; background: var(--bg-input, #fff); color: var(--text-primary); }
@@ -64,9 +63,6 @@
         {% endfor %}
       </select>
       <button type="submit">Сохр.</button>
-    </form>
-    <form method="POST" action="/projects/{{ project.id }}/tags/{{ t.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить тег «{{ t.name }}»?')">
-      <button type="submit" class="tag-del-btn">Удалить</button>
     </form>
   </div>
   {% endfor %}

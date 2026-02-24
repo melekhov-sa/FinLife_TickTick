@@ -39,6 +39,7 @@ class CreateHabitUseCase:
         by_weekday: str | None = None,
         by_monthday: int | None = None,
         level: int = 1,
+        reminder_time: str | None = None,
         actor_user_id: int | None = None,
     ) -> int:
         title = title.strip()
@@ -77,6 +78,7 @@ class CreateHabitUseCase:
             active_until=active_until,
             category_id=category_id,
             level=level,
+            reminder_time=reminder_time,
         )
 
         self.event_repo.append_event(

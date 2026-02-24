@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}{{ task.title }} — {{ project.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .due-toggle { display: inline-flex; gap: 0; border: 1px solid var(--border-color, #ddd); border-radius: 6px; overflow: hidden; }
+  .due-toggle label { padding: 6px 12px; font-size: 12px; cursor: pointer; border-right: 1px solid var(--border-color, #ddd); user-select: none; background: var(--bg-input, #fff); color: var(--text-primary); }
+  .due-toggle label:last-child { border-right: none; }
+  .due-toggle input { display: none; }
+  .due-toggle label:has(input:checked) { background: #007AFF; color: #fff; }
+  .ptag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+  .ptag-gray { background: #e9ecef; color: #555; }
+  .ptag-blue { background: #dbeafe; color: #1d4ed8; }
+  .ptag-green { background: #d1fae5; color: #065f46; }
+  .ptag-orange { background: #ffedd5; color: #c2410c; }
+  .ptag-purple { background: #ede9fe; color: #6d28d9; }
+  [data-theme$="-dark"] .due-toggle { border-color: #30363d; }
+  [data-theme$="-dark"] .due-toggle label { background: #0d1117; color: #c9d1d9; border-color: #30363d; }
+  [data-theme$="-dark"] .due-toggle label:has(input:checked) { background: #007AFF; color: #fff; }
+  [data-theme$="-dark"] .ptag-gray { background: #30363d; color: #8b949e; }
+  [data-theme$="-dark"] .ptag-blue { background: #1e3a5f; color: #58a6ff; }
+  [data-theme$="-dark"] .ptag-green { background: #0d3320; color: #6fcf97; }
+  [data-theme$="-dark"] .ptag-orange { background: #3d2200; color: #fb923c; }
+  [data-theme$="-dark"] .ptag-purple { background: #2d1b69; color: #a78bfa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 4px;">
+  <a href="/projects/{{ project.id }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; {{ project.title }}</a>
+</div>
+
+<h1 style="font-size: 22px; margin-bottom: 16px;">Редактировать задачу</h1>
+
+{% if error %}
+<div class="notice-error" style="padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 13px;">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="/projects/{{ project.id }}/tasks/{{ task.task_id }}/edit" class="card" style="padding: 20px; max-width: 600px;">
+  {# Title #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Название задачи</label>
+    <input name="title" type="text" required value="{{ task.title }}"
+           style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+  </div>
+
+  {# Board status #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Колонка</label>
+    <select name="board_status"
+            style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      {% for col in board_columns %}
+      <option value="{{ col.key }}" {{ 'selected' if task.board_status == col.key }}>{{ col.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {# Category #}
+  {% if work_categories %}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Категория</label>
+    <select name="category_id"
+            style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      <option value="">Без категории</option>
+      {% for c in work_categories %}
+      <option value="{{ c.category_id }}" {{ 'selected' if task.category_id == c.category_id }}>{{ c.title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  {# Due kind toggle #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Срок</label>
+    <input type="hidden" name="due_kind" id="dueKindInput" value="{{ task.due_kind or 'NONE' }}">
+    <div class="due-toggle">
+      <label onclick="setDueKind('NONE')"><input type="radio" name="_dk" {{ 'checked' if (task.due_kind or 'NONE') == 'NONE' }}><span>Без срока</span></label>
+      <label onclick="setDueKind('DATE')"><input type="radio" name="_dk" {{ 'checked' if task.due_kind == 'DATE' }}><span>Дата</span></label>
+      <label onclick="setDueKind('DATETIME')"><input type="radio" name="_dk" {{ 'checked' if task.due_kind == 'DATETIME' }}><span>Дата и время</span></label>
+    </div>
+  </div>
+
+  {# Date field #}
+  <div id="dueDateBlock" style="margin-bottom: 16px; {{ 'display: none;' if (task.due_kind or 'NONE') == 'NONE' }}">
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 160px;">
+        <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Дата</label>
+        <input name="due_date" type="date" id="dueDateInput" value="{{ task.due_date.isoformat() if task.due_date else '' }}"
+               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      </div>
+      <div id="dueTimeBlock" style="flex: 1; min-width: 120px; {{ '' if task.due_kind == 'DATETIME' else 'display: none;' }}">
+        <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Время</label>
+        <input name="due_time" type="time" id="dueTimeInput" value="{{ task.due_time.strftime('%H:%M') if task.due_time else '' }}"
+               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary);">
+      </div>
+    </div>
+  </div>
+
+  {# Tags #}
+  {% if project.project_tags %}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Теги</label>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+      {% for pt in project.project_tags %}
+      <span class="ptag ptag-{{ pt.color or 'gray' }}" style="padding: 3px 8px; font-size: 12px; cursor: pointer; {{ 'opacity: 0.35;' if pt.id not in task_tag_ids }}" onclick="toggleTag(this, {{ pt.id }})" data-tag-id="{{ pt.id }}" data-active="{{ 'true' if pt.id in task_tag_ids else 'false' }}">{{ pt.name }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Note #}
+  <div style="margin-bottom: 16px;">
+    <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">Заметка</label>
+    <textarea name="note" rows="3" placeholder="Дополнительные детали..."
+              style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary); resize: vertical;">{{ task.note or '' }}</textarea>
+  </div>
+
+  {# Buttons #}
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <button type="submit" style="padding: 8px 24px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Сохранить</button>
+    <a href="/projects/{{ project.id }}" style="font-size: 14px; color: var(--text-secondary, #888); text-decoration: none;">Отмена</a>
+  </div>
+</form>
+
+<script>
+function setDueKind(kind) {
+  document.getElementById('dueKindInput').value = kind;
+  document.getElementById('dueDateBlock').style.display = (kind === 'NONE') ? 'none' : '';
+  document.getElementById('dueTimeBlock').style.display = (kind === 'DATETIME') ? '' : 'none';
+}
+
+function toggleTag(el, tagId) {
+  var isActive = el.dataset.active === 'true';
+  var action = isActive ? 'remove' : 'add';
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/projects/{{ project.id }}/tasks/{{ task.task_id }}/tags/' + action;
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'project_tag_id';
+  input.value = tagId;
+  form.appendChild(input);
+  // Add redirect back to edit page
+  var redir = document.createElement('input');
+  redir.type = 'hidden';
+  redir.name = 'redirect';
+  redir.value = '/projects/{{ project.id }}/tasks/{{ task.task_id }}/edit';
+  form.appendChild(redir);
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
+{% endblock %}

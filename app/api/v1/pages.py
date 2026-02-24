@@ -25,7 +25,7 @@ from app.infrastructure.db.models import (
     TaskRescheduleReason, TaskDueChangeLog,
     GoalInfo, GoalWalletBalance,
     BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
-    ProjectModel,
+    ProjectModel, ProjectTagModel, TaskProjectTagModel,
     ArticleModel, ArticleLinkModel,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
@@ -279,10 +279,13 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     # Events today (separate, not in progress)
     focus_today_events = _events_all[:_FOCUS_MAX_EVENTS]
     focus_today_events_overflow = len(_events_all) > _FOCUS_MAX_EVENTS
-    # Habits (active only, as before)
+    # Habits (active — not yet done today)
     focus_habits_all = [i for i in _active_all if i["kind"] == "habit"]
     focus_habits = focus_habits_all[:_FOCUS_MAX_TASKS]
     focus_habits_overflow = len(focus_habits_all) > _FOCUS_MAX_TASKS
+    # Habits (done today — for motivation)
+    focus_habits_done_all = [i for i in _done_all if i["kind"] == "habit"]
+    focus_habits_done = focus_habits_done_all[:_FOCUS_MAX_TASKS]
     # Progress: tasks only (events excluded)
     focus_done_count = today_block["progress"]["done"]
     focus_total_count = today_block["progress"]["total"]
@@ -408,6 +411,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "focus_today_events_overflow": focus_today_events_overflow,
         "focus_habits": focus_habits,
         "focus_habits_overflow": focus_habits_overflow,
+        "focus_habits_done": focus_habits_done,
         "focus_done_count": focus_done_count,
         "focus_total_count": focus_total_count,
         # Event feed for #dash-feed
@@ -3545,6 +3549,115 @@ def project_task_quick_add(
     return RedirectResponse(f"/projects/{project_id}", status_code=302)
 
 
+@router.get("/projects/{project_id}/tasks/{task_id}/edit", response_class=HTMLResponse)
+def project_task_edit_form(
+    request: Request, project_id: int, task_id: int, db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    svc = ProjectReadService(db)
+    detail = svc.get_project_detail(project_id, user_id)
+    if not detail:
+        return RedirectResponse("/projects", status_code=302)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+        TaskModel.project_id == project_id,
+    ).first()
+    if not task:
+        return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+    ).order_by(WorkCategory.title).all()
+    columns = get_board_columns(
+        db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
+    )
+    # Load task's project tags
+    task_tag_rows = (
+        db.query(TaskProjectTagModel)
+        .filter(TaskProjectTagModel.task_id == task_id)
+        .all()
+    )
+    task_tag_ids = {r.project_tag_id for r in task_tag_rows}
+    return templates.TemplateResponse("project_task_edit.html", {
+        "request": request,
+        "project": detail,
+        "task": task,
+        "work_categories": work_categories,
+        "board_columns": columns,
+        "task_tag_ids": task_tag_ids,
+        "error": None,
+    })
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/edit")
+def project_task_edit(
+    request: Request,
+    project_id: int,
+    task_id: int,
+    title: str = Form(""),
+    note: str = Form(""),
+    due_kind: str = Form("NONE"),
+    due_date: str = Form(""),
+    due_time: str = Form(""),
+    category_id: int | None = Form(None),
+    board_status: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    try:
+        changes: dict = {"title": title.strip()}
+        if not changes["title"]:
+            raise TaskValidationError("Название задачи не может быть пустым")
+        changes["note"] = note.strip() or None
+        changes["due_kind"] = due_kind.strip() or "NONE"
+        changes["due_date"] = due_date.strip() or None
+        changes["due_time"] = due_time.strip() or None
+        changes["category_id"] = category_id
+        UpdateTaskUseCase(db).execute(
+            task_id=task_id, account_id=user_id, actor_user_id=user_id,
+            **changes,
+        )
+        # Update board status if changed
+        if board_status.strip():
+            ChangeTaskBoardStatusUseCase(db).execute(task_id, user_id, board_status.strip())
+        return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    except (TaskValidationError, ProjectValidationError, DueSpecValidationError) as e:
+        svc = ProjectReadService(db)
+        detail = svc.get_project_detail(project_id, user_id)
+        if not detail:
+            return RedirectResponse("/projects", status_code=302)
+        task = db.query(TaskModel).filter(
+            TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+        ).first()
+        if not task:
+            return RedirectResponse(f"/projects/{project_id}", status_code=302)
+        work_categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+        ).order_by(WorkCategory.title).all()
+        columns = get_board_columns(
+            db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
+        )
+        task_tag_rows = (
+            db.query(TaskProjectTagModel)
+            .filter(TaskProjectTagModel.task_id == task_id)
+            .all()
+        )
+        task_tag_ids = {r.project_tag_id for r in task_tag_rows}
+        return templates.TemplateResponse("project_task_edit.html", {
+            "request": request,
+            "project": detail,
+            "task": task,
+            "work_categories": work_categories,
+            "board_columns": columns,
+            "task_tag_ids": task_tag_ids,
+            "error": str(e),
+        })
+
+
 @router.post("/tasks/{task_id}/assign")
 def task_assign_to_project(
     request: Request,
@@ -3675,6 +3788,7 @@ def task_tag_add(
     project_id: int,
     task_id: int,
     project_tag_id: int = Form(0),
+    redirect: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -3685,7 +3799,7 @@ def task_tag_add(
             AddTagToTaskUseCase(db).execute(task_id, project_tag_id, project_id, user_id)
         except ProjectValidationError:
             pass
-    return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    return RedirectResponse(redirect or f"/projects/{project_id}", status_code=302)
 
 
 @router.post("/projects/{project_id}/tasks/{task_id}/tags/remove")
@@ -3694,6 +3808,7 @@ def task_tag_remove(
     project_id: int,
     task_id: int,
     project_tag_id: int = Form(0),
+    redirect: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -3704,7 +3819,7 @@ def task_tag_remove(
             RemoveTagFromTaskUseCase(db).execute(task_id, project_tag_id, project_id, user_id)
         except ProjectValidationError:
             pass
-    return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    return RedirectResponse(redirect or f"/projects/{project_id}", status_code=302)
 
 
 # === Knowledge Base ===
@@ -3994,6 +4109,7 @@ def create_habit_form(
     level: int = Form(1),
     note: str = Form(""),
     active_until: str = Form(""),
+    reminder_time: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -4006,12 +4122,14 @@ def create_habit_form(
             selected_days.append(code)
     by_weekday = ",".join(selected_days) if selected_days else None
 
+    parsed_reminder_time = reminder_time.strip() if reminder_time.strip() else None
+
     try:
         CreateHabitUseCase(db).execute(
             account_id=user_id, title=title, freq=freq, interval=interval,
             start_date=start_date, note=note.strip() or None, category_id=category_id,
             by_weekday=by_weekday, by_monthday=by_monthday if freq == "MONTHLY" else None,
-            level=level, actor_user_id=user_id,
+            level=level, reminder_time=parsed_reminder_time, actor_user_id=user_id,
             active_until=active_until.strip() or None,
         )
     except (HabitValidationError, Exception) as e:
@@ -4485,12 +4603,40 @@ def subscriptions_list(
     sub_ids = [s.id for s in subs]
     overview_map = compute_subscriptions_overview(db, user_id, sub_ids)
 
+    # Upcoming expirations (within 30 days or already expired) — active view only
+    upcoming_expirations = []
+    if view != "archived":
+        sub_name_map = {s.id: s.name for s in subs}
+        for sub_id, ov in overview_map.items():
+            name = sub_name_map.get(sub_id, "?")
+            si = ov.get("self")
+            if si and si.get("paid_until"):
+                dl = si["days_left"]
+                if dl <= 30:
+                    upcoming_expirations.append({
+                        "sub_id": sub_id, "name": name,
+                        "who": "Ты", "paid_until": si["paid_until"],
+                        "days_left": dl, "expired": si.get("expired", False),
+                    })
+            for mi in ov.get("members", []):
+                if mi.get("has_data") and mi.get("paid_until"):
+                    dl = mi["days_left"]
+                    if dl <= 30:
+                        upcoming_expirations.append({
+                            "sub_id": sub_id, "name": name,
+                            "who": mi["contact_name"],
+                            "paid_until": mi["paid_until"],
+                            "days_left": dl, "expired": mi.get("expired", False),
+                        })
+        upcoming_expirations.sort(key=lambda x: x["paid_until"])
+
     return templates.TemplateResponse("subscriptions_list.html", {
         "request": request,
         "subs": subs,
         "cat_map": cat_map,
         "member_counts": member_counts,
         "overview_map": overview_map,
+        "upcoming_expirations": upcoming_expirations,
         "view": view,
         "q": q,
     })

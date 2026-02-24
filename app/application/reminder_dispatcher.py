@@ -15,6 +15,7 @@ from app.infrastructure.db.models import (
     TaskModel, TaskReminderModel,
     EventOccurrenceModel, EventReminderModel,
     CalendarEventModel, PushSubscription, User,
+    HabitModel, HabitOccurrence,
 )
 from app.application.push_service import send_push_to_user
 
@@ -33,6 +34,7 @@ def dispatch_due_reminders(db: Session) -> int:
 
     total_sent += _dispatch_task_reminders(db, now_msk)
     total_sent += _dispatch_event_reminders(db, now_msk)
+    total_sent += _dispatch_habit_reminders(db, now_msk)
 
     return total_sent
 
@@ -140,6 +142,54 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                 "title": f"📅 {title}",
                 "body": f"Сегодня в {time_str}" if time_str else "Сегодня",
                 "url": "/events",
+            })
+            sent += n
+
+    return sent
+
+
+def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
+    """Send push for habit reminders that are due today."""
+    sent = 0
+    today = now_msk.date()
+
+    # Find active habits with a reminder_time set
+    habits = (
+        db.query(HabitModel)
+        .filter(
+            HabitModel.is_archived == False,
+            HabitModel.reminder_time.isnot(None),
+        )
+        .all()
+    )
+
+    if not habits:
+        return 0
+
+    habit_ids = [h.habit_id for h in habits]
+
+    # Find today's ACTIVE occurrences for these habits (not yet done)
+    active_occs = (
+        db.query(HabitOccurrence)
+        .filter(
+            HabitOccurrence.habit_id.in_(habit_ids),
+            HabitOccurrence.scheduled_date == today,
+            HabitOccurrence.status == "ACTIVE",
+        )
+        .all()
+    )
+    active_habit_ids = {occ.habit_id for occ in active_occs}
+
+    for habit in habits:
+        if habit.habit_id not in active_habit_ids:
+            continue
+
+        fire_at = datetime.combine(today, habit.reminder_time, tzinfo=MSK)
+        if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+            n = send_push_to_user(db, habit.account_id, {
+                "title": f"\U0001f504 {habit.title}",
+                "body": "Пора выполнить привычку",
+                "url": "/habits",
             })
             sent += n
 
