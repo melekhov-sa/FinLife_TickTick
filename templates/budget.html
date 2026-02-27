@@ -360,8 +360,8 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
 {# Precompute section totals for summary lines #}
 {% set _income_plan_total = view.income_totals.total.plan + (view.withdrawal_totals.total.plan if view.withdrawal_rows else 0) %}
 {% set _income_fact_total = view.income_totals.total.fact + (view.withdrawal_totals.total.fact if view.withdrawal_rows else 0) %}
-{% set _expense_plan_total = view.expense_totals.total.plan + (view.credit_row.total.plan if view.credit_row else 0) + (view.goal_totals.total.plan if view.goal_rows else 0) %}
-{% set _expense_fact_total = view.expense_totals.total.fact + (view.credit_row.total.fact if view.credit_row else 0) + (view.goal_totals.total.fact if view.goal_rows else 0) %}
+{% set _expense_plan_total = view.expense_totals.total.plan + (view.goal_totals.total.plan if view.goal_rows else 0) %}
+{% set _expense_fact_total = view.expense_totals.total.fact + (view.goal_totals.total.fact if view.goal_rows else 0) %}
 
 <div class="card">
   <div class="matrix-scroll-wrapper">
@@ -608,8 +608,8 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
           {% if _p.is_past %}
-          <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
+          <td class="text-right compact-cell period-border{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
+          <td class="text-right compact-cell {% if row.is_credit %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% else %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
@@ -620,18 +620,18 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
             link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
-          <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
+          <td class="text-right compact-cell{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
-          <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
+          <td class="text-right compact-cell {% if row.is_credit %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% else %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% endif %}
           {% else %}
-          {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
+          {% if not _p.is_future %}<td class="text-right compact-cell{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
           {% if show_plan %}
           <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
           {% endif %}
-          <td class="text-right total-cell {% if show_plan %}{% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
+          <td class="text-right total-cell {% if row.is_credit %}{% if row.total.fact > 0 %}positive{% endif %}{% elif show_plan %}{% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
         </tr>
         {% endfor %}
         <!-- Прочие расходы -->
@@ -662,41 +662,6 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right total-cell">{{ fmt_or_dash(oe.total.fact) }}</td>
         </tr>
         {% endif %}
-        <!-- Погашение кредитов (inside expenses) -->
-        {% if view.credit_row %}
-        <tr class="bgt-section-body" data-section="expense" data-cat-id="{{ view.credit_row.category_id }}" data-par-id="">
-          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>Погашение кредитов</td>
-          {% for cell in view.credit_row.cells %}
-          {% set _p = view.periods[loop.index0] %}
-          {% if show_plan %}
-          {% if _p.is_past %}
-          <td class="text-right compact-cell period-border {% if cell.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
-          {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
-            if grain == "month" else None
-          ) }}</td>
-          {% else %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
-            if grain == "month" else None
-          ) }}</td>
-          <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
-          <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
-          {% endif %}
-          {% else %}
-          {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
-          {% endif %}
-          {% endfor %}
-          {% if show_plan %}
-          <td class="text-right total-cell period-border">{{ plan_cell(view.credit_row.total) }}</td>
-          {% endif %}
-          <td class="text-right total-cell {% if view.credit_row.total.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(view.credit_row.total.fact) }}</td>
-        </tr>
-        {% endif %}
-
         <!-- ══════════════════════════════════════════════ -->
         <!-- ── ОТЛОЖИТЬ (open by default) ────────────── -->
         <!-- ══════════════════════════════════════════════ -->
@@ -771,8 +736,8 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="sticky-col">ИТОГО расходы</td>
           {% for cell in view.expense_totals.cells %}
           {% set _p = view.periods[loop.index0] %}
-          {% set _plan = cell.plan + (view.credit_row.cells[loop.index0].plan if view.credit_row else 0) + (view.goal_totals.cells[loop.index0].plan if view.goal_rows else 0) %}
-          {% set _fact = cell.fact + (view.credit_row.cells[loop.index0].fact if view.credit_row else 0) + (view.goal_totals.cells[loop.index0].fact if view.goal_rows else 0) %}
+          {% set _plan = cell.plan + (view.goal_totals.cells[loop.index0].plan if view.goal_rows else 0) %}
+          {% set _fact = cell.fact + (view.goal_totals.cells[loop.index0].fact if view.goal_rows else 0) %}
           {% if show_plan %}
           {% if _p.is_past %}
           <td class="text-right compact-cell period-border">{{ fmt(_fact) }}</td>

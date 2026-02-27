@@ -84,13 +84,7 @@ class BudgetMatrixService:
             CategoryInfo.account_id == account_id,
         ).all()
 
-        active_income = [c for c in all_categories if c.category_type == "INCOME" and not c.is_archived and not c.is_system]
-        active_expense = [c for c in all_categories if c.category_type == "EXPENSE" and not c.is_archived and not c.is_system]
-
-        if hidden_category_ids:
-            active_income = [c for c in active_income if c.category_id not in hidden_category_ids]
-            active_expense = [c for c in active_expense if c.category_id not in hidden_category_ids]
-
+        # Find system category IDs first so we can include credit in expense rows
         system_other_income_id = None
         system_other_expense_id = None
         system_credit_repayment_id = None
@@ -103,6 +97,18 @@ class BudgetMatrixService:
                 system_credit_repayment_id = c.category_id
             elif c.category_type == "EXPENSE":
                 system_other_expense_id = c.category_id
+
+        active_income = [c for c in all_categories if c.category_type == "INCOME" and not c.is_archived and not c.is_system]
+        # Include the credit repayment category so it sorts by sort_order alongside regular expenses
+        active_expense = [
+            c for c in all_categories
+            if c.category_type == "EXPENSE" and not c.is_archived
+            and (not c.is_system or c.category_id == system_credit_repayment_id)
+        ]
+
+        if hidden_category_ids:
+            active_income = [c for c in active_income if c.category_id not in hidden_category_ids]
+            active_expense = [c for c in active_expense if c.category_id not in hidden_category_ids]
 
         # --- Data aggregation (single query per source) ---
         fact_map = self._aggregate_fact_bucketed(account_id, periods)
@@ -153,6 +159,7 @@ class BudgetMatrixService:
                 "category_id": cat.category_id,
                 "title": cat.title,
                 "is_system": cat.is_system,
+                "is_credit": cat.category_id == system_credit_repayment_id,
                 "kind": kind,
                 "parent_id": cat.parent_id,
                 "depth": 0 if (cat.parent_id is None or (hidden_category_ids and cat.parent_id in hidden_category_ids)) else 1,
@@ -222,11 +229,8 @@ class BudgetMatrixService:
             account_id, periods, n, has_manual, base_granularity, budget_variant_id, hidden_goal_ids,
         )
 
-        # --- Credit repayment section ---
-        credit_row, credit_totals = self._build_credit_section(
-            account_id, periods, n, has_manual, manual_map, note_map,
-            system_credit_repayment_id, hidden_category_ids,
-        )
+        # Credit repayment is now included in expense_rows (sorted by sort_order)
+        credit_row = None
 
         # --- Withdrawal (SAVINGS→REGULAR) section ---
         withdrawal_rows, withdrawal_totals = self._build_withdrawal_section(
@@ -247,7 +251,6 @@ class BudgetMatrixService:
             "goal_rows": goal_rows,
             "goal_totals": goal_totals,
             "credit_row": credit_row,
-            "credit_totals": credit_totals,
             "withdrawal_rows": withdrawal_rows,
             "withdrawal_totals": withdrawal_totals,
         }
