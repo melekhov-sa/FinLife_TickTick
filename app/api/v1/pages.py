@@ -2881,6 +2881,27 @@ def archive_task_form(request: Request, task_id: int, db: Session = Depends(get_
     return RedirectResponse("/tasks", status_code=302)
 
 
+@router.post("/tasks/{task_id}/set-due-date")
+async def set_task_due_date(request: Request, task_id: int, db: Session = Depends(get_db)):
+    """Set or update due_date for a task (used from the 'no due date' section)."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if task:
+        raw = form.get("due_date", "").strip()
+        if raw:
+            try:
+                task.due_date = date.fromisoformat(raw)
+                db.commit()
+            except ValueError:
+                pass
+    return RedirectResponse("/tasks", status_code=303)
+
+
 @router.get("/tasks/{task_id}/reminders", response_class=HTMLResponse)
 def task_reminders_page(request: Request, task_id: int, db: Session = Depends(get_db)):
     if not require_user(request):

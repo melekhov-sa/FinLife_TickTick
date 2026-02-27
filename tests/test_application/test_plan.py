@@ -204,12 +204,12 @@ class TestOneoffTasks:
         items = [it for g in view["day_groups"] for it in g["entries"]]
         assert len(items) == 0
 
-    def test_task_no_due_date_in_today(self, db_session):
+    def test_task_no_due_date_excluded_from_plan(self, db_session):
+        """Task without due_date is NOT shown in plan view (only in tasks 'no date' section)."""
         _add_task(db_session, 1, due_date=None)
         view = build_plan_view(db_session, ACCOUNT, TODAY, tab="active", range_days=1)
         items = [it for g in view["day_groups"] for it in g["entries"]]
-        assert len(items) == 1
-        assert items[0]["date"] == TODAY
+        assert len(items) == 0
 
 
 # ============================================================================

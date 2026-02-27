@@ -121,14 +121,12 @@ def _query_oneoff_tasks(
     items: list[dict] = []
 
     if tab == "active":
-        # In-range: due_date between date_from and date_to, OR due_date IS NULL
+        # In-range: due_date between date_from and date_to (tasks without due_date excluded)
         rows = db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
-            or_(
-                and_(TaskModel.due_date >= date_from, TaskModel.due_date <= date_to),
-                TaskModel.due_date == None,  # noqa: E711
-            ),
+            TaskModel.due_date >= date_from,
+            TaskModel.due_date <= date_to,
         ).all()
         for t in rows:
             items.append(_task_to_item(t, today, wc_map))
@@ -595,11 +593,11 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
 
     # --- today_count: active items for today ---
     tc = 0
-    # one-off tasks: active, due_date == today or NULL
+    # one-off tasks: active, due_date == today
     tc += db.query(func.count(TaskModel.task_id)).filter(
         TaskModel.account_id == account_id,
         TaskModel.status == "ACTIVE",
-        or_(TaskModel.due_date == today, TaskModel.due_date == None),  # noqa: E711
+        TaskModel.due_date == today,
     ).scalar() or 0
     # task occurrences for today, active, non-archived template
     task_occ_today = db.query(TaskOccurrence).filter(
@@ -650,10 +648,8 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
     wc += db.query(func.count(TaskModel.task_id)).filter(
         TaskModel.account_id == account_id,
         TaskModel.status == "ACTIVE",
-        or_(
-            and_(TaskModel.due_date >= today, TaskModel.due_date <= week_end),
-            TaskModel.due_date == None,  # noqa: E711
-        ),
+        TaskModel.due_date >= today,
+        TaskModel.due_date <= week_end,
     ).scalar() or 0
     task_occ_week = db.query(TaskOccurrence).filter(
         TaskOccurrence.account_id == account_id,

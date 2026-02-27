@@ -114,11 +114,11 @@ class DashboardService:
         for t in rows:
             overdue.append(self._task_item(t, today, wc_map, is_overdue=True))
 
-        # Active today: due_date == today or due_date is NULL
+        # Active today: due_date == today only (tasks without due_date excluded)
         rows = self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
-            or_(TaskModel.due_date == today, TaskModel.due_date == None),  # noqa: E711
+            TaskModel.due_date == today,
         ).all()
         for t in rows:
             active.append(self._task_item(t, today, wc_map, is_overdue=False))

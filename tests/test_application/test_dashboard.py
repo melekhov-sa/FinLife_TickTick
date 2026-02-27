@@ -211,10 +211,10 @@ class TestTodayBlockActive:
         assert block["active"][0]["title"] == "Today task"
 
     def test_active_task_no_due_date(self, db_session):
-        """Task without due_date → active today."""
+        """Task without due_date → NOT shown in today block (appears only in tasks 'no date' section)."""
         _add_task(db_session, 1, due_date=None, title="No-date task")
         block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
-        assert len(block["active"]) == 1
+        assert len(block["active"]) == 0
 
     def test_active_event_today(self, db_session):
         """Event with start_date == today → separate events list (not active)."""

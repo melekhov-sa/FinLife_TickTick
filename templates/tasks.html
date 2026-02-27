@@ -680,7 +680,27 @@ details.card[open] > summary .nav-chevron {
   </summary>
   <div style="margin-top: 12px;">
     {% for task in no_date_tasks %}
-      {{ task_row(task) }}
+    <div class="tsk-row">
+      <form id="frm-c-nd-{{ task.task_id }}" method="POST" action="/tasks/{{ task.task_id }}/complete" style="display:none;"></form>
+      <form id="frm-a-nd-{{ task.task_id }}" method="POST" action="/tasks/{{ task.task_id }}/archive" style="display:none;"></form>
+      <input type="checkbox" class="tsk-check"
+             onchange="tskConfirmComplete(this, 'frm-c-nd-{{ task.task_id }}')">
+      <div class="tsk-info">
+        <span class="tsk-title">{{ task.title }}</span>
+        {% if task.note %}<span class="tsk-note muted">{{ task.note }}</span>{% endif %}
+      </div>
+      <div class="tsk-meta">
+        <form method="POST" action="/tasks/{{ task.task_id }}/set-due-date"
+              style="display: flex; align-items: center; gap: 4px;">
+          <input type="date" name="due_date" required
+                 style="padding: 3px 6px; border: 1px solid var(--border-color,#ddd); border-radius: 6px; font-size: 12px; color: var(--text-primary,#111); background: var(--bg-input,#fff);">
+          <button type="submit" title="Назначить срок"
+                  style="padding: 3px 8px; font-size: 12px; border-radius: 6px; border: 1px solid var(--accent,#007AFF); background: none; color: var(--accent,#007AFF); cursor: pointer; white-space: nowrap;">→ Срок</button>
+        </form>
+        <a href="/tasks/{{ task.task_id }}/reminders" class="tsk-bell" title="Напоминания">&#128276;</a>
+        <button type="button" class="tsk-del" onclick="tskConfirmArchive('frm-a-nd-{{ task.task_id }}')" title="Убрать">&#x2715;</button>
+      </div>
+    </div>
     {% endfor %}
   </div>
 </details>
