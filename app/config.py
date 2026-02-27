@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     VAPID_PRIVATE_KEY: str = ""
     VAPID_MAILTO: str = "mailto:admin@finlife.app"
 
+    # Telegram Bot (for notification delivery)
+    TELEGRAM_BOT_TOKEN: str = ""
+
+    # Email (SMTP stub — configure to activate)
+    EMAIL_SMTP_HOST: str = ""
+    EMAIL_SMTP_PORT: int = 587
+    EMAIL_SMTP_USER: str = ""
+    EMAIL_SMTP_PASSWORD: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

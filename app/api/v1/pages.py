@@ -30,6 +30,12 @@ from app.infrastructure.db.models import (
     ProjectModel, ProjectTagModel, TaskProjectTagModel,
     ArticleModel, ArticleLinkModel,
     EfficiencySnapshot,
+    NotificationModel,
+    NotificationDelivery,
+    NotificationRule,
+    UserNotificationSettings,
+    TelegramSettings,
+    EmailSettings,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -198,6 +204,8 @@ def _resolve_current_page(request: Request) -> str:
         ("/task-presets",     "task-presets"),
         ("/task-reschedule-reasons", "task-reschedule-reasons"),
         ("/knowledge",        "knowledge"),
+        ("/notifications",    "notifications"),
+        ("/settings/notifications", "notifications"),
         ("/profile",          "profile"),
         ("/admin",            "admin"),
     ]
@@ -8452,3 +8460,130 @@ def save_reschedule_reasons_setting(
         db.commit()
 
     return RedirectResponse("/profile", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+@router.get("/notifications", response_class=HTMLResponse)
+async def notifications_page(request: Request, db: Session = Depends(get_db)):
+    """Notification list — marks all as read on visit."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    items = (
+        db.query(NotificationModel)
+        .filter_by(user_id=user_id)
+        .order_by(NotificationModel.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    # Mark all as read
+    db.query(NotificationModel).filter_by(user_id=user_id, is_read=False).update({"is_read": True})
+    db.commit()
+    return templates.TemplateResponse(
+        "notifications.html", {"request": request, "items": items}
+    )
+
+
+@router.get("/api/notifications/badge")
+async def notifications_badge(request: Request, db: Session = Depends(get_db)):
+    """Return unread notification count for the badge JS."""
+    if "user_id" not in request.session:
+        return JSONResponse({"unread": 0})
+    user_id = request.session["user_id"]
+    count = db.query(NotificationModel).filter_by(user_id=user_id, is_read=False).count()
+    return JSONResponse({"unread": count})
+
+
+@router.get("/settings/notifications", response_class=HTMLResponse)
+async def notification_settings_page(request: Request, db: Session = Depends(get_db)):
+    """Notification settings + Telegram setup."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    s = db.query(UserNotificationSettings).filter_by(user_id=user_id).first()
+    tg = db.query(TelegramSettings).filter_by(user_id=user_id).first()
+    rules = db.query(NotificationRule).order_by(NotificationRule.id).all()
+    flash = request.session.pop("notif_flash", None)
+    return templates.TemplateResponse(
+        "notification_settings.html",
+        {"request": request, "s": s, "tg": tg, "rules": rules, "flash": flash},
+    )
+
+
+@router.post("/settings/notifications", response_class=HTMLResponse)
+async def notification_settings_save(request: Request, db: Session = Depends(get_db)):
+    """Save notification preferences."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+
+    s = db.query(UserNotificationSettings).filter_by(user_id=user_id).first()
+    if not s:
+        s = UserNotificationSettings(user_id=user_id)
+        db.add(s)
+
+    s.enabled = "enabled" in form
+    s.quiet_start = form.get("quiet_start") or None
+    s.quiet_end = form.get("quiet_end") or None
+    s.channels_json = {
+        "inapp": True,
+        "telegram": "ch_telegram" in form,
+        "email": "ch_email" in form,
+    }
+    db.commit()
+    request.session["notif_flash"] = "Настройки сохранены"
+    return RedirectResponse("/settings/notifications", status_code=303)
+
+
+@router.post("/settings/notifications/telegram", response_class=HTMLResponse)
+async def telegram_connect(request: Request, db: Session = Depends(get_db)):
+    """Save or update user's Telegram chat_id."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+
+    tg = db.query(TelegramSettings).filter_by(user_id=user_id).first()
+    if not tg:
+        tg = TelegramSettings(user_id=user_id)
+        db.add(tg)
+
+    chat_id = form.get("chat_id", "").strip()
+    tg.chat_id = chat_id or None
+    tg.connected = bool(chat_id)
+    tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
+    db.commit()
+    return RedirectResponse("/settings/notifications", status_code=303)
+
+
+# ── Goals reorder ────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel as _BaseModel
+
+
+class _GoalReorderItem(_BaseModel):
+    goal_id: int
+    sort_order: int
+
+
+class _GoalReorderRequest(_BaseModel):
+    items: list[_GoalReorderItem]
+
+
+@router.post("/api/v1/goals/reorder")
+def reorder_goals(request: Request, req: _GoalReorderRequest, db: Session = Depends(get_db)):
+    """Update sort_order for goal rows (used by budget drag-and-drop)."""
+    if not require_user(request):
+        return JSONResponse({"error": "unauthenticated"}, status_code=401)
+    user_id = request.session["user_id"]
+    for item in req.items:
+        db.query(GoalInfo).filter(
+            GoalInfo.goal_id == item.goal_id,
+            GoalInfo.account_id == user_id,
+        ).update({"sort_order": item.sort_order})
+    db.commit()
+    return JSONResponse({"ok": True})

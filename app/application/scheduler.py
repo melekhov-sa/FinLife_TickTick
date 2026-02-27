@@ -5,6 +5,8 @@ Jobs:
   - Morning digest (08:00 MSK / 05:00 UTC)
   - Evening digest (21:00 MSK / 18:00 UTC)
   - Reminder dispatcher (every 2 minutes)
+  - Subscription notifications (09:00 MSK / 06:00 UTC)
+  - Notification engine (09:30 MSK / 06:30 UTC)
 """
 import logging
 
@@ -72,6 +74,21 @@ def _run_subscription_notifications():
         db.close()
 
 
+def _run_notification_engine():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.notification_engine import NotificationEngine, dispatch_pending_deliveries
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        NotificationEngine(db).run()
+        dispatch_pending_deliveries(db)
+    except Exception:
+        logger.exception("Notification engine job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     # Morning digest — 08:00 MSK (05:00 UTC)
@@ -107,8 +124,19 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Notification engine — 09:30 MSK (06:30 UTC)
+    scheduler.add_job(
+        _run_notification_engine,
+        CronTrigger(hour=6, minute=30),
+        id="notification_engine",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    logger.info("Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), reminders (every 2 min), sub_notifications (06:00 UTC)")
+    logger.info(
+        "Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), "
+        "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC)"
+    )
 
 
 def shutdown_scheduler():

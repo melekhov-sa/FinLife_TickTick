@@ -39,6 +39,13 @@
       <a href="/efficiency" class="nav-link nav-primary{% if cp == 'efficiency' %} active{% endif %}">
         <span class="nav-icon">⚡</span>Эффективность
       </a>
+      <a href="/notifications" class="nav-link nav-primary{% if cp == 'notifications' %} active{% endif %}" style="position:relative;">
+        <span class="nav-icon">🔔</span>Уведомления
+        <span id="notifBadge" style="display:none; position:absolute; top:6px; right:10px;
+          background:#dc3545; color:#fff; font-size:10px; font-weight:700;
+          min-width:16px; height:16px; padding:0 3px;
+          border-radius:8px; line-height:16px; text-align:center;"></span>
+      </a>
     </div>
 
     {# ── ФИНАНСЫ ── #}

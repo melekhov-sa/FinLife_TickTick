@@ -985,5 +985,23 @@ if ('serviceWorker' in navigator) {
 {% endif %}
 
 {% block scripts %}{% endblock %}
+
+{# ── Notification badge — async fetch to avoid adding to every page handler ── #}
+<script>
+(function() {
+  fetch('/api/notifications/badge', {credentials: 'same-origin'})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.unread > 0) {
+        var b = document.getElementById('notifBadge');
+        if (b) {
+          b.textContent = d.unread > 99 ? '99+' : d.unread;
+          b.style.display = 'inline-block';
+        }
+      }
+    })
+    .catch(function() {});
+})();
+</script>
 </body>
 </html>

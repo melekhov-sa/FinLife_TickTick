@@ -904,6 +904,7 @@ class GoalInfo(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     target_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
@@ -1469,3 +1470,89 @@ class TaskProjectTagModel(Base):
         Integer, ForeignKey("project_tags.id", ondelete="CASCADE"),
         nullable=False, primary_key=True, index=True,
     )
+
+
+# ============================================================================
+# Notification Engine
+# ============================================================================
+
+class NotificationRule(Base):
+    """Rule registry — each row defines one notification rule type."""
+    __tablename__ = "notification_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    params_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
+
+
+class NotificationModel(Base):
+    """One notification record per distinct event occurrence (deduped per day)."""
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    rule_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="info")
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    body_inapp: Mapped[str] = mapped_column(Text, nullable=False)
+    body_telegram: Mapped[str] = mapped_column(Text, nullable=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NotificationDelivery(Base):
+    """Per-channel delivery tracking for each notification."""
+    __tablename__ = "notification_deliveries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notification_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False
+    )
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    sent_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (UniqueConstraint("notification_id", "channel", name="uq_delivery_channel"),)
+
+
+class UserNotificationSettings(Base):
+    """Per-user notification preferences and quiet hours."""
+    __tablename__ = "user_notification_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    quiet_start: Mapped[time_type | None] = mapped_column(Time, nullable=True)
+    quiet_end: Mapped[time_type | None] = mapped_column(Time, nullable=True)
+    channels_json: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, default={"inapp": True, "telegram": False, "email": False}
+    )
+
+
+class TelegramSettings(Base):
+    """User's Telegram chat_id for notification delivery."""
+    __tablename__ = "telegram_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    connected_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class EmailSettings(Base):
+    """User's email settings for notification delivery (stub)."""
+    __tablename__ = "email_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

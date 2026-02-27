@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Уведомления — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .notif-page { max-width: 640px; margin: 0 auto; }
+  .notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .notif-header h1 { margin: 0; }
+  .notif-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color, #eee);
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+    padding-top: 2px;
+  }
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+  .notif-text { font-size: 13px; color: var(--text-secondary, #555); line-height: 1.4; }
+  .notif-date { font-size: 11px; color: var(--text-secondary, #999); margin-top: 4px; }
+  .severity-danger .notif-icon { color: #dc3545; }
+  .severity-warn .notif-icon { color: #d97706; }
+  .severity-info .notif-icon { color: #007AFF; }
+  .notif-empty { text-align: center; color: var(--text-secondary, #888); padding: 48px 0; font-size: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-page">
+  <div class="notif-header">
+    <h1>Уведомления</h1>
+    <a href="/settings/notifications" style="font-size: 13px; color: var(--accent, #007AFF); text-decoration: none;">
+      Настройки →
+    </a>
+  </div>
+
+  {% if items %}
+  <div class="card">
+    {% for n in items %}
+    <div class="notif-item severity-{{ n.severity }}">
+      <div class="notif-icon">
+        {% if n.severity == 'danger' %}🔴{% elif n.severity == 'warn' %}🟡{% else %}🔵{% endif %}
+      </div>
+      <div class="notif-body">
+        <div class="notif-title">{{ n.title }}</div>
+        <div class="notif-text">{{ n.body_inapp }}</div>
+        <div class="notif-date">{{ n.created_at.strftime('%d.%m.%Y %H:%M') if n.created_at else '' }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="notif-empty">Нет уведомлений</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

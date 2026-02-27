@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Настройки уведомлений — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ns-page { max-width: 560px; margin: 0 auto; }
+  .ns-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .ns-header h1 { margin: 0; }
+  .ns-back { font-size: 14px; color: var(--accent, #007AFF); text-decoration: none; }
+  .ns-section-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-secondary, #888);
+    margin-bottom: 12px;
+  }
+  .ns-field { margin-bottom: 14px; }
+  .ns-field label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+  .ns-field input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+  .ns-field input[type="time"] { padding: 6px 10px; border: 1px solid var(--border-color, #ddd); border-radius: 6px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary, #111); }
+  .ns-row { display: flex; gap: 8px; align-items: center; }
+  .ns-muted { font-size: 12px; color: var(--text-secondary, #888); margin-top: 4px; }
+  .ns-tg-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; margin-bottom: 12px;
+  }
+  .ns-tg-status.connected { color: #28a745; }
+  .ns-tg-status.disconnected { color: #888; }
+  .ns-rule-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border-color, #f0f0f0);
+    font-size: 14px;
+  }
+  .ns-rule-row:last-child { border-bottom: none; }
+  .ns-rule-status { font-size: 12px; color: #28a745; font-weight: 600; }
+  .ns-rule-status.off { color: #dc3545; }
+  .ns-flash { padding: 10px 14px; background: #d1fae5; color: #065f46; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ns-page">
+  <div class="ns-header">
+    <a href="/notifications" class="ns-back">← Уведомления</a>
+    <h1>Настройки</h1>
+  </div>
+
+  {% if flash %}
+  <div class="ns-flash">{{ flash }}</div>
+  {% endif %}
+
+  {# ── Main preferences ── #}
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="ns-section-title">Уведомления</div>
+    <form method="POST" action="/settings/notifications">
+      <div class="ns-field">
+        <label>
+          <input type="checkbox" name="enabled" {% if not s or s.enabled %}checked{% endif %}>
+          Включить уведомления
+        </label>
+      </div>
+
+      <div class="ns-section-title" style="margin-top: 16px;">Каналы</div>
+      <div class="ns-field">
+        <label>
+          <input type="checkbox" name="ch_telegram"
+            {% if s and s.channels_json and s.channels_json.get('telegram') %}checked{% endif %}>
+          Telegram
+        </label>
+      </div>
+      <div class="ns-field">
+        <label>
+          <input type="checkbox" name="ch_email"
+            {% if s and s.channels_json and s.channels_json.get('email') %}checked{% endif %}>
+          Email (в разработке)
+        </label>
+      </div>
+
+      <div class="ns-section-title" style="margin-top: 16px;">Тихий режим</div>
+      <div class="ns-muted" style="margin-bottom: 10px;">Telegram и Email не отправляются в указанный промежуток.</div>
+      <div class="ns-row">
+        <span style="font-size: 13px;">с</span>
+        <input type="time" name="quiet_start" value="{{ s.quiet_start.strftime('%H:%M') if s and s.quiet_start else '' }}">
+        <span style="font-size: 13px;">по</span>
+        <input type="time" name="quiet_end" value="{{ s.quiet_end.strftime('%H:%M') if s and s.quiet_end else '' }}">
+      </div>
+      <div class="ns-muted">Оставьте пустым, чтобы отключить тихий режим.</div>
+
+      <div style="margin-top: 16px;">
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
+  {# ── Telegram setup ── #}
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="ns-section-title">Telegram</div>
+    <div class="ns-tg-status {% if tg and tg.connected %}connected{% else %}disconnected{% endif %}">
+      {% if tg and tg.connected %}
+        ● Подключён ({{ tg.chat_id }})
+      {% else %}
+        ○ Не подключён
+      {% endif %}
+    </div>
+    <form method="POST" action="/settings/notifications/telegram">
+      <div class="ns-row" style="margin-bottom: 10px;">
+        <input name="chat_id" type="text"
+               value="{{ tg.chat_id or '' if tg else '' }}"
+               placeholder="Ваш Chat ID"
+               style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 14px;">
+        <button type="submit" style="white-space: nowrap;">Сохранить</button>
+      </div>
+    </form>
+    <div class="ns-muted">
+      Как узнать Chat ID: напишите боту <code>@userinfobot</code> в Telegram — он покажет ваш ID.
+    </div>
+  </div>
+
+  {# ── Rules list (read-only in MVP) ── #}
+  {% if rules %}
+  <div class="card">
+    <div class="ns-section-title">Правила</div>
+    {% for rule in rules %}
+    <div class="ns-rule-row">
+      <div>
+        <div style="font-weight: 500;">{{ rule.title }}</div>
+        {% if rule.description %}<div class="ns-muted">{{ rule.description }}</div>{% endif %}
+      </div>
+      <span class="ns-rule-status {% if not rule.enabled %}off{% endif %}">
+        {% if rule.enabled %}Вкл{% else %}Выкл{% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
