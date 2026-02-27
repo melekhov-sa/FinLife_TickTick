@@ -95,22 +95,34 @@
     <div class="ns-section-title">Telegram</div>
     <div class="ns-tg-status {% if tg and tg.connected %}connected{% else %}disconnected{% endif %}">
       {% if tg and tg.connected %}
-        ● Подключён ({{ tg.chat_id }})
+        ● Подключён (chat_id: {{ tg.chat_id }})
       {% else %}
         ○ Не подключён
       {% endif %}
     </div>
     <form method="POST" action="/settings/notifications/telegram">
-      <div class="ns-row" style="margin-bottom: 10px;">
-        <input name="chat_id" type="text"
-               value="{{ tg.chat_id or '' if tg else '' }}"
-               placeholder="Ваш Chat ID"
-               style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 14px;">
-        <button type="submit" style="white-space: nowrap;">Сохранить</button>
+      <div class="ns-field">
+        <label style="font-size: 13px; color: var(--text-secondary, #888); margin-bottom: 4px; display: block;">Токен бота</label>
+        <input name="bot_token" type="text"
+               value="{{ tg.bot_token or '' if tg else '' }}"
+               placeholder="123456789:AAF..."
+               style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 14px; font-family: monospace;">
+      </div>
+      <div class="ns-field" style="margin-top: 10px;">
+        <label style="font-size: 13px; color: var(--text-secondary, #888); margin-bottom: 4px; display: block;">Ваш Chat ID</label>
+        <div class="ns-row">
+          <input name="chat_id" type="text"
+                 value="{{ tg.chat_id or '' if tg else '' }}"
+                 placeholder="123456789"
+                 style="flex: 1; padding: 8px 12px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 14px;">
+          <button type="submit" style="white-space: nowrap;">Сохранить</button>
+        </div>
       </div>
     </form>
-    <div class="ns-muted">
-      Как узнать Chat ID: напишите боту <code>@userinfobot</code> в Telegram — он покажет ваш ID.
+    <div class="ns-muted" style="margin-top: 6px;">
+      <strong>Токен</strong> — создайте бота через <code>@BotFather</code> → <code>/newbot</code>.<br>
+      <strong>Chat ID</strong> — напишите своему боту любое сообщение, затем откройте
+      <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> и найдите <code>chat.id</code>.
     </div>
   </div>
 

@@ -8552,9 +8552,11 @@ async def telegram_connect(request: Request, db: Session = Depends(get_db)):
         tg = TelegramSettings(user_id=user_id)
         db.add(tg)
 
+    bot_token = form.get("bot_token", "").strip()
     chat_id = form.get("chat_id", "").strip()
+    tg.bot_token = bot_token or None
     tg.chat_id = chat_id or None
-    tg.connected = bool(chat_id)
+    tg.connected = bool(bot_token and chat_id)
     tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
     db.commit()
     return RedirectResponse("/settings/notifications", status_code=303)
