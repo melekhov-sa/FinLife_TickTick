@@ -409,6 +409,34 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "days_left": days_left,
         })
 
+    # 16. Expiring member subscriptions (next 60 days)
+    _mem_deadline = today + timedelta(days=60)
+    _expiring_mem_raw = (
+        db.query(SubscriptionMemberModel, SubscriptionModel, ContactModel)
+        .join(SubscriptionModel, SubscriptionModel.id == SubscriptionMemberModel.subscription_id)
+        .join(ContactModel, ContactModel.id == SubscriptionMemberModel.contact_id)
+        .filter(
+            SubscriptionMemberModel.account_id == user_id,
+            SubscriptionMemberModel.is_archived == False,  # noqa: E712
+            SubscriptionMemberModel.paid_until.isnot(None),
+            SubscriptionMemberModel.paid_until >= today,
+            SubscriptionMemberModel.paid_until <= _mem_deadline,
+        )
+        .order_by(SubscriptionMemberModel.paid_until)
+        .limit(8)
+        .all()
+    )
+    expiring_members = [
+        {
+            "subscription_id": sub.id,
+            "subscription_name": sub.name,
+            "contact_name": contact.name,
+            "paid_until": mem.paid_until,
+            "days_left": (mem.paid_until - today).days,
+        }
+        for mem, sub, contact in _expiring_mem_raw
+    ]
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -458,6 +486,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "task_presets": _dash_task_presets,
         # Expiring subscriptions
         "expiring_subs": expiring_subs,
+        # Expiring member subscriptions
+        "expiring_members": expiring_members,
     })
 
 
@@ -2104,9 +2134,23 @@ def task_categories_list(request: Request, view: str = "active", q: str = "", db
         query = query.filter(WorkCategory.title.ilike(f"%{q.strip()}%"))
     categories = query.order_by(WorkCategory.title).all()
 
+    # Usage stats: count tasks per category (all, not filtered by view/q)
+    all_cats = db.query(WorkCategory).filter(WorkCategory.account_id == user_id).all()
+    usage_rows = (
+        db.query(TaskModel.category_id, func.count(TaskModel.task_id))
+        .filter(TaskModel.account_id == user_id, TaskModel.category_id.isnot(None))
+        .group_by(TaskModel.category_id)
+        .all()
+    )
+    usage_counts = {cid: cnt for cid, cnt in usage_rows}
+    total_with_cat = sum(usage_counts.values())
+
     return templates.TemplateResponse("task_categories_list.html", {
         "request": request, "categories": categories,
         "view": view, "q": q,
+        "all_cats": all_cats,
+        "usage_counts": usage_counts,
+        "total_with_cat": total_with_cat,
     })
 
 

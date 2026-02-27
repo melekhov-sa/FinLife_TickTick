@@ -81,9 +81,6 @@
       <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px;">
         <span style="min-width: 60px; color: #666;">Ты</span>
         {% if ov.self %}
-        <div class="dash-progress-bar" style="flex: 1; max-width: 200px;">
-          <div class="dash-progress-fill" style="width: {{ ov.self.pct }}%; background: {{ progress_color(ov.self.days_left) }};"></div>
-        </div>
         {% if ov.self.expired %}
         <span style="color: #dc3545; font-weight: 500;">Истекла</span>
         {% else %}
@@ -100,9 +97,6 @@
       <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px;">
         <span style="min-width: 60px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ mi.contact_name }}</span>
         {% if mi.has_data %}
-        <div class="dash-progress-bar" style="flex: 1; max-width: 200px;">
-          <div class="dash-progress-fill" style="width: {{ mi.pct }}%; background: {{ progress_color(mi.days_left) }};"></div>
-        </div>
         {% if mi.expired %}
         <span style="color: #dc3545; font-weight: 500;">Истекла</span>
         {% else %}

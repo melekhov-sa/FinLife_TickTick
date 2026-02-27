@@ -55,4 +55,41 @@
   {% endif %}
 </div>
 {% endif %}
+
+{% if all_cats and usage_counts %}
+<div class="card">
+  <div style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">Частота использования</div>
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Категория</th>
+        <th style="text-align: right;">Задач</th>
+        <th style="text-align: right;">%</th>
+        <th style="width: 40%;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in all_cats | sort(attribute='title') %}
+      {% set cnt = usage_counts.get(cat.category_id, 0) %}
+      {% if cnt > 0 %}
+      {% set pct = (cnt / total_with_cat * 100) | round(1) %}
+      <tr{% if cat.is_archived %} style="opacity: 0.5;"{% endif %}>
+        <td style="font-size: 16px; text-align: center;">{{ cat.emoji or '' }}</td>
+        <td>{{ cat.title }}</td>
+        <td style="text-align: right; font-weight: 600;">{{ cnt }}</td>
+        <td style="text-align: right; color: #888;">{{ pct }}%</td>
+        <td>
+          <div style="height: 6px; background: #eee; border-radius: 3px; overflow: hidden;">
+            <div style="height: 100%; width: {{ pct }}%; background: #007AFF; border-radius: 3px;"></div>
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="font-size: 12px; color: #888; margin: 8px 0 0;">Всего задач с категорией: {{ total_with_cat }}</p>
+</div>
+{% endif %}
 {% endblock %}

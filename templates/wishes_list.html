@@ -3,117 +3,103 @@
 {% block title %}Хотелки{% endblock %}
 
 {% block content %}
-<div style="padding: 20px;">
-    <!-- Header with tabs -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div style="display: flex; gap: 15px;">
-            <a href="/wishes" style="text-decoration: none; font-size: 20px; font-weight: 600; color: #333;">
-                Хотелки
-            </a>
-            <a href="/wishes/purchase" style="text-decoration: none; font-size: 16px; color: #666; padding-top: 4px;">
-                Закупка
-            </a>
-        </div>
-        <a href="/wishes/new" class="btn" style="font-size: 14px;">
-            + Новая хотелка
-        </a>
-    </div>
-
-    <!-- Toolbar: filters -->
-    <div class="card" style="padding: 12px 16px; margin-bottom: 12px;">
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <!-- Period filter -->
-            <select onchange="updateFilter('period', this.value)" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                <option value="all" {% if period == 'all' %}selected{% endif %}>Все</option>
-                <option value="14days" {% if period == '14days' %}selected{% endif %}>14 дней</option>
-                <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Этот месяц</option>
-                <option value="next_month" {% if period == 'next_month' %}selected{% endif %}>Следующий месяц</option>
-            </select>
-
-            <!-- Status filter -->
-            <select onchange="updateFilter('status', this.value)" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
-                <option value="IDEA" {% if status == 'IDEA' %}selected{% endif %}>Идеи</option>
-                <option value="CONSIDERING" {% if status == 'CONSIDERING' %}selected{% endif %}>Думаю</option>
-                <option value="PLANNED" {% if status == 'PLANNED' %}selected{% endif %}>Запланировано</option>
-                <option value="DONE" {% if status == 'DONE' %}selected{% endif %}>Выполнено</option>
-                <option value="all" {% if status == 'all' %}selected{% endif %}>Все</option>
-            </select>
-
-            <!-- Search -->
-            <input type="text" id="search-input" placeholder="Поиск..." value="{{ search }}"
-                   onkeyup="if(event.key === 'Enter') updateFilter('search', this.value)"
-                   style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; flex: 1; min-width: 200px;">
-            <button onclick="updateFilter('search', document.getElementById('search-input').value)"
-                    style="padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 13px;">
-                🔍
-            </button>
-        </div>
-    </div>
-
-    {# ── Summary line ── #}
-    <div class="wish-summary">
-        Активных: {{ count_active }} · В ближайшие 30 дней: {{ count_next30 }} · С повтором: {{ count_recurring }}
-    </div>
-
-    {# ── Wishes grouped by type ── #}
-    {% set type_labels = {
-        'PURCHASE': '💰 Покупки',
-        'EVENT': '🎉 События',
-        'PLACE': '🌍 Места',
-        'OTHER': '📝 Другое'
-    } %}
-
-    {% set has_any = grouped_wishes.get('PURCHASE', []) or grouped_wishes.get('EVENT', []) or grouped_wishes.get('PLACE', []) or grouped_wishes.get('OTHER', []) %}
-
-    {% if has_any %}
-    {% for type_key in ['PURCHASE', 'EVENT', 'PLACE', 'OTHER'] %}
-        {% set items = grouped_wishes.get(type_key, []) %}
-        {% if items %}
-        <div class="wish-group">
-            <div class="wish-group-header">
-                <span>{{ type_labels.get(type_key, type_key) }}</span>
-                <span class="badge" style="font-size: 12px;">{{ items|length }}</span>
-            </div>
-
-            {% for it in items %}
-            <div class="wish-row{% if it.is_overdue %} wish-row--overdue{% endif %}">
-                <div class="wish-body">
-                    <div class="wish-title">
-                        {{ it.wish.title }}
-                        {% if it.wish.is_recurring %}
-                        <span class="wish-badge-repeat">повтор</span>
-                        {% endif %}
-                    </div>
-                    <div class="wish-meta{% if it.is_overdue %} wish-meta--overdue{% endif %}">{{ it.meta }}</div>
-                    {% if it.wish.estimated_amount %}
-                    <div class="wish-meta">{{ "{:,.0f}".format(it.wish.estimated_amount).replace(",", " ") }} руб.</div>
-                    {% endif %}
-                    {% if it.wish.notes %}
-                    <div class="wish-notes">{{ it.wish.notes[:80] }}{% if it.wish.notes|length > 80 %}...{% endif %}</div>
-                    {% endif %}
-                </div>
-                <div class="wish-actions">
-                    <form method="POST" action="/wishes/{{ it.wish.wish_id }}/to-task" style="margin:0;">
-                        <button type="submit" class="wish-btn-task" title="Создать задачу">➜ В задачу</button>
-                    </form>
-                    <a href="/wishes/{{ it.wish.wish_id }}/edit" class="btn-gear" title="Редактировать">&#9881;</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    {% endfor %}
-    {% else %}
-    <div style="text-align: center; padding: 60px 20px; color: #999;">
-        <div style="font-size: 48px; margin-bottom: 12px;">💭</div>
-        <div style="font-size: 16px;">Хотелок пока нет</div>
-        <div style="font-size: 13px; margin-top: 8px;">
-            <a href="/wishes/new" style="color: #4CAF50;">Создать первую хотелку</a>
-        </div>
-    </div>
-    {% endif %}
+<!-- Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  <div style="display: flex; gap: 12px; align-items: baseline;">
+    <h1 style="margin: 0;">Хотелки</h1>
+    <a href="/wishes/purchase" style="text-decoration: none; font-size: 14px; color: var(--text-secondary, #666);">Закупка</a>
+  </div>
+  <a href="/wishes/new" class="btn">+ Новая хотелка</a>
 </div>
+
+<!-- Toolbar: filters -->
+<div class="card" style="padding: 12px 16px; margin-bottom: 12px;">
+  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <select onchange="updateFilter('period', this.value)" style="font-size: 13px;">
+      <option value="all" {% if period == 'all' %}selected{% endif %}>Все</option>
+      <option value="14days" {% if period == '14days' %}selected{% endif %}>14 дней</option>
+      <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Этот месяц</option>
+      <option value="next_month" {% if period == 'next_month' %}selected{% endif %}>Следующий месяц</option>
+    </select>
+    <select onchange="updateFilter('status', this.value)" style="font-size: 13px;">
+      <option value="active" {% if status == 'active' %}selected{% endif %}>Активные</option>
+      <option value="IDEA" {% if status == 'IDEA' %}selected{% endif %}>Идеи</option>
+      <option value="CONSIDERING" {% if status == 'CONSIDERING' %}selected{% endif %}>Думаю</option>
+      <option value="PLANNED" {% if status == 'PLANNED' %}selected{% endif %}>Запланировано</option>
+      <option value="DONE" {% if status == 'DONE' %}selected{% endif %}>Выполнено</option>
+      <option value="all" {% if status == 'all' %}selected{% endif %}>Все</option>
+    </select>
+    <input type="text" id="search-input" placeholder="Поиск..." value="{{ search }}"
+           onkeyup="if(event.key === 'Enter') updateFilter('search', this.value)"
+           style="font-size: 13px; flex: 1; min-width: 180px;">
+    <button onclick="updateFilter('search', document.getElementById('search-input').value)"
+            style="padding: 6px 12px; background: transparent; border: 1px solid var(--border-color, #ddd); border-radius: 6px; cursor: pointer; font-size: 13px;">
+      🔍
+    </button>
+  </div>
+</div>
+
+{# ── Summary line ── #}
+<div class="wish-summary">
+  Активных: {{ count_active }} · В ближайшие 30 дней: {{ count_next30 }} · С повтором: {{ count_recurring }}
+</div>
+
+{# ── Wishes grouped by type ── #}
+{% set type_labels = {
+    'PURCHASE': '💰 Покупки',
+    'EVENT': '🎉 События',
+    'PLACE': '🌍 Места',
+    'OTHER': '📝 Другое'
+} %}
+
+{% set has_any = grouped_wishes.get('PURCHASE', []) or grouped_wishes.get('EVENT', []) or grouped_wishes.get('PLACE', []) or grouped_wishes.get('OTHER', []) %}
+
+{% if has_any %}
+{% for type_key in ['PURCHASE', 'EVENT', 'PLACE', 'OTHER'] %}
+  {% set items = grouped_wishes.get(type_key, []) %}
+  {% if items %}
+  <div class="card wish-group">
+    <div class="wish-group-header">
+      <span>{{ type_labels.get(type_key, type_key) }}</span>
+      <span class="badge" style="font-size: 12px;">{{ items|length }}</span>
+    </div>
+    {% for it in items %}
+    <div class="wish-row{% if it.is_overdue %} wish-row--overdue{% endif %}">
+      <div class="wish-body">
+        <div class="wish-title">
+          <a href="/wishes/{{ it.wish.wish_id }}/edit" style="color: inherit; text-decoration: none;">{{ it.wish.title }}</a>
+          {% if it.wish.is_recurring %}
+          <span class="wish-badge-repeat">повтор</span>
+          {% endif %}
+        </div>
+        <div class="wish-meta{% if it.is_overdue %} wish-meta--overdue{% endif %}">{{ it.meta }}</div>
+        {% if it.wish.estimated_amount %}
+        <div class="wish-meta">{{ "{:,.0f}".format(it.wish.estimated_amount).replace(",", " ") }} руб.</div>
+        {% endif %}
+        {% if it.wish.notes %}
+        <div class="wish-notes">{{ it.wish.notes[:80] }}{% if it.wish.notes|length > 80 %}...{% endif %}</div>
+        {% endif %}
+      </div>
+      <div class="wish-actions">
+        <form method="POST" action="/wishes/{{ it.wish.wish_id }}/to-task" style="margin:0;">
+          <button type="submit" class="wish-btn-task" title="Создать задачу">→ В задачу</button>
+        </form>
+        <a href="/wishes/{{ it.wish.wish_id }}/edit" class="btn-gear" title="Редактировать">&#9881;</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+{% else %}
+<div class="card" style="text-align: center; padding: 48px 20px; color: var(--text-secondary, #999);">
+  <div style="font-size: 40px; margin-bottom: 12px;">💭</div>
+  <div style="font-size: 15px;">Хотелок пока нет</div>
+  <div style="font-size: 13px; margin-top: 8px;">
+    <a href="/wishes/new" style="color: #007AFF;">Создать первую хотелку</a>
+  </div>
+</div>
+{% endif %}
 
 <style>
 /* ── Wish summary ── */
@@ -126,20 +112,20 @@
 
 /* ── Wish group ── */
 .wish-group {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 .wish-group-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary, #333);
-  padding: 12px 0 8px;
-  border-top: 1px solid var(--border-color, #e0e0e0);
-}
-.wish-group:first-child .wish-group-header {
-  border-top: none;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary, #888);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  margin-bottom: 4px;
 }
 
 /* ── Wish row ── */
@@ -148,12 +134,12 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  transition: background .12s;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-color, #f5f5f5);
 }
-.wish-row:hover {
-  background: rgba(128,128,128,.05);
+.wish-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 .wish-body {
   flex: 1;
