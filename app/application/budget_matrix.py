@@ -425,6 +425,7 @@ class BudgetMatrixService:
             )
             .filter(
                 OperationTemplateModel.account_id == account_id,
+                OperationTemplateModel.is_archived == False,
                 OperationTemplateModel.kind.in_(["INCOME", "EXPENSE"]),
                 OperationTemplateModel.category_id.isnot(None),
                 OperationOccurrence.scheduled_date >= global_start,
