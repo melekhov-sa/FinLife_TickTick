@@ -13,29 +13,35 @@
 {% set in_admin   = cp == 'admin' %}
 
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">FinLife</div>
+
+  {# ── Logo ── #}
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-title">FinLife</div>
+    <div class="sidebar-logo-sub">Life OS</div>
+  </div>
 
   <nav class="sidebar-nav">
 
-    {# ── Primary screens (always visible, no collapse) ── #}
+    {# ── Primary screens (always visible) ── #}
     <div class="nav-primary-group">
       <a href="/" class="nav-link nav-primary{% if cp == 'dashboard' %} active{% endif %}">
-        <span class="nav-icon">◉</span>Dashboard
+        Dashboard
       </a>
       <a href="/plan" class="nav-link nav-primary{% if cp == 'plan' %} active{% endif %}">
-        <span class="nav-icon">☰</span>План
+        План
       </a>
       <a href="/budget" class="nav-link nav-primary{% if cp == 'budget' %} active{% endif %}">
-        <span class="nav-icon">◈</span>Бюджет
+        Бюджет
       </a>
       <a href="/strategy" class="nav-link nav-primary{% if cp == 'strategy' %} active{% endif %}">
-        <span class="nav-icon">◆</span>Стратегия
+        <span class="nav-icon">📊</span>Стратегия
+      </a>
+      <a href="/efficiency" class="nav-link nav-primary{% if cp == 'efficiency' %} active{% endif %}">
+        <span class="nav-icon">⚡</span>Эффективность
       </a>
     </div>
 
-    <div class="nav-sep"></div>
-
-    {# ── ФИНАНСЫ (open by default) ── #}
+    {# ── ФИНАНСЫ ── #}
     <details class="nav-group" id="grp-finance"
       {% if in_finance %}data-force-open="true"{% endif %}
       open>
@@ -46,34 +52,32 @@
       <div class="nav-group-body">
         <a href="/wallets"
            class="nav-link{% if cp == 'wallets' %} active{% endif %}">
-          <span class="nav-icon">○</span>Деньги
+          <span class="nav-icon">💰</span>Деньги
         </a>
         <a href="/transactions"
            class="nav-link{% if cp == 'transactions' %} active{% endif %}">
-          <span class="nav-icon">↕</span>Операции
+          Операции
         </a>
         <a href="/categories"
            class="nav-link{% if cp == 'categories' %} active{% endif %}">
-          <span class="nav-icon">≡</span>Фин. категории
+          Категории
         </a>
         <a href="/goals"
            class="nav-link{% if cp == 'goals' %} active{% endif %}">
-          <span class="nav-icon">◎</span>Цели
+          Цели
         </a>
         <a href="/subscriptions"
            class="nav-link{% if cp == 'subscriptions' %} active{% endif %}">
-          <span class="nav-icon">↺</span>Подписки
+          Подписки
         </a>
         <a href="/planned-ops"
            class="nav-link{% if cp == 'planned-ops' %} active{% endif %}">
-          <span class="nav-icon">▷</span>Плановые операции
+          Плановые операции
         </a>
       </div>
     </details>
 
-    <div class="nav-sep"></div>
-
-    {# ── ДЕЛА (open by default) ── #}
+    {# ── ДЕЛА ── #}
     <details class="nav-group" id="grp-tasks"
       {% if in_tasks %}data-force-open="true"{% endif %}
       open>
@@ -84,44 +88,42 @@
       <div class="nav-group-body">
         <a href="/tasks"
            class="nav-link{% if cp == 'tasks' %} active{% endif %}">
-          <span class="nav-icon">☐</span>Задачи
+          Задачи
         </a>
         <a href="/projects"
            class="nav-link{% if cp == 'projects' %} active{% endif %}">
-          <span class="nav-icon">▦</span>Проекты
+          Проекты
         </a>
         <a href="/habits"
            class="nav-link{% if cp == 'habits' %} active{% endif %}">
-          <span class="nav-icon">↻</span>Привычки
+          Привычки
         </a>
         <a href="/events"
            class="nav-link{% if cp == 'events' %} active{% endif %}">
-          <span class="nav-icon">○</span>События
+          События
         </a>
         <a href="/wishes"
            class="nav-link{% if cp == 'wishes' %} active{% endif %}">
-          <span class="nav-icon">☆</span>Хотелки
+          Хотелки
         </a>
         <a href="/task-categories"
            class="nav-link{% if cp == 'task-categories' %} active{% endif %}">
-          <span class="nav-icon">≡</span>Категории дел
+          Категории дел
         </a>
         <a href="/task-presets"
            class="nav-link{% if cp == 'task-presets' %} active{% endif %}">
-          <span class="nav-icon">⊞</span>Шаблоны задач
+          Шаблоны задач
         </a>
         <a href="/task-reschedule-reasons"
            class="nav-link{% if cp == 'task-reschedule-reasons' %} active{% endif %}">
-          <span class="nav-icon">&#8634;</span>Причины переноса
+          Причины переноса
         </a>
         <a href="/knowledge"
            class="nav-link{% if cp == 'knowledge' %} active{% endif %}">
-          <span class="nav-icon">&#9826;</span>База знаний
+          База знаний
         </a>
       </div>
     </details>
-
-    <div class="nav-sep"></div>
 
     {# ── СИСТЕМА (collapsed by default) ── #}
     <details class="nav-group" id="grp-system"
@@ -133,20 +135,29 @@
       <div class="nav-group-body">
         <a href="/contacts"
            class="nav-link{% if cp == 'contacts' %} active{% endif %}">
-          <span class="nav-icon">◉</span>Контакты
+          Контакты
         </a>
         <a href="/profile"
            class="nav-link{% if cp == 'profile' %} active{% endif %}">
-          <span class="nav-icon">◌</span>Профиль
+          Профиль
         </a>
       </div>
     </details>
 
     {% if request.session.get('is_admin') %}
-    <div class="nav-sep"></div>
-    <a href="/admin/overview" class="nav-link nav-primary{% if in_admin %} active{% endif %}">
-      <span class="nav-icon">&#9881;</span>Admin
-    </a>
+    <details class="nav-group" id="grp-admin"
+      {% if in_admin %}data-force-open="true" open{% endif %}>
+      <summary class="nav-group-hdr">
+        <span class="nav-group-label">Admin</span>
+        <span class="nav-chevron">&#9658;</span>
+      </summary>
+      <div class="nav-group-body">
+        <a href="/admin/overview"
+           class="nav-link{% if in_admin %} active{% endif %}">
+          Обзор
+        </a>
+      </div>
+    </details>
     {% endif %}
 
   </nav>
@@ -158,4 +169,5 @@
     </button>
     <a href="/logout" class="sidebar-logout">&#8594; Выход</a>
   </div>
+
 </aside>

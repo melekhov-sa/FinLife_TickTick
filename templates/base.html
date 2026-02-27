@@ -27,8 +27,7 @@
     }
     .sidebar {
       width: 220px;
-      background: var(--bg-sidebar);
-      color: white;
+      background: #0F172A;
       display: flex;
       flex-direction: column;
       position: fixed;
@@ -40,11 +39,20 @@
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .sidebar-logo {
-      padding: 24px 20px 16px;
-      font-size: 20px;
+      padding: 22px 20px 18px;
+    }
+    .sidebar-logo-title {
+      font-size: 19px;
       font-weight: 700;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: #FFFFFF;
+      letter-spacing: 0.2px;
+      line-height: 1.2;
+    }
+    .sidebar-logo-sub {
+      font-size: 11px;
+      color: #9CA3AF;
+      margin-top: 3px;
+      opacity: 0.55;
     }
     /* ── Sidebar navigation ── */
     .sidebar-nav {
@@ -55,57 +63,58 @@
     }
     .sidebar-nav::-webkit-scrollbar { display: none; }
 
-    /* Separator line between sections */
-    .nav-sep {
-      border: none;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      margin: 4px 0;
-    }
+    /* Section separators — hidden in new design */
+    .nav-sep { display: none; }
 
     /* Base nav link */
     .nav-link {
       display: flex;
       align-items: center;
-      color: rgba(255,255,255,0.7);
+      color: #9CA3AF;
       text-decoration: none;
-      padding: 9px 20px;
+      padding: 9px 12px;
       font-size: 14px;
       font-weight: 500;
       border-left: 3px solid transparent;
+      border-radius: 8px;
+      margin: 1px 8px;
       line-height: 1.3;
-      transition: background 0.12s, color 0.12s;
+      transition: background 0.15s ease, color 0.15s ease;
     }
     .nav-link:hover {
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.05);
+      color: #E5E7EB;
     }
     .nav-link.active {
-      background: rgba(255,255,255,0.11);
-      color: #fff;
-      border-left-color: var(--sidebar-active-border, rgba(255,255,255,0.82));
-      padding-left: 17px; /* 20px - 3px border */
+      background: #1E293B;
+      color: #FFFFFF;
+      border-left-color: #60A5FA;
+      padding-left: 9px; /* 12px - 3px border */
     }
 
-    /* Primary screens (Dashboard, Plan, Budget) */
+    /* Primary screens (Dashboard, Plan, Budget, Strategy, Efficiency) */
     .nav-primary {
       font-weight: 600;
-      color: rgba(255,255,255,0.88);
+      color: #D1D5DB;
       padding-top: 10px;
       padding-bottom: 10px;
     }
-    .nav-primary:hover { color: #fff; }
-    .nav-primary.active { color: #fff; }
+    .nav-primary:hover { color: #FFFFFF; }
+    .nav-primary.active { color: #FFFFFF; }
 
-    /* Icon inside any nav item */
+    /* Emoji icon inside nav item */
     .nav-icon {
-      display: inline-block;
-      width: 20px;
-      text-align: center;
-      margin-right: 9px;
-      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      margin-right: 8px;
+      font-size: 15px;
       flex-shrink: 0;
-      color: inherit;
+      filter: grayscale(1);
+      opacity: 0.75;
     }
+    .nav-link.active .nav-icon { opacity: 0.9; }
 
     /* Collapsible group container */
     details.nav-group { border: none; background: none; }
@@ -115,49 +124,62 @@
     .nav-group-hdr {
       display: flex;
       align-items: center;
-      padding: 7px 16px 5px 20px;
+      padding: 4px 12px 4px 20px;
       cursor: pointer;
-      color: rgba(255,255,255,0.4);
-      font-size: 10.5px;
+      color: #6B7280;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.7px;
+      letter-spacing: 0.08em;
       list-style: none;
       user-select: none;
+      margin-top: 20px;
+      margin-bottom: 2px;
       transition: color 0.12s;
     }
     .nav-group-hdr::-webkit-details-marker { display: none; }
-    .nav-group-hdr:hover { color: rgba(255,255,255,0.65); }
+    .nav-group-hdr:hover { color: #9CA3AF; }
     .nav-group-label { flex: 1; }
 
     /* Chevron rotates when group is open */
     .nav-chevron {
-      font-size: 10px;
+      font-size: 9px;
       display: inline-block;
       transform: rotate(0deg);
       transition: transform 0.15s ease;
-      opacity: 0.6;
+      opacity: 0.45;
     }
     details.nav-group[open] > .nav-group-hdr .nav-chevron {
       transform: rotate(90deg);
     }
 
-    /* Items inside a group are indented */
+    /* Items inside a group — text-only, consistent indent */
     .nav-group-body .nav-link {
-      padding-left: 28px;
+      padding-left: 20px;
       font-size: 13.5px;
+      padding-top: 7px;
+      padding-bottom: 7px;
+      color: #9CA3AF;
     }
     .nav-group-body .nav-link.active {
-      padding-left: 25px; /* 28px - 3px border */
+      padding-left: 17px; /* 20px - 3px border */
     }
+    /* Icon in sub-items (only 💰 Деньги) — keep narrow */
     .nav-group-body .nav-icon {
-      width: 18px;
-      font-size: 13px;
+      width: 20px;
+      font-size: 14px;
+    }
+    /* Sub-items without icon need same left offset as icon items for alignment */
+    .nav-group-body .nav-link:not(:has(.nav-icon)) {
+      padding-left: 48px; /* 20px base + 20px icon-width + 8px gap */
+    }
+    .nav-group-body .nav-link:not(:has(.nav-icon)).active {
+      padding-left: 45px;
     }
 
     /* Sidebar bottom area */
     .sidebar-bottom {
-      border-top: 1px solid rgba(255,255,255,0.08);
+      border-top: 1px solid rgba(255,255,255,0.07);
       padding: 4px 0;
     }
     .sidebar-theme-btn {
@@ -165,8 +187,7 @@
       text-align: left;
       background: none;
       border: none;
-      border-top: 1px solid rgba(255,255,255,0.09);
-      color: rgba(255,255,255,0.48);
+      color: #6B7280;
       padding: 10px 20px;
       font-size: 13px;
       cursor: pointer;
@@ -175,22 +196,22 @@
       gap: 8px;
       min-height: unset;
       border-radius: 0;
-      transition: background 0.12s, color 0.12s;
+      transition: background 0.15s ease, color 0.15s ease;
     }
     .sidebar-theme-btn:hover {
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.78);
+      background: rgba(255,255,255,0.05);
+      color: #9CA3AF;
     }
     .sidebar-logout {
       display: flex;
       align-items: center;
-      color: rgba(255,255,255,0.4);
+      color: #6B7280;
       text-decoration: none;
       padding: 9px 20px;
       font-size: 13px;
       transition: color 0.12s;
     }
-    .sidebar-logout:hover { color: rgba(255,255,255,0.78); }
+    .sidebar-logout:hover { color: #9CA3AF; }
     .main-content {
       flex: 1;
       margin-left: 220px;
@@ -507,8 +528,8 @@
       top: calc(12px + env(safe-area-inset-top, 0px));
       left: calc(12px + env(safe-area-inset-left, 0px));
       z-index: 200;
-      background: var(--bg-sidebar);
-      color: white;
+      background: #0F172A;
+      color: #E5E7EB;
       border: none;
       border-radius: 6px;
       width: 44px;
