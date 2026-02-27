@@ -1275,6 +1275,85 @@ class StrategicWeeklyReview(Base):
     )
 
 
+class EfficiencySettings(Base):
+    """Per-user settings for Efficiency Score weights and thresholds."""
+    __tablename__ = "efficiency_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+
+    # Metric weights (normalised to sum=1.0 on save)
+    w_ontime = mapped_column(Numeric(5, 3), nullable=False, server_default="0.250")
+    w_overdue = mapped_column(Numeric(5, 3), nullable=False, server_default="0.200")
+    w_reschedule = mapped_column(Numeric(5, 3), nullable=False, server_default="0.150")
+    w_churn = mapped_column(Numeric(5, 3), nullable=False, server_default="0.150")
+    w_wip = mapped_column(Numeric(5, 3), nullable=False, server_default="0.150")
+    w_velocity = mapped_column(Numeric(5, 3), nullable=False, server_default="0.100")
+
+    # Thresholds: green = best zone, yellow = acceptable (penalty beyond yellow)
+    thr_ontime_green = mapped_column(Numeric(5, 2), nullable=False, server_default="85.0")
+    thr_ontime_yellow = mapped_column(Numeric(5, 2), nullable=False, server_default="70.0")
+    thr_overdue_green: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    thr_overdue_yellow: Mapped[int] = mapped_column(Integer, nullable=False, server_default="7")
+    thr_reschedule_green: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    thr_reschedule_yellow: Mapped[int] = mapped_column(Integer, nullable=False, server_default="7")
+    thr_churn_green: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2")
+    thr_churn_yellow: Mapped[int] = mapped_column(Integer, nullable=False, server_default="5")
+    thr_wip_green: Mapped[int] = mapped_column(Integer, nullable=False, server_default="5")
+    thr_wip_yellow: Mapped[int] = mapped_column(Integer, nullable=False, server_default="10")
+    thr_velocity_green = mapped_column(Numeric(5, 2), nullable=False, server_default="5.0")
+    thr_velocity_yellow = mapped_column(Numeric(5, 2), nullable=False, server_default="2.0")
+
+    updated_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class EfficiencySnapshot(Base):
+    """Daily snapshot of computed efficiency metrics and composite score."""
+    __tablename__ = "efficiency_snapshot"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    snapshot_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+
+    # Raw metric values
+    ontime_rate = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    overdue_open: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    reschedule_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    churn_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    wip_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    velocity_7d = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+
+    # Normalised sub-scores (0–100)
+    s_ontime = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    s_overdue = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    s_reschedule = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    s_churn = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    s_wip = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    s_velocity = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+
+    # Composite score
+    efficiency_score = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
+    calculated_at = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "snapshot_date", name="uq_efficiency_snapshot_ad"),
+    )
+
+
+class EfficiencySnapshotItem(Base):
+    """Per-task drill-down items for an efficiency snapshot."""
+    __tablename__ = "efficiency_snapshot_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("efficiency_snapshot.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    metric_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    task_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class PushSubscription(Base):
     """Web Push subscription for a user device."""
     __tablename__ = "push_subscriptions"

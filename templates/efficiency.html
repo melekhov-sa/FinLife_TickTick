@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}Эффективность — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .eff-page { max-width: 960px; margin: 0 auto; padding: 0 0 32px; }
+
+  /* Hero */
+  .eff-hero {
+    background: var(--bg-card, #fff);
+    border-radius: 12px;
+    padding: 28px 32px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .eff-hero-score {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .eff-hero-score.green  { color: #22c55e; }
+  .eff-hero-score.yellow { color: #f59e0b; }
+  .eff-hero-score.red    { color: #ef4444; }
+  .eff-hero-meta { flex: 1; min-width: 180px; }
+  .eff-hero-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #888);
+    margin-bottom: 6px;
+  }
+  .eff-hero-date { font-size: 14px; color: var(--text-secondary, #888); margin-bottom: 10px; }
+  .eff-hero-formula { font-size: 12px; color: var(--text-secondary, #888); font-style: italic; }
+  .eff-hero-actions { display: flex; gap: 10px; align-items: center; }
+  .eff-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    background: var(--bg-secondary, #f5f5f5);
+    color: var(--text-primary, #111);
+    border: 1px solid var(--border-color, #e5e5e5);
+    cursor: pointer;
+  }
+  .eff-btn:hover { background: var(--border-color, #e5e5e5); }
+
+  /* Metric grid */
+  .eff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 700px) {
+    .eff-grid { grid-template-columns: repeat(2, 1fr); }
+    .eff-hero { padding: 20px; }
+    .eff-hero-score { font-size: 52px; }
+  }
+  @media (max-width: 420px) {
+    .eff-grid { grid-template-columns: 1fr; }
+  }
+
+  .eff-card {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: box-shadow 0.15s;
+  }
+  .eff-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
+  .eff-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .eff-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #888);
+  }
+  .eff-card-sub {
+    font-size: 11px;
+    color: var(--text-secondary, #888);
+    text-align: right;
+  }
+  .eff-card-raw {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .eff-card-raw.green  { color: #22c55e; }
+  .eff-card-raw.yellow { color: #f59e0b; }
+  .eff-card-raw.red    { color: #ef4444; }
+
+  .eff-card-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 3px 0;
+    color: var(--text-secondary, #888);
+  }
+  .eff-card-row b { color: var(--text-primary, #111); font-weight: 600; }
+
+  /* Score bar */
+  .eff-bar-track {
+    height: 6px;
+    background: var(--border-color, #eee);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .eff-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .eff-bar-fill.green  { background: #22c55e; }
+  .eff-bar-fill.yellow { background: #f59e0b; }
+  .eff-bar-fill.red    { background: #ef4444; }
+
+  /* Formula footer */
+  .eff-formula-box {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+  }
+  .eff-formula-box strong { color: var(--text-primary, #111); }
+  .eff-formula-parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .eff-formula-part {
+    background: var(--bg-secondary, #f5f5f5);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="eff-page">
+
+  {# ── Hero ── #}
+  {% set score = d.efficiency_score | float %}
+  {% set score_class = "green" if score >= 80 else ("yellow" if score >= 60 else "red") %}
+  <div class="eff-hero">
+    <div class="eff-hero-score {{ score_class }}">{{ score | int }}</div>
+    <div class="eff-hero-meta">
+      <div class="eff-hero-label">Efficiency Score</div>
+      <div class="eff-hero-date">Обновлено: {{ d.snapshot_date.strftime("%d.%m.%Y") if d.snapshot_date else "—" }}</div>
+      <div class="eff-hero-formula">Score = Σ(вес × подсчёт)</div>
+    </div>
+    <div class="eff-hero-actions">
+      <a href="/efficiency/settings" class="eff-btn">⚙ Настройки</a>
+    </div>
+  </div>
+
+  {# ── Metric cards ── #}
+  <div class="eff-grid">
+
+    {# M1: On-time rate #}
+    {% set s1 = d.s_ontime | float %}
+    {% set c1 = "green" if s1 >= 90 else ("yellow" if s1 >= 60 else "red") %}
+    <a href="/efficiency/metric/ontime" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M1 · {{ metric_labels.ontime }}</div>
+        <div class="eff-card-sub">w={{ (d.w_ontime * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c1 }}">{{ "%.1f" | format(d.ontime_rate | float) }}%</div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s1 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c1 }}" style="width: {{ s1 }}%"></div></div>
+    </a>
+
+    {# M2: Overdue open #}
+    {% set s2 = d.s_overdue | float %}
+    {% set c2 = "green" if s2 >= 90 else ("yellow" if s2 >= 60 else "red") %}
+    <a href="/efficiency/metric/overdue" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M2 · {{ metric_labels.overdue }}</div>
+        <div class="eff-card-sub">w={{ (d.w_overdue * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c2 }}">{{ d.overdue_open }}</div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s2 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c2 }}" style="width: {{ s2 }}%"></div></div>
+    </a>
+
+    {# M3: Reschedule count #}
+    {% set s3 = d.s_reschedule | float %}
+    {% set c3 = "green" if s3 >= 90 else ("yellow" if s3 >= 60 else "red") %}
+    <a href="/efficiency/metric/reschedule" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M3 · {{ metric_labels.reschedule }}</div>
+        <div class="eff-card-sub">w={{ (d.w_reschedule * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c3 }}">{{ d.reschedule_count }}</div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s3 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c3 }}" style="width: {{ s3 }}%"></div></div>
+    </a>
+
+    {# M4: Churn #}
+    {% set s4 = d.s_churn | float %}
+    {% set c4 = "green" if s4 >= 90 else ("yellow" if s4 >= 60 else "red") %}
+    <a href="/efficiency/metric/churn" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M4 · {{ metric_labels.churn }}</div>
+        <div class="eff-card-sub">w={{ (d.w_churn * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c4 }}">{{ d.churn_count }}</div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s4 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c4 }}" style="width: {{ s4 }}%"></div></div>
+    </a>
+
+    {# M5: WIP #}
+    {% set s5 = d.s_wip | float %}
+    {% set c5 = "green" if s5 >= 90 else ("yellow" if s5 >= 60 else "red") %}
+    <a href="/efficiency/metric/wip" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M5 · {{ metric_labels.wip }}</div>
+        <div class="eff-card-sub">w={{ (d.w_wip * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c5 }}">{{ d.wip_count }}</div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s5 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c5 }}" style="width: {{ s5 }}%"></div></div>
+    </a>
+
+    {# M6: Velocity #}
+    {% set s6 = d.s_velocity | float %}
+    {% set c6 = "green" if s6 >= 90 else ("yellow" if s6 >= 60 else "red") %}
+    <a href="/efficiency/metric/velocity" class="eff-card">
+      <div class="eff-card-header">
+        <div class="eff-card-title">M6 · {{ metric_labels.velocity }}</div>
+        <div class="eff-card-sub">w={{ (d.w_velocity * 100) | int }}%</div>
+      </div>
+      <div class="eff-card-raw {{ c6 }}">{{ "%.1f" | format(d.velocity_7d | float) }}<span style="font-size:16px;font-weight:400;">/д</span></div>
+      <div class="eff-card-row"><span>Подсчёт</span><b>{{ s6 | int }}</b></div>
+      <div class="eff-bar-track"><div class="eff-bar-fill {{ c6 }}" style="width: {{ s6 }}%"></div></div>
+    </a>
+
+  </div>
+
+  {# ── Formula breakdown ── #}
+  <div class="eff-formula-box">
+    <strong>Формула:</strong> Score = Σ(вес × подсчёт каждого метрика)
+    <div class="eff-formula-parts">
+      <span class="eff-formula-part">{{ (d.w_ontime * 100) | int }}% × {{ d.s_ontime | int }}</span>
+      <span style="line-height:26px;">+</span>
+      <span class="eff-formula-part">{{ (d.w_overdue * 100) | int }}% × {{ d.s_overdue | int }}</span>
+      <span style="line-height:26px;">+</span>
+      <span class="eff-formula-part">{{ (d.w_reschedule * 100) | int }}% × {{ d.s_reschedule | int }}</span>
+      <span style="line-height:26px;">+</span>
+      <span class="eff-formula-part">{{ (d.w_churn * 100) | int }}% × {{ d.s_churn | int }}</span>
+      <span style="line-height:26px;">+</span>
+      <span class="eff-formula-part">{{ (d.w_wip * 100) | int }}% × {{ d.s_wip | int }}</span>
+      <span style="line-height:26px;">+</span>
+      <span class="eff-formula-part">{{ (d.w_velocity * 100) | int }}% × {{ d.s_velocity | int }}</span>
+      <span style="line-height:26px;">= <strong>{{ score | int }}</strong></span>
+    </div>
+    <div style="margin-top:8px;font-size:12px;">
+      Подсчёт = 100 (зелёная зона) / 70 (жёлтая) / 40 (красная) — пороги настраиваются в
+      <a href="/efficiency/settings" style="color:#007AFF;">настройках</a>.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

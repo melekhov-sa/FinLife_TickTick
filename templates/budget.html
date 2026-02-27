@@ -36,10 +36,10 @@
 .main-content { max-width: none; }
 
 /* ── Compact budget table ── */
-.budget-table.bgt-compact th { padding: 5px 8px; font-size: 12px; }
-.budget-table.bgt-compact td { padding: 3px 8px; font-size: 12px; line-height: 1.35; }
-.budget-table.bgt-compact .compact-cell { padding: 3px 5px !important; font-size: 11px; }
-.budget-table.bgt-compact .sticky-col { min-width: 140px; max-width: 180px; font-size: 12px; }
+.budget-table.bgt-compact th { padding: 5px 8px; font-size: 14px; }
+.budget-table.bgt-compact td { padding: 3px 8px; font-size: 14px; line-height: 1.35; }
+.budget-table.bgt-compact .compact-cell { padding: 3px 5px !important; font-size: 14px; }
+.budget-table.bgt-compact .sticky-col { min-width: 150px; max-width: 200px; font-size: 14px; }
 
 /* ── Zero values muted ── */
 .zero-val { color: var(--text-secondary, #bbb); }
@@ -51,7 +51,7 @@
 }
 .bgt-section-hdr td {
   padding: 5px 10px !important;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.7px;
@@ -69,7 +69,7 @@
 }
 .bgt-section-hdr .bgt-section-summary {
   font-weight: 400;
-  font-size: 11px;
+  font-size: 13px;
   color: #999;
   margin-left: 8px;
   letter-spacing: 0;
@@ -83,7 +83,7 @@
 .bgt-section-hdr.bgt-expense td {
   background: #eef0f6;
   color: #333;
-  font-size: 12px;
+  font-size: 14px;
 }
 .bgt-section-total-expense td {
   font-weight: 700;
@@ -102,7 +102,7 @@
 }
 
 /* ── Compact sub-header labels ── */
-.sub-header { font-size: 10px; min-width: 45px; padding: 3px 5px; }
+.sub-header { font-size: 12px; min-width: 45px; padding: 3px 5px; }
 .sub-header[title] { cursor: help; }
 
 /* ── Child category indent (compact) ── */
@@ -122,8 +122,8 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 130px; font-size: 11px; }
-  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 10px; padding: 3px 2px; }
+  .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 130px; font-size: 13px; }
+  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 2px; }
   .budget-table.bgt-compact .compact-cell { padding: 3px 2px !important; }
   .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
 }
@@ -140,6 +140,26 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
 [data-theme$="-dark"] tr.row-over { background: rgba(220, 53, 69, 0.05); }
 [data-theme$="-dark"] tr.row-unplanned { background: rgba(13, 110, 253, 0.04); }
 [data-theme$="-dark"] tr.row-over .bgt-focus-delta { color: #f87171 !important; }
+
+/* ── Future period heat-map + readable text ── */
+td[data-val] { transition: background-color 0.15s; color: var(--text-primary, #111) !important; }
+[data-theme$="-dark"] td[data-val] { color: #e6edf3 !important; filter: brightness(1.15); }
+
+/* ── Drag & drop category reorder ── */
+.drag-handle {
+  cursor: grab;
+  color: #ccc;
+  padding: 0 5px 0 0;
+  font-size: 13px;
+  user-select: none;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+tr[data-cat-id]:hover .drag-handle { opacity: 1; }
+tr[data-cat-id].bgt-dragging { opacity: 0.35; }
+tr[data-cat-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; }
+[data-theme$="-dark"] tr[data-cat-id].bgt-drag-over > td:first-child { border-top-color: #58a6ff; }
 </style>
 {% endblock %}
 {% block content %}
@@ -405,13 +425,13 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td colspan="{{ n_cols }}">
             <span class="bgt-chevron">&#9658;</span>Доходы
             <span class="bgt-section-summary">
-              {% if show_plan %}П: {{ fmt(_income_plan_total) }} · {% endif %}Ф: {{ fmt(_income_fact_total) }}
+              {% if show_plan %}П: {{ fmt(view.income_totals.total.plan) }} · {% endif %}Ф: {{ fmt(view.income_totals.total.fact) }}
             </span>
           </td>
         </tr>
         {% for row in view.income_rows %}
-        <tr class="bgt-section-body bgt-hidden" data-section="income"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
-          <td class="sticky-col">{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
+        <tr class="bgt-section-body bgt-hidden" data-section="income" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
+          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -419,7 +439,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
@@ -493,7 +513,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
             if grain == "month" else None
           ) }}</td>
@@ -575,13 +595,13 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td colspan="{{ n_cols }}">
             <span class="bgt-chevron">&#9658;</span>Расходы
             <span class="bgt-section-summary">
-              {% if show_plan %}П: {{ fmt(_expense_plan_total) }} · {% endif %}Ф: {{ fmt(_expense_fact_total) }}
+              {% if show_plan %}П: {{ fmt(view.expense_totals.total.plan) }} · {% endif %}Ф: {{ fmt(view.expense_totals.total.fact) }}
             </span>
           </td>
         </tr>
         {% for row in view.expense_rows %}
-        <tr class="bgt-section-body{% if show_plan %} {{ _hint_cls(row.cells[0]) }}{% endif %}" data-section="expense"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
-          <td class="sticky-col">{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
+        <tr class="bgt-section-body{% if show_plan %} {{ _hint_cls(row.cells[0]) }}{% endif %}" data-section="expense" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
+          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -589,7 +609,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
@@ -651,7 +671,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td class="text-right compact-cell period-border {% if cell.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/plan/edit?category_id=" ~ view.credit_row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=EXPENSE")
             if grain == "month" else None
           ) }}</td>
@@ -679,7 +699,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
         <!-- ── ОТЛОЖИТЬ (open by default) ────────────── -->
         <!-- ══════════════════════════════════════════════ -->
         {% if view.goal_rows %}
-        <tr class="bgt-section-hdr bgt-goals" data-section="goals" onclick="bgtToggle('goals')">
+        <tr class="bgt-section-hdr bgt-goals bgt-collapsed" data-section="goals" onclick="bgtToggle('goals')">
           <td colspan="{{ n_cols }}">
             <span class="bgt-chevron">&#9658;</span>Отложить
             <span class="bgt-section-summary">
@@ -688,7 +708,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           </td>
         </tr>
         {% for row in view.goal_rows %}
-        <tr class="bgt-section-body" data-section="goals">
+        <tr class="bgt-section-body bgt-hidden" data-section="goals">
           <td class="sticky-col">
             <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
           </td>
@@ -699,7 +719,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% elif _p.is_future %}
-          <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
+          <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
             link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
             if grain == "month" else None
           ) }}</td>
@@ -721,7 +741,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
         </tr>
         {% endfor %}
         <!-- ИТОГО отложить -->
-        <tr class="bgt-section-body budget-total-row" data-section="goals">
+        <tr class="bgt-section-body bgt-hidden budget-total-row" data-section="goals">
           <td class="sticky-col">ИТОГО отложить</td>
           {% for cell in view.goal_totals.cells %}
           {% set _p = view.periods[loop.index0] %}
@@ -799,6 +819,115 @@ function toggleAllVisibility(checked) {
     cb.checked = checked;
   });
 }
+
+(function initBgtDrag() {
+  var dragSrc = null;
+
+  // All rows with data-par-id that belong to the same reorder group (section + parent)
+  function groupKey(row) {
+    return row.dataset.section + ':' + (row.dataset.parId || '');
+  }
+
+  // Get a parent row's subtree: [parent, child1, child2, ...]
+  function subtree(tbody, row) {
+    var result = [row];
+    if (!row.dataset.parId) {
+      var catId = row.dataset.catId;
+      tbody.querySelectorAll('tr[data-cat-id]').forEach(function(r) {
+        if (r.dataset.parId === catId) result.push(r);
+      });
+    }
+    return result;
+  }
+
+  // Insertion ref node: the node AFTER which we insert (null = append)
+  function insertionRef(tbody, targetRow, after) {
+    if (!after) return targetRow;
+    // If target is a parent, skip past its children
+    if (!targetRow.dataset.parId) {
+      var catId = targetRow.dataset.catId;
+      var lastChild = targetRow;
+      tbody.querySelectorAll('tr[data-cat-id]').forEach(function(r) {
+        if (r.dataset.parId === catId) lastChild = r;
+      });
+      return lastChild.nextSibling;
+    }
+    return targetRow.nextSibling;
+  }
+
+  document.querySelectorAll('tr[data-cat-id]').forEach(function(row) {
+    row.setAttribute('draggable', 'true');
+
+    row.addEventListener('dragstart', function(e) {
+      dragSrc = row;
+      e.dataTransfer.effectAllowed = 'move';
+      // Delay so the dragging ghost captures original appearance
+      setTimeout(function() {
+        subtree(row.parentNode, row).forEach(function(r) { r.classList.add('bgt-dragging'); });
+      }, 0);
+    });
+
+    row.addEventListener('dragend', function() {
+      document.querySelectorAll('.bgt-dragging, .bgt-drag-over').forEach(function(r) {
+        r.classList.remove('bgt-dragging', 'bgt-drag-over');
+      });
+      dragSrc = null;
+    });
+
+    row.addEventListener('dragover', function(e) {
+      if (!dragSrc || row === dragSrc) return;
+      if (groupKey(row) !== groupKey(dragSrc)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.bgt-drag-over').forEach(function(r) { r.classList.remove('bgt-drag-over'); });
+      row.classList.add('bgt-drag-over');
+    });
+
+    row.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragSrc || row === dragSrc) return;
+      if (groupKey(row) !== groupKey(dragSrc)) return;
+
+      var tbody = row.parentNode;
+      var after = e.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+      var ref = insertionRef(tbody, row, after);
+      var tree = subtree(tbody, dragSrc);
+
+      tree.forEach(function(r) { tbody.insertBefore(r, ref || null); });
+
+      // Save new order for this group
+      var items = [];
+      var idx = 0;
+      tbody.querySelectorAll('tr[data-cat-id][data-section="' + dragSrc.dataset.section + '"]').forEach(function(r) {
+        if ((r.dataset.parId || '') === (dragSrc.dataset.parId || '')) {
+          items.push({ category_id: parseInt(r.dataset.catId), sort_order: idx++ });
+        }
+      });
+      fetch('/api/v1/categories/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items })
+      });
+    });
+  });
+})();
+
+(function applyHeatmap() {
+  var cells = document.querySelectorAll('td[data-val]');
+  for (var i = 0; i < cells.length; i++) {
+    var val = parseFloat(cells[i].getAttribute('data-val')) || 0;
+    val = Math.abs(val);
+    var opacity = 0;
+    if      (val >= 50000) opacity = 0.40;
+    else if (val >= 15000) opacity = 0.26;
+    else if (val >=  5000) opacity = 0.14;
+    else if (val >=  1000) opacity = 0.07;
+    if (opacity > 0) {
+      cells[i].style.backgroundColor = 'rgba(251,191,36,' + opacity + ')';
+    }
+  }
+})();
 </script>
 {% endif %}
 {% endblock %}

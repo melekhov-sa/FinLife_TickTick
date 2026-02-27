@@ -177,3 +177,31 @@ def archive_category(
     )
 
     return {"status": "archived"}
+
+
+# === Reorder ===
+
+class ReorderItem(BaseModel):
+    category_id: int
+    sort_order: int
+
+
+class ReorderRequest(BaseModel):
+    items: list[ReorderItem]
+
+
+@router.post("/reorder")
+def reorder_categories(
+    request: Request,
+    req: ReorderRequest,
+    db: Session = Depends(get_db)
+):
+    """Обновить порядок категорий (sort_order) для текущего пользователя."""
+    user = _get_current_user(request, db)
+    for item in req.items:
+        db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == item.category_id,
+            CategoryInfo.account_id == user.id,
+        ).update({"sort_order": item.sort_order})
+    db.commit()
+    return {"ok": True}

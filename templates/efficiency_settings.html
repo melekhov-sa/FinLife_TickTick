@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Настройки эффективности — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .es-page { max-width: 700px; margin: 0 auto; padding: 0 0 32px; }
+  .es-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .es-back { font-size: 14px; color: #007AFF; text-decoration: none; }
+  .es-back:hover { text-decoration: underline; }
+  .es-title { font-size: 22px; font-weight: 800; }
+
+  .es-section {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .es-section-title {
+    padding: 14px 20px;
+    background: var(--bg-secondary, #f8f8f8);
+    border-bottom: 1px solid var(--border-color, #eee);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #888);
+  }
+  .es-note {
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--text-secondary, #888);
+    border-bottom: 1px solid var(--border-color, #eee);
+    background: var(--bg-secondary, #f8f8f8);
+  }
+  .es-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .es-row:last-child { border-bottom: none; }
+  .es-row-label { font-size: 14px; flex: 1; min-width: 180px; }
+  .es-row-label small { display: block; font-size: 12px; color: var(--text-secondary, #888); margin-top: 2px; }
+  .es-inputs { display: flex; gap: 8px; align-items: center; }
+  .es-input {
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary, #111);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .es-input:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 2px rgba(0,122,255,0.15); }
+  .es-input-label { font-size: 12px; color: var(--text-secondary, #888); }
+
+  .es-threshold-cols { display: flex; gap: 8px; align-items: center; }
+
+  .es-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .es-save-btn {
+    padding: 10px 24px;
+    background: #007AFF;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .es-save-btn:hover { background: #0062cc; }
+  .es-cancel-link { font-size: 14px; color: #007AFF; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="es-page">
+
+  <div class="es-header">
+    <a href="/efficiency" class="es-back">← Эффективность</a>
+    <div class="es-title">Настройки метрик</div>
+  </div>
+
+  <form method="post" action="/efficiency/settings">
+
+    {# ── Weights ── #}
+    <div class="es-section">
+      <div class="es-section-title">Веса метрик</div>
+      <div class="es-note">Вводите любые числа — они автоматически нормализуются, чтобы сумма = 100%.</div>
+
+      {% set weight_fields = [
+        ("w_ontime",     "M1 · " ~ metric_labels.ontime,     s.w_ontime),
+        ("w_overdue",    "M2 · " ~ metric_labels.overdue,    s.w_overdue),
+        ("w_reschedule", "M3 · " ~ metric_labels.reschedule, s.w_reschedule),
+        ("w_churn",      "M4 · " ~ metric_labels.churn,      s.w_churn),
+        ("w_wip",        "M5 · " ~ metric_labels.wip,        s.w_wip),
+        ("w_velocity",   "M6 · " ~ metric_labels.velocity,   s.w_velocity),
+      ] %}
+
+      {% for name, label, val in weight_fields %}
+      <div class="es-row">
+        <div class="es-row-label">{{ label }}</div>
+        <div class="es-inputs">
+          <input class="es-input" type="number" name="{{ name }}" value="{{ val }}" step="0.01" min="0" max="1">
+          <span class="es-input-label">≈ {{ ((val | float) * 100) | round(0) | int }}%</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# ── Thresholds ── #}
+    <div class="es-section">
+      <div class="es-section-title">Пороги (зелёный / жёлтый)</div>
+      <div class="es-note">
+        Зелёный = лучшая зона (подсчёт 100). Жёлтый = приемлемо (подсчёт 70). За порогом — красный (подсчёт 40).
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M1 · {{ metric_labels.ontime }}
+          <small>Выше лучше (%)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_ontime_green" value="{{ s.thr_ontime_green }}" step="1" min="0" max="100">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_ontime_yellow" value="{{ s.thr_ontime_yellow }}" step="1" min="0" max="100">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M2 · {{ metric_labels.overdue }}
+          <small>Ниже лучше (шт.)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_overdue_green" value="{{ s.thr_overdue_green }}" step="1" min="0">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_overdue_yellow" value="{{ s.thr_overdue_yellow }}" step="1" min="0">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M3 · {{ metric_labels.reschedule }}
+          <small>Ниже лучше (шт.)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_reschedule_green" value="{{ s.thr_reschedule_green }}" step="1" min="0">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_reschedule_yellow" value="{{ s.thr_reschedule_yellow }}" step="1" min="0">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M4 · {{ metric_labels.churn }}
+          <small>Ниже лучше (шт.)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_churn_green" value="{{ s.thr_churn_green }}" step="1" min="0">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_churn_yellow" value="{{ s.thr_churn_yellow }}" step="1" min="0">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M5 · {{ metric_labels.wip }}
+          <small>Ниже лучше (шт.)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_wip_green" value="{{ s.thr_wip_green }}" step="1" min="0">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_wip_yellow" value="{{ s.thr_wip_yellow }}" step="1" min="0">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+
+      <div class="es-row">
+        <div class="es-row-label">
+          M6 · {{ metric_labels.velocity }}
+          <small>Выше лучше (задач/день)</small>
+        </div>
+        <div class="es-threshold-cols">
+          <input class="es-input" type="number" name="thr_velocity_green" value="{{ s.thr_velocity_green }}" step="0.5" min="0">
+          <span class="es-input-label">зел. /</span>
+          <input class="es-input" type="number" name="thr_velocity_yellow" value="{{ s.thr_velocity_yellow }}" step="0.5" min="0">
+          <span class="es-input-label">жёл.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="es-actions">
+      <button type="submit" class="es-save-btn">Сохранить</button>
+      <a href="/efficiency" class="es-cancel-link">Отмена</a>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

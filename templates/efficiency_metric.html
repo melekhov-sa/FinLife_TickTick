@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ label }} — Эффективность — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .em-page { max-width: 800px; margin: 0 auto; padding: 0 0 32px; }
+  .em-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .em-back {
+    font-size: 14px;
+    color: #007AFF;
+    text-decoration: none;
+  }
+  .em-back:hover { text-decoration: underline; }
+  .em-title { font-size: 22px; font-weight: 800; }
+  .em-desc { font-size: 13px; color: var(--text-secondary, #888); margin-top: 4px; }
+
+  .em-card {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    overflow: hidden;
+  }
+  .em-meta {
+    padding: 16px 20px;
+    background: var(--bg-secondary, #f8f8f8);
+    border-bottom: 1px solid var(--border-color, #eee);
+    font-size: 14px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .em-meta-item { color: var(--text-secondary, #888); }
+  .em-meta-item b { color: var(--text-primary, #111); }
+
+  .em-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary, #888);
+    font-size: 14px;
+  }
+
+  .em-table { width: 100%; border-collapse: collapse; }
+  .em-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #888);
+    border-bottom: 1px solid var(--border-color, #eee);
+    background: var(--bg-secondary, #f8f8f8);
+  }
+  .em-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    vertical-align: top;
+  }
+  .em-table tr:last-child td { border-bottom: none; }
+  .em-task-id { color: var(--text-secondary, #aaa); font-size: 12px; margin-top: 2px; }
+  .em-detail { color: var(--text-secondary, #888); font-size: 13px; }
+  .em-due {
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="em-page">
+
+  <div class="em-header">
+    <a href="/efficiency" class="em-back">← Назад</a>
+    <div>
+      <div class="em-title">{{ label }}</div>
+      <div class="em-desc">{{ description }}</div>
+    </div>
+  </div>
+
+  <div class="em-card">
+    {% if snap %}
+    <div class="em-meta">
+      <div class="em-meta-item">Дата: <b>{{ snap.snapshot_date.strftime("%d.%m.%Y") if snap.snapshot_date else "—" }}</b></div>
+      <div class="em-meta-item">Задач в этом метрике: <b>{{ items | length }}</b></div>
+    </div>
+    {% endif %}
+
+    {% if items %}
+    <table class="em-table">
+      <thead>
+        <tr>
+          <th>Задача</th>
+          <th>Срок</th>
+          <th>Детали</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <div>{{ item.title }}</div>
+            <div class="em-task-id">#{{ item.task_id }}</div>
+          </td>
+          <td class="em-due">
+            {% if item.due_date %}
+              {{ item.due_date.strftime("%d.%m.%Y") }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td class="em-detail">{{ item.detail or "—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="em-empty">
+      Нет задач в этом метрике — всё в порядке! ✓
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
