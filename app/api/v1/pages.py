@@ -6371,25 +6371,26 @@ def efficiency_metric_page(request: Request, key: str, db: Session = Depends(get
 
 def _budget_matrix_nav_urls(
     grain: str, range_count: int, year: int, month: int,
-    date_param: date | None, cat_qs: str,
+    date_param: date | None, cat_qs: str, avg_months: int = 0,
 ):
     """Compute prev/next navigation URLs for matrix budget (shift by 1 period)."""
     dp = date_param or date.today()
     rc = f"&range_count={range_count}"
+    avg_qs = f"&avg_months={avg_months}" if avg_months else ""
 
     if grain == "day":
         prev_d = dp - timedelta(days=1)
         next_d = dp + timedelta(days=1)
-        prev_url = f"/budget?grain=day&date={prev_d.isoformat()}{rc}"
-        next_url = f"/budget?grain=day&date={next_d.isoformat()}{rc}"
+        prev_url = f"/budget?grain=day&date={prev_d.isoformat()}{rc}{avg_qs}"
+        next_url = f"/budget?grain=day&date={next_d.isoformat()}{rc}{avg_qs}"
     elif grain == "week":
         prev_d = dp - timedelta(days=7)
         next_d = dp + timedelta(days=7)
-        prev_url = f"/budget?grain=week&date={prev_d.isoformat()}{rc}"
-        next_url = f"/budget?grain=week&date={next_d.isoformat()}{rc}"
+        prev_url = f"/budget?grain=week&date={prev_d.isoformat()}{rc}{avg_qs}"
+        next_url = f"/budget?grain=week&date={next_d.isoformat()}{rc}{avg_qs}"
     elif grain == "year":
-        prev_url = f"/budget?grain=year&year={year - 1}{rc}"
-        next_url = f"/budget?grain=year&year={year + 1}{rc}"
+        prev_url = f"/budget?grain=year&year={year - 1}{rc}{avg_qs}"
+        next_url = f"/budget?grain=year&year={year + 1}{rc}{avg_qs}"
     else:  # month
         if month == 1:
             prev_y, prev_m = year - 1, 12
@@ -6399,8 +6400,8 @@ def _budget_matrix_nav_urls(
             next_y, next_m = year + 1, 1
         else:
             next_y, next_m = year, month + 1
-        prev_url = f"/budget?grain=month&year={prev_y}&month={prev_m}{rc}"
-        next_url = f"/budget?grain=month&year={next_y}&month={next_m}{rc}"
+        prev_url = f"/budget?grain=month&year={prev_y}&month={prev_m}{rc}{avg_qs}"
+        next_url = f"/budget?grain=month&year={next_y}&month={next_m}{rc}{avg_qs}"
 
     if cat_qs:
         prev_url += cat_qs
@@ -6417,6 +6418,7 @@ def budget_page(
     month: int | None = None,
     date: str | None = None,
     range_count: int | None = None,
+    avg_months: int = 0,
     db: Session = Depends(get_db),
 ):
     """Budget page — multi-period matrix view."""
@@ -6555,6 +6557,7 @@ def budget_page(
         hidden_category_ids=hidden_category_ids,
         hidden_goal_ids=hidden_goal_ids,
         hidden_withdrawal_goal_ids=hidden_withdrawal_goal_ids,
+        avg_months=avg_months,
     )
     # Mark future periods so the template can hide fact columns
     _today = datetime.today().date()
@@ -6615,12 +6618,11 @@ def budget_page(
         _ic = view["income_totals"]["cells"][_i]
         _wc = view["withdrawal_totals"]["cells"][_i]
         _ec = view["expense_totals"]["cells"][_i]
-        _cc = view["credit_totals"]["cells"][_i]
         _gc = view["goal_totals"]["cells"][_i]
         _ip = float(_ic["plan"] + _wc["plan"])
         _if = float(_ic["fact"] + _wc["fact"])
-        _ep = float(_ec["plan"] + _cc["plan"] + _gc["plan"])
-        _ef = float(_ec["fact"] + _cc["fact"] + _gc["fact"])
+        _ep = float(_ec["plan"] + _gc["plan"])
+        _ef = float(_ec["fact"] + _gc["fact"])
         if _p["is_past"]:
             pass  # Current balance already reflects past transactions
         elif not _p["is_future"]:
@@ -6674,16 +6676,18 @@ def budget_page(
     variant_qs = f"&variant_id={variant.id}"
     rc_qs = f"&range_count={range_count}"
 
+    avg_qs = f"&avg_months={avg_months}" if avg_months else ""
+
     prev_url, next_url = _budget_matrix_nav_urls(
-        grain, range_count, year, month, date_param, variant_qs,
+        grain, range_count, year, month, date_param, variant_qs, avg_months=avg_months,
     )
 
     # Grain selector — only allowed granularities
     all_grain_urls = {
-        "day": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{variant_qs}",
-        "week": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{variant_qs}",
-        "month": f"/budget?grain=month&year={year}&month={month}{rc_qs}{variant_qs}",
-        "year": f"/budget?grain=year&year={year}{rc_qs}{variant_qs}",
+        "day": f"/budget?grain=day&date={date_param.isoformat()}{rc_qs}{variant_qs}{avg_qs}",
+        "week": f"/budget?grain=week&date={date_param.isoformat()}{rc_qs}{variant_qs}{avg_qs}",
+        "month": f"/budget?grain=month&year={year}&month={month}{rc_qs}{variant_qs}{avg_qs}",
+        "year": f"/budget?grain=year&year={year}{rc_qs}{variant_qs}{avg_qs}",
     }
     grains = [
         {"value": g, "label": GRANULARITY_LABELS[g], "url": all_grain_urls[g]}
@@ -6717,6 +6721,7 @@ def budget_page(
         "hidden_goal_ids": hidden_goal_ids,
         "hidden_withdrawal_goal_ids": hidden_withdrawal_goal_ids,
         "period_balances": _period_balances,
+        "avg_months": avg_months,
     })
 
 
@@ -7317,6 +7322,8 @@ def budget_plan_edit_page(
     month: int,
     variant_id: int,
     kind: str = "EXPENSE",
+    grain: str = "month",
+    range_count: int = 3,
     db: Session = Depends(get_db),
 ):
     """Per-cell budget plan editing page."""
@@ -7399,7 +7406,7 @@ def budget_plan_edit_page(
     )
 
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
+    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
 
     return templates.TemplateResponse("budget_plan_edit.html", {
         "request": request,
@@ -7409,6 +7416,8 @@ def budget_plan_edit_page(
         "month": month,
         "variant_id": variant.id,
         "variant": variant,
+        "grain": grain,
+        "range_count": range_count,
         "period_label": period_label,
         "plan_manual": plan_manual,
         "plan_planned": plan_planned,
@@ -7418,6 +7427,115 @@ def budget_plan_edit_page(
         "back_url": back_url,
         "freq_labels": OP_FREQ_LABELS,
         "month_label": MONTH_NAMES_RU.get(month, str(month)),
+    })
+
+
+@router.get("/budget/other/planned", response_class=HTMLResponse)
+def budget_other_planned_page(
+    request: Request,
+    kind: str = "EXPENSE",
+    year: int = 2026,
+    month: int = 1,
+    range_count: int = 3,
+    variant_id: int = 0,
+    grain: str = "month",
+    avg_months: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Detail page for planned operations in the 'other' (Прочие) budget bucket."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+
+    user_id = request.session["user_id"]
+
+    variant = get_active_variant(db, account_id=user_id, variant_id=variant_id)
+    if not variant:
+        return RedirectResponse("/budget", status_code=302)
+
+    # Compute date range using the same period logic as the budget matrix
+    svc = BudgetMatrixService(db)
+    anchor_date = date(year, month, 1) if grain in ("month", "year") else date.today()
+    periods = svc._compute_periods(grain, range_count, anchor_date, year, month)
+    range_start = periods[0]["range_start"]
+    range_end = periods[-1]["range_end"]
+
+    if len(periods) == 1:
+        period_label = periods[0]["label"]
+    else:
+        period_label = f"{periods[0]['short_label']} — {periods[-1]['short_label']}"
+
+    # Identify which category IDs are visible (consumed by the main budget rows)
+    all_cats = db.query(CategoryInfo).filter(
+        CategoryInfo.account_id == user_id,
+    ).all()
+
+    hidden_cat_ids = get_hidden_category_ids(db, variant.id)
+
+    cat_type = "INCOME" if kind == "INCOME" else "EXPENSE"
+    active_cats = [
+        c for c in all_cats
+        if c.category_type == cat_type and not c.is_archived and not c.is_system
+    ]
+    # Visible = active non-system minus hidden
+    visible_ids = {c.category_id for c in active_cats if c.category_id not in hidden_cat_ids}
+
+    # Query planned operations NOT in visible categories
+    query = (
+        db.query(
+            OperationTemplateModel.template_id,
+            OperationTemplateModel.title,
+            OperationTemplateModel.amount,
+            OperationTemplateModel.category_id,
+            CategoryInfo.title.label("cat_title"),
+            OperationOccurrence.scheduled_date,
+            OperationOccurrence.status,
+            RecurrenceRuleModel.freq,
+            RecurrenceRuleModel.interval,
+        )
+        .join(OperationOccurrence, OperationOccurrence.template_id == OperationTemplateModel.template_id)
+        .outerjoin(RecurrenceRuleModel, RecurrenceRuleModel.rule_id == OperationTemplateModel.rule_id)
+        .outerjoin(CategoryInfo, CategoryInfo.category_id == OperationTemplateModel.category_id)
+        .filter(
+            OperationTemplateModel.account_id == user_id,
+            OperationTemplateModel.kind == kind,
+            OperationTemplateModel.is_archived == False,
+            OperationOccurrence.scheduled_date >= range_start,
+            OperationOccurrence.scheduled_date < range_end,
+            OperationOccurrence.status != "SKIPPED",
+        )
+    )
+    if visible_ids:
+        query = query.filter(or_(
+            OperationTemplateModel.category_id.is_(None),
+            OperationTemplateModel.category_id.notin_(visible_ids),
+        ))
+    ops = query.order_by(CategoryInfo.title.nulls_first(), OperationOccurrence.scheduled_date).all()
+
+    # Group by category
+    groups: list = []
+    seen: dict = {}
+    for op in ops:
+        cat_key = op.category_id
+        cat_title = op.cat_title or ("Прочие расходы" if kind == "EXPENSE" else "Прочие доходы")
+        if cat_key not in seen:
+            seen[cat_key] = {"cat_id": cat_key, "cat_title": cat_title, "ops": []}
+            groups.append(seen[cat_key])
+        seen[cat_key]["ops"].append(op)
+
+    kind_label = "расходы" if kind == "EXPENSE" else "доходы"
+    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
+    if avg_months:
+        back_url += f"&avg_months={avg_months}"
+
+    return templates.TemplateResponse("budget_other_planned.html", {
+        "request": request,
+        "kind": kind,
+        "kind_label": kind_label,
+        "period_label": period_label,
+        "groups": groups,
+        "back_url": back_url,
+        "freq_labels": OP_FREQ_LABELS,
+        "total_ops": len(ops),
     })
 
 
@@ -7468,8 +7586,10 @@ def save_budget_plan_single(
     except Exception:
         db.rollback()
 
+    grain = form_data.get("grain", "month")
+    range_count = form_data.get("range_count", "3")
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
+    return RedirectResponse(f"/budget?year={year}&month={month}{qs}&grain={grain}&range_count={range_count}", status_code=302)
 
 
 @router.post("/budget/order/move")

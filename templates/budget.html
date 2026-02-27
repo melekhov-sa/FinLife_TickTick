@@ -229,6 +229,14 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
   <span style="color: #ccc; margin: 0 2px;">|</span>
 
   <input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" style="width: 46px; font-size: 12px; padding: 3px 4px;">
+  <span style="color: #ccc; margin: 0 2px;">|</span>
+  <span style="font-size: 12px; color: #666;">Ср.:</span>
+  <select name="avg_months" style="font-size: 12px; padding: 3px 4px;">
+    <option value="0" {% if avg_months == 0 %}selected{% endif %}>Выкл</option>
+    <option value="3" {% if avg_months == 3 %}selected{% endif %}>3 мес.</option>
+    <option value="6" {% if avg_months == 6 %}selected{% endif %}>6 мес.</option>
+    <option value="12" {% if avg_months == 12 %}selected{% endif %}>12 мес.</option>
+  </select>
   {% if grain == "month" %}
   <select name="month" style="font-size: 12px; padding: 3px 4px; max-width: 110px;">
     {% for m in range(1, 13) %}
@@ -366,7 +374,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
 <div class="card">
   <div class="matrix-scroll-wrapper">
     <table class="budget-table matrix-table bgt-compact">
-      {% set _ns = namespace(val=1) %}{% for p in view.periods %}{% if show_plan %}{% if p.is_past %}{% set _ns.val = _ns.val + 2 %}{% elif p.is_future %}{% set _ns.val = _ns.val + 1 %}{% else %}{% set _ns.val = _ns.val + 4 %}{% endif %}{% else %}{% if not p.is_future %}{% set _ns.val = _ns.val + 1 %}{% endif %}{% endif %}{% endfor %}{% set _ns.val = _ns.val + (2 if show_plan else 1) %}{% set n_cols = _ns.val %}
+      {% set _ns = namespace(val=1) %}{% for p in view.periods %}{% if show_plan %}{% if p.is_past %}{% set _ns.val = _ns.val + 2 %}{% elif p.is_future %}{% set _ns.val = _ns.val + 1 %}{% else %}{% set _ns.val = _ns.val + 4 %}{% endif %}{% else %}{% if not p.is_future %}{% set _ns.val = _ns.val + 1 %}{% endif %}{% endif %}{% endfor %}{% set _ns.val = _ns.val + (2 if show_plan else 1) %}{% set n_cols = _ns.val %}{% if avg_months > 0 %}{% set n_cols = n_cols + 1 %}{% endif %}
       <thead>
         <tr>
           <th class="sticky-col">Категория</th>
@@ -374,6 +382,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% if show_plan or not p.is_future %}<th{% if show_plan %} colspan="{{ 1 if p.is_future else (2 if p.is_past else 4) }}"{% endif %} class="period-header">{{ p.short_label }}</th>{% endif %}
           {% endfor %}
           <th{% if show_plan %} colspan="2"{% endif %} class="period-header total-header">Итого</th>
+          {% if avg_months > 0 %}<th class="period-header" style="color:#888;font-style:italic;" title="Среднемесячный факт за последние {{ avg_months }} мес.">Ср. {{ avg_months }} мес.</th>{% endif %}
         </tr>
         {% if show_plan %}
         <tr>
@@ -389,6 +398,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           <th class="sub-header period-border" title="План">П</th>
           <th class="sub-header" title="Факт">Ф</th>
+          {% if avg_months > 0 %}<th class="sub-header period-border" title="Среднемесячный факт" style="color:#888;font-style:italic;">Ф̄</th>{% endif %}
         </tr>
         {% endif %}
       </thead>
@@ -419,6 +429,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% else %}
           <td class="total-cell period-border"></td>
           {% endif %}
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endif %}
 
@@ -444,12 +455,12 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
@@ -464,14 +475,16 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
           {% endif %}
           <td class="text-right total-cell {% if show_plan %}{% if row.total.deviation > 0 %}positive{% elif row.total.deviation < 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
+          {% if avg_months > 0 %}<td class="text-right compact-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(row.avg_fact) if row.avg_fact else '—' }}</td>{% endif %}
         </tr>
         {% endfor %}
         <!-- Прочие доходы -->
         {% set oi = view.other_income %}
         {% set oi_has_data = oi.total.fact != 0 or oi.total.plan != 0 %}
         {% if oi_has_data %}
+        {% set _other_income_url = "/budget/other/planned?kind=INCOME&year=" ~ anchor_year ~ "&month=" ~ anchor_month ~ "&range_count=" ~ range_count ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ ("&avg_months=" ~ avg_months if avg_months else "") %}
         <tr class="bgt-section-body bgt-hidden muted" data-section="income">
-          <td class="sticky-col">Прочие доходы</td>
+          <td class="sticky-col"><a href="{{ _other_income_url }}" style="color: inherit; text-decoration: none;" title="Посмотреть плановые операции">Прочие доходы</a></td>
           {% for cell in oi.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -492,6 +505,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(oi.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt_or_dash(oi.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endif %}
 
@@ -534,6 +548,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>{% endif %}
           <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endfor %}
         <!-- ИТОГО взять из отложенного -->
@@ -559,6 +574,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.withdrawal_totals.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(view.withdrawal_totals.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endif %}
 
@@ -588,6 +604,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(_income_plan_total) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(_income_fact_total) }}</td>
+          {% if avg_months > 0 %}<td class="text-right total-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(view.income_totals.avg_total) }}</td>{% endif %}
         </tr>
 
         <!-- ══════════════════════════════════════════════ -->
@@ -612,12 +629,12 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right compact-cell {% if row.is_credit %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% else %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           <td class="text-right compact-cell{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
@@ -632,14 +649,16 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
           {% endif %}
           <td class="text-right total-cell {% if row.is_credit %}{% if row.total.fact > 0 %}positive{% endif %}{% elif show_plan %}{% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
+          {% if avg_months > 0 %}<td class="text-right compact-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(row.avg_fact) if row.avg_fact else '—' }}</td>{% endif %}
         </tr>
         {% endfor %}
         <!-- Прочие расходы -->
         {% set oe = view.other_expense %}
         {% set oe_has_data = oe.total.fact != 0 or oe.total.plan != 0 %}
         {% if oe_has_data %}
+        {% set _other_expense_url = "/budget/other/planned?kind=EXPENSE&year=" ~ anchor_year ~ "&month=" ~ anchor_month ~ "&range_count=" ~ range_count ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ ("&avg_months=" ~ avg_months if avg_months else "") %}
         <tr class="bgt-section-body muted" data-section="expense">
-          <td class="sticky-col">Прочие расходы</td>
+          <td class="sticky-col"><a href="{{ _other_expense_url }}" style="color: inherit; text-decoration: none;" title="Посмотреть плановые операции">Прочие расходы</a></td>
           {% for cell in oe.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -660,6 +679,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(oe.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt_or_dash(oe.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endif %}
         <!-- ══════════════════════════════════════════════ -->
@@ -703,6 +723,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(row.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endfor %}
         <!-- ИТОГО отложить -->
@@ -728,6 +749,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           {% endfor %}
           {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.goal_totals.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(view.goal_totals.total.fact) }}</td>
+          {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
         {% endif %}
 
@@ -758,6 +780,7 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right total-cell period-border">{{ fmt(_expense_plan_total) }}</td>
           {% endif %}
           <td class="text-right total-cell">{{ fmt(_expense_fact_total) }}</td>
+          {% if avg_months > 0 %}<td class="text-right total-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(view.expense_totals.avg_total) }}</td>{% endif %}
         </tr>
 
       </tbody>

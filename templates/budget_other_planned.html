@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Прочие {{ kind_label }} — {{ period_label }}{% endblock %}
+
+{% macro fmt(val) %}{{ "{:,.0f}".format(val).replace(",", " ") }}{% endmacro %}
+
+{% block content %}
+<div style="margin-bottom: 12px;">
+  <a href="{{ back_url }}" style="font-size: 13px; color: #007AFF; text-decoration: none;">&larr; Назад к бюджету</a>
+</div>
+
+<div class="card">
+  <div style="margin-bottom: 16px;">
+    <span style="font-size: 18px; font-weight: 700;">Прочие {{ kind_label }}</span>
+    <div style="font-size: 14px; color: #888; margin-top: 4px;">{{ period_label }}</div>
+    {% if total_ops == 0 %}
+    <div style="color: #888; font-size: 14px; margin-top: 12px;">Плановые операции не найдены</div>
+    {% else %}
+    <div style="font-size: 13px; color: #888; margin-top: 4px;">Плановые операции, не отображаемые в основном бюджете (скрытые или системные категории)</div>
+    {% endif %}
+  </div>
+
+  {% for group in groups %}
+  <div style="margin-bottom: 24px;">
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+                color: var(--text-secondary, #888); border-bottom: 1px solid var(--border-color, #eee);
+                padding-bottom: 6px; margin-bottom: 8px;">
+      {{ group.cat_title }}
+    </div>
+    <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+      <thead>
+        <tr style="color: #888; font-size: 12px;">
+          <th style="text-align: left; padding: 4px 0; font-weight: 500;">Название</th>
+          <th style="text-align: right; padding: 4px 8px; font-weight: 500; white-space: nowrap;">Сумма</th>
+          <th style="text-align: left; padding: 4px 8px; font-weight: 500; white-space: nowrap;">Дата</th>
+          <th style="text-align: left; padding: 4px 8px; font-weight: 500;">Частота</th>
+          <th style="text-align: left; padding: 4px 0; font-weight: 500;">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in group.ops %}
+        <tr style="border-top: 1px solid var(--border-color, #f5f5f5);">
+          <td style="padding: 5px 0;">{{ op.title }}</td>
+          <td style="text-align: right; padding: 5px 8px; font-weight: 600; white-space: nowrap;">{{ fmt(op.amount) }}</td>
+          <td style="padding: 5px 8px; white-space: nowrap; color: #555;">{{ op.scheduled_date.strftime("%d.%m.%Y") }}</td>
+          <td style="padding: 5px 8px; color: #555;">
+            {{ freq_labels.get(op.freq, op.freq or "разово") }}{% if op.interval and op.interval > 1 %} ×{{ op.interval }}{% endif %}
+          </td>
+          <td style="padding: 5px 0;">
+            {% if op.status == "DONE" %}
+            <span style="color: #28a745; font-size: 12px; font-weight: 600;">Подтв.</span>
+            {% else %}
+            <span style="color: #888; font-size: 12px;">Ожидание</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="border-top: 1px solid var(--border-color,#ddd);">
+          <td style="padding: 4px 0; text-align: right; font-size: 12px; color: #888;">Итого:</td>
+          <td style="text-align: right; padding: 4px 8px; font-weight: 700; white-space: nowrap;">{{ fmt(group.ops | sum(attribute='amount')) }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

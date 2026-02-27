@@ -56,6 +56,7 @@ class BudgetMatrixService:
         hidden_category_ids: set | None = None,
         hidden_goal_ids: set | None = None,
         hidden_withdrawal_goal_ids: set | None = None,
+        avg_months: int = 0,
     ) -> Dict[str, Any]:
         if grain not in VALID_GRAINS:
             grain = "month"
@@ -199,6 +200,18 @@ class BudgetMatrixService:
         self._apply_parent_aggregation(income_rows, n)
         self._apply_parent_aggregation(expense_rows, n)
 
+        # --- Average fact column (optional) ---
+        if avg_months > 0:
+            before_date = periods[0]["range_start"]
+            avg_map = self._aggregate_avg_fact(account_id, avg_months, before_date)
+            for row in income_rows + expense_rows:
+                row["avg_fact"] = avg_map.get((row["category_id"], row["kind"]), _ZERO)
+            self._apply_avg_parent_aggregation(income_rows)
+            self._apply_avg_parent_aggregation(expense_rows)
+        else:
+            for row in income_rows + expense_rows:
+                row["avg_fact"] = _ZERO
+
         # --- "Прочие" (uncategorized/system) ---
         other_income = self._build_other_row(
             fact_map, planned_map, manual_map, consumed_fact, consumed_planned,
@@ -212,6 +225,14 @@ class BudgetMatrixService:
         # --- Section totals ---
         income_totals = self._sum_section(income_rows, other_income, n)
         expense_totals = self._sum_section(expense_rows, other_expense, n)
+
+        # Attach avg totals (sum of top-level rows only — depth==0)
+        income_totals["avg_total"] = sum(
+            r["avg_fact"] for r in income_rows if r.get("depth", 0) == 0
+        )
+        expense_totals["avg_total"] = sum(
+            r["avg_fact"] for r in expense_rows if r.get("depth", 0) == 0
+        )
 
         # --- Result (income - expense) ---
         result_cells = []
@@ -253,6 +274,7 @@ class BudgetMatrixService:
             "credit_row": credit_row,
             "withdrawal_rows": withdrawal_rows,
             "withdrawal_totals": withdrawal_totals,
+            "avg_months": avg_months,
         }
 
     # ------------------------------------------------------------------
@@ -393,6 +415,46 @@ class BudgetMatrixService:
             if row.period_idx >= 0:
                 result[(row.category_id, row.operation_type, row.period_idx)] = row.total or _ZERO
         return result
+
+    def _aggregate_avg_fact(
+        self, account_id: int, lookback_months: int, before_date: date_type,
+    ) -> Dict[Tuple[int, str], Decimal]:
+        """Average monthly fact per (category_id, operation_type) over the past N months."""
+        total_m = before_date.year * 12 + (before_date.month - 1) - lookback_months
+        start = date_type(total_m // 12, total_m % 12 + 1, 1)
+        dt_start = datetime(start.year, start.month, start.day)
+        dt_end = datetime(before_date.year, before_date.month, before_date.day)
+
+        rows = (
+            self.db.query(
+                TransactionFeed.category_id,
+                TransactionFeed.operation_type,
+                func.sum(TransactionFeed.amount).label("total"),
+            )
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
+                TransactionFeed.occurred_at >= dt_start,
+                TransactionFeed.occurred_at < dt_end,
+            )
+            .group_by(TransactionFeed.category_id, TransactionFeed.operation_type)
+            .all()
+        )
+        n = Decimal(lookback_months)
+        return {
+            (r.category_id, r.operation_type): (r.total or _ZERO) / n
+            for r in rows
+        }
+
+    @staticmethod
+    def _apply_avg_parent_aggregation(rows: List[Dict]) -> None:
+        """Parent avg_fact += sum of children avg_fact (mirrors _apply_parent_aggregation)."""
+        by_id = {r["category_id"]: r for r in rows}
+        for row in rows:
+            if row.get("depth", 0) == 1 and row.get("parent_id"):
+                parent = by_id.get(row["parent_id"])
+                if parent is not None:
+                    parent["avg_fact"] = parent["avg_fact"] + row["avg_fact"]
 
     def _aggregate_planned_bucketed(
         self, account_id: int, periods: List[Dict],
