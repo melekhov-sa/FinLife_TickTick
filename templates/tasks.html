@@ -170,6 +170,25 @@
   color: #dc3545;
   background: rgba(220,53,69,.08);
 }
+.tsk-bell {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: var(--text-secondary, #bbb);
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.tsk-bell:hover {
+  color: #007AFF;
+  background: rgba(0,122,255,.08);
+}
 .tsk-resc {
   background: none;
   border: none;
@@ -580,6 +599,7 @@ details.card[open] > summary .nav-chevron {
     <button type="button" class="tsk-resc" title="Перенести"
             onclick="openRescheduleModal({{ task.task_id }}, '{{ task.due_date.isoformat() }}', '{{ task.title|e }}')">&#8634;</button>
     {% endif %}
+    <a href="/tasks/{{ task.task_id }}/reminders" class="tsk-bell" title="Напоминания">&#128276;</a>
     <button type="button" class="tsk-del" onclick="tskConfirmArchive('frm-a-{{ task.task_id }}')" title="Убрать">&#x2715;</button>
   </div>
 </div>

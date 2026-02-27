@@ -138,10 +138,13 @@
           streak {{ item.habit.current_streak }} &middot; best {{ item.habit.best_streak }} &middot; {{ item.pct_30 }}%
         </span>
       </div>
-      <form method="POST" action="/habits/{{ item.habit.habit_id }}/archive" style="display:inline;">
-        <button type="submit" class="danger" style="font-size: 11px; padding: 3px 8px;"
-                onclick="return confirm('Архивировать «{{ item.habit.title }}»?')">Архив</button>
-      </form>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <a href="/habits/{{ item.habit.habit_id }}/edit" class="btn secondary" style="font-size: 11px; padding: 3px 8px; text-decoration: none;">Изменить</a>
+        <form method="POST" action="/habits/{{ item.habit.habit_id }}/archive" style="display:inline;">
+          <button type="submit" class="danger" style="font-size: 11px; padding: 3px 8px;"
+                  onclick="return confirm('Архивировать «{{ item.habit.title }}»?')">Архив</button>
+        </form>
+      </div>
     </div>
 
     <!-- 14-day grid -->

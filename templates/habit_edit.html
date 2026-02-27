@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Редактировать привычку — FinLife{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+  <a href="/habits" style="text-decoration: none; font-size: 20px; color: #666;">&larr;</a>
+  <h1 style="margin: 0;">Редактировать привычку</h1>
+</div>
+
+{% if flash %}
+<div class="{% if flash.type == 'error' %}error-card{% else %}success-card{% endif %}"
+     style="margin-bottom: 16px;">{{ flash.message }}</div>
+{% endif %}
+
+<div class="card">
+  {% if error %}
+    <div class="error-card" style="margin-bottom: 16px;">{{ error }}</div>
+  {% endif %}
+  <form method="POST" action="/habits/{{ habit.habit_id }}/edit">
+
+    <div class="form-row">
+      <label>Название</label>
+      <input name="title" value="{{ habit.title }}" placeholder="Например: Зарядка" required>
+    </div>
+
+    <div class="form-row">
+      <label>Уровень сложности</label>
+      <select name="level">
+        <option value="1" {% if habit.level == 1 %}selected{% endif %}>Простая</option>
+        <option value="2" {% if habit.level == 2 %}selected{% endif %}>Средняя</option>
+        <option value="3" {% if habit.level == 3 %}selected{% endif %}>Сложная</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Категория</label>
+      <select name="category_id">
+        <option value="">— Без категории —</option>
+        {% for cat in work_categories %}
+          <option value="{{ cat.category_id }}"
+            {% if habit.category_id == cat.category_id %}selected{% endif %}>
+            {{ cat.emoji or '' }} {{ cat.title }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Напоминание</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input name="reminder_time" type="time"
+               value="{{ habit.reminder_time.strftime('%H:%M') if habit.reminder_time else '' }}"
+               style="max-width: 140px;">
+        <small class="muted">Оставьте пустым, если не нужно</small>
+      </div>
+    </div>
+
+    <details style="margin-bottom: 12px;" {% if habit.note %}open{% endif %}>
+      <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
+      <div class="form-row" style="margin-top: 8px;">
+        <input name="note" value="{{ habit.note or '' }}" placeholder="Опционально">
+      </div>
+    </details>
+
+    <div style="display: flex; gap: 8px; margin-top: 4px;">
+      <button type="submit">Сохранить</button>
+      <a href="/habits" class="btn secondary" style="text-decoration: none;">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

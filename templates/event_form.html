@@ -229,6 +229,87 @@
   </form>
 </div>
 
+{% if mode == "edit" %}
+<div class="card" style="margin-top: 20px;">
+  <div style="font-weight: 600; font-size: 15px; margin-bottom: 12px;">Напоминания по умолчанию</div>
+  <p class="muted" style="font-size: 13px; margin-bottom: 12px;">
+    Применяются ко всем будущим вхождениям этого события.
+  </p>
+
+  {% if default_reminders %}
+  <div style="margin-bottom: 16px;">
+    {% for r in default_reminders %}
+    <div style="display: flex; align-items: center; justify-content: space-between;
+                padding: 9px 0; border-bottom: 1px solid var(--border, #f0f0f0); gap: 12px;">
+      <span style="font-size: 14px;">
+        {% if r.offset_minutes == 0 %}В момент события
+        {% elif r.offset_minutes >= -60 %}За {{ -r.offset_minutes }} мин.
+        {% elif r.offset_minutes >= -1440 %}За {{ (-r.offset_minutes) // 60 }} ч.{% if (-r.offset_minutes) % 60 != 0 %} {{ (-r.offset_minutes) % 60 }} мин.{% endif %}
+        {% else %}За {{ (-r.offset_minutes) // 1440 }} дн.
+        {% endif %}
+      </span>
+      <form method="POST" action="/events/{{ event.event_id }}/default-reminders/{{ r.id }}/delete" style="display:inline;">
+        <button type="submit" style="background:none;border:none;color:#999;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px;" title="Удалить">&#x2715;</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted" style="font-size: 13px; margin-bottom: 12px;">Напоминаний нет.</p>
+  {% endif %}
+
+  <form method="POST" action="/events/{{ event.event_id }}/default-reminders/add"
+        style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+    <input type="hidden" name="offset_minutes" id="evOffsetMinutes" value="">
+    <select id="evReminderPreset" onchange="evHandlePresetChange(this.value)"
+            style="flex: 1; min-width: 160px; padding: 7px 10px; border: 1px solid var(--border-color, #ddd);
+                   border-radius: 8px; font-size: 14px; background: var(--bg-input, #fff); color: var(--text-primary, #111);">
+      <option value="">— Добавить напоминание —</option>
+      {% if reminder_presets %}
+        {% for p in reminder_presets %}
+        <option value="{{ p.offset_minutes }}">{{ p.label }}</option>
+        {% endfor %}
+      {% endif %}
+      <option value="__custom__">Своё значение...</option>
+    </select>
+    <button type="submit" onclick="return evPrepareSubmit()"
+            style="padding: 7px 16px; background: #007AFF; color: #fff; border: none;
+                   border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+      Добавить
+    </button>
+    <div id="evCustomBlock" style="display:none; width: 100%; margin-top: 4px; gap: 6px; align-items: center;">
+      <input type="number" id="evCustomMinutes" placeholder="минут до" min="0" max="10080"
+             style="width: 120px; padding: 7px 10px; border: 1px solid var(--border-color, #ddd); border-radius: 8px; font-size: 14px;
+                    background: var(--bg-input, #fff); color: var(--text-primary, #111);">
+      <span class="muted" style="font-size: 13px;">минут до события</span>
+    </div>
+  </form>
+</div>
+
+<script>
+function evHandlePresetChange(val) {
+  var block = document.getElementById('evCustomBlock');
+  block.style.display = val === '__custom__' ? 'flex' : 'none';
+}
+function evPrepareSubmit() {
+  var sel = document.getElementById('evReminderPreset');
+  var offsetInput = document.getElementById('evOffsetMinutes');
+  var val = sel.value;
+  if (val === '__custom__') {
+    var mins = parseInt(document.getElementById('evCustomMinutes').value, 10);
+    if (isNaN(mins) || mins < 0) { alert('Укажите корректное количество минут'); return false; }
+    offsetInput.value = -mins;
+  } else if (val !== '') {
+    offsetInput.value = val;
+  } else {
+    alert('Выберите напоминание');
+    return false;
+  }
+  return true;
+}
+</script>
+{% endif %}
+
 <script>
 (function() {
   var etSel = document.getElementById('event-type-select');

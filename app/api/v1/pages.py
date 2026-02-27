@@ -23,10 +23,13 @@ from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel, SubscriptionCoverageModel,
     ContactModel, WishModel, TaskPresetModel,
     TaskRescheduleReason, TaskDueChangeLog,
+    TaskReminderModel, UserReminderTimePreset,
+    EventDefaultReminderModel,
     GoalInfo, GoalWalletBalance,
     BudgetLine, BudgetGoalPlan, BudgetGoalWithdrawalPlan,
     ProjectModel, ProjectTagModel, TaskProjectTagModel,
     ArticleModel, ArticleLinkModel,
+    EfficiencySnapshot,
 )
 from app.application.wallets import CreateWalletUseCase, RenameWalletUseCase, ArchiveWalletUseCase, UnarchiveWalletUseCase, WalletValidationError
 from app.application.categories import (
@@ -122,6 +125,7 @@ from app.application.projects import (
 )
 from app.application.project_analytics import ProjectAnalyticsService
 from app.application.strategy import StrategyService
+from app.application.efficiency import EfficiencyService, METRIC_LABELS, METRIC_DESCRIPTIONS
 from app.application.knowledge import (
     CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
     AttachArticleToProjectUseCase, DetachArticleFromProjectUseCase,
@@ -180,6 +184,7 @@ def _resolve_current_page(request: Request) -> str:
         ("/transactions",     "transactions"),
         ("/budget",           "budget"),
         ("/strategy",         "strategy"),
+        ("/efficiency",       "efficiency"),
         ("/plan",             "plan"),
         ("/tasks",            "tasks"),
         ("/projects",         "projects"),
@@ -2868,6 +2873,81 @@ def archive_task_form(request: Request, task_id: int, db: Session = Depends(get_
     return RedirectResponse("/tasks", status_code=302)
 
 
+@router.get("/tasks/{task_id}/reminders", response_class=HTMLResponse)
+def task_reminders_page(request: Request, task_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        return RedirectResponse("/tasks", status_code=302)
+    reminders = db.query(TaskReminderModel).filter(
+        TaskReminderModel.task_id == task_id,
+    ).order_by(TaskReminderModel.offset_minutes.desc()).all()
+    presets = db.query(UserReminderTimePreset).filter(
+        UserReminderTimePreset.account_id == user_id,
+    ).order_by(UserReminderTimePreset.sort_order, UserReminderTimePreset.id).all()
+    flash = request.session.pop("flash", None)
+    return templates.TemplateResponse("task_reminder.html", {
+        "request": request, "task": task, "reminders": reminders,
+        "presets": presets, "flash": flash,
+    })
+
+
+@router.post("/tasks/{task_id}/reminders/add")
+def task_reminder_add(
+    request: Request,
+    task_id: int,
+    offset_minutes: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        return RedirectResponse("/tasks", status_code=302)
+    existing_count = db.query(TaskReminderModel).filter(
+        TaskReminderModel.task_id == task_id,
+    ).count()
+    if existing_count >= 5:
+        request.session["flash"] = {"message": "Максимум 5 напоминаний на задачу", "type": "error"}
+        return RedirectResponse(f"/tasks/{task_id}/reminders", status_code=302)
+    existing = db.query(TaskReminderModel).filter(
+        TaskReminderModel.task_id == task_id,
+        TaskReminderModel.offset_minutes == offset_minutes,
+    ).first()
+    if not existing:
+        db.add(TaskReminderModel(task_id=task_id, offset_minutes=offset_minutes))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+    return RedirectResponse(f"/tasks/{task_id}/reminders", status_code=302)
+
+
+@router.post("/tasks/{task_id}/reminders/{reminder_id}/delete")
+def task_reminder_delete(request: Request, task_id: int, reminder_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        return RedirectResponse("/tasks", status_code=302)
+    db.query(TaskReminderModel).filter(
+        TaskReminderModel.id == reminder_id,
+        TaskReminderModel.task_id == task_id,
+    ).delete()
+    db.commit()
+    return RedirectResponse(f"/tasks/{task_id}/reminders", status_code=302)
+
+
 @router.post("/tasks/{task_id}/reschedule")
 def reschedule_task_form(
     request: Request, task_id: int,
@@ -4217,6 +4297,81 @@ def unarchive_habit_form(request: Request, habit_id: int, db: Session = Depends(
     except Exception:
         db.rollback()
     return RedirectResponse("/habits/archive", status_code=302)
+
+
+@router.get("/habits/{habit_id}/edit", response_class=HTMLResponse)
+def habit_edit_page(request: Request, habit_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    habit = db.query(HabitModel).filter(
+        HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
+    ).first()
+    if not habit:
+        return RedirectResponse("/habits", status_code=302)
+    work_categories = db.query(WorkCategory).filter(
+        WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+    ).order_by(WorkCategory.title).all()
+    flash = request.session.pop("flash", None)
+    return templates.TemplateResponse("habit_edit.html", {
+        "request": request, "habit": habit,
+        "work_categories": work_categories, "flash": flash, "error": None,
+    })
+
+
+@router.post("/habits/{habit_id}/edit")
+def habit_edit_save(
+    request: Request,
+    habit_id: int,
+    title: str = Form(...),
+    reminder_time: str = Form(""),
+    note: str = Form(""),
+    level: int = Form(1),
+    category_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    habit = db.query(HabitModel).filter(
+        HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
+    ).first()
+    if not habit:
+        return RedirectResponse("/habits", status_code=302)
+
+    title = title.strip()
+    if not title:
+        work_categories = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id, WorkCategory.is_archived == False,
+        ).order_by(WorkCategory.title).all()
+        return templates.TemplateResponse("habit_edit.html", {
+            "request": request, "habit": habit, "work_categories": work_categories,
+            "flash": None, "error": "Название не может быть пустым",
+        })
+
+    habit.title = title
+    habit.note = note.strip() or None
+    habit.level = level
+    habit.category_id = category_id
+
+    rt = reminder_time.strip()
+    if rt:
+        from datetime import time as _time
+        try:
+            parts = rt.split(":")
+            habit.reminder_time = _time(int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError):
+            habit.reminder_time = None
+    else:
+        habit.reminder_time = None
+
+    try:
+        db.commit()
+        request.session["flash"] = {"message": "Привычка обновлена"}
+    except Exception:
+        db.rollback()
+        request.session["flash"] = {"message": "Ошибка при сохранении", "type": "error"}
+    return RedirectResponse(f"/habits/{habit_id}/edit", status_code=302)
 
 
 @router.post("/habits/occurrences/{occurrence_id}/toggle")
@@ -5765,6 +5920,12 @@ def event_edit_page(request: Request, event_id: int, db: Session = Depends(get_d
         else:
             print(f"DEBUG: No occurrence found for event {event_id}")
 
+    default_reminders = db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.event_id == event_id,
+    ).order_by(EventDefaultReminderModel.id).all()
+    presets = db.query(UserReminderTimePreset).filter(
+        UserReminderTimePreset.account_id == user_id,
+    ).order_by(UserReminderTimePreset.sort_order, UserReminderTimePreset.id).all()
     return templates.TemplateResponse("event_form.html", {
         "request": request,
         "mode": "edit",
@@ -5772,6 +5933,8 @@ def event_edit_page(request: Request, event_id: int, db: Session = Depends(get_d
         "rule": rule,
         "occurrence": occurrence,
         "categories": categories,
+        "default_reminders": default_reminders,
+        "reminder_presets": presets,
     })
 
 
@@ -5962,6 +6125,62 @@ def event_update(
         })
 
 
+@router.post("/events/{event_id}/default-reminders/add")
+def event_default_reminder_add(
+    request: Request,
+    event_id: int,
+    offset_minutes: int = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    ev = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not ev:
+        return RedirectResponse("/events", status_code=302)
+    existing = db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.event_id == event_id,
+        EventDefaultReminderModel.offset_minutes == offset_minutes,
+        EventDefaultReminderModel.mode == "offset",
+    ).first()
+    if not existing:
+        db.add(EventDefaultReminderModel(
+            event_id=event_id,
+            channel="ui",
+            mode="offset",
+            offset_minutes=offset_minutes,
+        ))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+    return RedirectResponse(f"/events/{event_id}/edit", status_code=302)
+
+
+@router.post("/events/{event_id}/default-reminders/{reminder_id}/delete")
+def event_default_reminder_delete(
+    request: Request, event_id: int, reminder_id: int, db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    ev = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not ev:
+        return RedirectResponse("/events", status_code=302)
+    db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.id == reminder_id,
+        EventDefaultReminderModel.event_id == event_id,
+    ).delete()
+    db.commit()
+    return RedirectResponse(f"/events/{event_id}/edit", status_code=302)
+
+
 # === Strategy (CEO Dashboard) ===
 
 
@@ -6042,6 +6261,79 @@ def strategy_page(
         "prev_month": prev_month,
         "next_year": next_year,
         "next_month": next_month,
+    })
+
+
+# === Efficiency Score ===
+
+
+@router.get("/efficiency", response_class=HTMLResponse)
+def efficiency_page(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    today = date.today()
+    svc = EfficiencyService(db)
+    settings = svc.get_or_create_settings(user_id)
+    data = svc.calculate(user_id, today)
+    return templates.TemplateResponse("efficiency.html", {
+        "request": request,
+        "d": data,
+        "settings": settings,
+        "metric_labels": METRIC_LABELS,
+        "metric_descriptions": METRIC_DESCRIPTIONS,
+    })
+
+
+@router.get("/efficiency/settings", response_class=HTMLResponse)
+def efficiency_settings_get(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    settings = EfficiencyService(db).get_or_create_settings(user_id)
+    return templates.TemplateResponse("efficiency_settings.html", {
+        "request": request,
+        "s": settings,
+        "metric_labels": METRIC_LABELS,
+    })
+
+
+@router.post("/efficiency/settings", response_class=HTMLResponse)
+async def efficiency_settings_post(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+    EfficiencyService(db).save_settings(user_id, form)
+    return RedirectResponse("/efficiency/settings", status_code=303)
+
+
+@router.get("/efficiency/metric/{key}", response_class=HTMLResponse)
+def efficiency_metric_page(request: Request, key: str, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    today = date.today()
+    svc = EfficiencyService(db)
+    snap = db.query(EfficiencySnapshot).filter_by(
+        account_id=user_id, snapshot_date=today
+    ).first()
+    if snap is None:
+        # Trigger calculation to create snapshot
+        data = svc.calculate(user_id, today)
+        snap = db.query(EfficiencySnapshot).filter_by(
+            account_id=user_id, snapshot_date=today
+        ).first()
+    items = svc.get_metric_items(snap.id, key) if snap else []
+    label = METRIC_LABELS.get(key, key)
+    description = METRIC_DESCRIPTIONS.get(key, "")
+    return templates.TemplateResponse("efficiency_metric.html", {
+        "request": request,
+        "key": key,
+        "label": label,
+        "description": description,
+        "items": items,
+        "snap": snap,
     })
 
 

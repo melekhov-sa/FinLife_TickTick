@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Напоминания — {{ task.title }} — FinLife{% endblock %}
+
+{% block extra_head %}
+<style>
+  .tr-page { max-width: 560px; margin: 0 auto; padding: 0 0 32px; }
+  .tr-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .tr-back { font-size: 14px; color: #007AFF; text-decoration: none; }
+  .tr-back:hover { text-decoration: underline; }
+  .tr-title { font-size: 20px; font-weight: 700; }
+  .tr-task-name {
+    font-size: 14px;
+    color: var(--text-secondary, #888);
+    margin-bottom: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tr-section {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .tr-section-title {
+    padding: 12px 20px;
+    background: var(--bg-secondary, #f8f8f8);
+    border-bottom: 1px solid var(--border-color, #eee);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #888);
+  }
+
+  .tr-reminder-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 20px;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+    gap: 12px;
+  }
+  .tr-reminder-row:last-child { border-bottom: none; }
+  .tr-reminder-label { font-size: 14px; }
+  .tr-del-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #999);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+    line-height: 1;
+  }
+  .tr-del-btn:hover { color: #dc3545; background: rgba(220,53,69,.08); }
+
+  .tr-empty {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--text-secondary, #888);
+  }
+
+  .tr-add-section {
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,0.06));
+    padding: 16px 20px;
+  }
+  .tr-add-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-primary, #111);
+  }
+  .tr-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .tr-select {
+    flex: 1;
+    min-width: 160px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary, #111);
+  }
+  .tr-select:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 2px rgba(0,122,255,0.15); }
+  .tr-add-btn {
+    padding: 8px 18px;
+    background: #007AFF;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tr-add-btn:hover { background: #0062cc; }
+
+  .tr-custom-block {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .tr-custom-block.visible { display: flex; }
+  .tr-custom-input {
+    width: 110px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary, #111);
+    text-align: right;
+  }
+  .tr-custom-input:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 2px rgba(0,122,255,0.15); }
+
+  .tr-notice {
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+    background: var(--bg-secondary, #f8f8f8);
+    border-radius: 10px;
+    border-left: 3px solid #d97706;
+    margin-bottom: 16px;
+  }
+  .tr-flash-error {
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tr-page">
+
+  <div class="tr-header">
+    <a href="/tasks" class="tr-back">← Задачи</a>
+    <div class="tr-title">Напоминания</div>
+  </div>
+
+  <div class="tr-task-name">{{ task.title }}</div>
+
+  {% if flash and flash.type == 'error' %}
+  <div class="tr-flash-error">{{ flash.message }}</div>
+  {% endif %}
+
+  {% if task.due_kind not in ('DATETIME', 'WINDOW') %}
+  <div class="tr-notice">
+    Напоминания работают только для задач с конкретным временем (тип «Дата и время» или «Окно»).
+    Эта задача {% if task.due_date %}имеет только дату без времени{% else %}не имеет срока{% endif %}.
+  </div>
+  {% endif %}
+
+  {# ── Current reminders ── #}
+  <div class="tr-section">
+    <div class="tr-section-title">Текущие напоминания</div>
+    {% if reminders %}
+      {% for r in reminders %}
+      <div class="tr-reminder-row">
+        <span class="tr-reminder-label">
+          {% if r.offset_minutes == 0 %}В момент срока
+          {% elif r.offset_minutes > 0 %}Через {{ r.offset_minutes }} мин. после срока
+          {% elif r.offset_minutes >= -60 %}За {{ -r.offset_minutes }} мин.
+          {% elif r.offset_minutes >= -1440 %}За {{ (-r.offset_minutes // 60) }} ч.{% if (-r.offset_minutes) % 60 != 0 %} {{ (-r.offset_minutes) % 60 }} мин.{% endif %}
+          {% else %}За {{ (-r.offset_minutes) // 1440 }} дн.{% if (-r.offset_minutes) % 1440 != 0 %} {{ ((-r.offset_minutes) % 1440) // 60 }} ч.{% endif %}
+          {% endif %}
+        </span>
+        <form method="POST" action="/tasks/{{ task.task_id }}/reminders/{{ r.id }}/delete" style="display:inline;">
+          <button type="submit" class="tr-del-btn" title="Удалить">&#x2715;</button>
+        </form>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="tr-empty">Напоминаний нет.</div>
+    {% endif %}
+  </div>
+
+  {# ── Add reminder ── #}
+  {% if reminders|length < 5 %}
+  <div class="tr-add-section">
+    <div class="tr-add-title">Добавить напоминание</div>
+    <form method="POST" action="/tasks/{{ task.task_id }}/reminders/add" id="reminderAddForm">
+      <input type="hidden" name="offset_minutes" id="offsetMinutesInput" value="">
+      <div class="tr-add-row">
+        <select class="tr-select" id="reminderPreset" onchange="handlePresetChange(this.value)">
+          <option value="">— Выбрать —</option>
+          {% for p in presets %}
+          <option value="{{ p.offset_minutes }}">{{ p.label }}</option>
+          {% endfor %}
+          <option value="__custom__">Своё значение...</option>
+        </select>
+        <button type="submit" class="tr-add-btn" onclick="return prepareSubmit()">Добавить</button>
+      </div>
+      <div class="tr-custom-block" id="customBlock">
+        <input type="number" class="tr-custom-input" id="customMinutes"
+               placeholder="минут до" min="0" max="10080">
+        <span style="font-size: 13px; color: var(--text-secondary, #888);">минут до срока</span>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function handlePresetChange(val) {
+  var custom = document.getElementById('customBlock');
+  if (val === '__custom__') {
+    custom.classList.add('visible');
+  } else {
+    custom.classList.remove('visible');
+  }
+}
+
+function prepareSubmit() {
+  var sel = document.getElementById('reminderPreset');
+  var offsetInput = document.getElementById('offsetMinutesInput');
+  var val = sel.value;
+  if (val === '__custom__') {
+    var mins = parseInt(document.getElementById('customMinutes').value, 10);
+    if (isNaN(mins) || mins < 0) {
+      alert('Укажите корректное количество минут');
+      return false;
+    }
+    offsetInput.value = -mins;
+  } else if (val !== '') {
+    offsetInput.value = val;
+  } else {
+    alert('Выберите напоминание');
+    return false;
+  }
+  return true;
+}
+</script>
+{% endblock %}
