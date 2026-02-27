@@ -642,7 +642,7 @@ class BudgetMatrixService:
                 GoalInfo.is_archived == False,
                 GoalInfo.is_system == False,
             )
-            .order_by(GoalInfo.title)
+            .order_by(GoalInfo.sort_order, GoalInfo.title)
             .all()
         )
 
@@ -970,7 +970,7 @@ class BudgetMatrixService:
                 GoalInfo.is_archived == False,
                 GoalInfo.is_system == False,
             )
-            .order_by(GoalInfo.title)
+            .order_by(GoalInfo.sort_order, GoalInfo.title)
             .all()
         )
 

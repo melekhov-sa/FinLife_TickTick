@@ -160,6 +160,10 @@ tr[data-cat-id]:hover .drag-handle { opacity: 1; }
 tr[data-cat-id].bgt-dragging { opacity: 0.35; }
 tr[data-cat-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; }
 [data-theme$="-dark"] tr[data-cat-id].bgt-drag-over > td:first-child { border-top-color: #58a6ff; }
+tr[data-goal-id]:hover .drag-handle { opacity: 1; }
+tr[data-goal-id].bgt-dragging { opacity: 0.35; }
+tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; }
+[data-theme$="-dark"] tr[data-goal-id].bgt-drag-over > td:first-child { border-top-color: #58a6ff; }
 </style>
 {% endblock %}
 {% block content %}
@@ -502,10 +506,8 @@ tr[data-cat-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; 
           </td>
         </tr>
         {% for row in view.withdrawal_rows %}
-        <tr class="bgt-section-body bgt-hidden" data-section="withdrawal">
-          <td class="sticky-col">
-            <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
-          </td>
+        <tr class="bgt-section-body bgt-hidden" data-section="withdrawal" data-goal-id="{{ row.goal_id }}">
+          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span><a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a></td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -662,8 +664,8 @@ tr[data-cat-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; 
         {% endif %}
         <!-- Погашение кредитов (inside expenses) -->
         {% if view.credit_row %}
-        <tr class="bgt-section-body" data-section="expense">
-          <td class="sticky-col">Погашение кредитов</td>
+        <tr class="bgt-section-body" data-section="expense" data-cat-id="{{ view.credit_row.category_id }}" data-par-id="">
+          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>Погашение кредитов</td>
           {% for cell in view.credit_row.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -708,10 +710,8 @@ tr[data-cat-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF; 
           </td>
         </tr>
         {% for row in view.goal_rows %}
-        <tr class="bgt-section-body bgt-hidden" data-section="goals">
-          <td class="sticky-col">
-            <a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a>
-          </td>
+        <tr class="bgt-section-body bgt-hidden" data-section="goals" data-goal-id="{{ row.goal_id }}">
+          <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span><a href="/goals/{{ row.goal_id }}" style="color: inherit; text-decoration: none;">{{ row.title }}</a></td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
@@ -905,6 +905,59 @@ function toggleAllVisibility(checked) {
         }
       });
       fetch('/api/v1/categories/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items })
+      });
+    });
+  });
+})();
+
+(function initGoalDrag() {
+  var dragSrc = null;
+
+  document.querySelectorAll('tr[data-goal-id]').forEach(function(row) {
+    row.setAttribute('draggable', 'true');
+
+    row.addEventListener('dragstart', function(e) {
+      dragSrc = row;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(function() { row.classList.add('bgt-dragging'); }, 0);
+    });
+
+    row.addEventListener('dragend', function() {
+      document.querySelectorAll('.bgt-dragging, .bgt-drag-over').forEach(function(r) {
+        r.classList.remove('bgt-dragging', 'bgt-drag-over');
+      });
+      dragSrc = null;
+    });
+
+    row.addEventListener('dragover', function(e) {
+      if (!dragSrc || row === dragSrc) return;
+      if (row.dataset.section !== dragSrc.dataset.section) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.bgt-drag-over').forEach(function(r) { r.classList.remove('bgt-drag-over'); });
+      row.classList.add('bgt-drag-over');
+    });
+
+    row.addEventListener('drop', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragSrc || row === dragSrc) return;
+      if (row.dataset.section !== dragSrc.dataset.section) return;
+
+      var tbody = row.parentNode;
+      var after = e.clientY > row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+      var ref = after ? row.nextSibling : row;
+      tbody.insertBefore(dragSrc, ref || null);
+
+      var items = [];
+      var idx = 0;
+      tbody.querySelectorAll('tr[data-goal-id][data-section="' + dragSrc.dataset.section + '"]').forEach(function(r) {
+        items.push({ goal_id: parseInt(r.dataset.goalId), sort_order: idx++ });
+      });
+      fetch('/api/v1/goals/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: items })
