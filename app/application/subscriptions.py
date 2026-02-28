@@ -584,7 +584,7 @@ class ExtendSubscriptionUseCase:
 
 
 class CompensateSubscriptionUseCase:
-    """Получить компенсацию от участника: создать INCOME. paid_until НЕ меняется."""
+    """Получить компенсацию от участника: создать INCOME + опционально обновить paid_until."""
 
     def __init__(self, db: Session):
         self.db = db
@@ -596,6 +596,7 @@ class CompensateSubscriptionUseCase:
         wallet_id: int,
         amount: Decimal,
         member_id: int,
+        new_paid_until: date,
         description: str = "",
         actor_user_id: int | None = None,
     ) -> dict:
@@ -631,13 +632,26 @@ class CompensateSubscriptionUseCase:
         if amount <= 0:
             raise SubscriptionValidationError("Сумма должна быть больше нуля")
 
+        if not new_paid_until:
+            raise SubscriptionValidationError("Укажите дату «оплачено до»")
+
+        if new_paid_until <= date.today():
+            raise SubscriptionValidationError(
+                "Дата «оплачено до» должна быть позже сегодняшней"
+            )
+
+        if member.paid_until and new_paid_until <= member.paid_until:
+            raise SubscriptionValidationError(
+                "Новая дата «оплачено до» должна быть позже текущей"
+            )
+
         # Resolve contact name for description
         contact = self.db.query(ContactModel).filter(
             ContactModel.id == member.contact_id,
         ).first()
         contact_name = contact.name if contact else "?"
 
-        # Create INCOME (paid_until does NOT change)
+        # Create INCOME
         tx_id = CreateTransactionUseCase(self.db).execute_income(
             account_id=account_id,
             wallet_id=wallet_id,
@@ -647,6 +661,22 @@ class CompensateSubscriptionUseCase:
             description=description or f"Компенсация от {contact_name}",
             actor_user_id=actor_user_id,
         )
+
+        # Update member paid_until + create MEMBER coverage
+        old_paid = member.paid_until
+        cov_start = (old_paid + timedelta(days=1)) if old_paid else new_paid_until
+        cov = SubscriptionCoverageModel(
+            subscription_id=sub.id,
+            account_id=account_id,
+            source_type="OPERATION",
+            payer_type="MEMBER",
+            member_id=member.id,
+            transaction_id=tx_id,
+            start_date=cov_start,
+            end_date=new_paid_until,
+        )
+        self.db.add(cov)
+        member.paid_until = new_paid_until
 
         self.db.commit()
         return {"transaction_id": tx_id}

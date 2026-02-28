@@ -116,11 +116,21 @@
       </span>
       {% endif %}
     </div>
-    <div>
-      {% if mp.paid_until %}
-        <span style="font-weight: 500;">{{ fmt_date(mp.paid_until) }}</span>
-      {% else %}
-        <span class="muted">нет данных</span>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span id="mpu-display-{{ mp.member.id }}">
+        {% if mp.paid_until %}
+          <span style="font-weight: 500;">{{ fmt_date(mp.paid_until) }}</span>
+        {% else %}
+          <span class="muted">нет данных</span>
+        {% endif %}
+      </span>
+      {% if not mp.member.is_archived %}
+      <button type="button" onclick="toggleMpuEdit({{ mp.member.id }})" style="background:none;border:none;cursor:pointer;padding:2px;font-size:13px;color:#888;" title="Изменить дату">&#9998;</button>
+      <form method="POST" action="/subscriptions/{{ sub.id }}/members/{{ mp.member.id }}/paid-until" id="mpu-form-{{ mp.member.id }}" style="display:none;align-items:center;gap:4px;">
+        <input type="date" name="new_paid_until" required style="font-size: 12px; padding: 2px 4px;" value="{{ mp.paid_until.isoformat() if mp.paid_until else '' }}">
+        <button type="submit" style="font-size: 11px; padding: 2px 8px;">OK</button>
+        <button type="button" onclick="toggleMpuEdit({{ mp.member.id }})" style="font-size: 11px; padding: 2px 8px;" class="secondary">✕</button>
+      </form>
       {% endif %}
     </div>
   </div>
@@ -329,24 +339,7 @@
         <input type="date" name="new_paid_until" required id="extPaidUntil">
       </div>
 
-      {% if members %}
-      <div class="sub-field">
-        <label>Продлить также для участников</label>
-        {% for m in members %}
-        {% if not m.is_archived %}
-        <div class="check-row">
-          <input type="checkbox" name="member_ids" value="{{ m.id }}" id="ext_m_{{ m.id }}" checked>
-          <label for="ext_m_{{ m.id }}">
-            {{ contact_name(m) }}
-            {% if m.paid_until %}
-            <span class="muted" style="font-size: 11px;">(до {{ fmt_date(m.paid_until) }})</span>
-            {% endif %}
-          </label>
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-      {% endif %}
+      {# Участники не обновляются через продление — только через компенсацию #}
 
       <div class="sub-actions">
         <button type="button" class="sub-cancel" onclick="closeExtend()">Отмена</button>
@@ -363,10 +356,10 @@
     <form method="POST" action="/subscriptions/{{ sub.id }}/compensate" id="compForm">
       <div class="sub-field">
         <label>Участник</label>
-        <select name="member_id" required>
+        <select name="member_id" required id="compMemberSelect" onchange="updateCompMinDate()">
           {% for m in members %}
           {% if not m.is_archived %}
-          <option value="{{ m.id }}">{{ contact_name(m) }}</option>
+          <option value="{{ m.id }}" data-paid-until="{{ m.paid_until.isoformat() if m.paid_until else '' }}">{{ contact_name(m) }}</option>
           {% endif %}
           {% endfor %}
         </select>
@@ -383,6 +376,11 @@
         <label>Сумма</label>
         <input type="number" name="amount" step="0.01" min="0.01" required>
       </div>
+      <div class="sub-field">
+        <label>Оплачено до (новая дата)</label>
+        <input type="date" name="new_paid_until" id="compPaidUntil" required>
+        <span class="muted" style="font-size: 11px;" id="compPaidHint"></span>
+      </div>
       <div class="sub-actions">
         <button type="button" class="sub-cancel" onclick="closeCompensate()">Отмена</button>
         <button type="submit" class="sub-submit">Добавить</button>
@@ -392,6 +390,20 @@
 </div>
 
 <script>
+function toggleMpuEdit(mid) {
+  var disp = document.getElementById('mpu-display-' + mid);
+  var form = document.getElementById('mpu-form-' + mid);
+  var btn = disp.parentElement.querySelector('button[onclick*="toggleMpuEdit"]');
+  if (form.style.display === 'none') {
+    form.style.display = 'flex';
+    disp.style.display = 'none';
+    btn.style.display = 'none';
+  } else {
+    form.style.display = 'none';
+    disp.style.display = '';
+    btn.style.display = '';
+  }
+}
 function toggleInitialMember() {
   var isMember = document.querySelector('input[name="payer_type"][value="MEMBER"]').checked;
   document.getElementById('initialMemberField').style.display = isMember ? '' : 'none';
@@ -409,7 +421,28 @@ function closeExtend() {
   document.getElementById('extendBackdrop').classList.remove('open');
 }
 
+function updateCompMinDate() {
+  var sel = document.getElementById('compMemberSelect');
+  var opt = sel.options[sel.selectedIndex];
+  var paid = opt ? opt.getAttribute('data-paid-until') : '';
+  var inp = document.getElementById('compPaidUntil');
+  var hint = document.getElementById('compPaidHint');
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  if (paid) {
+    var d = new Date(paid);
+    d.setDate(d.getDate() + 1);
+    var minFromPaid = d.toISOString().slice(0, 10);
+    inp.min = minFromPaid > tomorrowStr ? minFromPaid : tomorrowStr;
+    hint.textContent = 'Текущая: ' + paid;
+  } else {
+    inp.min = tomorrowStr;
+    hint.textContent = 'Дата не задана';
+  }
+}
 function openCompensate() {
+  updateCompMinDate();
   document.getElementById('compBackdrop').classList.add('open');
 }
 function closeCompensate() {

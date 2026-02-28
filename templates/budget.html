@@ -455,12 +455,12 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
@@ -629,12 +629,12 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
           <td class="text-right compact-cell {% if row.is_credit %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% else %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count)
+            link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if (grain == "month" and not row.is_group) else None
           ) }}</td>
           <td class="text-right compact-cell{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>

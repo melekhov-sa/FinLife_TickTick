@@ -5362,16 +5362,12 @@ async def extend_subscription(
         amount_decimal = Decimal(str(form["amount"]))
         paid_until_date = date.fromisoformat(str(form["new_paid_until"]))
 
-        # Collect member_ids from checkboxes
-        member_ids = [int(v) for v in form.getlist("member_ids")]
-
         result = ExtendSubscriptionUseCase(db).execute(
             account_id=user_id,
             subscription_id=sub_id,
             wallet_id=wallet_id,
             amount=amount_decimal,
             new_paid_until=paid_until_date,
-            member_ids=member_ids,
             actor_user_id=user_id,
         )
         success_msg = quote(f"Подписка продлена до {paid_until_date.strftime('%d.%m.%Y')}")
@@ -5394,15 +5390,17 @@ def compensate_subscription(
     wallet_id: int = Form(...),
     amount: str = Form(...),
     member_id: int = Form(...),
+    new_paid_until: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    """Получить компенсацию от участника: создать INCOME"""
+    """Получить компенсацию от участника: создать INCOME + обновить paid_until"""
     if not require_user(request):
         return RedirectResponse("/login", status_code=302)
     user_id = request.session["user_id"]
 
     try:
         amount_decimal = Decimal(amount)
+        paid_until_date = date.fromisoformat(new_paid_until)
 
         result = CompensateSubscriptionUseCase(db).execute(
             account_id=user_id,
@@ -5410,6 +5408,7 @@ def compensate_subscription(
             wallet_id=wallet_id,
             amount=amount_decimal,
             member_id=member_id,
+            new_paid_until=paid_until_date,
             actor_user_id=user_id,
         )
         success_msg = quote(f"Компенсация {amount} добавлена")
@@ -5418,6 +5417,65 @@ def compensate_subscription(
             status_code=302,
         )
     except (SubscriptionValidationError, ValueError, Exception) as e:
+        db.rollback()
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?error={quote(str(e))}",
+            status_code=302,
+        )
+
+
+@router.post("/subscriptions/{sub_id}/members/{member_id}/paid-until")
+def update_member_paid_until(
+    request: Request,
+    sub_id: int,
+    member_id: int,
+    new_paid_until: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Обновить paid_until участника вручную."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        sub = db.query(SubscriptionModel).filter(
+            SubscriptionModel.id == sub_id,
+            SubscriptionModel.account_id == user_id,
+        ).first()
+        if not sub:
+            raise ValueError("Подписка не найдена")
+
+        member = db.query(SubscriptionMemberModel).filter(
+            SubscriptionMemberModel.id == member_id,
+            SubscriptionMemberModel.subscription_id == sub_id,
+        ).first()
+        if not member:
+            raise ValueError("Участник не найден")
+
+        paid_date = date.fromisoformat(new_paid_until)
+        old_paid = member.paid_until
+        member.paid_until = paid_date
+
+        # Create INITIAL coverage for audit trail
+        cov = SubscriptionCoverageModel(
+            subscription_id=sub.id,
+            account_id=user_id,
+            source_type="INITIAL",
+            payer_type="MEMBER",
+            member_id=member.id,
+            transaction_id=None,
+            start_date=paid_date,
+            end_date=paid_date,
+        )
+        db.add(cov)
+        db.commit()
+
+        success_msg = quote("Дата обновлена")
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?success={success_msg}",
+            status_code=302,
+        )
+    except (ValueError, Exception) as e:
         db.rollback()
         return RedirectResponse(
             f"/subscriptions/{sub_id}?error={quote(str(e))}",
@@ -7368,6 +7426,8 @@ def budget_plan_edit_page(
     kind: str = "EXPENSE",
     grain: str = "month",
     range_count: int = 3,
+    anchor_year: int | None = None,
+    anchor_month: int | None = None,
     db: Session = Depends(get_db),
 ):
     """Per-cell budget plan editing page."""
@@ -7418,6 +7478,7 @@ def budget_plan_edit_page(
             OperationTemplateModel.account_id == user_id,
             OperationTemplateModel.category_id == category_id,
             OperationTemplateModel.kind == kind,
+            OperationTemplateModel.is_archived == False,  # noqa: E712
             OperationOccurrence.scheduled_date >= range_start,
             OperationOccurrence.scheduled_date < range_end,
             OperationOccurrence.status != "SKIPPED",
@@ -7441,6 +7502,7 @@ def budget_plan_edit_page(
             OperationTemplateModel.account_id == user_id,
             OperationTemplateModel.category_id == category_id,
             OperationTemplateModel.kind == kind,
+            OperationTemplateModel.is_archived == False,  # noqa: E712
             OperationOccurrence.scheduled_date >= range_start,
             OperationOccurrence.scheduled_date < range_end,
             OperationOccurrence.status != "SKIPPED",
@@ -7450,7 +7512,9 @@ def budget_plan_edit_page(
     )
 
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
+    a_year = anchor_year or year
+    a_month = anchor_month or month
+    back_url = f"/budget?year={a_year}&month={a_month}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
 
     return templates.TemplateResponse("budget_plan_edit.html", {
         "request": request,
@@ -7462,6 +7526,8 @@ def budget_plan_edit_page(
         "variant": variant,
         "grain": grain,
         "range_count": range_count,
+        "anchor_year": a_year,
+        "anchor_month": a_month,
         "period_label": period_label,
         "plan_manual": plan_manual,
         "plan_planned": plan_planned,
@@ -7632,8 +7698,10 @@ def save_budget_plan_single(
 
     grain = form_data.get("grain", "month")
     range_count = form_data.get("range_count", "3")
+    a_year = form_data.get("anchor_year") or str(year)
+    a_month = form_data.get("anchor_month") or str(month)
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?year={year}&month={month}{qs}&grain={grain}&range_count={range_count}", status_code=302)
+    return RedirectResponse(f"/budget?year={a_year}&month={a_month}{qs}&grain={grain}&range_count={range_count}", status_code=302)
 
 
 @router.post("/budget/order/move")

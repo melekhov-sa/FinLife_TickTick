@@ -987,13 +987,16 @@ class TestExtendSubscription:
 # ======================================================================
 
 class TestCompensateSubscription:
-    def test_compensate_creates_income(self, db_session, wallet, subscription, member):
+    _FUTURE = date(2027, 6, 30)
+
+    def test_compensate_creates_income_and_updates_paid_until(self, db_session, wallet, subscription, member):
         result = CompensateSubscriptionUseCase(db_session).execute(
             account_id=ACCOUNT,
             subscription_id=subscription.id,
             wallet_id=wallet.wallet_id,
             amount=Decimal("300"),
             member_id=member.id,
+            new_paid_until=self._FUTURE,
             actor_user_id=ACCOUNT,
         )
         assert result["transaction_id"] is not None
@@ -1007,25 +1010,19 @@ class TestCompensateSubscription:
         assert tx.amount == Decimal("300")
         assert tx.category_id == subscription.income_category_id
 
-    def test_compensate_does_not_change_paid_until(self, db_session, wallet, subscription, member):
-        # Set initial paid_until
-        member.paid_until = date(2026, 3, 31)
-        subscription.paid_until_self = date(2026, 3, 31)
-        db_session.commit()
-
-        CompensateSubscriptionUseCase(db_session).execute(
-            account_id=ACCOUNT,
-            subscription_id=subscription.id,
-            wallet_id=wallet.wallet_id,
-            amount=Decimal("300"),
-            member_id=member.id,
-            actor_user_id=ACCOUNT,
-        )
-
+        # Check paid_until updated
         db_session.refresh(member)
-        db_session.refresh(subscription)
-        assert member.paid_until == date(2026, 3, 31)  # unchanged
-        assert subscription.paid_until_self == date(2026, 3, 31)  # unchanged
+        assert member.paid_until == self._FUTURE
+
+        # Check coverage created
+        cov = db_session.query(SubscriptionCoverageModel).filter(
+            SubscriptionCoverageModel.member_id == member.id,
+            SubscriptionCoverageModel.payer_type == "MEMBER",
+            SubscriptionCoverageModel.source_type == "OPERATION",
+        ).first()
+        assert cov is not None
+        assert cov.end_date == self._FUTURE
+        assert cov.transaction_id == result["transaction_id"]
 
     def test_compensate_member_not_found(self, db_session, wallet, subscription):
         with pytest.raises(SubscriptionValidationError, match="Участник не найден"):
@@ -1035,6 +1032,7 @@ class TestCompensateSubscription:
                 wallet_id=wallet.wallet_id,
                 amount=Decimal("300"),
                 member_id=9999,
+                new_paid_until=self._FUTURE,
                 actor_user_id=ACCOUNT,
             )
 
@@ -1046,6 +1044,7 @@ class TestCompensateSubscription:
                 wallet_id=wallet.wallet_id,
                 amount=Decimal("0"),
                 member_id=member.id,
+                new_paid_until=self._FUTURE,
                 actor_user_id=ACCOUNT,
             )
 
@@ -1056,12 +1055,64 @@ class TestCompensateSubscription:
             wallet_id=wallet.wallet_id,
             amount=Decimal("100"),
             member_id=member.id,
+            new_paid_until=self._FUTURE,
             actor_user_id=ACCOUNT,
         )
         tx = db_session.query(TransactionFeed).filter(
             TransactionFeed.transaction_id == result["transaction_id"],
         ).first()
         assert "Иван" in tx.description  # contact name from fixture
+
+    def test_compensate_date_advances_paid_until(self, db_session, wallet, subscription, member):
+        member.paid_until = date(2026, 3, 31)
+        db_session.commit()
+
+        result = CompensateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT,
+            subscription_id=subscription.id,
+            wallet_id=wallet.wallet_id,
+            amount=Decimal("300"),
+            member_id=member.id,
+            new_paid_until=date(2026, 4, 30),
+            actor_user_id=ACCOUNT,
+        )
+
+        db_session.refresh(member)
+        assert member.paid_until == date(2026, 4, 30)
+
+        cov = db_session.query(SubscriptionCoverageModel).filter(
+            SubscriptionCoverageModel.member_id == member.id,
+            SubscriptionCoverageModel.payer_type == "MEMBER",
+        ).first()
+        assert cov is not None
+        assert cov.start_date == date(2026, 4, 1)  # day after old paid_until
+
+    def test_compensate_date_must_be_later_than_current(self, db_session, wallet, subscription, member):
+        member.paid_until = date(2026, 3, 31)
+        db_session.commit()
+
+        with pytest.raises(SubscriptionValidationError, match="позже текущей"):
+            CompensateSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("300"),
+                member_id=member.id,
+                new_paid_until=date(2026, 3, 31),
+                actor_user_id=ACCOUNT,
+            )
+
+    def test_compensate_date_must_be_after_today(self, db_session, wallet, subscription, member):
+        with pytest.raises(SubscriptionValidationError, match="позже сегодняшней"):
+            CompensateSubscriptionUseCase(db_session).execute(
+                account_id=ACCOUNT,
+                subscription_id=subscription.id,
+                wallet_id=wallet.wallet_id,
+                amount=Decimal("300"),
+                member_id=member.id,
+                new_paid_until=date(2020, 1, 1),
+                actor_user_id=ACCOUNT,
+            )
 
 
 # ======================================================================
@@ -1200,15 +1251,15 @@ class TestSubscriptionAnalytics:
             wallet_id=wallet.wallet_id,
             amount=Decimal("400"),
             member_id=member.id,
+            new_paid_until=date(2027, 6, 30),
             actor_user_id=ACCOUNT,
         )
 
-        # Compensate does NOT create a coverage, so income from compensate
-        # is not tracked in analytics (analytics uses coverages only).
-        # This is by design: analytics tracks OPERATION coverages.
+        # Compensate now creates a MEMBER coverage → total_income = 400
         analytics = compute_subscription_analytics(db_session, subscription)
         assert analytics["total_expense"] == Decimal("1200")
-        assert analytics["net_cost"] == Decimal("1200")
+        assert analytics["total_income"] == Decimal("400")
+        assert analytics["net_cost"] == Decimal("800")
 
     def test_member_count_includes_self(self, db_session, subscription, member):
         """member_count should be members + 1 (self)."""
