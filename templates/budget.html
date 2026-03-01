@@ -178,12 +178,18 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
   .bgt-col-remain, .bgt-col-total-plan { display: none; }
   td.total-cell, th.total-header { display: none; }
 
+  /* Section summary (long text) forces table wider — hide on mobile */
+  .bgt-section-summary { display: none; }
+
+  /* Force table to fill card width exactly — no horizontal scroll */
+  .matrix-scroll-wrapper { overflow: hidden; }
+  .budget-table.bgt-compact { width: 100%; table-layout: fixed; }
   .budget-table.bgt-compact .sticky-col {
-    min-width: 80px !important; max-width: 92px !important; width: 88px !important;
+    width: 30% !important; min-width: 0 !important; max-width: none !important;
     font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 11px; padding: 3px 3px; }
-  .budget-table.bgt-compact .compact-cell { padding: 3px 3px !important; }
+  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 10px; padding: 3px 2px; }
+  .budget-table.bgt-compact .compact-cell { padding: 3px 2px !important; }
   .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
 }
 
