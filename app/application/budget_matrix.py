@@ -114,6 +114,7 @@ class BudgetMatrixService:
         # --- Data aggregation (single query per source) ---
         fact_map = self._aggregate_fact_bucketed(account_id, periods)
         planned_map = self._aggregate_planned_bucketed(account_id, periods)
+        credit_fact_map = self._aggregate_credit_fact_bucketed(account_id, periods)
 
         # Manual plans: available when base_granularity stores them (MONTH base → always)
         # For MONTH view: load per-month plans (1:1 mapping)
@@ -195,6 +196,18 @@ class BudgetMatrixService:
 
         income_rows = [_build_row(c, "INCOME") for c in _sort_hierarchically(active_income)]
         expense_rows = [_build_row(c, "EXPENSE") for c in _sort_hierarchically(active_expense)]
+
+        # Patch credit repayment row: its fact comes from REGULAR→CREDIT transfers, not expense txs
+        if system_credit_repayment_id is not None:
+            for row in expense_rows:
+                if row["category_id"] == system_credit_repayment_id:
+                    for i, cell in enumerate(row["cells"]):
+                        cf = credit_fact_map.get(i, _ZERO)
+                        cell["fact"] = cf
+                        cell["deviation"] = cf - cell["plan"]
+                    row["total"]["fact"] = sum(credit_fact_map.get(i, _ZERO) for i in range(n))
+                    row["total"]["deviation"] = row["total"]["fact"] - row["total"]["plan"]
+                    break
 
         # --- Parent aggregation: parent plan = sum(children), parent fact = own + children ---
         self._apply_parent_aggregation(income_rows, n)

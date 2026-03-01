@@ -2531,6 +2531,7 @@ def tasks_page(request: Request, db: Session = Depends(get_db)):
             CategoryInfo.account_id == user_id,
             CategoryInfo.category_type == "EXPENSE",
             CategoryInfo.is_archived == False,
+            CategoryInfo.is_system == False,
         ).order_by(CategoryInfo.title).all()
         task_wallets = db.query(WalletBalance).filter(
             WalletBalance.account_id == user_id,
@@ -4936,8 +4937,8 @@ def subscription_new_page(
         CategoryInfo.account_id == user_id,
         CategoryInfo.is_archived == False,
     ).all()
-    expense_cats = [c for c in cats if c.category_type == "EXPENSE"]
-    income_cats = [c for c in cats if c.category_type == "INCOME"]
+    expense_cats = [c for c in cats if c.category_type == "EXPENSE" and not c.is_system]
+    income_cats = [c for c in cats if c.category_type == "INCOME" and not c.is_system]
 
     return templates.TemplateResponse("subscription_form.html", {
         "request": request,
@@ -4980,8 +4981,8 @@ def subscription_create(
             "request": request,
             "mode": "new",
             "sub": None,
-            "expense_cats": [c for c in cats if c.category_type == "EXPENSE"],
-            "income_cats": [c for c in cats if c.category_type == "INCOME"],
+            "expense_cats": [c for c in cats if c.category_type == "EXPENSE" and not c.is_system],
+            "income_cats": [c for c in cats if c.category_type == "INCOME" and not c.is_system],
             "members": [],
             "error": str(e),
         })
@@ -5138,8 +5139,8 @@ def subscription_edit_page(
         CategoryInfo.account_id == user_id,
         CategoryInfo.is_archived == False,
     ).all()
-    expense_cats = [c for c in cats if c.category_type == "EXPENSE"]
-    income_cats = [c for c in cats if c.category_type == "INCOME"]
+    expense_cats = [c for c in cats if c.category_type == "EXPENSE" and not c.is_system]
+    income_cats = [c for c in cats if c.category_type == "INCOME" and not c.is_system]
 
     members = db.query(SubscriptionMemberModel).filter(
         SubscriptionMemberModel.subscription_id == sub_id,
@@ -5244,8 +5245,8 @@ def subscription_update(
             "request": request,
             "mode": "edit",
             "sub": sub,
-            "expense_cats": [c for c in cats if c.category_type == "EXPENSE"],
-            "income_cats": [c for c in cats if c.category_type == "INCOME"],
+            "expense_cats": [c for c in cats if c.category_type == "EXPENSE" and not c.is_system],
+            "income_cats": [c for c in cats if c.category_type == "INCOME" and not c.is_system],
             "members": members,
             "contact_map": c_map,
             "all_contacts": all_contacts,
