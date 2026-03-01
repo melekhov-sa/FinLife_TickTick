@@ -43,28 +43,19 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
     """Send push for task reminders that are due."""
     sent = 0
     from sqlalchemy import or_
+    from datetime import time as dt_time
 
-    # Find active tasks with due_date + time (DATETIME or WINDOW)
+    # Find active tasks with a due_date (any kind)
     tasks = (
         db.query(TaskModel)
         .filter(
             TaskModel.due_date.isnot(None),
             TaskModel.status == "ACTIVE",
-            or_(
-                TaskModel.due_time.isnot(None),        # DATETIME
-                TaskModel.due_start_time.isnot(None),   # WINDOW
-            ),
         )
         .all()
     )
 
     for task in tasks:
-        # DATETIME uses due_time, WINDOW uses due_start_time as reference
-        ref_time = task.due_time or task.due_start_time
-        if not ref_time:
-            continue
-        due_dt = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
-
         reminders = (
             db.query(TaskReminderModel)
             .filter(TaskReminderModel.task_id == task.task_id)
@@ -72,15 +63,35 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
         )
 
         for rem in reminders:
-            fire_at = due_dt + timedelta(minutes=rem.offset_minutes)  # offset is <= 0
-            # Fire if within the last 2 minutes (polling window)
-            if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
-                n = send_push_to_user(db, task.account_id, {
-                    "title": f"⏰ {task.title}",
-                    "body": _format_task_time(due_dt, rem.offset_minutes),
-                    "url": "/tasks",
-                })
-                sent += n
+            kind = getattr(rem, "reminder_kind", "OFFSET")
+
+            if kind == "DAY_TIME":
+                # offset_minutes = minutes since midnight
+                hour, minute = divmod(rem.offset_minutes, 60)
+                fire_at = datetime.combine(
+                    task.due_date, dt_time(hour, minute), tzinfo=MSK
+                )
+                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                    n = send_push_to_user(db, task.account_id, {
+                        "title": f"⏰ {task.title}",
+                        "body": f"Напоминание ({hour:02d}:{minute:02d})",
+                        "url": "/tasks",
+                    })
+                    sent += n
+            else:
+                # OFFSET kind — requires a specific time (DATETIME or WINDOW)
+                ref_time = task.due_time or task.due_start_time
+                if not ref_time:
+                    continue
+                due_dt = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
+                fire_at = due_dt + timedelta(minutes=rem.offset_minutes)  # offset is <= 0
+                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                    n = send_push_to_user(db, task.account_id, {
+                        "title": f"⏰ {task.title}",
+                        "body": _format_task_time(due_dt, rem.offset_minutes),
+                        "url": "/tasks",
+                    })
+                    sent += n
 
     return sent
 

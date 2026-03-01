@@ -131,6 +131,27 @@
   }
   .tr-custom-input:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 2px rgba(0,122,255,0.15); }
 
+  /* Day-time buttons (for DATE tasks) */
+  .tr-daytime-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tr-dt-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 10px 14px;
+    background: var(--bg-secondary, #f8f8f8);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary, #111);
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .tr-dt-btn:hover { background: #e8f0fe; border-color: #007AFF; color: #007AFF; }
+
   .tr-notice {
     padding: 12px 20px;
     font-size: 13px;
@@ -166,10 +187,9 @@
   <div class="tr-flash-error">{{ flash.message }}</div>
   {% endif %}
 
-  {% if task.due_kind not in ('DATETIME', 'WINDOW') %}
+  {% if not task.due_date %}
   <div class="tr-notice">
-    Напоминания работают только для задач с конкретным временем (тип «Дата и время» или «Окно»).
-    Эта задача {% if task.due_date %}имеет только дату без времени{% else %}не имеет срока{% endif %}.
+    Напоминания работают только для задач со сроком. У этой задачи нет срока.
   </div>
   {% endif %}
 
@@ -180,11 +200,19 @@
       {% for r in reminders %}
       <div class="tr-reminder-row">
         <span class="tr-reminder-label">
-          {% if r.offset_minutes == 0 %}В момент срока
-          {% elif r.offset_minutes > 0 %}Через {{ r.offset_minutes }} мин. после срока
-          {% elif r.offset_minutes >= -60 %}За {{ -r.offset_minutes }} мин.
-          {% elif r.offset_minutes >= -1440 %}За {{ (-r.offset_minutes // 60) }} ч.{% if (-r.offset_minutes) % 60 != 0 %} {{ (-r.offset_minutes) % 60 }} мин.{% endif %}
-          {% else %}За {{ (-r.offset_minutes) // 1440 }} дн.{% if (-r.offset_minutes) % 1440 != 0 %} {{ ((-r.offset_minutes) % 1440) // 60 }} ч.{% endif %}
+          {% if r.reminder_kind == 'DAY_TIME' %}
+            {% if r.offset_minutes == 540 %}В начале дня (09:00)
+            {% elif r.offset_minutes == 720 %}Днем (12:00)
+            {% elif r.offset_minutes == 1080 %}Вечером (18:00)
+            {% else %}В {{ r.offset_minutes // 60 }}:{{ '%02d' % (r.offset_minutes % 60) }}
+            {% endif %}
+          {% else %}
+            {% if r.offset_minutes == 0 %}В момент срока
+            {% elif r.offset_minutes > 0 %}Через {{ r.offset_minutes }} мин. после срока
+            {% elif r.offset_minutes >= -60 %}За {{ -r.offset_minutes }} мин.
+            {% elif r.offset_minutes >= -1440 %}За {{ (-r.offset_minutes // 60) }} ч.{% if (-r.offset_minutes) % 60 != 0 %} {{ (-r.offset_minutes) % 60 }} мин.{% endif %}
+            {% else %}За {{ (-r.offset_minutes) // 1440 }} дн.{% if (-r.offset_minutes) % 1440 != 0 %} {{ ((-r.offset_minutes) % 1440) // 60 }} ч.{% endif %}
+            {% endif %}
           {% endif %}
         </span>
         <form method="POST" action="/tasks/{{ task.task_id }}/reminders/{{ r.id }}/delete" style="display:inline;">
@@ -198,11 +226,15 @@
   </div>
 
   {# ── Add reminder ── #}
-  {% if reminders|length < 5 %}
+  {% if reminders|length < 5 and task.due_date %}
   <div class="tr-add-section">
     <div class="tr-add-title">Добавить напоминание</div>
+
+    {% if task.due_kind in ('DATETIME', 'WINDOW') %}
+    {# Offset-based presets for tasks with a specific time #}
     <form method="POST" action="/tasks/{{ task.task_id }}/reminders/add" id="reminderAddForm">
       <input type="hidden" name="offset_minutes" id="offsetMinutesInput" value="">
+      <input type="hidden" name="reminder_kind" value="OFFSET">
       <div class="tr-add-row">
         <select class="tr-select" id="reminderPreset" onchange="handlePresetChange(this.value)">
           <option value="">— Выбрать —</option>
@@ -219,6 +251,28 @@
         <span style="font-size: 13px; color: var(--text-secondary, #888);">минут до срока</span>
       </div>
     </form>
+
+    {% else %}
+    {# DATE-only tasks: fixed day-time options #}
+    <div class="tr-daytime-btns">
+      <form method="POST" action="/tasks/{{ task.task_id }}/reminders/add" style="flex:1;min-width:140px;">
+        <input type="hidden" name="offset_minutes" value="540">
+        <input type="hidden" name="reminder_kind" value="DAY_TIME">
+        <button type="submit" class="tr-dt-btn">☀️ В начале дня<br><small>09:00</small></button>
+      </form>
+      <form method="POST" action="/tasks/{{ task.task_id }}/reminders/add" style="flex:1;min-width:140px;">
+        <input type="hidden" name="offset_minutes" value="720">
+        <input type="hidden" name="reminder_kind" value="DAY_TIME">
+        <button type="submit" class="tr-dt-btn">🌤 Днем<br><small>12:00</small></button>
+      </form>
+      <form method="POST" action="/tasks/{{ task.task_id }}/reminders/add" style="flex:1;min-width:140px;">
+        <input type="hidden" name="offset_minutes" value="1080">
+        <input type="hidden" name="reminder_kind" value="DAY_TIME">
+        <button type="submit" class="tr-dt-btn">🌆 Вечером<br><small>18:00</small></button>
+      </form>
+    </div>
+    {% endif %}
+
   </div>
   {% endif %}
 

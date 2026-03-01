@@ -2970,11 +2970,15 @@ def task_reminders_page(request: Request, task_id: int, db: Session = Depends(ge
     })
 
 
+_DAY_TIME_OFFSETS = {540, 720, 1080}  # 09:00, 12:00, 18:00 in minutes since midnight
+
+
 @router.post("/tasks/{task_id}/reminders/add")
 def task_reminder_add(
     request: Request,
     task_id: int,
     offset_minutes: int = Form(...),
+    reminder_kind: str = Form("OFFSET"),
     db: Session = Depends(get_db),
 ):
     if not require_user(request):
@@ -2985,6 +2989,15 @@ def task_reminder_add(
     ).first()
     if not task:
         return RedirectResponse("/tasks", status_code=302)
+    # Validate kind
+    if reminder_kind not in ("OFFSET", "DAY_TIME"):
+        reminder_kind = "OFFSET"
+    if reminder_kind == "DAY_TIME" and offset_minutes not in _DAY_TIME_OFFSETS:
+        request.session["flash"] = {"message": "Недопустимое время напоминания", "type": "error"}
+        return RedirectResponse(f"/tasks/{task_id}/reminders", status_code=302)
+    if reminder_kind == "OFFSET" and offset_minutes > 0:
+        request.session["flash"] = {"message": "Смещение должно быть 0 или отрицательным", "type": "error"}
+        return RedirectResponse(f"/tasks/{task_id}/reminders", status_code=302)
     existing_count = db.query(TaskReminderModel).filter(
         TaskReminderModel.task_id == task_id,
     ).count()
@@ -2994,9 +3007,10 @@ def task_reminder_add(
     existing = db.query(TaskReminderModel).filter(
         TaskReminderModel.task_id == task_id,
         TaskReminderModel.offset_minutes == offset_minutes,
+        TaskReminderModel.reminder_kind == reminder_kind,
     ).first()
     if not existing:
-        db.add(TaskReminderModel(task_id=task_id, offset_minutes=offset_minutes))
+        db.add(TaskReminderModel(task_id=task_id, offset_minutes=offset_minutes, reminder_kind=reminder_kind))
         try:
             db.commit()
         except Exception:
