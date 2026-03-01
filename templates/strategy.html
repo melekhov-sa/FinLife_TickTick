@@ -122,6 +122,111 @@
   .st-dyn-num { width: 28px; text-align: right; font-size: 12px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .st-dyn-delta { width: 40px; text-align: right; font-size: 11px; font-weight: 600; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
+  /* ── Strategy targets (Мои цели) ── */
+  .st-tgt-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color, #f0f0f0);
+  }
+  .st-tgt-item:last-child { border-bottom: none; }
+  .st-tgt-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .st-tgt-title {
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+  }
+  .st-tgt-values {
+    font-size: 13px;
+    color: var(--text-secondary, #888);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .st-tgt-values b { color: var(--text-primary, #333); }
+  .st-tgt-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .st-tgt-edit-btn, .st-tgt-del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-secondary, #999);
+    transition: color 0.15s, background 0.15s;
+    line-height: 1;
+  }
+  .st-tgt-edit-btn:hover { color: #007AFF; background: rgba(0,122,255,.08); }
+  .st-tgt-del-btn:hover  { color: #dc3545; background: rgba(220,53,69,.08); }
+  .st-tgt-track {
+    height: 10px;
+    background: var(--border-color, #eee);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .st-tgt-fill { height: 100%; border-radius: 5px; transition: width 0.4s; }
+  .st-tgt-footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary, #888); }
+  .st-tgt-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+  .st-tgt-badge.done { background: rgba(34,197,94,.15); color: #16a34a; }
+  .st-tgt-badge.going { background: rgba(234,179,8,.12); color: #a16207; }
+  .st-tgt-badge.behind { background: rgba(220,53,69,.1); color: #dc3545; }
+
+  /* Add target form */
+  .st-add-form {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 10px;
+    display: none;
+  }
+  .st-add-form.open { display: block; }
+  .st-add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .st-add-field label { display: block; font-size: 12px; color: var(--text-secondary, #888); margin-bottom: 4px; }
+  .st-add-field input, .st-add-field select {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px; font-size: 13px; background: var(--bg-card, #fff);
+    color: var(--text-primary, #111); box-sizing: border-box;
+  }
+  .st-add-field.span-2 { grid-column: 1 / -1; }
+  .st-add-actions { display: flex; gap: 8px; }
+  .st-add-submit {
+    padding: 7px 18px; background: #007AFF; color: #fff;
+    border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .st-add-submit:hover { background: #0060d0; }
+  .st-add-cancel {
+    padding: 7px 14px; background: none; border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #888);
+  }
+
+  /* Inline edit form */
+  .st-tgt-edit-form { display: none; margin-top: 8px; }
+  .st-tgt-edit-form.open { display: flex; gap: 8px; align-items: center; }
+  .st-tgt-edit-form input {
+    width: 100px; padding: 5px 8px; border: 1px solid var(--border-color, #ddd);
+    border-radius: 6px; font-size: 13px; background: var(--bg-card, #fff); color: var(--text-primary, #111);
+  }
+  .st-tgt-edit-form input.title-inp { flex: 1; width: auto; }
+  .st-tgt-edit-save {
+    padding: 5px 14px; background: #007AFF; color: #fff; border: none;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+
+  @media (max-width: 600px) {
+    .st-add-grid { grid-template-columns: 1fr; }
+  }
+
   /* Weekly review */
   .st-wr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
   .st-wr-metric { text-align: center; }
@@ -318,6 +423,111 @@
 </div>
 {% endif %}
 
+{# ── Мои цели ── #}
+<div class="st-section">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+    <div class="st-card-title" style="margin-bottom: 0;">Мои цели</div>
+    <button type="button" class="st-sim-btn" style="font-size: 12px; padding: 5px 12px;"
+            onclick="document.getElementById('stAddForm').classList.toggle('open')">+ Добавить</button>
+  </div>
+
+  {% if flash and flash.type == 'error' %}
+  <div style="padding: 8px 12px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px; font-size: 13px; margin-bottom: 10px;">{{ flash.message }}</div>
+  {% endif %}
+
+  {% if targets_progress %}
+    {% for t in targets_progress %}
+    <div class="st-tgt-item">
+      <div class="st-tgt-header">
+        <span class="st-tgt-title">{{ t.title }}</span>
+        <span class="st-tgt-values">
+          <b>{{ "{:,.0f}".format(t.current).replace(",", " ") }}{{ t.unit }}</b>
+          &rarr; {{ "{:,.0f}".format(t.target).replace(",", " ") }}{{ t.unit }}
+        </span>
+        <div class="st-tgt-actions">
+          <button type="button" class="st-tgt-edit-btn" title="Изменить"
+                  onclick="toggleTgtEdit({{ t.id }})">&#9998;</button>
+          <form method="POST" action="/strategy/targets/{{ t.id }}/delete" style="display:inline;">
+            <button type="submit" class="st-tgt-del-btn" title="Удалить"
+                    onclick="return confirm('Удалить цель?')">&#x2715;</button>
+          </form>
+        </div>
+      </div>
+      <div class="st-tgt-track">
+        <div class="st-tgt-fill" style="width: {{ t.progress_pct }}%;
+          background: {% if t.achieved %}#22c55e{% elif t.progress_pct >= 60 %}#eab308{% else %}#dc3545{% endif %};"></div>
+      </div>
+      <div class="st-tgt-footer">
+        <span>
+          {% if t.direction == 'DOWN' %}снизить до{% else %}достичь{% endif %}
+          {{ "{:,.0f}".format(t.target).replace(",", " ") }}{{ t.unit }}
+        </span>
+        <span class="st-tgt-badge {% if t.achieved %}done{% elif t.progress_pct >= 60 %}going{% else %}behind{% endif %}">
+          {% if t.achieved %}Выполнено{% else %}{{ t.progress_pct }}%{% endif %}
+        </span>
+      </div>
+      {# Inline edit form #}
+      <form method="POST" action="/strategy/targets/{{ t.id }}/edit"
+            class="st-tgt-edit-form" id="tgtEdit{{ t.id }}">
+        <input type="text" name="title" class="title-inp" value="{{ t.title }}" placeholder="Название">
+        <input type="number" name="target_value" step="0.1" value="{{ t.target }}" placeholder="Цель">
+        <button type="submit" class="st-tgt-edit-save">OK</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="font-size: 14px; color: var(--text-secondary, #888); margin: 12px 0 4px;">
+      Целей ещё нет. Нажмите «+ Добавить», чтобы поставить цель.
+    </p>
+  {% endif %}
+
+  {# ── Add target form ── #}
+  <div class="st-add-form" id="stAddForm">
+    <form method="POST" action="/strategy/targets/add" id="stAddFormInner">
+      <div class="st-add-grid">
+        <div class="st-add-field">
+          <label>Тип метрики</label>
+          <select name="metric_type" id="stMetricType" onchange="stUpdateAddForm()">
+            <option value="DEBT_LOAD">Долговая нагрузка</option>
+            <option value="TASK_DISCIPLINE">Дисциплина задач</option>
+            <option value="HABIT_DISCIPLINE">Дисциплина привычек</option>
+            <option value="INCOME_CATEGORY">Доход по категории</option>
+          </select>
+        </div>
+        <div class="st-add-field">
+          <label>Целевое значение (<span id="stUnitHint">%</span>)</label>
+          <input type="number" name="target_value" id="stTargetVal" step="0.1" min="0" required
+                 placeholder="напр. 20">
+        </div>
+        <div class="st-add-field span-2" id="stCatField" style="display: none;">
+          <label>Категория доходов</label>
+          <select name="category_id">
+            <option value="">— выберите —</option>
+            {% for c in income_cats %}
+            <option value="{{ c.category_id }}">{{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="st-add-field span-2">
+          <label>Название цели</label>
+          <input type="text" name="title" id="stTitleInput" required
+                 placeholder="напр. Снизить долговую нагрузку до 20%">
+        </div>
+      </div>
+      <div style="font-size: 12px; color: var(--text-secondary, #888); margin-bottom: 10px;">
+        Текущее значение: <b id="stCurrentHint">
+          {% if s.debt_ratio is defined %}{{ s.debt_ratio }}%{% endif %}
+        </b>
+      </div>
+      <div class="st-add-actions">
+        <button type="submit" class="st-add-submit">Сохранить цель</button>
+        <button type="button" class="st-add-cancel"
+                onclick="document.getElementById('stAddForm').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {# ── Simulator "Что если" ── #}
 <div class="st-section">
   <div class="st-card-title">Что если улучшить&hellip;</div>
@@ -378,4 +588,41 @@
   {% endif %}
 </div>
 
+<script>
+/* ── Strategy targets UI ── */
+var ST_CURRENT = {
+  DEBT_LOAD:        '{{ s.debt_ratio }}%',
+  TASK_DISCIPLINE:  '{{ s.global_discipline_percent }}%',
+  HABIT_DISCIPLINE: '—',
+  INCOME_CATEGORY:  '—',
+};
+var ST_UNITS = {
+  DEBT_LOAD: '%', TASK_DISCIPLINE: '%', HABIT_DISCIPLINE: '%', INCOME_CATEGORY: '₽/мес',
+};
+var ST_TITLES = {
+  DEBT_LOAD: 'Снизить долговую нагрузку',
+  TASK_DISCIPLINE: 'Повысить дисциплину задач',
+  HABIT_DISCIPLINE: 'Повысить дисциплину привычек',
+  INCOME_CATEGORY: 'Повысить доход по категории',
+};
+
+function stUpdateAddForm() {
+  var type = document.getElementById('stMetricType').value;
+  document.getElementById('stUnitHint').textContent = ST_UNITS[type] || '%';
+  document.getElementById('stCurrentHint').textContent = ST_CURRENT[type] || '—';
+  document.getElementById('stCatField').style.display = (type === 'INCOME_CATEGORY') ? '' : 'none';
+  var titleInp = document.getElementById('stTitleInput');
+  var usedTitles = Object.values(ST_TITLES);
+  if (!titleInp.value || usedTitles.indexOf(titleInp.value) !== -1) {
+    titleInp.value = ST_TITLES[type] || '';
+  }
+}
+
+function toggleTgtEdit(id) {
+  var el = document.getElementById('tgtEdit' + id);
+  if (el) el.classList.toggle('open');
+}
+
+stUpdateAddForm();
+</script>
 {% endblock %}

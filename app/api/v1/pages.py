@@ -131,6 +131,7 @@ from app.application.projects import (
 )
 from app.application.project_analytics import ProjectAnalyticsService
 from app.application.strategy import StrategyService
+from app.application.strategy_targets import StrategyTargetService
 from app.application.efficiency import EfficiencyService, METRIC_LABELS, METRIC_DESCRIPTIONS
 from app.application.knowledge import (
     CreateArticleUseCase, UpdateArticleUseCase, DeleteArticleUseCase,
@@ -6390,6 +6391,12 @@ def strategy_page(
     for h in history:
         h["month_label"] = f"{_MONTH_NAMES_SHORT[h['month']]} {h['year'] % 100:02d}"
 
+    # Strategy targets
+    tgt_svc = StrategyTargetService(db)
+    targets_progress = tgt_svc.compute_targets_progress(user_id, data)
+    income_cats = tgt_svc.get_income_categories(user_id)
+    flash = request.session.pop("flash", None)
+
     return templates.TemplateResponse("strategy.html", {
         "request": request,
         "s": data,
@@ -6407,7 +6414,76 @@ def strategy_page(
         "prev_month": prev_month,
         "next_year": next_year,
         "next_month": next_month,
+        "targets_progress": targets_progress,
+        "income_cats": income_cats,
+        "flash": flash,
     })
+
+
+@router.post("/strategy/targets/add")
+async def strategy_target_add(request: Request, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+
+    metric_type = form.get("metric_type", "").strip()
+    title = form.get("title", "").strip()
+    target_value_raw = form.get("target_value", "").strip()
+    category_id_raw = form.get("category_id", "").strip()
+
+    valid_types = {"DEBT_LOAD", "TASK_DISCIPLINE", "HABIT_DISCIPLINE", "INCOME_CATEGORY"}
+    if metric_type not in valid_types or not title or not target_value_raw:
+        request.session["flash"] = {"type": "error", "message": "Заполните все поля"}
+        return RedirectResponse("/strategy", status_code=302)
+
+    try:
+        target_value = float(target_value_raw)
+    except ValueError:
+        request.session["flash"] = {"type": "error", "message": "Некорректное значение цели"}
+        return RedirectResponse("/strategy", status_code=302)
+
+    category_id = int(category_id_raw) if category_id_raw else None
+
+    # Compute current value to set as baseline
+    from app.application.strategy import StrategyService as _SS
+    from datetime import date as _date
+    _today = _date.today()
+    strategy_data = _SS(db).compute(user_id, _today.year, _today.month)
+    tgt_svc = StrategyTargetService(db)
+    # Create a temporary target object to compute current value
+    from app.infrastructure.db.models import StrategyTarget as _ST
+    _tmp = _ST(metric_type=metric_type, category_id=category_id, account_id=user_id)
+    current_value = tgt_svc.get_current_value(user_id, _tmp, strategy_data)
+
+    tgt_svc.add_target(user_id, metric_type, title, target_value, category_id, current_value)
+    return RedirectResponse("/strategy", status_code=302)
+
+
+@router.post("/strategy/targets/{target_id}/edit")
+async def strategy_target_edit(request: Request, target_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    form = dict(await request.form())
+    title = form.get("title", "").strip()
+    target_value_raw = form.get("target_value", "").strip()
+    if title and target_value_raw:
+        try:
+            target_value = float(target_value_raw)
+            StrategyTargetService(db).update_target(target_id, user_id, target_value, title)
+        except ValueError:
+            pass
+    return RedirectResponse("/strategy", status_code=302)
+
+
+@router.post("/strategy/targets/{target_id}/delete")
+def strategy_target_delete(request: Request, target_id: int, db: Session = Depends(get_db)):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    StrategyTargetService(db).delete_target(target_id, user_id)
+    return RedirectResponse("/strategy", status_code=302)
 
 
 # === Efficiency Score ===

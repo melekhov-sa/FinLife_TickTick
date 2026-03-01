@@ -1558,3 +1558,21 @@ class EmailSettings(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
     email: Mapped[str | None] = mapped_column(String(256), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class StrategyTarget(Base):
+    """Persistent personal target for a strategy metric."""
+    __tablename__ = "strategy_targets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # DEBT_LOAD | TASK_DISCIPLINE | HABIT_DISCIPLINE | INCOME_CATEGORY
+    metric_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    target_value: Mapped[float] = mapped_column(nullable=False)
+    baseline_value: Mapped[float | None] = mapped_column(nullable=True)
+    category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
