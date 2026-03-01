@@ -232,6 +232,8 @@ tr[data-goal-id].bgt-drag-over > td:first-child { border-top: 2px solid #007AFF;
 [data-theme$="-dark"] tr[data-goal-id].bgt-drag-over > td:first-child { border-top-color: #58a6ff; }
 /* Allow text selection in data cells even when the row is draggable */
 tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select: text; }
+/* Sticky-col is the drag handle area — grab cursor, no text selection */
+tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-select: none; -webkit-user-select: none; }
 </style>
 {% endblock %}
 {% block content %}
@@ -912,7 +914,9 @@ function toggleAllVisibility(checked) {
 
     row.addEventListener('dragstart', function(e) {
       var path = e.composedPath ? e.composedPath() : [];
-      var fromHandle = path.some(function(el) { return el.classList && el.classList.contains('drag-handle'); });
+      var fromHandle = path.some(function(el) {
+        return el.classList && (el.classList.contains('drag-handle') || el.classList.contains('sticky-col'));
+      });
       if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
@@ -976,7 +980,9 @@ function toggleAllVisibility(checked) {
 
     row.addEventListener('dragstart', function(e) {
       var path = e.composedPath ? e.composedPath() : [];
-      var fromHandle = path.some(function(el) { return el.classList && el.classList.contains('drag-handle'); });
+      var fromHandle = path.some(function(el) {
+        return el.classList && (el.classList.contains('drag-handle') || el.classList.contains('sticky-col'));
+      });
       if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
