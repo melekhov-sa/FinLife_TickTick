@@ -12,12 +12,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from datetime import time as _time
+
 from app.infrastructure.db.models import (
     TaskModel, TaskReminderModel,
     EventOccurrenceModel, EventReminderModel,
     CalendarEventModel, PushSubscription, User,
     HabitModel, HabitOccurrence,
-    TelegramSettings,
+    TelegramSettings, UserNotificationSettings,
 )
 from app.application.push_service import send_push_to_user
 
@@ -37,7 +39,7 @@ def dispatch_due_reminders(db: Session) -> int:
     total_sent += _dispatch_task_reminders(db, now_msk)
     total_sent += _dispatch_event_reminders(db, now_msk)
     total_sent += _dispatch_habit_reminders(db, now_msk)
-    total_sent += _dispatch_habit_deadline_nudges(db, now_msk)
+    total_sent += _dispatch_hourly_summary(db, now_msk)
 
     return total_sent
 
@@ -46,7 +48,6 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
     """Send push for task reminders that are due."""
     sent = 0
     from sqlalchemy import or_
-    from datetime import time as dt_time
 
     # Find active tasks with a due_date (any kind)
     tasks = (
@@ -72,7 +73,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                 # offset_minutes = minutes since midnight
                 hour, minute = divmod(rem.offset_minutes, 60)
                 fire_at = datetime.combine(
-                    task.due_date, dt_time(hour, minute), tzinfo=MSK
+                    task.due_date, _time(hour, minute), tzinfo=MSK
                 )
                 if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
                     n = send_push_to_user(db, task.account_id, {
@@ -210,15 +211,30 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
     return sent
 
 
-def _dispatch_habit_deadline_nudges(db: Session, now_msk: datetime) -> int:
-    """
-    Send hourly Telegram nudges for habits that have a deadline_time set and
-    whose today's occurrence is still ACTIVE.
+def _in_quiet_hours(now_time: _time, settings: UserNotificationSettings | None) -> bool:
+    """Return True if now_time falls within the user's quiet hours window."""
+    if not settings or not settings.quiet_start or not settings.quiet_end:
+        return False
+    s, e = settings.quiet_start, settings.quiet_end
+    if s <= e:
+        return s <= now_time <= e
+    # Overnight range (e.g. 22:00–08:00)
+    return now_time >= s or now_time <= e
 
-    Fires at every exact hour H:00 where reminder_time <= H:00 < deadline_time.
-    Uses the user's own Telegram bot (TelegramSettings) to send the message.
+
+def _dispatch_hourly_summary(db: Session, now_msk: datetime) -> int:
     """
-    # Only act at exact hour boundaries (within the 2-minute dispatcher window)
+    Every hour, collect all unfinished items for each user and send ONE grouped
+    Telegram message listing:
+
+    • Tasks overdue (due_date < today) or past their due_time today
+    • Habits with deadline_time whose today's occurrence is still ACTIVE
+      and whose nudge window [reminder_time, deadline_time) includes the current hour
+
+    Respects each user's quiet-hours setting.
+    Returns the number of messages successfully sent.
+    """
+    # Only fire at exact hour boundaries (within the 2-minute dispatcher window)
     hour_boundary = now_msk.replace(minute=0, second=0, microsecond=0)
     if not (hour_boundary <= now_msk < hour_boundary + timedelta(minutes=2)):
         return 0
@@ -226,70 +242,117 @@ def _dispatch_habit_deadline_nudges(db: Session, now_msk: datetime) -> int:
     today = now_msk.date()
     current_hour = hour_boundary.time()
 
-    # Habits with a deadline configured (archived ones skipped)
-    habits = (
-        db.query(HabitModel)
-        .filter(
-            HabitModel.is_archived == False,
-            HabitModel.deadline_time.isnot(None),
-        )
-        .all()
-    )
-    if not habits:
+    # Iterate every user that has Telegram connected
+    tg_list = db.query(TelegramSettings).filter_by(connected=True).all()
+    if not tg_list:
         return 0
-
-    habit_ids = [h.habit_id for h in habits]
-
-    # Only send nudges for habits whose today's occurrence is still ACTIVE
-    active_occs = (
-        db.query(HabitOccurrence)
-        .filter(
-            HabitOccurrence.habit_id.in_(habit_ids),
-            HabitOccurrence.scheduled_date == today,
-            HabitOccurrence.status == "ACTIVE",
-        )
-        .all()
-    )
-    active_habit_ids = {occ.habit_id for occ in active_occs}
 
     sent = 0
-    for habit in habits:
-        if habit.habit_id not in active_habit_ids:
+    for tg in tg_list:
+        if not tg.chat_id or not tg.bot_token:
             continue
 
-        # Nudge window: from reminder_time (or midnight) up to (not including) deadline_time
-        from datetime import time as _time
-        window_start = habit.reminder_time if habit.reminder_time is not None else _time(0, 0)
-        if window_start <= current_hour < habit.deadline_time:
-            sent += _send_telegram_nudge(db, habit)
+        notif_settings = db.query(UserNotificationSettings).filter_by(user_id=tg.user_id).first()
+        if _in_quiet_hours(current_hour, notif_settings):
+            continue
+
+        user_id = tg.user_id
+
+        # ── Pending habits ─────────────────────────────────────────────────
+        pending_habits: list[HabitModel] = []
+        habits = (
+            db.query(HabitModel)
+            .filter(
+                HabitModel.account_id == user_id,
+                HabitModel.is_archived == False,
+                HabitModel.deadline_time.isnot(None),
+            )
+            .all()
+        )
+        if habits:
+            active_occ_ids = {
+                occ.habit_id
+                for occ in db.query(HabitOccurrence).filter(
+                    HabitOccurrence.habit_id.in_([h.habit_id for h in habits]),
+                    HabitOccurrence.scheduled_date == today,
+                    HabitOccurrence.status == "ACTIVE",
+                ).all()
+            }
+            for h in habits:
+                if h.habit_id not in active_occ_ids:
+                    continue
+                window_start = h.reminder_time if h.reminder_time is not None else _time(0, 0)
+                if window_start <= current_hour < h.deadline_time:
+                    pending_habits.append(h)
+
+        # ── Pending tasks ──────────────────────────────────────────────────
+        pending_tasks: list[TaskModel] = []
+
+        # Overdue — strictly before today
+        overdue = (
+            db.query(TaskModel)
+            .filter(
+                TaskModel.account_id == user_id,
+                TaskModel.status == "ACTIVE",
+                TaskModel.due_date.isnot(None),
+                TaskModel.due_date < today,
+            )
+            .all()
+        )
+        pending_tasks.extend(overdue)
+
+        # Due today — include once their due_time (or window start) has passed
+        today_tasks = (
+            db.query(TaskModel)
+            .filter(
+                TaskModel.account_id == user_id,
+                TaskModel.status == "ACTIVE",
+                TaskModel.due_date == today,
+            )
+            .all()
+        )
+        for t in today_tasks:
+            task_time = t.due_time or t.due_start_time
+            if task_time is None or task_time <= current_hour:
+                pending_tasks.append(t)
+
+        if not pending_habits and not pending_tasks:
+            continue
+
+        # ── Build grouped message ──────────────────────────────────────────
+        lines = [f"⏰ <b>Не выполнено ({current_hour.strftime('%H:%M')})</b>"]
+
+        if pending_tasks:
+            lines.append("")
+            lines.append("📋 <b>Задачи:</b>")
+            for t in pending_tasks:
+                if t.due_date < today:
+                    days = (today - t.due_date).days
+                    lines.append(f"• {t.title} <i>(просрочена {days} дн.)</i>")
+                else:
+                    task_time = t.due_time or t.due_start_time
+                    suffix = f" <i>(до {task_time.strftime('%H:%M')})</i>" if task_time else ""
+                    lines.append(f"• {t.title}{suffix}")
+
+        if pending_habits:
+            lines.append("")
+            lines.append("🔄 <b>Привычки:</b>")
+            for h in pending_habits:
+                lines.append(f"• {h.title} <i>(до {h.deadline_time.strftime('%H:%M')})</i>")
+
+        text = "\n".join(lines)
+        try:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
+                json={"chat_id": tg.chat_id, "text": text, "parse_mode": "HTML"},
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                sent += 1
+        except Exception:
+            logger.exception("Hourly summary Telegram send failed for user_id=%s", user_id)
 
     return sent
-
-
-def _send_telegram_nudge(db: Session, habit: HabitModel) -> int:
-    """Send a single Telegram message to the habit owner. Returns 1 on success, 0 otherwise."""
-    tg = db.query(TelegramSettings).filter_by(
-        user_id=habit.account_id, connected=True
-    ).first()
-    if not tg or not tg.chat_id or not tg.bot_token:
-        return 0
-
-    deadline_str = habit.deadline_time.strftime("%H:%M")
-    text = (
-        f"⏰ <b>Привычка не выполнена!</b>\n"
-        f"«{habit.title}»\n"
-        f"🕐 Успей до {deadline_str}"
-    )
-    try:
-        resp = requests.post(
-            f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
-            json={"chat_id": tg.chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=5,
-        )
-        return 1 if resp.status_code == 200 else 0
-    except Exception:
-        logger.exception("Habit deadline Telegram nudge failed for habit_id=%s", habit.habit_id)
-        return 0
 
 
 def _format_task_time(due_dt: datetime, offset_minutes: int) -> str:
