@@ -805,6 +805,7 @@ function tskConfirmSkip(formId) {
   var taskFreq = document.getElementById('taskFreq');
   var blockWeekdays = document.getElementById('blockWeekdays');
   var blockMonthday = document.getElementById('blockMonthday');
+  var blockYearly = document.getElementById('blockYearly');
 
   window.setMode = function(m) {
     mode = m;
@@ -827,6 +828,7 @@ function tskConfirmSkip(formId) {
     var freq = taskFreq.value;
     blockWeekdays.style.display = freq === 'WEEKLY' ? '' : 'none';
     blockMonthday.style.display = freq === 'MONTHLY' ? '' : 'none';
+    if (blockYearly) blockYearly.style.display = freq === 'YEARLY' ? '' : 'none';
   }
   taskFreq.addEventListener('change', toggleFreqFields);
   toggleFreqFields();

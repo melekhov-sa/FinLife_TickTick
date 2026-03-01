@@ -23,6 +23,7 @@
         <option value="DAILY" selected>Ежедневно</option>
         <option value="WEEKLY">Еженедельно</option>
         <option value="MONTHLY">Ежемесячно</option>
+        <option value="YEARLY">Ежегодно</option>
       </select>
     </div>
 
@@ -51,6 +52,14 @@
       <div class="form-row">
         <label>День месяца</label>
         <input name="by_monthday" type="number" min="1" max="31" placeholder="1-31" style="max-width: 80px;">
+      </div>
+    </div>
+
+    <!-- YEARLY: hint -->
+    <div id="blockYearly" style="display: none;">
+      <div class="form-row">
+        <label></label>
+        <small class="muted">Повторяется ежегодно в день из поля «Начать с»</small>
       </div>
     </div>
 
@@ -110,10 +119,12 @@
   var freq = document.getElementById('habitFreq');
   var blockWeekdays = document.getElementById('blockWeekdays');
   var blockMonthday = document.getElementById('blockMonthday');
+  var blockYearly = document.getElementById('blockYearly');
 
   function toggle() {
     blockWeekdays.style.display = freq.value === 'WEEKLY' ? '' : 'none';
     blockMonthday.style.display = freq.value === 'MONTHLY' ? '' : 'none';
+    blockYearly.style.display = freq.value === 'YEARLY' ? '' : 'none';
   }
   freq.addEventListener('change', toggle);
   toggle();
