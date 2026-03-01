@@ -120,11 +120,64 @@ tr.row-over { background: rgba(220, 53, 69, 0.07); }
 tr.row-unplanned { background: rgba(13, 110, 253, 0.06); }
 tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
 
+/* ── Budget controls layout ── */
+.matrix-controls { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+.bgt-row-1, .bgt-row-2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bgt-nav-btn { text-decoration: none; color: #007AFF; font-size: 18px; padding: 2px 4px; line-height: 1; }
+.bgt-period-label { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.bgt-sep { width: 1px; height: 16px; background: #ccc; margin: 0 2px; }
+.bgt-grain-pills { display: flex; gap: 4px; }
+.bgt-grain-pill {
+  padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px;
+  text-decoration: none; font-size: 12px; font-weight: 500; color: #666;
+}
+.bgt-grain-pill.active { background: #007AFF; color: #fff; border-color: #007AFF; }
+.bgt-label-sm { font-size: 12px; color: #666; white-space: nowrap; }
+.bgt-input-sm {
+  width: 46px; font-size: 12px; padding: 4px 5px;
+  border: 1px solid #ccc; border-radius: 4px; background: var(--bg-input,#fff); color: var(--text-primary,#111);
+}
+.bgt-select-sm {
+  font-size: 12px; padding: 4px 5px;
+  border: 1px solid #ccc; border-radius: 4px; background: var(--bg-input,#fff); color: var(--text-primary,#111);
+}
+.bgt-input-year {
+  width: 60px; font-size: 12px; padding: 4px 5px;
+  border: 1px solid #ccc; border-radius: 4px; background: var(--bg-input,#fff); color: var(--text-primary,#111);
+}
+.bgt-ok-btn {
+  font-size: 12px; padding: 4px 14px; background: #007AFF; color: #fff;
+  border: none; border-radius: 4px; cursor: pointer; font-weight: 600;
+}
+.bgt-ok-btn:hover { background: #0062cc; }
+.bgt-report-link {
+  font-size: 12px; padding: 4px 12px; border: 1px solid #ddd;
+  border-radius: 4px; text-decoration: none; color: #666;
+}
+
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 130px; font-size: 13px; }
-  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 2px; }
-  .budget-table.bgt-compact .compact-cell { padding: 3px 2px !important; }
+  .matrix-controls {
+    background: var(--bg-card, #fff);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-card, 0 1px 4px rgba(0,0,0,0.08));
+    gap: 10px;
+  }
+  .bgt-sep { display: none; }
+  .bgt-row-1 { justify-content: space-between; gap: 8px; }
+  .bgt-grain-pills { gap: 6px; }
+  .bgt-grain-pill { padding: 5px 14px; font-size: 13px; }
+  .bgt-row-2 { gap: 8px; }
+  .bgt-select-sm { font-size: 14px; padding: 8px 8px; flex: 1; min-width: 0; }
+  .bgt-input-sm { font-size: 14px; padding: 8px 6px; width: 52px; }
+  .bgt-input-year { font-size: 14px; padding: 8px 6px; width: 70px; }
+  .bgt-ok-btn { font-size: 14px; padding: 8px 20px; flex: 1; }
+  .bgt-report-link { font-size: 14px; padding: 8px 14px; flex: 1; text-align: center; }
+
+  .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 120px; font-size: 12px; }
+  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 3px; }
+  .budget-table.bgt-compact .compact-cell { padding: 3px 3px !important; }
   .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
 }
 
@@ -212,53 +265,47 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
 </div>
 {% endif %}
 
-<!-- Compact controls: nav + grain + period selector — single line -->
-<form class="matrix-controls" method="GET" action="/budget" style="margin-bottom: 8px;">
+<!-- Compact controls: nav + grain + period selector -->
+<form class="matrix-controls" method="GET" action="/budget">
   <input type="hidden" name="grain" value="{{ grain }}">
   <input type="hidden" name="variant_id" value="{{ variant.id }}">
-  <a href="{{ prev_url }}" style="text-decoration: none; color: #007AFF; font-size: 16px; padding: 0 4px;">&larr;</a>
-  <span style="font-size: 15px; font-weight: 700; white-space: nowrap;">
-    {{ view.periods[0].label }}{% if view.periods|length > 1 %} — {{ view.periods[-1].label }}{% endif %}
-  </span>
-  <a href="{{ next_url }}" style="text-decoration: none; color: #007AFF; font-size: 16px; padding: 0 4px;">&rarr;</a>
 
-  <span style="color: #ccc; margin: 0 2px;">|</span>
+  <div class="bgt-row-1">
+    <a href="{{ prev_url }}" class="bgt-nav-btn">&larr;</a>
+    <span class="bgt-period-label">{{ view.periods[0].label }}{% if view.periods|length > 1 %} — {{ view.periods[-1].label }}{% endif %}</span>
+    <a href="{{ next_url }}" class="bgt-nav-btn">&rarr;</a>
+    <span class="bgt-sep"></span>
+    <div class="bgt-grain-pills">
+      {% for g in grains %}
+      <a href="{{ g.url }}" class="bgt-grain-pill{% if grain == g.value %} active{% endif %}">{{ g.label }}</a>
+      {% endfor %}
+    </div>
+  </div>
 
-  {% for g in grains %}
-  <a href="{{ g.url }}" style="padding: 3px 10px; border: 1px solid {% if grain == g.value %}#007AFF{% else %}#ddd{% endif %}; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: 500; {% if grain == g.value %}background: #007AFF; color: white;{% else %}color: #666;{% endif %}">{{ g.label }}</a>
-  {% endfor %}
-
-  <span style="color: #ccc; margin: 0 2px;">|</span>
-
-  <input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" style="width: 46px; font-size: 12px; padding: 3px 4px;">
-  <span style="color: #ccc; margin: 0 2px;">|</span>
-  <span style="font-size: 12px; color: #666;">Ср.:</span>
-  <select name="avg_months" style="font-size: 12px; padding: 3px 4px;">
-    <option value="0" {% if avg_months == 0 %}selected{% endif %}>Выкл</option>
-    <option value="3" {% if avg_months == 3 %}selected{% endif %}>3 мес.</option>
-    <option value="6" {% if avg_months == 6 %}selected{% endif %}>6 мес.</option>
-    <option value="12" {% if avg_months == 12 %}selected{% endif %}>12 мес.</option>
-  </select>
-  {% if grain == "month" %}
-  <select name="month" style="font-size: 12px; padding: 3px 4px; max-width: 110px;">
-    {% for m in range(1, 13) %}
-    <option value="{{ m }}" {% if anchor_month == m %}selected{% endif %}>
-      {{ ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"][m-1] }}
-    </option>
-    {% endfor %}
-  </select>
-  <input name="year" type="number" value="{{ anchor_year }}" style="width: 58px; font-size: 12px; padding: 3px 4px;">
-  {% elif grain == "year" %}
-  <input name="year" type="number" value="{{ anchor_year }}" style="width: 58px; font-size: 12px; padding: 3px 4px;">
-  {% else %}
-  <input name="date" type="date" value="{{ anchor_date }}" style="font-size: 12px; padding: 3px 4px;">
-  {% endif %}
-  <button type="submit" style="font-size: 12px; padding: 4px 12px;">OK</button>
-  <a href="/budget/report?variant_id={{ variant.id }}"
-     style="font-size: 12px; padding: 4px 12px; border: 1px solid #ddd;
-            border-radius: 4px; text-decoration: none; color: #666; margin-left: 8px;">
-    Отчёт
-  </a>
+  <div class="bgt-row-2">
+    <input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" class="bgt-input-sm">
+    <span class="bgt-label-sm">Ср.:</span>
+    <select name="avg_months" class="bgt-select-sm">
+      <option value="0" {% if avg_months == 0 %}selected{% endif %}>Выкл</option>
+      <option value="3" {% if avg_months == 3 %}selected{% endif %}>3 мес.</option>
+      <option value="6" {% if avg_months == 6 %}selected{% endif %}>6 мес.</option>
+      <option value="12" {% if avg_months == 12 %}selected{% endif %}>12 мес.</option>
+    </select>
+    {% if grain == "month" %}
+    <select name="month" class="bgt-select-sm">
+      {% for m in range(1, 13) %}
+      <option value="{{ m }}" {% if anchor_month == m %}selected{% endif %}>{{ ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"][m-1] }}</option>
+      {% endfor %}
+    </select>
+    <input name="year" type="number" value="{{ anchor_year }}" class="bgt-input-year">
+    {% elif grain == "year" %}
+    <input name="year" type="number" value="{{ anchor_year }}" class="bgt-input-year">
+    {% else %}
+    <input name="date" type="date" value="{{ anchor_date }}" class="bgt-select-sm">
+    {% endif %}
+    <button type="submit" class="bgt-ok-btn">OK</button>
+    <a href="/budget/report?variant_id={{ variant.id }}" class="bgt-report-link">Отчёт</a>
+  </div>
 </form>
 
 <!-- ============ CATEGORY VISIBILITY FILTER ============ -->
