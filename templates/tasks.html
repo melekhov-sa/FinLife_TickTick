@@ -241,14 +241,31 @@ details.card[open] > summary .nav-chevron {
   transform: rotate(90deg);
 }
 @media (max-width: 600px) {
-  .tsk-row {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .tsk-meta {
-    width: 100%;
-    justify-content: space-between;
-  }
+  /* ── Card padding tighter on mobile ── */
+  .card { padding: 12px 14px !important; }
+
+  /* ── Task rows ── */
+  .tsk-row { padding: 11px 0; gap: 10px; align-items: flex-start; }
+  .tsk-check { width: 24px; height: 24px; min-width: 24px; margin-top: 2px; }
+  .tsk-title { font-size: 16px; white-space: normal; word-break: break-word; }
+  .tsk-note { white-space: normal; word-break: break-word; }
+
+  /* ── Meta row: date left, buttons right ── */
+  .tsk-meta { width: 100%; justify-content: flex-start; gap: 2px; margin-top: 4px; }
+  .tsk-date { flex: 1; font-size: 13px; }
+
+  /* ── Bigger tap targets ── */
+  .tsk-del  { padding: 7px 10px; font-size: 17px; }
+  .tsk-resc { padding: 7px 10px; font-size: 18px; }
+  .tsk-bell { padding: 7px 10px; font-size: 16px; }
+
+  /* ── No-date task date picker ── */
+  .tsk-date-form { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; width: 100%; }
+  .tsk-date-form input[type="date"] { font-size: 14px !important; padding: 7px 10px !important; width: 100%; box-sizing: border-box; }
+  .tsk-date-form button { font-size: 14px !important; padding: 7px 12px !important; width: 100%; text-align: center; }
+
+  /* ── Section headings ── */
+  h2 { font-size: 17px; }
 }
 /* ── Progress card ── */
 .progress-bar {
@@ -691,7 +708,7 @@ details.card[open] > summary .nav-chevron {
       </div>
       <div class="tsk-meta">
         <form method="POST" action="/tasks/{{ task.task_id }}/set-due-date"
-              style="display: flex; align-items: center; gap: 4px;">
+              class="tsk-date-form" style="display: flex; align-items: center; gap: 4px;">
           <input type="date" name="due_date" required
                  style="padding: 3px 6px; border: 1px solid var(--border-color,#ddd); border-radius: 6px; font-size: 12px; color: var(--text-primary,#111); background: var(--bg-input,#fff);">
           <button type="submit" title="Назначить срок"
