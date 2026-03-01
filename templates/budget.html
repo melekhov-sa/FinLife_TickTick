@@ -176,9 +176,13 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
   .bgt-report-link { font-size: 14px; padding: 8px 14px; flex: 1; text-align: center; }
   .bgt-rc-grp, .bgt-avg-grp { display: none; }
   .bgt-col-remain, .bgt-col-total-plan { display: none; }
+  td.total-cell, th.total-header { display: none; }
 
-  .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 120px; font-size: 12px; }
-  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 3px; }
+  .budget-table.bgt-compact .sticky-col {
+    min-width: 80px !important; max-width: 92px !important; width: 88px !important;
+    font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 11px; padding: 3px 3px; }
   .budget-table.bgt-compact .compact-cell { padding: 3px 3px !important; }
   .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
 }
@@ -1023,16 +1027,19 @@ function toggleAllVisibility(checked) {
 (function mobileRangeEnforce() {
   if (window.innerWidth > 768) return;
   var form = document.querySelector('form.matrix-controls');
-  var rcInput = form && form.querySelector('input[name="range_count"]');
-  if (!rcInput) return;
-  // Auto-redirect if current view shows more than 1 period
-  if (parseInt(rcInput.value) !== 1) {
-    rcInput.value = 1;
-    form.submit();
-    return;
+  if (!form) return;
+  var rcInput = form.querySelector('input[name="range_count"]');
+  var avgInput = form.querySelector('select[name="avg_months"]');
+  function lockMobile() {
+    if (rcInput) rcInput.value = 1;
+    if (avgInput) avgInput.value = 0;
   }
-  // Lock to 1 on any future submit
-  form.addEventListener('submit', function() { rcInput.value = 1; });
+  // Auto-redirect if current view shows more than 1 period or avg_months set
+  var needRedirect = (rcInput && parseInt(rcInput.value) !== 1) ||
+                     (avgInput && parseInt(avgInput.value) !== 0);
+  if (needRedirect) { lockMobile(); form.submit(); return; }
+  // Lock on any future submit
+  form.addEventListener('submit', lockMobile);
 })();
 
 (function applyHeatmap() {
