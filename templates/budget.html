@@ -174,11 +174,19 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
   .bgt-input-year { font-size: 14px; padding: 8px 6px; width: 70px; }
   .bgt-ok-btn { font-size: 14px; padding: 8px 20px; flex: 1; }
   .bgt-report-link { font-size: 14px; padding: 8px 14px; flex: 1; text-align: center; }
+  .bgt-rc-grp, .bgt-avg-grp { display: none; }
 
   .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 120px; font-size: 12px; }
   .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 3px; }
   .budget-table.bgt-compact .compact-cell { padding: 3px 3px !important; }
   .filter-panel .filter-body > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
+}
+
+/* ── Desktop: single-row controls ── */
+@media (min-width: 769px) {
+  .matrix-controls { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .bgt-row-1, .bgt-row-2 { flex-wrap: nowrap; }
+  .bgt-row-2 { border-left: 1px solid #ddd; padding-left: 10px; }
 }
 
 /* ── Dark mode overrides for new budget elements ── */
@@ -283,14 +291,16 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
   </div>
 
   <div class="bgt-row-2">
-    <input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" class="bgt-input-sm">
-    <span class="bgt-label-sm">Ср.:</span>
-    <select name="avg_months" class="bgt-select-sm">
-      <option value="0" {% if avg_months == 0 %}selected{% endif %}>Выкл</option>
-      <option value="3" {% if avg_months == 3 %}selected{% endif %}>3 мес.</option>
-      <option value="6" {% if avg_months == 6 %}selected{% endif %}>6 мес.</option>
-      <option value="12" {% if avg_months == 12 %}selected{% endif %}>12 мес.</option>
-    </select>
+    <span class="bgt-rc-grp"><input name="range_count" type="number" min="1" max="{{ max_range }}" value="{{ range_count }}" class="bgt-input-sm"></span>
+    <span class="bgt-avg-grp">
+      <span class="bgt-label-sm">Ср.:</span>
+      <select name="avg_months" class="bgt-select-sm">
+        <option value="0" {% if avg_months == 0 %}selected{% endif %}>Выкл</option>
+        <option value="3" {% if avg_months == 3 %}selected{% endif %}>3 мес.</option>
+        <option value="6" {% if avg_months == 6 %}selected{% endif %}>6 мес.</option>
+        <option value="12" {% if avg_months == 12 %}selected{% endif %}>12 мес.</option>
+      </select>
+    </span>
     {% if grain == "month" %}
     <select name="month" class="bgt-select-sm">
       {% for m in range(1, 13) %}
@@ -1007,6 +1017,21 @@ function toggleAllVisibility(checked) {
       });
     });
   });
+})();
+
+(function mobileRangeEnforce() {
+  if (window.innerWidth > 768) return;
+  var form = document.querySelector('form.matrix-controls');
+  var rcInput = form && form.querySelector('input[name="range_count"]');
+  if (!rcInput) return;
+  // Auto-redirect if current view shows more than 1 period
+  if (parseInt(rcInput.value) !== 1) {
+    rcInput.value = 1;
+    form.submit();
+    return;
+  }
+  // Lock to 1 on any future submit
+  form.addEventListener('submit', function() { rcInput.value = 1; });
 })();
 
 (function applyHeatmap() {
