@@ -55,6 +55,16 @@
       </div>
     </div>
 
+    <div class="form-row">
+      <label>Выполнить до</label>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input name="deadline_time" type="time"
+               value="{{ habit.deadline_time.strftime('%H:%M') if habit.deadline_time else '' }}"
+               style="max-width: 140px;">
+        <small class="muted">Ежечасные уведомления в Telegram, пока не выполнено</small>
+      </div>
+    </div>
+
     <details style="margin-bottom: 12px;" {% if habit.note %}open{% endif %}>
       <summary class="muted" style="cursor: pointer; font-size: 13px;">Заметка</summary>
       <div class="form-row" style="margin-top: 8px;">

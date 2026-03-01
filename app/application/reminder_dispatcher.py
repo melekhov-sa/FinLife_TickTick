@@ -7,6 +7,7 @@ Usage (cron / systemd timer / manual):
 Or call dispatch_due_reminders(db) from your own scheduler.
 """
 import logging
+import requests
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ from app.infrastructure.db.models import (
     EventOccurrenceModel, EventReminderModel,
     CalendarEventModel, PushSubscription, User,
     HabitModel, HabitOccurrence,
+    TelegramSettings,
 )
 from app.application.push_service import send_push_to_user
 
@@ -35,6 +37,7 @@ def dispatch_due_reminders(db: Session) -> int:
     total_sent += _dispatch_task_reminders(db, now_msk)
     total_sent += _dispatch_event_reminders(db, now_msk)
     total_sent += _dispatch_habit_reminders(db, now_msk)
+    total_sent += _dispatch_habit_deadline_nudges(db, now_msk)
 
     return total_sent
 
@@ -205,6 +208,88 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
             sent += n
 
     return sent
+
+
+def _dispatch_habit_deadline_nudges(db: Session, now_msk: datetime) -> int:
+    """
+    Send hourly Telegram nudges for habits that have a deadline_time set and
+    whose today's occurrence is still ACTIVE.
+
+    Fires at every exact hour H:00 where reminder_time <= H:00 < deadline_time.
+    Uses the user's own Telegram bot (TelegramSettings) to send the message.
+    """
+    # Only act at exact hour boundaries (within the 2-minute dispatcher window)
+    hour_boundary = now_msk.replace(minute=0, second=0, microsecond=0)
+    if not (hour_boundary <= now_msk < hour_boundary + timedelta(minutes=2)):
+        return 0
+
+    today = now_msk.date()
+    current_hour = hour_boundary.time()
+
+    # Habits with a deadline configured (archived ones skipped)
+    habits = (
+        db.query(HabitModel)
+        .filter(
+            HabitModel.is_archived == False,
+            HabitModel.deadline_time.isnot(None),
+        )
+        .all()
+    )
+    if not habits:
+        return 0
+
+    habit_ids = [h.habit_id for h in habits]
+
+    # Only send nudges for habits whose today's occurrence is still ACTIVE
+    active_occs = (
+        db.query(HabitOccurrence)
+        .filter(
+            HabitOccurrence.habit_id.in_(habit_ids),
+            HabitOccurrence.scheduled_date == today,
+            HabitOccurrence.status == "ACTIVE",
+        )
+        .all()
+    )
+    active_habit_ids = {occ.habit_id for occ in active_occs}
+
+    sent = 0
+    for habit in habits:
+        if habit.habit_id not in active_habit_ids:
+            continue
+
+        # Nudge window: from reminder_time (or midnight) up to (not including) deadline_time
+        from datetime import time as _time
+        window_start = habit.reminder_time if habit.reminder_time is not None else _time(0, 0)
+        if window_start <= current_hour < habit.deadline_time:
+            sent += _send_telegram_nudge(db, habit)
+
+    return sent
+
+
+def _send_telegram_nudge(db: Session, habit: HabitModel) -> int:
+    """Send a single Telegram message to the habit owner. Returns 1 on success, 0 otherwise."""
+    tg = db.query(TelegramSettings).filter_by(
+        user_id=habit.account_id, connected=True
+    ).first()
+    if not tg or not tg.chat_id or not tg.bot_token:
+        return 0
+
+    deadline_str = habit.deadline_time.strftime("%H:%M")
+    text = (
+        f"⏰ <b>Привычка не выполнена!</b>\n"
+        f"«{habit.title}»\n"
+        f"🕐 Успей до {deadline_str}"
+    )
+    try:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
+            json={"chat_id": tg.chat_id, "text": text, "parse_mode": "HTML"},
+            timeout=5,
+        )
+        return 1 if resp.status_code == 200 else 0
+    except Exception:
+        logger.exception("Habit deadline Telegram nudge failed for habit_id=%s", habit.habit_id)
+        return 0
 
 
 def _format_task_time(due_dt: datetime, offset_minutes: int) -> str:

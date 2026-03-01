@@ -4414,6 +4414,7 @@ def habit_edit_save(
     habit_id: int,
     title: str = Form(...),
     reminder_time: str = Form(""),
+    deadline_time: str = Form(""),
     note: str = Form(""),
     level: int = Form(1),
     category_id: int | None = Form(None),
@@ -4453,6 +4454,17 @@ def habit_edit_save(
             habit.reminder_time = None
     else:
         habit.reminder_time = None
+
+    dt = deadline_time.strip()
+    if dt:
+        from datetime import time as _time
+        try:
+            parts = dt.split(":")
+            habit.deadline_time = _time(int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError):
+            habit.deadline_time = None
+    else:
+        habit.deadline_time = None
 
     try:
         db.commit()
