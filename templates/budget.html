@@ -175,6 +175,7 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
   .bgt-ok-btn { font-size: 14px; padding: 8px 20px; flex: 1; }
   .bgt-report-link { font-size: 14px; padding: 8px 14px; flex: 1; text-align: center; }
   .bgt-rc-grp, .bgt-avg-grp { display: none; }
+  .bgt-col-remain, .bgt-col-total-plan { display: none; }
 
   .budget-table.bgt-compact .sticky-col { min-width: 100px; max-width: 120px; font-size: 12px; }
   .budget-table.bgt-compact td, .budget-table.bgt-compact th { font-size: 12px; padding: 3px 3px; }
@@ -452,10 +453,10 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% elif p.is_future %}
           <th class="sub-header period-border" title="План">П</th>
           {% else %}
-          <th class="sub-header period-border" title="План">П</th><th class="sub-header" title="Факт">Ф</th><th class="sub-header" title="Остаток">Ост</th><th class="sub-header" title="Отклонение">Δ</th>
+          <th class="sub-header period-border" title="План">П</th><th class="sub-header" title="Факт">Ф</th><th class="sub-header bgt-col-remain" title="Остаток">Ост</th><th class="sub-header" title="Отклонение">Δ</th>
           {% endif %}
           {% endfor %}
-          <th class="sub-header period-border" title="План">П</th>
+          <th class="sub-header period-border bgt-col-total-plan" title="План">П</th>
           <th class="sub-header" title="Факт">Ф</th>
           {% if avg_months > 0 %}<th class="sub-header period-border" title="Среднемесячный факт" style="color:#888;font-style:italic;">Ф̄</th>{% endif %}
         </tr>
@@ -523,7 +524,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
             if (grain == "month") else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% endif %}
           {% else %}
@@ -531,7 +532,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% endif %}
           {% endfor %}
           {% if show_plan %}
-          <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
+          <td class="text-right total-cell period-border bgt-col-total-plan">{{ plan_cell(row.total) }}</td>
           {% endif %}
           <td class="text-right total-cell {% if show_plan %}{% if row.total.deviation > 0 %}positive{% elif row.total.deviation < 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
           {% if avg_months > 0 %}<td class="text-right compact-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(row.avg_fact) if row.avg_fact else '—' }}</td>{% endif %}
@@ -555,14 +556,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(oi.total.plan) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt_or_dash(oi.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt_or_dash(oi.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -598,14 +599,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
             if grain == "month" else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ plan_cell(row.total) }}</td>{% endif %}
           <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -624,14 +625,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.withdrawal_totals.total.plan) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt(view.withdrawal_totals.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(view.withdrawal_totals.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -654,14 +655,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(_fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt(_plan - _fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt(_plan - _fact) }}</td>
           <td class="text-right compact-cell {% if (_fact - _plan) > 0 %}positive{% elif (_fact - _plan) < 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(_fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(_income_plan_total) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt(_income_plan_total) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(_income_fact_total) }}</td>
           {% if avg_months > 0 %}<td class="text-right total-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(view.income_totals.avg_total) }}</td>{% endif %}
         </tr>
@@ -697,7 +698,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
             if (grain == "month") else None
           ) }}</td>
           <td class="text-right compact-cell{% if row.is_credit and cell.fact > 0 %} positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if row.is_credit %}{% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}{% else %}{% if cell.deviation < 0 %}positive{% elif cell.deviation > 0 %}negative{% endif %}{% endif %}{% if loop.index0 == 0 %} bgt-focus-delta{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% endif %}
           {% else %}
@@ -705,7 +706,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% endif %}
           {% endfor %}
           {% if show_plan %}
-          <td class="text-right total-cell period-border">{{ plan_cell(row.total) }}</td>
+          <td class="text-right total-cell period-border bgt-col-total-plan">{{ plan_cell(row.total) }}</td>
           {% endif %}
           <td class="text-right total-cell {% if row.is_credit %}{% if row.total.fact > 0 %}positive{% endif %}{% elif show_plan %}{% if row.total.deviation < 0 %}positive{% elif row.total.deviation > 0 %}negative{% endif %}{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
           {% if avg_months > 0 %}<td class="text-right compact-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(row.avg_fact) if row.avg_fact else '—' }}</td>{% endif %}
@@ -729,14 +730,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) < 0 %}positive{% elif (cell.fact - cell.plan) > 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(oe.total.plan) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt_or_dash(oe.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt_or_dash(oe.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -773,14 +774,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
             if grain == "month" else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell {% if cell.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt_or_dash(row.total.plan) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt_or_dash(row.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell {% if row.total.fact > 0 %}positive{% endif %}">{{ fmt_or_dash(row.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -799,14 +800,14 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt(cell.plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt(cell.plan - cell.fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmt_dev(cell.fact - cell.plan) }}</td>
           {% endif %}
           {% else %}
           {% if not _p.is_future %}<td class="text-right compact-cell">{{ fmt(cell.fact) }}</td>{% endif %}
           {% endif %}
           {% endfor %}
-          {% if show_plan %}<td class="text-right total-cell period-border">{{ fmt(view.goal_totals.total.plan) }}</td>{% endif %}
+          {% if show_plan %}<td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt(view.goal_totals.total.plan) }}</td>{% endif %}
           <td class="text-right total-cell">{{ fmt(view.goal_totals.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
@@ -828,7 +829,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% else %}
           <td class="text-right compact-cell period-border">{{ fmt(_plan) }}</td>
           <td class="text-right compact-cell">{{ fmt(_fact) }}</td>
-          <td class="text-right compact-cell muted">{{ fmt(_plan - _fact) }}</td>
+          <td class="text-right compact-cell muted bgt-col-remain">{{ fmt(_plan - _fact) }}</td>
           <td class="text-right compact-cell {% if (_fact - _plan) < 0 %}positive{% elif (_fact - _plan) > 0 %}negative{% endif %}">{{ fmt_dev(_fact - _plan) }}</td>
           {% endif %}
           {% else %}
@@ -836,7 +837,7 @@ tr[data-cat-id] td, tr[data-goal-id] td { user-select: text; -webkit-user-select
           {% endif %}
           {% endfor %}
           {% if show_plan %}
-          <td class="text-right total-cell period-border">{{ fmt(_expense_plan_total) }}</td>
+          <td class="text-right total-cell period-border bgt-col-total-plan">{{ fmt(_expense_plan_total) }}</td>
           {% endif %}
           <td class="text-right total-cell">{{ fmt(_expense_fact_total) }}</td>
           {% if avg_months > 0 %}<td class="text-right total-cell" style="color:#888;font-style:italic;border-left:1px solid var(--border-color,#eee);">{{ fmt_or_dash(view.expense_totals.avg_total) }}</td>{% endif %}
