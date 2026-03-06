@@ -602,12 +602,12 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if grain == "month" else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            link_url=("/budget/goals/withdrawal/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if grain == "month" else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
@@ -726,8 +726,6 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
         {% endfor %}
         <!-- Прочие расходы -->
         {% set oe = view.other_expense %}
-        {% set oe_has_data = oe.total.fact != 0 or oe.total.plan != 0 %}
-        {% if oe_has_data %}
         {% set _other_expense_url = "/budget/other/planned?kind=EXPENSE&year=" ~ anchor_year ~ "&month=" ~ anchor_month ~ "&range_count=" ~ range_count ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ ("&avg_months=" ~ avg_months if avg_months else "") %}
         <tr class="bgt-section-body muted" data-section="expense">
           <td class="sticky-col"><a href="{{ _other_expense_url }}" style="color: inherit; text-decoration: none;" title="Посмотреть плановые операции">Прочие расходы</a></td>
@@ -753,7 +751,6 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           <td class="text-right total-cell">{{ fmt_or_dash(oe.total.fact) }}</td>
           {% if avg_months > 0 %}<td></td>{% endif %}
         </tr>
-        {% endif %}
         <!-- ══════════════════════════════════════════════ -->
         <!-- ── ОТЛОЖИТЬ (open by default) ────────────── -->
         <!-- ══════════════════════════════════════════════ -->
@@ -777,12 +774,12 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           <td class="text-right compact-cell {% if (cell.fact - cell.plan) > 0 %}positive{% elif (cell.fact - cell.plan) < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.fact - cell.plan) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
-            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if grain == "month" else None
           ) }}</td>
           {% else %}
           <td class="text-right compact-cell muted period-border">{{ plan_cell(cell,
-            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id)
+            link_url=("/budget/goals/plan/edit?goal_id=" ~ row.goal_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if grain == "month" else None
           ) }}</td>
           <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
@@ -926,6 +923,7 @@ function toggleAllVisibility(checked) {
       if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.catId || '');
       // Delay so the dragging ghost captures original appearance
       setTimeout(function() {
         subtree(row.parentNode, row).forEach(function(r) { r.classList.add('bgt-dragging'); });
@@ -992,6 +990,7 @@ function toggleAllVisibility(checked) {
       if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.goalId || '');
       setTimeout(function() { row.classList.add('bgt-dragging'); }, 0);
     });
 
