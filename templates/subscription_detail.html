@@ -90,12 +90,20 @@
     <div class="dash-item-left">
       <strong>Ты</strong>
     </div>
-    <div>
-      {% if detail.paid_until_self %}
-        <span style="font-weight: 500;">{{ fmt_date(detail.paid_until_self) }}</span>
-      {% else %}
-        <span class="muted">нет данных</span>
-      {% endif %}
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span id="mpu-display-self">
+        {% if detail.paid_until_self %}
+          <span style="font-weight: 500;">{{ fmt_date(detail.paid_until_self) }}</span>
+        {% else %}
+          <span class="muted">нет данных</span>
+        {% endif %}
+      </span>
+      <button type="button" onclick="toggleMpuEdit('self')" style="background:none;border:none;cursor:pointer;padding:2px;font-size:13px;color:#888;" title="Изменить дату">&#9998;</button>
+      <form method="POST" action="/subscriptions/{{ sub.id }}/self/paid-until" id="mpu-form-self" style="display:none;align-items:center;gap:4px;">
+        <input type="date" name="new_paid_until" required style="font-size: 12px; padding: 2px 4px;" value="{{ detail.paid_until_self.isoformat() if detail.paid_until_self else '' }}">
+        <button type="submit" style="font-size: 11px; padding: 2px 8px;">OK</button>
+        <button type="button" onclick="toggleMpuEdit('self')" style="font-size: 11px; padding: 2px 8px;" class="secondary">✕</button>
+      </form>
     </div>
   </div>
 
