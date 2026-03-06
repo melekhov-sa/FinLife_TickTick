@@ -1407,6 +1407,7 @@ def transactions_page(
     category_map = {c.category_id: c for c in all_categories}
 
     # Часто используемые категории (топ-7 за последние 30 дней)
+    today = date.today()
     _freq_since = today - timedelta(days=30)
     _freq_rows = (
         db.query(TransactionFeed.category_id, func.count().label("cnt"))
