@@ -308,7 +308,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     focus_total_count = today_block["progress"]["total"]
 
     # 2. Upcoming payments
-    upcoming_payments = svc.get_upcoming_payments(user_id, today, limit=3)
+    upcoming_payments = svc.get_upcoming_payments(user_id, today, limit=5)
 
     # 3. Habit heatmap (15 days, 3 rows x 5 cols)
     habit_heatmap = svc.get_habit_heatmap(user_id, today, days=15)
@@ -357,12 +357,42 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         WalletBalance.account_id == user_id,
         WalletBalance.is_archived == False,
     ).all()
+    dash_wallet_type_map = {w.wallet_id: w.wallet_type for w in dash_wallets}
+
+    # 11b. Goals for quick-op transfer to/from SAVINGS wallets
+    dash_goals = db.query(GoalInfo).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False,
+    ).all()
+    _dash_goal_bal_rows = (
+        db.query(GoalWalletBalance.goal_id, func.sum(GoalWalletBalance.amount).label('total'))
+        .filter(GoalWalletBalance.account_id == user_id)
+        .group_by(GoalWalletBalance.goal_id)
+        .all()
+    )
+    dash_goal_balance_map = {row.goal_id: float(row.total) for row in _dash_goal_bal_rows}
+    dash_goal_currency_map = {g.goal_id: g.currency for g in dash_goals}
 
     # 12. Categories for quick-op modal
     dash_categories = db.query(CategoryInfo).filter(
         CategoryInfo.account_id == user_id,
         CategoryInfo.is_archived == False,
     ).order_by(CategoryInfo.title).all()
+
+    _freq_since = today - timedelta(days=30)
+    _freq_rows = (
+        db.query(TransactionFeed.category_id, func.count().label("cnt"))
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.category_id.isnot(None),
+            TransactionFeed.occurred_at >= _freq_since,
+        )
+        .group_by(TransactionFeed.category_id)
+        .order_by(func.count().desc())
+        .limit(7)
+        .all()
+    )
+    dash_frequent_category_ids = [r.category_id for r in _freq_rows]
 
     # 13. Work categories + reminder presets for quick-task modal
     work_categories = db.query(WorkCategory).filter(
@@ -438,6 +468,122 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         for mem, sub, contact in _expiring_mem_raw
     ]
 
+    # 17. Efficiency score widget
+    _eff_data = EfficiencyService(db).calculate(user_id, today)
+    dash_efficiency = {
+        "score": _eff_data["efficiency_score"],
+        "snap_date": _eff_data.get("snapshot_date", today),
+    }
+    # Last 7 daily scores for sparkline
+    _eff_snaps = (
+        db.query(EfficiencySnapshot.snapshot_date, EfficiencySnapshot.efficiency_score)
+        .filter(EfficiencySnapshot.account_id == user_id)
+        .order_by(EfficiencySnapshot.snapshot_date.desc())
+        .limit(7)
+        .all()
+    )
+    dash_efficiency["history"] = list(reversed([{"date": s.snapshot_date, "val": float(s.efficiency_score)} for s in _eff_snaps]))
+
+    # 18. Budget month summary (plan vs fact)
+    _bvs = BudgetViewService(db)
+    _bview = _bvs.build(user_id, grain="month")
+    dash_budget = {
+        "plan_expense": float(_bview["totals"]["plan_expense"]),
+        "fact_expense": float(_bview["totals"]["fact_expense"]),
+        "plan_income": float(_bview["totals"]["plan_income"]),
+        "fact_income": float(_bview["totals"]["fact_income"]),
+    }
+    # Top 3 expense categories with biggest overspend
+    _exp_lines = sorted(_bview.get("expense_lines", []), key=lambda l: float(l.get("deviation", 0)))
+    dash_budget["top_overspend"] = [
+        {"title": l["title"], "plan": float(l["plan"]), "fact": float(l["fact"]), "deviation": float(l["deviation"])}
+        for l in _exp_lines[:3] if float(l.get("deviation", 0)) < 0
+    ]
+
+    # 19. Overdue tasks (separate block, prominent)
+    _overdue_tasks_raw = db.query(TaskModel).filter(
+        TaskModel.account_id == user_id,
+        TaskModel.status == "ACTIVE",
+        TaskModel.due_date.isnot(None),
+        TaskModel.due_date < today,
+    ).order_by(TaskModel.due_date).limit(10).all()
+    _overdue_occ_raw = db.query(TaskOccurrence).filter(
+        TaskOccurrence.account_id == user_id,
+        TaskOccurrence.status == "ACTIVE",
+        TaskOccurrence.scheduled_date < today,
+    ).order_by(TaskOccurrence.scheduled_date).limit(10).all()
+    _tmpl_ids_for_occ = {o.template_id for o in _overdue_occ_raw}
+    _tmpl_map_ov = {}
+    if _tmpl_ids_for_occ:
+        _tmpl_map_ov = {t.template_id: t.title for t in db.query(TaskTemplateModel).filter(TaskTemplateModel.template_id.in_(_tmpl_ids_for_occ)).all()}
+    dash_overdue_tasks = [
+        {"title": t.title, "due_date": t.due_date, "days_overdue": (today - t.due_date).days, "kind": "task", "id": t.task_id}
+        for t in _overdue_tasks_raw
+    ] + [
+        {"title": _tmpl_map_ov.get(o.template_id, "Задача"), "due_date": o.scheduled_date, "days_overdue": (today - o.scheduled_date).days, "kind": "task_occ", "id": o.id}
+        for o in _overdue_occ_raw if o.template_id in _tmpl_map_ov
+    ]
+    dash_overdue_tasks.sort(key=lambda x: x["due_date"])
+
+    # 20. Upcoming events (next 7 days)
+    _ev_week_end = today + timedelta(days=7)
+    _ev_occ_raw = db.query(EventOccurrenceModel).filter(
+        EventOccurrenceModel.account_id == user_id,
+        EventOccurrenceModel.start_date >= today,
+        EventOccurrenceModel.start_date <= _ev_week_end,
+        EventOccurrenceModel.is_cancelled == False,
+    ).order_by(EventOccurrenceModel.start_date, EventOccurrenceModel.start_time).limit(10).all()
+    _ev_ids = {o.event_id for o in _ev_occ_raw}
+    _ev_map = {}
+    if _ev_ids:
+        _ev_map = {e.event_id: e for e in db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(_ev_ids)).all()}
+    dash_upcoming_events = []
+    for occ in _ev_occ_raw:
+        ev = _ev_map.get(occ.event_id)
+        if ev and ev.is_active:
+            dash_upcoming_events.append({
+                "title": ev.title, "start_date": occ.start_date,
+                "start_time": occ.start_time, "is_today": occ.start_date == today,
+            })
+
+    # 21. Recent transactions (last 5)
+    dash_recent_txns = db.query(TransactionFeed).filter(
+        TransactionFeed.account_id == user_id,
+    ).order_by(TransactionFeed.occurred_at.desc()).limit(5).all()
+
+    # 22. Goals progress
+    _goals_active = db.query(GoalInfo).filter(
+        GoalInfo.account_id == user_id,
+        GoalInfo.is_archived == False,
+        GoalInfo.target_amount.isnot(None),
+        GoalInfo.target_amount > 0,
+    ).all()
+    _goal_ids_a = [g.goal_id for g in _goals_active]
+    _goal_bal_rows = []
+    if _goal_ids_a:
+        _goal_bal_rows = (
+            db.query(GoalWalletBalance.goal_id, func.sum(GoalWalletBalance.amount).label("total"))
+            .filter(GoalWalletBalance.account_id == user_id, GoalWalletBalance.goal_id.in_(_goal_ids_a))
+            .group_by(GoalWalletBalance.goal_id)
+            .all()
+        )
+    _goal_bal_map = {r.goal_id: float(r.total) for r in _goal_bal_rows}
+    dash_goals_progress = []
+    for g in _goals_active:
+        current = _goal_bal_map.get(g.goal_id, 0)
+        target = float(g.target_amount)
+        pct = min(round(current / target * 100), 100) if target > 0 else 0
+        dash_goals_progress.append({
+            "title": g.title, "currency": g.currency,
+            "current": current, "target": target, "pct": pct,
+        })
+
+    # 23. Unread notifications
+    dash_unread_notifications = db.query(NotificationModel).filter(
+        NotificationModel.user_id == user_id,
+        NotificationModel.is_read == False,
+    ).order_by(NotificationModel.created_at.desc()).limit(5).all()
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "today": today,
@@ -476,9 +622,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "dash_activity": dash_activity,
         # Wishes
         "wishes_this_month": wishes_this_month,
-        # Wallets + categories for quick-op modal
+        # Wallets + categories + goals for quick-op modal
         "dash_wallets": dash_wallets,
+        "dash_wallet_type_map": dash_wallet_type_map,
+        "dash_goals": dash_goals,
+        "dash_goal_balance_map": dash_goal_balance_map,
+        "dash_goal_currency_map": dash_goal_currency_map,
         "dash_categories": dash_categories,
+        "dash_frequent_category_ids": dash_frequent_category_ids,
         # Work categories + reminder presets for quick-task modal
         "work_categories": work_categories,
         "reminder_presets": reminder_presets,
@@ -489,6 +640,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "expiring_subs": expiring_subs,
         # Expiring member subscriptions
         "expiring_members": expiring_members,
+        # New blocks
+        "dash_efficiency": dash_efficiency,
+        "dash_budget": dash_budget,
+        "dash_overdue_tasks": dash_overdue_tasks,
+        "dash_upcoming_events": dash_upcoming_events,
+        "dash_recent_txns": dash_recent_txns,
+        "dash_goals_progress": dash_goals_progress,
+        "dash_unread_notifications": dash_unread_notifications,
     })
 
 
@@ -1247,6 +1406,22 @@ def transactions_page(
     active_categories = [c for c in all_categories if not c.is_archived]
     category_map = {c.category_id: c for c in all_categories}
 
+    # Часто используемые категории (топ-7 за последние 30 дней)
+    _freq_since = today - timedelta(days=30)
+    _freq_rows = (
+        db.query(TransactionFeed.category_id, func.count().label("cnt"))
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.category_id.isnot(None),
+            TransactionFeed.occurred_at >= _freq_since,
+        )
+        .group_by(TransactionFeed.category_id)
+        .order_by(func.count().desc())
+        .limit(7)
+        .all()
+    )
+    frequent_category_ids = [r.category_id for r in _freq_rows]
+
     # Базовый запрос
     q = db.query(TransactionFeed).filter(TransactionFeed.account_id == user_id)
 
@@ -1396,6 +1571,7 @@ def transactions_page(
         "wallet_map": wallet_map,
         "categories": active_categories,
         "category_map": category_map,
+        "frequent_category_ids": frequent_category_ids,
         "transactions": transactions,
         "page": page,
         "total_pages": total_pages,
@@ -5511,6 +5687,57 @@ def update_member_paid_until(
         )
 
 
+@router.post("/subscriptions/{sub_id}/self/paid-until")
+def update_self_paid_until(
+    request: Request,
+    sub_id: int,
+    new_paid_until: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Обновить paid_until_self подписки вручную."""
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+
+    try:
+        sub = db.query(SubscriptionModel).filter(
+            SubscriptionModel.id == sub_id,
+            SubscriptionModel.account_id == user_id,
+        ).first()
+        if not sub:
+            raise ValueError("Подписка не найдена")
+
+        paid_date = date.fromisoformat(new_paid_until)
+        old_paid = sub.paid_until_self
+        sub.paid_until_self = paid_date
+
+        # Create INITIAL coverage for audit trail
+        cov = SubscriptionCoverageModel(
+            subscription_id=sub.id,
+            account_id=user_id,
+            source_type="INITIAL",
+            payer_type="SELF",
+            member_id=None,
+            transaction_id=None,
+            start_date=paid_date,
+            end_date=paid_date,
+        )
+        db.add(cov)
+        db.commit()
+
+        success_msg = quote("Дата обновлена")
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?success={success_msg}",
+            status_code=302,
+        )
+    except (ValueError, Exception) as e:
+        db.rollback()
+        return RedirectResponse(
+            f"/subscriptions/{sub_id}?error={quote(str(e))}",
+            status_code=302,
+        )
+
+
 @router.get("/subscriptions/{sub_id}/analytics")
 def subscription_analytics_api(
     request: Request,
@@ -7212,6 +7439,10 @@ def budget_goal_plan_edit_page(
     year: int,
     month: int,
     variant_id: int,
+    grain: str = "month",
+    range_count: int = 1,
+    anchor_year: int | None = None,
+    anchor_month: int | None = None,
     db: Session = Depends(get_db),
 ):
     """Per-cell goal plan editing page."""
@@ -7246,8 +7477,10 @@ def budget_goal_plan_edit_page(
     plan_amount = gp.plan_amount if gp else Decimal("0")
     note = gp.note if gp else ""
 
+    _ay = anchor_year or year
+    _am = anchor_month or month
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
+    back_url = f"/budget?year={_ay}&month={_am}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
 
     return templates.TemplateResponse("budget_goal_plan_edit.html", {
         "request": request,
@@ -7260,6 +7493,10 @@ def budget_goal_plan_edit_page(
         "note": note or "",
         "back_url": back_url,
         "month_label": MONTH_NAMES_RU.get(month, str(month)),
+        "grain": grain,
+        "range_count": range_count,
+        "anchor_year": _ay,
+        "anchor_month": _am,
     })
 
 
@@ -7309,7 +7546,11 @@ def save_goal_plan_single(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
+    _grain = form_data.get("grain", "month")
+    _rc = form_data.get("range_count", "1")
+    _ay = form_data.get("anchor_year", str(year))
+    _am = form_data.get("anchor_month", str(month))
+    return RedirectResponse(f"/budget?year={_ay}&month={_am}{qs}&grain={_grain}&range_count={_rc}", status_code=302)
 
 
 @router.get("/budget/goals/withdrawal/plan/edit", response_class=HTMLResponse)
@@ -7319,6 +7560,10 @@ def budget_goal_withdrawal_plan_edit_page(
     year: int,
     month: int,
     variant_id: int,
+    grain: str = "month",
+    range_count: int = 1,
+    anchor_year: int | None = None,
+    anchor_month: int | None = None,
     db: Session = Depends(get_db),
 ):
     """Per-cell withdrawal plan editing page ('Взять из отложенного')."""
@@ -7351,8 +7596,10 @@ def budget_goal_withdrawal_plan_edit_page(
     plan_amount = gp.plan_amount if gp else Decimal("0")
     note = gp.note if gp else ""
 
+    _ay = anchor_year or year
+    _am = anchor_month or month
     period_label = f"{MONTH_NAMES_RU.get(month, str(month))} {year}"
-    back_url = f"/budget?year={year}&month={month}&variant_id={variant.id}"
+    back_url = f"/budget?year={_ay}&month={_am}&variant_id={variant.id}&grain={grain}&range_count={range_count}"
 
     return templates.TemplateResponse("budget_goal_withdrawal_plan_edit.html", {
         "request": request,
@@ -7365,6 +7612,10 @@ def budget_goal_withdrawal_plan_edit_page(
         "note": note or "",
         "back_url": back_url,
         "month_label": MONTH_NAMES_RU.get(month, str(month)),
+        "grain": grain,
+        "range_count": range_count,
+        "anchor_year": _ay,
+        "anchor_month": _am,
     })
 
 
@@ -7414,7 +7665,11 @@ def save_goal_withdrawal_plan_single(
         db.rollback()
 
     qs = f"&variant_id={variant.id}" if variant else ""
-    return RedirectResponse(f"/budget?year={year}&month={month}{qs}", status_code=302)
+    _grain = form_data.get("grain", "month")
+    _rc = form_data.get("range_count", "1")
+    _ay = form_data.get("anchor_year", str(year))
+    _am = form_data.get("anchor_month", str(month))
+    return RedirectResponse(f"/budget?year={_ay}&month={_am}{qs}&grain={_grain}&range_count={_rc}", status_code=302)
 
 
 @router.post("/budget/visibility/save")

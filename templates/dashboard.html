@@ -646,6 +646,84 @@ a.dash-card-link {
 }
 .tf-checkbox-label input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
 .tf-section-divider { border-top: 1px solid var(--border-color, #e0e0e0); margin: 6px 0 8px; }
+
+/* ── Efficiency widget ── */
+.eff-score-row { display: flex; align-items: center; gap: 16px; }
+.eff-score-num {
+  font-size: 36px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+}
+.eff-score--high { color: #2e7d32; }
+.eff-score--mid  { color: #f59e0b; }
+.eff-score--low  { color: #c62828; }
+.eff-sparkline { flex: 1; height: 32px; display: flex; align-items: flex-end; gap: 2px; }
+.eff-spark-bar {
+  flex: 1; background: var(--accent, #4a90d9); border-radius: 2px 2px 0 0;
+  min-width: 4px; transition: height .3s;
+}
+
+/* ── Budget month widget ── */
+.bgt-meter { margin-bottom: 10px; }
+.bgt-meter-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.bgt-meter-bar { height: 8px; border-radius: 4px; background: var(--border-color); overflow: hidden; }
+.bgt-meter-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+.bgt-meter-fill--ok { background: #2e7d32; }
+.bgt-meter-fill--warn { background: #f59e0b; }
+.bgt-meter-fill--over { background: #c62828; }
+.bgt-overspend-item { font-size: 12px; color: var(--text-secondary); padding: 3px 0; display: flex; justify-content: space-between; }
+.bgt-overspend-val { color: #c62828; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ── Overdue tasks block ── */
+.overdue-block-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; font-size: 13px;
+}
+.overdue-block-item + .overdue-block-item { border-top: 1px solid var(--border-color); }
+.overdue-block-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overdue-block-days { flex-shrink: 0; font-size: 11px; font-weight: 600; color: #c62828; margin-left: 8px; }
+
+/* ── Events week ── */
+.ev-week-item { padding: 5px 0; font-size: 13px; display: flex; gap: 8px; align-items: baseline; }
+.ev-week-item + .ev-week-item { border-top: 1px solid var(--border-color); }
+.ev-week-date { font-size: 11px; color: var(--text-secondary); min-width: 36px; font-variant-numeric: tabular-nums; }
+.ev-week-time { font-size: 11px; color: var(--text-secondary); min-width: 36px; font-variant-numeric: tabular-nums; }
+.ev-week-title { flex: 1; }
+
+/* ── Recent txns ── */
+.rtx-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; }
+.rtx-item + .rtx-item { border-top: 1px solid var(--border-color); }
+.rtx-left { flex: 1; min-width: 0; }
+.rtx-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtx-sub { font-size: 11px; color: var(--text-secondary); }
+.rtx-amount { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.rtx-amount--income { color: #2e7d32; }
+.rtx-amount--expense { color: #c62828; }
+.rtx-amount--transfer { color: var(--text-secondary); }
+
+/* ── Goals progress ── */
+.goal-prog-item { margin-bottom: 10px; }
+.goal-prog-item:last-child { margin-bottom: 0; }
+.goal-prog-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.goal-prog-title { font-weight: 500; }
+.goal-prog-pct { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ── Notifications block ── */
+.notif-item { padding: 6px 0; font-size: 13px; }
+.notif-item + .notif-item { border-top: 1px solid var(--border-color); }
+.notif-title { font-weight: 500; }
+.notif-body { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.notif-severity { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.notif-severity--warning { background: #f59e0b; }
+.notif-severity--error { background: #c62828; }
+.notif-severity--info { background: #4a90d9; }
+
+/* ── Habits today block ── */
+.habit-today-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
+.habit-today-item + .habit-today-item { border-top: 1px solid var(--border-color); }
+.habit-today-check { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-color); flex-shrink: 0; }
+.habit-today-check--done { background: #2e7d32; border-color: #2e7d32; }
+.habit-today-title { flex: 1; }
+.habit-today-title--done { text-decoration: line-through; color: var(--text-secondary); }
+.habit-today-streak { font-size: 11px; color: #f59e0b; font-weight: 600; }
 </style>{% endblock %}
 
 {% block content %}
@@ -757,6 +835,108 @@ a.dash-card-link {
         <div class="act-sub">7д: {{ dash_activity.points_7d }} • пред: {{ dash_activity.points_prev_7d }}</div>
       </a>
     </div>
+
+    {# ── Эффективность ── #}
+    <div class="dash-card" id="dash-efficiency">
+      <div class="dash-card-title">Эффективность</div>
+      <a href="/efficiency" class="dash-card-link">
+        <div class="eff-score-row">
+          {% set eff_score = dash_efficiency.score|round|int %}
+          <span class="eff-score-num {% if eff_score >= 70 %}eff-score--high{% elif eff_score >= 40 %}eff-score--mid{% else %}eff-score--low{% endif %}">{{ eff_score }}</span>
+          {% if dash_efficiency.history %}
+          <div class="eff-sparkline">
+            {% set max_s = dash_efficiency.history|map(attribute='val')|max or 1 %}
+            {% for h in dash_efficiency.history %}
+            <div class="eff-spark-bar" style="height: {{ (h.val / max_s * 100)|round|int }}%;{% if h.val >= 70 %} background:#2e7d32;{% elif h.val >= 40 %} background:#f59e0b;{% else %} background:#c62828;{% endif %}"></div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:6px;">Индекс за 7 дней</div>
+      </a>
+    </div>
+
+    {# ── Бюджет: месяц ── #}
+    <div class="dash-card" id="dash-budget-month">
+      <div class="dash-card-title">Бюджет: {{ current_month }}</div>
+      {% set bgt_plan = dash_budget.plan_expense %}
+      {% set bgt_fact = dash_budget.fact_expense %}
+      {% set bgt_pct = (bgt_fact / bgt_plan * 100)|round|int if bgt_plan > 0 else 0 %}
+      <div class="bgt-meter">
+        <div class="bgt-meter-label">
+          <span>Расходы</span>
+          <span class="clarity-mask">{{ fmt(bgt_fact) }} / {{ fmt(bgt_plan) }}</span>
+        </div>
+        <div class="bgt-meter-bar">
+          <div class="bgt-meter-fill {% if bgt_pct <= 80 %}bgt-meter-fill--ok{% elif bgt_pct <= 100 %}bgt-meter-fill--warn{% else %}bgt-meter-fill--over{% endif %}" style="width: {{ [bgt_pct, 100]|min }}%;"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">{{ bgt_pct }}% от плана</div>
+      </div>
+      {% set bgt_inc_plan = dash_budget.plan_income %}
+      {% set bgt_inc_fact = dash_budget.fact_income %}
+      {% set bgt_inc_pct = (bgt_inc_fact / bgt_inc_plan * 100)|round|int if bgt_inc_plan > 0 else 0 %}
+      <div class="bgt-meter">
+        <div class="bgt-meter-label">
+          <span>Доходы</span>
+          <span class="clarity-mask">{{ fmt(bgt_inc_fact) }} / {{ fmt(bgt_inc_plan) }}</span>
+        </div>
+        <div class="bgt-meter-bar">
+          <div class="bgt-meter-fill bgt-meter-fill--ok" style="width: {{ [bgt_inc_pct, 100]|min }}%;{% if bgt_inc_pct >= 100 %} background: #2e7d32;{% endif %}"></div>
+        </div>
+      </div>
+      {% if dash_budget.top_overspend %}
+      <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Перерасход</div>
+      {% for ov in dash_budget.top_overspend %}
+      <div class="bgt-overspend-item">
+        <span>{{ ov.title }}</span>
+        <span class="bgt-overspend-val clarity-mask">{{ fmt(ov.deviation|abs) }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/budget" style="font-size:12px;">Открыть бюджет &rarr;</a>
+      </p>
+    </div>
+
+    {# ── Просроченные задачи ── #}
+    {% if dash_overdue_tasks %}
+    <div class="dash-card" id="dash-overdue-tasks" style="border-color:#c62828;border-width:1.5px;">
+      <div class="dash-card-title" style="color:#c62828;">Просроченные задачи ({{ dash_overdue_tasks|length }})</div>
+      {% for t in dash_overdue_tasks[:7] %}
+      <div class="overdue-block-item">
+        <span class="overdue-block-title">{{ t.title }}</span>
+        <span class="overdue-block-days">{{ t.days_overdue }} дн.</span>
+      </div>
+      {% endfor %}
+      {% if dash_overdue_tasks|length > 7 %}
+      <p class="focus-overflow"><a href="/tasks">ещё {{ dash_overdue_tasks|length - 7 }} &rarr;</a></p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# ── Привычки сегодня ── #}
+    {% if focus_habits or focus_habits_done %}
+    <div class="dash-card" id="dash-habits-today">
+      <div class="dash-card-title">Привычки сегодня</div>
+      {% for item in focus_habits_done %}
+      <div class="habit-today-item">
+        <span class="habit-today-check habit-today-check--done"></span>
+        <span class="habit-today-title habit-today-title--done">{{ item.title }}</span>
+        {% if item.meta.current_streak > 0 %}<span class="habit-today-streak">{{ item.meta.current_streak }} дн.</span>{% endif %}
+      </div>
+      {% endfor %}
+      {% for item in focus_habits %}
+      <div class="habit-today-item">
+        <span class="habit-today-check"></span>
+        <span class="habit-today-title">{{ item.title }}</span>
+        {% if item.meta.current_streak > 0 %}<span class="habit-today-streak">{{ item.meta.current_streak }} дн.</span>{% endif %}
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/habits" style="font-size:12px;">Все привычки &rarr;</a>
+      </p>
+    </div>
+    {% endif %}
 
   </div>{# ── end LEFT ── #}
 
@@ -1020,7 +1200,7 @@ a.dash-card-link {
             <span class="up-title">{{ pay.title }}</span>
           </div>
           <div class="up-sub">
-            {%- if pay.days_until == 0 %}сегодня{% elif pay.days_until == 1 %}завтра{% else %}через {{ pay.days_until }} дн.{% endif %} ({{ pay.scheduled_date.strftime('%d.%m') }})
+            {%- if pay.days_until < 0 %}<span style="color:var(--danger,#e74c3c);">просрочено {{ -pay.days_until }} дн.</span>{% elif pay.days_until == 0 %}<strong>сегодня</strong>{% elif pay.days_until == 1 %}завтра{% else %}через {{ pay.days_until }} дн.{% endif %} ({{ pay.scheduled_date.strftime('%d.%m') }})
           </div>
         </div>
         <div class="up-right">
@@ -1031,7 +1211,7 @@ a.dash-card-link {
       </div>
       {% endfor %}
       <p style="margin-top:8px;margin-bottom:0;">
-        <a href="/planned-operations" style="font-size:12px;">Все плановые &rarr;</a>
+        <a href="/planned-ops" style="font-size:12px;">Все плановые &rarr;</a>
       </p>
       {% else %}
       <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет ближайших платежей</p>
@@ -1091,25 +1271,89 @@ a.dash-card-link {
     </div>
     {% endif %}
 
-    {# ── Прогноз (заглушка) ── #}
-    <div class="dash-card" id="dash-forecast">
-      <div class="dash-card-title">Прогноз</div>
-      <span class="skel skel-lg w-70"></span>
-      <span class="skel skel-md w-60"></span>
-      <span class="skel skel-sm w-40"></span>
-      <span class="skel skel-sm w-30"></span>
+    {# ── Календарь событий (неделя) ── #}
+    <div class="dash-card" id="dash-events-week">
+      <div class="dash-card-title">События на неделю</div>
+      {% if dash_upcoming_events %}
+      {% for ev in dash_upcoming_events %}
+      <div class="ev-week-item">
+        <span class="ev-week-date">{{ ev.start_date.strftime('%d.%m') }}</span>
+        <span class="ev-week-time">{% if ev.start_time %}{{ ev.start_time.strftime('%H:%M') }}{% else %}—{% endif %}</span>
+        <span class="ev-week-title">{{ ev.title }}{% if ev.is_today %} <strong style="font-size:11px;color:var(--accent);">сегодня</strong>{% endif %}</span>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/events" style="font-size:12px;">Все события &rarr;</a>
+      </p>
+      {% else %}
+      <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет событий на ближайшую неделю</p>
+      {% endif %}
     </div>
 
-    {# ── Цели (заглушка) ── #}
-    <div class="dash-card" id="dash-goals">
-      <div class="dash-card-title">Цели</div>
-      <span class="skel skel-lg w-60"></span>
-      <span class="skel skel-md w-80"></span>
-      <span class="skel skel-sm w-40"></span>
-      <p style="margin-top:10px;margin-bottom:0;">
+    {# ── Последние операции ── #}
+    <div class="dash-card" id="dash-recent-txns">
+      <div class="dash-card-title">Последние операции</div>
+      {% if dash_recent_txns %}
+      {% for tx in dash_recent_txns %}
+      <div class="rtx-item">
+        <div class="rtx-left">
+          <div class="rtx-desc">{{ tx.description or (tx.operation_type == 'INCOME' and 'Доход' or (tx.operation_type == 'EXPENSE' and 'Расход' or 'Перевод')) }}</div>
+          <div class="rtx-sub">{{ tx.occurred_at.strftime('%d.%m %H:%M') }}</div>
+        </div>
+        <span class="rtx-amount rtx-amount--{{ tx.operation_type|lower }} clarity-mask">
+          {% if tx.operation_type == 'INCOME' %}+{% elif tx.operation_type == 'EXPENSE' %}&minus;{% endif %}{{ format_money(tx.amount, tx.currency) }}
+        </span>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/transactions" style="font-size:12px;">Все операции &rarr;</a>
+      </p>
+      {% else %}
+      <p class="muted" style="font-size:13px;text-align:center;padding:12px 0;">Нет операций</p>
+      {% endif %}
+    </div>
+
+    {# ── Накопления (прогресс целей) ── #}
+    {% if dash_goals_progress %}
+    <div class="dash-card" id="dash-goals-progress">
+      <div class="dash-card-title">Накопления</div>
+      {% for g in dash_goals_progress %}
+      <div class="goal-prog-item">
+        <div class="goal-prog-top">
+          <span class="goal-prog-title">{{ g.title }}</span>
+          <span class="goal-prog-pct">{{ g.pct }}%</span>
+        </div>
+        <div class="progress">
+          <div class="progress__fill" style="width: {{ g.pct }}%;{% if g.pct >= 100 %} background: #2e7d32;{% endif %}"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;font-variant-numeric:tabular-nums;" class="clarity-mask">
+          {{ format_money(g.current, g.currency) }} / {{ format_money(g.target, g.currency) }}
+        </div>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
         <a href="/goals" style="font-size:12px;">Все цели &rarr;</a>
       </p>
     </div>
+    {% endif %}
+
+    {# ── Уведомления ── #}
+    {% if dash_unread_notifications %}
+    <div class="dash-card" id="dash-notifications">
+      <div class="dash-card-title">Уведомления</div>
+      {% for n in dash_unread_notifications %}
+      <div class="notif-item">
+        <div class="notif-title">
+          <span class="notif-severity notif-severity--{{ n.severity }}"></span>{{ n.title }}
+        </div>
+        <div class="notif-body">{{ n.body_inapp }}</div>
+      </div>
+      {% endfor %}
+      <p style="margin-top:8px;margin-bottom:0;">
+        <a href="/notifications" style="font-size:12px;">Все уведомления &rarr;</a>
+      </p>
+    </div>
+    {% endif %}
 
   </div>{# ── end RIGHT ── #}
 
@@ -1145,7 +1389,7 @@ a.dash-card-link {
       {# Два кошелька (перемещение) #}
       <div class="qop-field" id="qopFromRow" style="display:none;">
         <label>Из кошелька</label>
-        <select name="from_wallet_id" id="qopFrom" disabled onchange="updateQopFromHint()">
+        <select name="from_wallet_id" id="qopFrom" disabled onchange="updateQopGoalFields(); updateQopFromHint();">
           {% for w in dash_wallets %}
           <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
           {% endfor %}
@@ -1154,7 +1398,7 @@ a.dash-card-link {
       </div>
       <div class="qop-field" id="qopToRow" style="display:none;">
         <label>В кошелёк</label>
-        <select name="to_wallet_id" id="qopTo" disabled onchange="updateQopToHint()">
+        <select name="to_wallet_id" id="qopTo" disabled onchange="updateQopGoalFields(); updateQopToHint();">
           {% for w in dash_wallets %}
           <option value="{{ w.wallet_id }}">{{ w.title }} ({{ w.currency }})</option>
           {% endfor %}
@@ -1162,11 +1406,40 @@ a.dash-card-link {
         <small id="qopToHint" style="display:none; color:var(--text-secondary); margin-top:3px; font-size:12px;"></small>
       </div>
 
+      {# Цель (из / в) — для SAVINGS-кошельков #}
+      <div class="qop-field" id="qopFromGoalRow" style="display:none;">
+        <label>Из цели</label>
+        <select name="from_goal_id" id="qopFromGoal">
+          <option value="">— Выберите цель —</option>
+          {% for g in dash_goals %}
+          <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="qop-field" id="qopToGoalRow" style="display:none;">
+        <label>В цель</label>
+        <select name="to_goal_id" id="qopToGoal">
+          <option value="">— Выберите цель —</option>
+          {% for g in dash_goals %}
+          <option value="{{ g.goal_id }}">{{ g.title }} ({{ g.currency }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
       {# Категория #}
       <div class="qop-field" id="qopCategoryRow">
         <label>Категория</label>
         <select name="category_id" id="qopCategory">
           <option value="">Без категории</option>
+          {% if dash_frequent_category_ids %}
+          {% set _freq_map = {} %}
+          {% for c in dash_categories %}{% if c.category_id in dash_frequent_category_ids %}{% set _ = _freq_map.update({c.category_id: c}) %}{% endif %}{% endfor %}
+          {% for fid in dash_frequent_category_ids %}{% if fid in _freq_map %}
+          {% set c = _freq_map[fid] %}
+          <option value="{{ c.category_id }}" data-type="{{ c.category_type }}" data-freq="1">★ {{ c.title }}</option>
+          {% endif %}{% endfor %}
+          <option disabled data-sep="1">──────────</option>
+          {% endif %}
           {% for c in dash_categories %}
           <option value="{{ c.category_id }}" data-type="{{ c.category_type }}">{{ c.title }}</option>
           {% endfor %}
@@ -1213,6 +1486,12 @@ var qopWalletBalanceMap = {
   {% endfor %}
 };
 
+var qopWalletTypeMap = {
+  {% for wid, wtype in dash_wallet_type_map.items() %}
+  "{{ wid }}": "{{ wtype }}"{{ "," if not loop.last }}
+  {% endfor %}
+};
+
 function fmtQopBalance(amount, currency) {
   var n = Math.round(Math.abs(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
   var sym = currency === 'RUB' ? '\u20bd' : currency;
@@ -1241,6 +1520,34 @@ function updateQopToHint() {
   var sel = document.getElementById('qopTo');
   var info = qopWalletBalanceMap[sel ? sel.value : ''];
   showQopHint('qopToHint', info ? info.balance : undefined, info ? info.currency : '');
+}
+
+function updateQopGoalFields() {
+  var fromSel = document.getElementById('qopFrom');
+  var toSel = document.getElementById('qopTo');
+  var fromGoalRow = document.getElementById('qopFromGoalRow');
+  var toGoalRow = document.getElementById('qopToGoalRow');
+  if (!fromGoalRow || !toGoalRow) return;
+  var fromType = qopWalletTypeMap[fromSel ? fromSel.value : ''] || '';
+  var toType = qopWalletTypeMap[toSel ? toSel.value : ''] || '';
+  fromGoalRow.style.display = fromType === 'SAVINGS' ? '' : 'none';
+  toGoalRow.style.display = toType === 'SAVINGS' ? '' : 'none';
+}
+
+function filterQopWalletsByType(opType) {
+  var sel = document.getElementById('qopWallet');
+  if (!sel) return;
+  var opts = sel.options;
+  for (var i = 0; i < opts.length; i++) {
+    var hide = opType === 'EXPENSE' && qopWalletTypeMap[opts[i].value] === 'SAVINGS';
+    opts[i].style.display = hide ? 'none' : '';
+    opts[i].disabled = hide;
+  }
+  if (opType === 'EXPENSE' && qopWalletTypeMap[sel.value] === 'SAVINGS') {
+    for (var j = 0; j < opts.length; j++) {
+      if (!opts[j].disabled) { sel.value = opts[j].value; break; }
+    }
+  }
 }
 </script>
 <script src="/static/js/dashboard-actions.js"></script>
