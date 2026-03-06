@@ -220,13 +220,13 @@ td[data-val] { transition: background-color 0.15s; color: var(--text-primary, #1
 /* ── Drag & drop category reorder ── */
 .drag-handle {
   cursor: grab;
-  color: #ccc;
+  color: #bbb;
   padding: 0 5px 0 0;
   font-size: 13px;
   user-select: none;
   display: inline-block;
-  opacity: 0;
-  transition: opacity 0.1s;
+  opacity: 0.5;
+  transition: opacity 0.15s;
 }
 tr[data-cat-id]:hover .drag-handle { opacity: 1; }
 tr[data-cat-id].bgt-dragging { opacity: 0.35; }
@@ -913,18 +913,24 @@ function toggleAllVisibility(checked) {
   }
 
   document.querySelectorAll('tr[data-cat-id]').forEach(function(row) {
-    row.setAttribute('draggable', 'true');
+    // Enable draggable only when grabbing the handle (mousedown/mouseup)
+    var handle = row.querySelector('.drag-handle');
+    var stickyCol = row.querySelector('.sticky-col');
+    function enableDrag() { row.setAttribute('draggable', 'true'); }
+    function disableDrag() { row.removeAttribute('draggable'); }
+    if (handle) {
+      handle.addEventListener('mousedown', enableDrag);
+      handle.addEventListener('mouseup', disableDrag);
+    }
+    if (stickyCol) {
+      stickyCol.addEventListener('mousedown', enableDrag);
+      stickyCol.addEventListener('mouseup', disableDrag);
+    }
 
     row.addEventListener('dragstart', function(e) {
-      var path = e.composedPath ? e.composedPath() : [];
-      var fromHandle = path.some(function(el) {
-        return el.classList && (el.classList.contains('drag-handle') || el.classList.contains('sticky-col'));
-      });
-      if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', row.dataset.catId || '');
-      // Delay so the dragging ghost captures original appearance
       setTimeout(function() {
         subtree(row.parentNode, row).forEach(function(r) { r.classList.add('bgt-dragging'); });
       }, 0);
@@ -935,6 +941,7 @@ function toggleAllVisibility(checked) {
         r.classList.remove('bgt-dragging', 'bgt-drag-over');
       });
       dragSrc = null;
+      disableDrag();
     });
 
     row.addEventListener('dragover', function(e) {
@@ -980,14 +987,20 @@ function toggleAllVisibility(checked) {
   var dragSrc = null;
 
   document.querySelectorAll('tr[data-goal-id]').forEach(function(row) {
-    row.setAttribute('draggable', 'true');
+    var handle = row.querySelector('.drag-handle');
+    var stickyCol = row.querySelector('.sticky-col');
+    function enableDrag() { row.setAttribute('draggable', 'true'); }
+    function disableDrag() { row.removeAttribute('draggable'); }
+    if (handle) {
+      handle.addEventListener('mousedown', enableDrag);
+      handle.addEventListener('mouseup', disableDrag);
+    }
+    if (stickyCol) {
+      stickyCol.addEventListener('mousedown', enableDrag);
+      stickyCol.addEventListener('mouseup', disableDrag);
+    }
 
     row.addEventListener('dragstart', function(e) {
-      var path = e.composedPath ? e.composedPath() : [];
-      var fromHandle = path.some(function(el) {
-        return el.classList && (el.classList.contains('drag-handle') || el.classList.contains('sticky-col'));
-      });
-      if (!fromHandle) { e.preventDefault(); return; }
       dragSrc = row;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', row.dataset.goalId || '');
@@ -999,6 +1012,7 @@ function toggleAllVisibility(checked) {
         r.classList.remove('bgt-dragging', 'bgt-drag-over');
       });
       dragSrc = null;
+      disableDrag();
     });
 
     row.addEventListener('dragover', function(e) {
