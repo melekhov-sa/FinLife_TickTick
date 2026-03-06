@@ -106,14 +106,21 @@ class UpdateTaskUseCase:
         # Validate DueSpec: merge current values with changes
         due_fields = ("due_kind", "due_date", "due_time", "due_start_time", "due_end_time")
         if any(k in changes for k in due_fields):
-            from app.domain.task_due_spec import validate_due_spec
-            validate_due_spec(
+            from app.domain.task_due_spec import validate_due_spec, normalize_due_spec
+            dk, dd, dt, dst, det = normalize_due_spec(
                 changes.get("due_kind", task.due_kind),
                 changes.get("due_date", task.due_date.isoformat() if task.due_date else None),
                 changes.get("due_time", task.due_time.isoformat() if task.due_time else None),
                 changes.get("due_start_time", task.due_start_time.isoformat() if task.due_start_time else None),
                 changes.get("due_end_time", task.due_end_time.isoformat() if task.due_end_time else None),
             )
+            validate_due_spec(dk, dd, dt, dst, det)
+            # Apply normalized values back to changes
+            changes["due_kind"] = dk
+            changes["due_date"] = dd
+            changes["due_time"] = dt
+            changes["due_start_time"] = dst
+            changes["due_end_time"] = det
 
         payload = Task.update(task_id, **changes)
         self.event_repo.append_event(

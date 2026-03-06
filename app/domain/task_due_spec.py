@@ -26,6 +26,19 @@ class ReminderSpecValidationError(ValueError):
     pass
 
 
+def normalize_due_spec(
+    due_kind: str,
+    due_date: str | None,
+    due_time: str | None,
+    due_start_time: str | None,
+    due_end_time: str | None,
+) -> tuple[str, str | None, str | None, str | None, str | None]:
+    """Normalize DueSpec: when kind is NONE, clear all other fields."""
+    if due_kind == "NONE":
+        return due_kind, None, None, None, None
+    return due_kind, due_date, due_time, due_start_time, due_end_time
+
+
 def validate_due_spec(
     due_kind: str,
     due_date: str | None,

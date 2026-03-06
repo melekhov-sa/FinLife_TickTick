@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Dict, Any
 
-from app.domain.task_due_spec import validate_due_spec, validate_reminders
+from app.domain.task_due_spec import validate_due_spec, validate_reminders, normalize_due_spec
 
 
 class Task:
@@ -22,6 +22,9 @@ class Task:
         suggested_expense_category_id: int | None = None,
         suggested_amount: str | None = None,
     ) -> Dict[str, Any]:
+        due_kind, due_date, due_time, due_start_time, due_end_time = normalize_due_spec(
+            due_kind, due_date, due_time, due_start_time, due_end_time,
+        )
         validate_due_spec(due_kind, due_date, due_time, due_start_time, due_end_time)
         return {
             "task_id": task_id,
