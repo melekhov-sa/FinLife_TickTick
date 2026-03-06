@@ -443,6 +443,21 @@ function filterCategories(opType) {
   sel.value = '';
 }
 
+function filterWalletsByKind(type) {
+  var sel = document.getElementById('walletSelect');
+  var opts = sel.options;
+  for (var i = 0; i < opts.length; i++) {
+    var hide = type === 'EXPENSE' && walletTypeMap[opts[i].value] === 'SAVINGS';
+    opts[i].style.display = hide ? 'none' : '';
+    opts[i].disabled = hide;
+  }
+  if (type === 'EXPENSE' && walletTypeMap[sel.value] === 'SAVINGS') {
+    for (var j = 0; j < opts.length; j++) {
+      if (!opts[j].disabled) { sel.value = opts[j].value; break; }
+    }
+  }
+}
+
 function updateFormFields() {
   var type = document.getElementById('operationType').value;
   var walletField = document.getElementById('walletField');
@@ -478,6 +493,7 @@ function updateFormFields() {
     document.getElementById('toGoalSelect').value = '';
     showHint('fromGoalBalanceHint', undefined, '');
     showHint('toGoalBalanceHint', undefined, '');
+    filterWalletsByKind(type);
     updateWalletHint();
   }
   filterCategories(type);
@@ -518,6 +534,7 @@ function updateSubscriptionBlock() {
 }
 
 filterCategories(document.getElementById('operationType').value);
+filterWalletsByKind(document.getElementById('operationType').value);
 updateWalletHint();
 {% if new_type %}updateFormFields();{% endif %}
 </script>
