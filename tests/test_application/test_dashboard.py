@@ -342,8 +342,8 @@ class TestUpcomingPayments:
         result = DashboardService(db_session).get_upcoming_payments(ACCOUNT, TODAY, limit=2)
         assert len(result) == 2
 
-    def test_excludes_today_and_past(self, db_session):
-        """Only future (> today), not today or past."""
+    def test_includes_today_and_overdue(self, db_session):
+        """Includes overdue, today, and future operations."""
         r = _add_rule(db_session, 1)
         _add_op_template(db_session, 10, r.rule_id)
         _add_op_occ(db_session, 100, 10, YESTERDAY)
@@ -351,8 +351,12 @@ class TestUpcomingPayments:
         _add_op_occ(db_session, 102, 10, TOMORROW)
 
         result = DashboardService(db_session).get_upcoming_payments(ACCOUNT, TODAY)
-        assert len(result) == 1
-        assert result[0]["scheduled_date"] == TOMORROW
+        assert len(result) == 3
+        assert result[0]["scheduled_date"] == YESTERDAY
+        assert result[0]["days_until"] == -1
+        assert result[1]["scheduled_date"] == TODAY
+        assert result[1]["days_until"] == 0
+        assert result[2]["scheduled_date"] == TOMORROW
 
     def test_excludes_archived_templates(self, db_session):
         r = _add_rule(db_session, 1)
@@ -544,10 +548,12 @@ class TestIntegrationMixed:
         assert block["progress"]["total"] == 5
         assert block["progress"]["done"] == 2
 
-        # Upcoming
+        # Upcoming (includes overdue + today + future)
         upcoming = svc.get_upcoming_payments(ACCOUNT, TODAY)
-        assert len(upcoming) == 1
-        assert upcoming[0]["title"] == "Internet"
+        assert len(upcoming) == 3
+        assert upcoming[0]["title"] == "Rent"       # overdue (yesterday)
+        assert upcoming[1]["title"] == "Phone"      # today
+        assert upcoming[2]["title"] == "Internet"   # tomorrow
 
 
 # ======================================================================

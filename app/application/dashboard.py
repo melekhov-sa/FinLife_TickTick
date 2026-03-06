@@ -182,11 +182,11 @@ class DashboardService:
             if tmpl and not tmpl.is_archived:
                 active.append(self._task_occ_item(occ, tmpl, wc_map, is_overdue=False))
 
-        # Done today
+        # Done today (by actual completion date, not scheduled date)
         rows = self.db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "DONE",
-            TaskOccurrence.scheduled_date == today,
+            func.date(TaskOccurrence.completed_at) == today,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -243,11 +243,11 @@ class DashboardService:
             if tmpl and not tmpl.is_archived:
                 active.append(self._op_occ_item(occ, tmpl, wc_map, wcur_map, is_overdue=False))
 
-        # Done today
+        # Done today (by actual completion date, not scheduled date)
         rows = self.db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "DONE",
-            OperationOccurrence.scheduled_date == today,
+            func.date(OperationOccurrence.completed_at) == today,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -364,12 +364,12 @@ class DashboardService:
     # 2. Upcoming payments
     # ------------------------------------------------------------------
 
-    def get_upcoming_payments(self, account_id: int, today: date, limit: int = 3) -> list[dict]:
-        """Future planned operations (scheduled_date > today), sorted by date, limited."""
+    def get_upcoming_payments(self, account_id: int, today: date, limit: int = 5) -> list[dict]:
+        """Overdue + today + future planned operations, sorted by date, limited."""
         rows = self.db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "ACTIVE",
-            OperationOccurrence.scheduled_date > today,
+            OperationOccurrence.scheduled_date >= today - timedelta(days=30),
         ).order_by(OperationOccurrence.scheduled_date.asc()).limit(limit * 3).all()
 
         wcur_map = self._load_wallet_currency_map(account_id)
