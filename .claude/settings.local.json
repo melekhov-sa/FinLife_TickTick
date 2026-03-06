@@ -92,7 +92,11 @@
       "Bash(.venv/Scripts/python:*)",
       "Bash(DATABASE_URL=\"postgresql://finlife:finlife_password_change_me@localhost:5432/finlife\" .venv/Scripts/python:*)",
       "Bash(xargs:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git status:*)",
+      "Bash(tail:*)"
     ]
   }
 }
