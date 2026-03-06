@@ -17,7 +17,8 @@
       walletRow, fromRow, toRow,
       qopWallet, qopFrom, qopTo,
       qopCategoryRow, qopCategory, qopOccurredAt,
-      qopClose, qopCancelBtn;
+      qopClose, qopCancelBtn,
+      qopFromGoalRow, qopToGoalRow, qopFromGoal, qopToGoal;
 
   // All category options stored at init for rebuilding
   var allCategoryOptions = [];
@@ -43,13 +44,17 @@
     qopOccurredAt  = document.getElementById('qopOccurredAt');
     qopClose    = document.getElementById('qopClose');
     qopCancelBtn = document.getElementById('qopCancelBtn');
+    qopFromGoalRow = document.getElementById('qopFromGoalRow');
+    qopToGoalRow   = document.getElementById('qopToGoalRow');
+    qopFromGoal    = document.getElementById('qopFromGoal');
+    qopToGoal      = document.getElementById('qopToGoal');
 
     if (!wrapper || !backdrop) return;
 
     // Store all category options for later filtering (display:none on <option> is unreliable)
     if (qopCategory) {
       qopCategory.querySelectorAll('option[data-type]').forEach(function (opt) {
-        allCategoryOptions.push({ value: opt.value, label: opt.textContent, type: opt.dataset.type });
+        allCategoryOptions.push({ value: opt.value, label: opt.textContent, type: opt.dataset.type, freq: !!opt.dataset.freq });
       });
     }
 
@@ -117,13 +122,31 @@
     while (qopCategory.options.length > 1) {
       qopCategory.removeChild(qopCategory.options[1]);
     }
+    var freqItems = [];
+    var regularItems = [];
     allCategoryOptions.forEach(function (cat) {
       if (cat.type === type) {
-        var opt = document.createElement('option');
-        opt.value = cat.value;
-        opt.textContent = cat.label;
-        qopCategory.appendChild(opt);
+        if (cat.freq) freqItems.push(cat);
+        else regularItems.push(cat);
       }
+    });
+    freqItems.forEach(function (cat) {
+      var opt = document.createElement('option');
+      opt.value = cat.value;
+      opt.textContent = cat.label;
+      qopCategory.appendChild(opt);
+    });
+    if (freqItems.length > 0 && regularItems.length > 0) {
+      var sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = '──────────';
+      qopCategory.appendChild(sep);
+    }
+    regularItems.forEach(function (cat) {
+      var opt = document.createElement('option');
+      opt.value = cat.value;
+      opt.textContent = cat.label;
+      qopCategory.appendChild(opt);
     });
     qopCategory.value = '';
   }
@@ -149,11 +172,24 @@
     // Filter categories by type
     filterCategories(type);
 
+    // Filter SAVINGS wallets from EXPENSE
+    if (typeof filterQopWalletsByType === 'function') filterQopWalletsByType(type);
+
     // Reset fields
     qopAmount.value = '';
     qopDesc.value   = '';
     if (qopCategory) qopCategory.value = '';
     if (qopOccurredAt) qopOccurredAt.value = '';
+    if (qopFromGoal) qopFromGoal.value = '';
+    if (qopToGoal) qopToGoal.value = '';
+
+    // Show/hide goal fields for TRANSFER
+    if (isTransfer) {
+      if (typeof updateQopGoalFields === 'function') updateQopGoalFields();
+    } else {
+      if (qopFromGoalRow) qopFromGoalRow.style.display = 'none';
+      if (qopToGoalRow) qopToGoalRow.style.display = 'none';
+    }
 
     // Show wallet balance hints
     if (isTransfer) {

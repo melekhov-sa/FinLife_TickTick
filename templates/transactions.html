@@ -110,6 +110,15 @@
       <label>Категория</label>
       <select name="category_id" id="categorySelect" onchange="updateSubscriptionBlock()">
         <option value="">Без категории</option>
+        {% if frequent_category_ids %}
+        {% set _freq_map = {} %}
+        {% for c in categories %}{% if c.category_id in frequent_category_ids %}{% set _ = _freq_map.update({c.category_id: c}) %}{% endif %}{% endfor %}
+        {% for fid in frequent_category_ids %}{% if fid in _freq_map %}
+        {% set c = _freq_map[fid] %}
+        <option value="{{ c.category_id }}" data-type="{{ c.category_type }}" data-freq="1">★ {{ c.title }}</option>
+        {% endif %}{% endfor %}
+        <option disabled data-sep="1">──────────</option>
+        {% endif %}
         {% for c in categories %}
         <option value="{{ c.category_id }}" data-type="{{ c.category_type }}">{{ c.title }}</option>
         {% endfor %}
@@ -420,25 +429,43 @@ var _allCategoryOpts = [];
   var sel = document.getElementById('categorySelect');
   var opts = sel.querySelectorAll('option[data-type]');
   for (var i = 0; i < opts.length; i++) {
-    _allCategoryOpts.push({ value: opts[i].value, label: opts[i].textContent, type: opts[i].dataset.type });
+    _allCategoryOpts.push({ value: opts[i].value, label: opts[i].textContent, type: opts[i].dataset.type, freq: !!opts[i].dataset.freq });
   }
 })();
 
 function filterCategories(opType) {
   var sel = document.getElementById('categorySelect');
   var match = opType === 'INCOME' ? 'INCOME' : 'EXPENSE';
-  // Rebuild options instead of display:none (unreliable on mobile)
   while (sel.options.length > 1) {
     sel.removeChild(sel.options[1]);
   }
+  var freqItems = [];
+  var regularItems = [];
   for (var i = 0; i < _allCategoryOpts.length; i++) {
     if (_allCategoryOpts[i].type === match) {
-      var opt = document.createElement('option');
-      opt.value = _allCategoryOpts[i].value;
-      opt.textContent = _allCategoryOpts[i].label;
-      opt.dataset.type = _allCategoryOpts[i].type;
-      sel.appendChild(opt);
+      if (_allCategoryOpts[i].freq) freqItems.push(_allCategoryOpts[i]);
+      else regularItems.push(_allCategoryOpts[i]);
     }
+  }
+  for (var f = 0; f < freqItems.length; f++) {
+    var opt = document.createElement('option');
+    opt.value = freqItems[f].value;
+    opt.textContent = freqItems[f].label;
+    opt.dataset.type = freqItems[f].type;
+    sel.appendChild(opt);
+  }
+  if (freqItems.length > 0 && regularItems.length > 0) {
+    var sep = document.createElement('option');
+    sep.disabled = true;
+    sep.textContent = '──────────';
+    sel.appendChild(sep);
+  }
+  for (var r = 0; r < regularItems.length; r++) {
+    var opt2 = document.createElement('option');
+    opt2.value = regularItems[r].value;
+    opt2.textContent = regularItems[r].label;
+    opt2.dataset.type = regularItems[r].type;
+    sel.appendChild(opt2);
   }
   sel.value = '';
 }
