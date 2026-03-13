@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.infrastructure.db.session import check_db_connection
 from app.api.v1 import auth, wallets, categories, transactions, pages, push, admin
+from app.api.v2 import router as v2_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,7 +57,21 @@ def create_app() -> FastAPI:
 
     app.add_middleware(ErrorLoggingMiddleware)
 
-    # Middleware
+    # CORS — allow Next.js frontend in development (localhost:3000)
+    # In production, replace with the actual frontend origin.
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=True,   # required for session cookie
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Session middleware (must come after CORS)
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.SECRET_KEY
@@ -68,7 +83,8 @@ def create_app() -> FastAPI:
     _static_dir = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "static")
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
-    # Routers - API first, then SSR pages
+    # Routers - v2 JSON API, then v1 API, then SSR pages
+    app.include_router(v2_router)
     app.include_router(wallets.router)
     app.include_router(categories.router)
     app.include_router(transactions.router)
