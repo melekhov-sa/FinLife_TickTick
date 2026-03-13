@@ -1,7 +1,6 @@
 """
-GET  /api/v2/tasks        — list active tasks (with filters)
-POST /api/v2/tasks/{id}/complete
-POST /api/v2/tasks/{id}/archive
+GET  /api/v2/tasks                       — list tasks (with filters)
+POST /api/v2/tasks/{id}/board-status     — move task to kanban column
 """
 from datetime import date, datetime
 
@@ -69,3 +68,24 @@ def list_tasks(
         )
         for t in tasks
     ]
+
+
+class BoardStatusRequest(BaseModel):
+    board_status: str
+
+
+@router.post("/tasks/{task_id}/board-status")
+def update_board_status(
+    task_id: int,
+    body: BoardStatusRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from fastapi import HTTPException
+    from app.application.projects import ChangeTaskBoardStatusUseCase, ProjectValidationError
+    user_id = get_user_id(request)
+    try:
+        ChangeTaskBoardStatusUseCase(db).execute(task_id, user_id, body.board_status)
+    except ProjectValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}

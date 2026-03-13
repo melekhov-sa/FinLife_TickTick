@@ -153,3 +153,21 @@ export interface TaskItem {
   project_id: number | null;
   is_overdue: boolean;
 }
+
+// ── /api/v2/notifications ─────────────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: number;
+  rule_code: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  severity: string;
+  title: string;
+  body_inapp: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface BadgeResponse {
+  unread_count: number;
+}
