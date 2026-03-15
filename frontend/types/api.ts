@@ -366,4 +366,5 @@ export interface FinCategoryItem {
   title: string;
   category_type: string; // INCOME | EXPENSE
   parent_id: number | null;
+  is_frequent: boolean;
 }

@@ -55,6 +55,14 @@ export function CreateOperationModal({ onClose }: Props) {
   const parentCats = finCats?.filter(
     (c) => c.category_type === opType && c.parent_id === null
   ) ?? [];
+  const freqCats = finCats?.filter(
+    (c) => c.category_type === opType && c.is_frequent
+  ) ?? [];
+
+  // Filter wallets: hide SAVINGS for EXPENSE
+  const visibleWallets = (wallets ?? []).filter(
+    (w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS")
+  );
 
   // Close on Escape
   useEffect(() => {
@@ -181,7 +189,7 @@ export function CreateOperationModal({ onClose }: Props) {
                     className={inputCls}
                   >
                     <option value="">— выберите кошелёк —</option>
-                    {(wallets ?? []).map((w) => (
+                    {visibleWallets.map((w) => (
                       <option key={w.wallet_id} value={w.wallet_id}>
                         {w.title} ({w.currency})
                       </option>
@@ -229,6 +237,13 @@ export function CreateOperationModal({ onClose }: Props) {
                     className={inputCls}
                   >
                     <option value="">— без категории —</option>
+                    {freqCats.length > 0 && (
+                      <optgroup label="★ Частые">
+                        {freqCats.map((c) => (
+                          <option key={`freq-${c.category_id}`} value={c.category_id}>★ {c.title}</option>
+                        ))}
+                      </optgroup>
+                    )}
                     {parentCats.map((parent) => {
                       const children = relevantCats.filter((c) => c.parent_id === parent.category_id);
                       if (children.length === 0) {

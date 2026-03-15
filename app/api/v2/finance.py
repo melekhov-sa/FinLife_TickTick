@@ -4,10 +4,12 @@ GET  /api/v2/fin-categories    — list financial categories (INCOME / EXPENSE)
 GET  /api/v2/transactions      — paginated transaction feed with filters
 POST /api/v2/transactions      — create income / expense / transfer
 """
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -55,6 +57,7 @@ class FinCategoryItem(BaseModel):
     title: str
     category_type: str   # INCOME | EXPENSE
     parent_id: int | None
+    is_frequent: bool = False
 
 
 @router.get("/fin-categories", response_model=list[FinCategoryItem])
@@ -66,12 +69,35 @@ def list_fin_categories(request: Request, db: Session = Depends(get_db)):
         .order_by(CategoryInfo.sort_order, CategoryInfo.title)
         .all()
     )
+
+    # Top-5 frequent per type (last 30 days)
+    since = date.today() - timedelta(days=30)
+
+    def _top5(op_type: str) -> set:
+        rows = (
+            db.query(TransactionFeed.category_id, func.count().label("cnt"))
+            .filter(
+                TransactionFeed.account_id == user_id,
+                TransactionFeed.category_id.isnot(None),
+                TransactionFeed.operation_type == op_type,
+                TransactionFeed.occurred_at >= since,
+            )
+            .group_by(TransactionFeed.category_id)
+            .order_by(func.count().desc())
+            .limit(5)
+            .all()
+        )
+        return {r.category_id for r in rows}
+
+    freq_ids = _top5("INCOME") | _top5("EXPENSE")
+
     return [
         FinCategoryItem(
             category_id=c.category_id,
             title=c.title,
             category_type=c.category_type,
             parent_id=c.parent_id,
+            is_frequent=c.category_id in freq_ids,
         )
         for c in cats
     ]
