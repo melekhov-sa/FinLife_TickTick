@@ -7,7 +7,7 @@ import { CreditCard, ArrowRight } from "lucide-react";
 import { clsx } from "clsx";
 
 function daysColor(days: number | null): string {
-  if (days === null) return "text-white/30";
+  if (days === null) return "text-white/60";
   if (days < 0) return "text-red-400";
   if (days <= 7) return "text-red-400";
   if (days <= 30) return "text-amber-400";
@@ -39,14 +39,14 @@ function MemberRow({ member }: { member: SubscriptionMember }) {
         </div>
         <span className="text-sm text-white/72 truncate font-medium">{member.contact_name}</span>
         {member.payment_per_month && (
-          <span className="text-xs text-white/30 shrink-0 tabular-nums">
+          <span className="text-xs text-white/60 shrink-0 tabular-nums">
             {member.payment_per_month.toLocaleString("ru-RU")} ₽/мес
           </span>
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0 ml-3">
         {member.paid_until && (
-          <span className="text-[11px] text-white/35">
+          <span className="text-[11px] text-white/65">
             до {new Date(member.paid_until).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
           </span>
         )}
@@ -74,12 +74,12 @@ function SubCard({ sub }: { sub: SubscriptionItem }) {
             <span className="text-sm font-semibold text-white/88" style={{ letterSpacing: "-0.01em" }}>
               {sub.name}
             </span>
-            <span className="text-[11px] text-white/30 ml-2">{sub.total_members} уч.</span>
+            <span className="text-[11px] text-white/60 ml-2">{sub.total_members} уч.</span>
           </div>
         </div>
         {sub.paid_until_self && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-white/35">
+            <span className="text-[11px] text-white/65">
               до {new Date(sub.paid_until_self).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
             {selfBadge && (
@@ -99,7 +99,7 @@ function SubCard({ sub }: { sub: SubscriptionItem }) {
           ))}
         </div>
       ) : (
-        <div className="px-5 py-3 text-xs text-white/25">Нет участников</div>
+        <div className="px-5 py-3 text-xs text-white/55">Нет участников</div>
       )}
     </div>
   );
@@ -135,7 +135,7 @@ export default function SubscriptionsPage() {
           )}
 
           {isError && (
-            <div className="text-white/40 text-sm text-center mt-12">
+            <div className="text-white/68 text-sm text-center mt-12">
               Не удалось загрузить подписки
             </div>
           )}
@@ -144,12 +144,12 @@ export default function SubscriptionsPage() {
             <div className="space-y-5">
               {/* Controls */}
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
                   Управление подписками
                 </p>
                 <a
                   href="/legacy/subscriptions"
-                  className="flex items-center gap-1 text-xs text-white/35 hover:text-white/60 transition-colors"
+                  className="flex items-center gap-1 text-xs text-white/65 hover:text-white/60 transition-colors"
                 >
                   Все подписки <ArrowRight size={12} />
                 </a>
@@ -167,7 +167,7 @@ export default function SubscriptionsPage() {
                       style={{ letterSpacing: "-0.04em" }}>
                       {kpi.value}
                     </div>
-                    <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-1.5">
+                    <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-1.5">
                       {kpi.label}
                     </div>
                   </div>
@@ -178,9 +178,9 @@ export default function SubscriptionsPage() {
               {data.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                    <CreditCard size={20} className="text-white/25" />
+                    <CreditCard size={20} className="text-white/55" />
                   </div>
-                  <p className="text-sm text-white/30 font-medium">Нет активных подписок</p>
+                  <p className="text-sm text-white/60 font-medium">Нет активных подписок</p>
                   <a
                     href="/legacy/subscriptions"
                     className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"

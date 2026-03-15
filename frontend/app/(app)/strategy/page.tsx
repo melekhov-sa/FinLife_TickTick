@@ -68,7 +68,7 @@ function ScoreCard({ item }: { item: StrategyScoreItem }) {
         />
       </div>
       {item.raw_label && (
-        <div className="text-xs text-white/35 mt-2">{item.raw_label}</div>
+        <div className="text-xs text-white/65 mt-2">{item.raw_label}</div>
       )}
     </div>
   );
@@ -92,7 +92,7 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
 
   return (
     <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
-      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-4">
+      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
         История (12 мес.)
       </p>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 64 }}>
@@ -111,7 +111,7 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
           </>
         )}
       </svg>
-      <div className="flex justify-between text-[10px] font-medium text-white/25 mt-2">
+      <div className="flex justify-between text-[10px] font-medium text-white/55 mt-2">
         <span>{RU_MONTHS[history[0]?.month]} {history[0]?.year}</span>
         <span>{RU_MONTHS[history[history.length - 1]?.month]} {history[history.length - 1]?.year}</span>
       </div>
@@ -126,7 +126,7 @@ function TargetRow({ target }: { target: StrategyTarget }) {
     <div className="py-3 border-b border-white/[0.04] last:border-0">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm text-white/80 font-medium">{target.title}</span>
-        <span className={`text-xs font-semibold tabular-nums ${pct >= 100 ? "text-emerald-400" : pct >= 60 ? "text-amber-400" : "text-white/45"}`}>
+        <span className={`text-xs font-semibold tabular-nums ${pct >= 100 ? "text-emerald-400" : pct >= 60 ? "text-amber-400" : "text-white/72"}`}>
           {pct >= 100 ? "✓" : `${Math.round(pct)}%`}
         </span>
       </div>
@@ -136,7 +136,7 @@ function TargetRow({ target }: { target: StrategyTarget }) {
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <div className="text-[11px] text-white/30 mt-1 tabular-nums">
+      <div className="text-[11px] text-white/60 mt-1 tabular-nums">
         {target.current_value !== null ? `${target.current_value}` : "—"} / цель {target.target_value}
       </div>
     </div>
@@ -162,7 +162,7 @@ export default function StrategyPage() {
           </div>
         )}
         {isError && (
-          <div className="text-white/40 text-sm text-center mt-12">
+          <div className="text-white/68 text-sm text-center mt-12">
             Не удалось загрузить данные стратегии
           </div>
         )}
@@ -181,13 +181,13 @@ export default function StrategyPage() {
                   ? "Есть над чем работать"
                   : "Требует внимания"}
               </div>
-              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-2">
+              <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-2">
                 {RU_MONTHS[data.month]} {data.year}
               </div>
             </div>
 
             {/* Scores section */}
-            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1">
+            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
               Области жизни
             </p>
 
@@ -204,7 +204,7 @@ export default function StrategyPage() {
             {/* Targets */}
             {data.targets.length > 0 && (
               <>
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1">
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
                   Цели
                 </p>
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
@@ -217,7 +217,7 @@ export default function StrategyPage() {
 
             <a
               href="/legacy/strategy"
-              className="block text-center text-xs font-medium text-white/30 hover:text-white/55 transition-colors py-2"
+              className="block text-center text-xs font-medium text-white/60 hover:text-white/55 transition-colors py-2"
             >
               Подробная стратегия →
             </a>

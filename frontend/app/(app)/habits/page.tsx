@@ -18,11 +18,11 @@ function streakColor(streak: number): string {
   if (streak >= 14) return "text-emerald-400";
   if (streak >= 7) return "text-amber-400";
   if (streak >= 1) return "text-white/60";
-  return "text-white/25";
+  return "text-white/55";
 }
 
 function HabitRow({ habit }: { habit: HabitItem }) {
-  const levelCls = LEVEL_COLORS[habit.level] ?? "text-white/40 bg-white/[0.05] border border-white/[0.08]";
+  const levelCls = LEVEL_COLORS[habit.level] ?? "text-white/68 bg-white/[0.05] border border-white/[0.08]";
 
   return (
     <div className="flex items-center gap-3.5 py-3.5 px-4 bg-white/[0.03] border border-white/[0.07] rounded-2xl hover:bg-white/[0.05] hover:border-white/[0.10] transition-all">
@@ -43,12 +43,12 @@ function HabitRow({ habit }: { habit: HabitItem }) {
         </div>
         <div className="flex items-center gap-3 mt-0.5">
           {habit.category_title && (
-            <span className="text-[11px] text-white/40">{habit.category_title}</span>
+            <span className="text-[11px] text-white/68">{habit.category_title}</span>
           )}
           {habit.reminder_time && (
-            <span className="text-[11px] text-white/30">⏰ {habit.reminder_time}</span>
+            <span className="text-[11px] text-white/60">⏰ {habit.reminder_time}</span>
           )}
-          <span className="text-[10px] font-medium text-white/25 uppercase tracking-widest">
+          <span className="text-[10px] font-medium text-white/55 uppercase tracking-widest">
             30д: {habit.done_count_30d}×
           </span>
         </div>
@@ -56,8 +56,8 @@ function HabitRow({ habit }: { habit: HabitItem }) {
 
       {/* Best streak */}
       <div className="text-right shrink-0">
-        <div className="text-xs text-white/30 font-medium tabular-nums">{habit.best_streak}</div>
-        <div className="text-[10px] text-white/20 uppercase tracking-wide">рекорд</div>
+        <div className="text-xs text-white/60 font-medium tabular-nums">{habit.best_streak}</div>
+        <div className="text-[10px] text-white/50 uppercase tracking-wide">рекорд</div>
       </div>
 
       {/* Current streak */}
@@ -66,7 +66,7 @@ function HabitRow({ habit }: { habit: HabitItem }) {
           style={{ letterSpacing: "-0.04em" }}>
           {habit.current_streak}
         </div>
-        <div className="text-[10px] text-white/25 uppercase tracking-wide">серия</div>
+        <div className="text-[10px] text-white/55 uppercase tracking-wide">серия</div>
       </div>
     </div>
   );
@@ -100,7 +100,7 @@ export default function HabitsPage() {
           )}
 
           {isError && (
-            <div className="text-white/40 text-sm text-center mt-12">
+            <div className="text-white/68 text-sm text-center mt-12">
               Не удалось загрузить привычки
             </div>
           )}
@@ -117,7 +117,7 @@ export default function HabitsPage() {
                 </button>
                 <a
                   href="/legacy/habits"
-                  className="ml-auto flex items-center gap-1 text-xs text-white/35 hover:text-white/60 transition-colors"
+                  className="ml-auto flex items-center gap-1 text-xs text-white/65 hover:text-white/60 transition-colors"
                 >
                   Управлять <ArrowRight size={12} />
                 </a>
@@ -135,7 +135,7 @@ export default function HabitsPage() {
                       style={{ letterSpacing: "-0.04em" }}>
                       {kpi.value}
                     </div>
-                    <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-1.5">
+                    <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-1.5">
                       {kpi.label}
                     </div>
                   </div>
@@ -144,15 +144,15 @@ export default function HabitsPage() {
 
               {/* List */}
               <div>
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
                   Список привычек
                 </p>
                 {data.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                      <Repeat2 size={20} className="text-white/25" />
+                      <Repeat2 size={20} className="text-white/55" />
                     </div>
-                    <p className="text-sm text-white/30 font-medium">Нет активных привычек</p>
+                    <p className="text-sm text-white/60 font-medium">Нет активных привычек</p>
                     <button
                       onClick={() => setShowCreateModal(true)}
                       className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"

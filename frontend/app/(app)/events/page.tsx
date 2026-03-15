@@ -47,17 +47,17 @@ function EventRow({ event }: { event: EventItem }) {
       <div className="flex-1 min-w-0">
         <div className={clsx(
           "text-sm font-medium truncate",
-          event.is_past ? "text-white/45" : "text-white/85"
+          event.is_past ? "text-white/72" : "text-white/85"
         )} style={{ letterSpacing: "-0.01em" }}>
           {event.title}
         </div>
         {event.category_title && (
-          <div className="text-[11px] text-white/35 mt-0.5">{event.category_title}</div>
+          <div className="text-[11px] text-white/65 mt-0.5">{event.category_title}</div>
         )}
       </div>
       <div className="text-right shrink-0">
         {event.is_all_day ? (
-          <span className="text-[10px] font-medium text-white/30 uppercase tracking-widest">весь день</span>
+          <span className="text-[10px] font-medium text-white/60 uppercase tracking-widest">весь день</span>
         ) : (
           <span className="text-xs font-semibold text-white/50 tabular-nums">{event.start_time}</span>
         )}
@@ -101,7 +101,7 @@ export default function EventsPage() {
                     "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
                     days === d
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.05]"
+                      : "text-white/68 hover:text-white/70 hover:bg-white/[0.05]"
                   )}
                 >
                   {d}д
@@ -110,7 +110,7 @@ export default function EventsPage() {
             </div>
 
             {/* Stats */}
-            <div className="flex items-center gap-3 text-xs text-white/35">
+            <div className="flex items-center gap-3 text-xs text-white/65">
               <span>Сегодня: <strong className="text-white/65">{todayCount}</strong></span>
               <span>Впереди: <strong className="text-white/65">{upcoming}</strong></span>
             </div>
@@ -132,7 +132,7 @@ export default function EventsPage() {
           )}
 
           {isError && (
-            <div className="text-white/40 text-sm text-center mt-12">
+            <div className="text-white/68 text-sm text-center mt-12">
               Не удалось загрузить события
             </div>
           )}
@@ -140,9 +140,9 @@ export default function EventsPage() {
           {data && groups.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                <CalendarDays size={20} className="text-white/25" />
+                <CalendarDays size={20} className="text-white/55" />
               </div>
-              <p className="text-sm text-white/30 font-medium">Нет событий на ближайшие {days} дней</p>
+              <p className="text-sm text-white/60 font-medium">Нет событий на ближайшие {days} дней</p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
@@ -156,7 +156,7 @@ export default function EventsPage() {
             <div className="space-y-5">
               {groups.map((g) => (
                 <div key={g.date}>
-                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5">
+                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-2.5">
                     {g.label}
                   </p>
                   <div className="space-y-1.5">
@@ -169,7 +169,7 @@ export default function EventsPage() {
 
               <a
                 href="/legacy/events"
-                className="flex items-center justify-center gap-1.5 text-xs text-white/30 hover:text-white/55 transition-colors py-2"
+                className="flex items-center justify-center gap-1.5 text-xs text-white/60 hover:text-white/55 transition-colors py-2"
               >
                 Управление событиями <ArrowRight size={12} />
               </a>

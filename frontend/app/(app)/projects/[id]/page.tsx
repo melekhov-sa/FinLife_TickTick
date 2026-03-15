@@ -12,8 +12,8 @@ const STATUS_COLORS: Record<string, string> = {
   active:   "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20",
   planned:  "bg-blue-500/15 text-blue-400 border border-blue-500/20",
   paused:   "bg-amber-500/15 text-amber-400 border border-amber-500/20",
-  done:     "bg-white/[0.07] text-white/45 border border-white/[0.08]",
-  archived: "bg-white/[0.04] text-white/25 border border-white/[0.05]",
+  done:     "bg-white/[0.07] text-white/72 border border-white/[0.08]",
+  archived: "bg-white/[0.04] text-white/55 border border-white/[0.05]",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -63,7 +63,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <div className="px-6 pt-5 pb-4 border-b border-white/[0.05] flex items-center gap-4 shrink-0">
           <Link
             href="/projects"
-            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
+            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/68 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
           >
             <ArrowLeft size={14} />
           </Link>
@@ -79,23 +79,23 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <span
                 className={clsx(
                   "text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0",
-                  STATUS_COLORS[project.status] ?? "bg-white/[0.07] text-white/40 border border-white/[0.08]"
+                  STATUS_COLORS[project.status] ?? "bg-white/[0.07] text-white/68 border border-white/[0.08]"
                 )}
               >
                 {STATUS_LABELS[project.status] ?? project.status}
               </span>
             </div>
             {project.description && (
-              <p className="text-xs text-white/35 mt-0.5 truncate">{project.description}</p>
+              <p className="text-xs text-white/65 mt-0.5 truncate">{project.description}</p>
             )}
           </div>
 
           {/* Progress */}
           <div className="flex items-center gap-4 shrink-0">
             <div className="text-right">
-              <p className="text-xs font-medium text-white/40">
+              <p className="text-xs font-medium text-white/68">
                 <span className="text-white/75 font-semibold tabular-nums">{project.done_tasks}</span>
-                <span className="text-white/25 mx-1">/</span>
+                <span className="text-white/55 mx-1">/</span>
                 <span className="tabular-nums">{project.total_tasks}</span>
                 <span className="ml-1">выполнено</span>
               </p>
@@ -112,7 +112,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               href={`/legacy/projects/${project.id}`}
               target="_blank"
               rel="noreferrer"
-              className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/25 hover:text-white/55 hover:bg-white/[0.07] transition-colors"
+              className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/55 hover:bg-white/[0.07] transition-colors"
               title="Открыть полное представление"
             >
               <ExternalLink size={13} />

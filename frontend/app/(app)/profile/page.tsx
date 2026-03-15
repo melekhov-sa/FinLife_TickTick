@@ -97,7 +97,7 @@ export default function ProfilePage() {
                     </div>
                     <a
                       href="/legacy/profile"
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/45 hover:text-white/70 transition-colors"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/72 hover:text-white/70 transition-colors"
                     >
                       <Settings size={12} /> Настройки
                     </a>
@@ -106,15 +106,15 @@ export default function ProfilePage() {
                   <p className="text-base font-semibold text-white/88" style={{ letterSpacing: "-0.015em" }}>
                     {data.email}
                   </p>
-                  <p className="text-xs text-white/45 mt-0.5">
+                  <p className="text-xs text-white/72 mt-0.5">
                     {data.level_title} · {data.days_in_system} дней в системе
                   </p>
 
                   {/* XP bar */}
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="text-white/35 font-medium">Уровень {data.xp.level} → {data.xp.level + 1}</span>
-                      <span className="text-white/45 font-semibold tabular-nums">
+                      <span className="text-white/65 font-medium">Уровень {data.xp.level} → {data.xp.level + 1}</span>
+                      <span className="text-white/72 font-semibold tabular-nums">
                         {data.xp.xp_in_level} / {data.xp.xp_needed} XP
                       </span>
                     </div>
@@ -124,7 +124,7 @@ export default function ProfilePage() {
                         style={{ width: `${data.xp.progress_pct}%` }}
                       />
                     </div>
-                    <p className="text-[11px] text-white/30 mt-1.5 tabular-nums">
+                    <p className="text-[11px] text-white/60 mt-1.5 tabular-nums">
                       Всего XP: {data.xp.xp_total.toLocaleString("ru-RU")}
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export default function ProfilePage() {
                       style={{ letterSpacing: "-0.04em" }}>
                       {kpi.value.toLocaleString("ru-RU")}
                     </div>
-                    <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-1">
+                    <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-1">
                       {kpi.label}
                     </div>
                   </div>
@@ -155,8 +155,8 @@ export default function ProfilePage() {
               {data.monthly_xp && data.monthly_xp.length > 0 && (
                 <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">XP по месяцам</p>
-                    <p className="text-xs text-white/45 tabular-nums font-medium">
+                    <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">XP по месяцам</p>
+                    <p className="text-xs text-white/72 tabular-nums font-medium">
                       {data.current_month_label}: <span className="text-indigo-400 font-semibold">{data.daily_xp_total} XP</span>
                     </p>
                   </div>
@@ -176,7 +176,7 @@ export default function ProfilePage() {
                             style={{ height: `${h}px` }}
                             title={`${m.label}: ${m.xp} XP`}
                           />
-                          <span className="text-[9px] text-white/20 truncate w-full text-center">
+                          <span className="text-[9px] text-white/50 truncate w-full text-center">
                             {m.label.slice(0, 3)}
                           </span>
                         </div>
@@ -189,7 +189,7 @@ export default function ProfilePage() {
               {/* Recent XP events */}
               {data.recent_xp_events && data.recent_xp_events.length > 0 && (
                 <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-4">
+                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
                     Последние XP-события
                   </p>
                   <div>
@@ -207,7 +207,7 @@ export default function ProfilePage() {
 
               {/* Quick links */}
               <div>
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Быстрые ссылки</p>
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">Быстрые ссылки</p>
                 <div className="grid grid-cols-2 gap-2.5">
                   {QUICK_LINKS.map((link) => (
                     <a
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                       <span className="text-sm text-white/55 group-hover:text-white/80 transition-colors font-medium flex-1">
                         {link.label}
                       </span>
-                      <ArrowRight size={12} className="text-white/20 group-hover:text-white/45 transition-colors" />
+                      <ArrowRight size={12} className="text-white/50 group-hover:text-white/72 transition-colors" />
                     </a>
                   ))}
                 </div>

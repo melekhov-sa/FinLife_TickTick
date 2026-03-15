@@ -8,8 +8,8 @@ const STATUS_COLORS: Record<string, string> = {
   active:   "bg-emerald-500/15 text-emerald-400",
   planned:  "bg-blue-500/15 text-blue-400",
   paused:   "bg-amber-500/15 text-amber-400",
-  done:     "bg-white/10 text-white/40",
-  archived: "bg-white/5 text-white/25",
+  done:     "bg-white/10 text-white/68",
+  archived: "bg-white/5 text-white/55",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -41,7 +41,7 @@ export function ProjectCard({ project }: Props) {
         <span
           className={clsx(
             "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0",
-            STATUS_COLORS[project.status] ?? "bg-white/10 border-white/10 text-white/40"
+            STATUS_COLORS[project.status] ?? "bg-white/10 border-white/10 text-white/68"
           )}
         >
           {STATUS_LABELS[project.status] ?? project.status}
@@ -50,12 +50,12 @@ export function ProjectCard({ project }: Props) {
 
       {/* Description */}
       {project.description && (
-        <p className="text-xs text-white/35 line-clamp-2 mb-4">{project.description}</p>
+        <p className="text-xs text-white/65 line-clamp-2 mb-4">{project.description}</p>
       )}
 
       {/* Progress bar */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] font-medium text-white/30">
+        <div className="flex justify-between text-[10px] font-medium text-white/60">
           <span>{project.done_tasks} / {project.total_tasks} задач</span>
           <span className="tabular-nums">{pct}%</span>
         </div>
@@ -74,7 +74,7 @@ export function ProjectCard({ project }: Props) {
 
       {/* Due date */}
       {project.due_date && (
-        <p className="text-[10px] text-white/25 mt-3 tabular-nums">Срок: {project.due_date}</p>
+        <p className="text-[10px] text-white/55 mt-3 tabular-nums">Срок: {project.due_date}</p>
       )}
     </Link>
   );

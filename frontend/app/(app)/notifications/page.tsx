@@ -51,10 +51,10 @@ export default function NotificationsPage() {
         {notifications && notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
-              <BellOff size={24} className="text-white/20" />
+              <BellOff size={24} className="text-white/50" />
             </div>
-            <p className="text-sm font-medium text-white/30">Уведомлений нет</p>
-            <p className="text-xs text-white/20 mt-1">Когда что-то важное произойдёт — вы узнаете</p>
+            <p className="text-sm font-medium text-white/60">Уведомлений нет</p>
+            <p className="text-xs text-white/50 mt-1">Когда что-то важное произойдёт — вы узнаете</p>
           </div>
         )}
 
@@ -80,10 +80,10 @@ export default function NotificationsPage() {
                     <p className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
                       {n.title}
                     </p>
-                    <p className="text-xs text-white/45 mt-0.5 leading-snug line-clamp-2">{n.body_inapp}</p>
+                    <p className="text-xs text-white/72 mt-0.5 leading-snug line-clamp-2">{n.body_inapp}</p>
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-medium text-white/25 tabular-nums">
+                    <span className="text-[10px] font-medium text-white/55 tabular-nums">
                       {timeAgo(n.created_at)}
                     </span>
                     {!n.is_read && (

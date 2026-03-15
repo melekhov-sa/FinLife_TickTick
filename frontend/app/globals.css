@@ -137,104 +137,95 @@
   --app-border-subtle: rgba(255,255,255,0.04);
 }
 
-/* ── Light mode: invert white-opacity utilities to black-opacity ─────────── */
-html:not(.dark) {
-  /* Text */
-  .text-white\/90,
-  .text-white\/88  { color: rgba(0,0,0,0.88) !important; }
-  .text-white\/85,
-  .text-white\/80  { color: rgba(0,0,0,0.82) !important; }
-  .text-white\/75  { color: rgba(0,0,0,0.73) !important; }
-  .text-white\/72  { color: rgba(0,0,0,0.70) !important; }
-  .text-white\/70  { color: rgba(0,0,0,0.68) !important; }
-  .text-white\/65  { color: rgba(0,0,0,0.63) !important; }
-  .text-white\/60  { color: rgba(0,0,0,0.60) !important; }
-  .text-white\/55  { color: rgba(0,0,0,0.54) !important; }
-  .text-white\/50  { color: rgba(0,0,0,0.50) !important; }
-  .text-white\/45  { color: rgba(0,0,0,0.44) !important; }
-  .text-white\/40  { color: rgba(0,0,0,0.40) !important; }
-  .text-white\/35  { color: rgba(0,0,0,0.35) !important; }
-  .text-white\/30  { color: rgba(0,0,0,0.30) !important; }
-  .text-white\/28  { color: rgba(0,0,0,0.28) !important; }
-  .text-white\/25  { color: rgba(0,0,0,0.25) !important; }
-  .text-white\/20  { color: rgba(0,0,0,0.20) !important; }
-  .text-white\/15  { color: rgba(0,0,0,0.15) !important; }
+/* ── Light mode: flat selectors (no nesting) — white-opacity → black-opacity */
+html:not(.dark) .text-white\/90,
+html:not(.dark) .text-white\/88  { color: rgba(0,0,0,0.88) !important; }
+html:not(.dark) .text-white\/85,
+html:not(.dark) .text-white\/80  { color: rgba(0,0,0,0.82) !important; }
+html:not(.dark) .text-white\/75  { color: rgba(0,0,0,0.73) !important; }
+html:not(.dark) .text-white\/72  { color: rgba(0,0,0,0.70) !important; }
+html:not(.dark) .text-white\/70  { color: rgba(0,0,0,0.68) !important; }
+html:not(.dark) .text-white\/68  { color: rgba(0,0,0,0.65) !important; }
+html:not(.dark) .text-white\/66  { color: rgba(0,0,0,0.63) !important; }
+html:not(.dark) .text-white\/65  { color: rgba(0,0,0,0.62) !important; }
+html:not(.dark) .text-white\/60  { color: rgba(0,0,0,0.58) !important; }
+html:not(.dark) .text-white\/58  { color: rgba(0,0,0,0.55) !important; }
+html:not(.dark) .text-white\/55  { color: rgba(0,0,0,0.53) !important; }
+html:not(.dark) .text-white\/52  { color: rgba(0,0,0,0.50) !important; }
+html:not(.dark) .text-white\/50  { color: rgba(0,0,0,0.48) !important; }
+html:not(.dark) .text-white\/45  { color: rgba(0,0,0,0.44) !important; }
+html:not(.dark) .text-white\/40  { color: rgba(0,0,0,0.40) !important; }
+html:not(.dark) .text-white\/35  { color: rgba(0,0,0,0.35) !important; }
+html:not(.dark) .text-white\/30  { color: rgba(0,0,0,0.30) !important; }
+html:not(.dark) .text-white\/28  { color: rgba(0,0,0,0.28) !important; }
+html:not(.dark) .text-white\/25  { color: rgba(0,0,0,0.25) !important; }
+html:not(.dark) .text-white\/20  { color: rgba(0,0,0,0.20) !important; }
+html:not(.dark) .text-white\/15  { color: rgba(0,0,0,0.15) !important; }
+html:not(.dark) .text-white       { color: rgba(0,0,0,0.88) !important; }
 
-  /* Active tab/range pill in light mode */
-  .bg-white\/\[0\.12\]  { background-color: rgba(0,0,0,0.07) !important; }
-  .bg-white\/\[0\.09\]  { background-color: rgba(0,0,0,0.06) !important; }
-  .bg-white\/\[0\.07\]  { background-color: rgba(0,0,0,0.05) !important; }
+/* Active tab/range pill */
+html:not(.dark) .bg-white\/\[0\.12\]  { background-color: rgba(0,0,0,0.07) !important; }
+html:not(.dark) .bg-white\/\[0\.09\]  { background-color: rgba(0,0,0,0.06) !important; }
+html:not(.dark) .bg-white\/\[0\.07\]  { background-color: rgba(0,0,0,0.05) !important; }
 
-  /* Card / surface backgrounds — white cards on warm background */
-  .bg-white\/\[0\.02\]  { background-color: rgba(255,255,255,0.70) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.055) !important; }
-  .bg-white\/\[0\.03\]  { background-color: rgba(255,255,255,0.80) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)  !important; }
-  .bg-white\/\[0\.04\]  { background-color: rgba(255,255,255,0.90) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.065) !important; }
-  .bg-white\/\[0\.05\]  { background-color: rgba(255,255,255,0.92) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.065) !important; }
-  .bg-white\/\[0\.06\]  { background-color: rgba(255,255,255,0.95) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
-  .bg-white\/\[0\.08\]  { background-color: rgba(255,255,255,0.97) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
-  .bg-white\/\[0\.10\]  { background-color: rgba(255,255,255,1.0)  !important; box-shadow: 0 1px 5px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
-  .bg-white\/10         { background-color: rgba(255,255,255,0.97) !important; }
-  .bg-white\/5          { background-color: rgba(255,255,255,0.70) !important; }
+/* Card / surface backgrounds */
+html:not(.dark) .bg-white\/\[0\.02\]  { background-color: rgba(255,255,255,0.70) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.055) !important; }
+html:not(.dark) .bg-white\/\[0\.03\]  { background-color: rgba(255,255,255,0.80) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)  !important; }
+html:not(.dark) .bg-white\/\[0\.04\]  { background-color: rgba(255,255,255,0.90) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.065) !important; }
+html:not(.dark) .bg-white\/\[0\.05\]  { background-color: rgba(255,255,255,0.92) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.065) !important; }
+html:not(.dark) .bg-white\/\[0\.06\]  { background-color: rgba(255,255,255,0.95) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
+html:not(.dark) .bg-white\/\[0\.08\]  { background-color: rgba(255,255,255,0.97) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
+html:not(.dark) .bg-white\/\[0\.10\]  { background-color: rgba(255,255,255,1.0)  !important; box-shadow: 0 1px 5px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.07)  !important; }
+html:not(.dark) .bg-white\/10         { background-color: rgba(255,255,255,0.97) !important; }
+html:not(.dark) .bg-white\/5          { background-color: rgba(255,255,255,0.70) !important; }
 
-  /* Hover backgrounds */
-  .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(0,0,0,0.03)  !important; }
-  .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0,0,0,0.04)  !important; }
-  .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(0,0,0,0.05)  !important; }
-  .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0,0,0,0.06)  !important; }
-  .hover\:bg-white\/\[0\.08\]:hover { background-color: rgba(0,0,0,0.07)  !important; }
+/* Hover backgrounds */
+html:not(.dark) .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(0,0,0,0.03) !important; }
+html:not(.dark) .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0,0,0,0.04) !important; }
+html:not(.dark) .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(0,0,0,0.05) !important; }
+html:not(.dark) .hover\:bg-white\/\[0\.06\]:hover { background-color: rgba(0,0,0,0.06) !important; }
+html:not(.dark) .hover\:bg-white\/\[0\.08\]:hover { background-color: rgba(0,0,0,0.07) !important; }
 
-  /* Borders */
-  .border-white\/\[0\.04\] { border-color: rgba(0,0,0,0.07) !important; }
-  .border-white\/\[0\.05\] { border-color: rgba(0,0,0,0.08) !important; }
-  .border-white\/\[0\.06\] { border-color: rgba(0,0,0,0.09) !important; }
-  .border-white\/\[0\.08\] { border-color: rgba(0,0,0,0.10) !important; }
-  .border-white\/15        { border-color: rgba(0,0,0,0.14) !important; }
-  .border-white\/20        { border-color: rgba(0,0,0,0.18) !important; }
+/* Borders */
+html:not(.dark) .border-white\/\[0\.04\] { border-color: rgba(0,0,0,0.07) !important; }
+html:not(.dark) .border-white\/\[0\.05\] { border-color: rgba(0,0,0,0.08) !important; }
+html:not(.dark) .border-white\/\[0\.06\] { border-color: rgba(0,0,0,0.09) !important; }
+html:not(.dark) .border-white\/\[0\.08\] { border-color: rgba(0,0,0,0.10) !important; }
+html:not(.dark) .border-white\/15        { border-color: rgba(0,0,0,0.14) !important; }
+html:not(.dark) .border-white\/20        { border-color: rgba(0,0,0,0.18) !important; }
 
-  /* Kanban card (hardcoded dark hex) */
-  .bg-\[\#161b22\] { background-color: #ffffff !important; }
+/* Hardcoded dark hex overrides */
+html:not(.dark) .bg-\[\#161b22\]  { background-color: #ffffff !important; }
+html:not(.dark) .bg-\[\#1a1d23\]  { background-color: #ffffff !important; box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.07) !important; }
+html:not(.dark) .border-dashed.border-white\/\[0\.06\] { border-color: rgba(0,0,0,0.12) !important; }
 
-  /* Modal dialogs with hardcoded dark hex */
-  .bg-\[\#1a1d23\] { background-color: #ffffff !important; box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.07) !important; }
+/* Placeholder text */
+html:not(.dark) .placeholder-white\/25::placeholder { color: rgba(0,0,0,0.28) !important; }
+html:not(.dark) .placeholder-white\/30::placeholder { color: rgba(0,0,0,0.32) !important; }
+html:not(.dark) .placeholder-white\/35::placeholder { color: rgba(0,0,0,0.35) !important; }
 
-  /* Dashed border placeholder */
-  .border-dashed.border-white\/\[0\.06\] { border-color: rgba(0,0,0,0.12) !important; }
+/* Hover text */
+html:not(.dark) .hover\:text-white\/85:hover { color: rgba(0,0,0,0.83) !important; }
+html:not(.dark) .hover\:text-white\/80:hover { color: rgba(0,0,0,0.78) !important; }
+html:not(.dark) .hover\:text-white\/75:hover { color: rgba(0,0,0,0.73) !important; }
+html:not(.dark) .hover\:text-white\/70:hover { color: rgba(0,0,0,0.68) !important; }
+html:not(.dark) .hover\:text-white\/65:hover { color: rgba(0,0,0,0.63) !important; }
+html:not(.dark) .hover\:text-white\/60:hover { color: rgba(0,0,0,0.60) !important; }
+html:not(.dark) .hover\:text-white\/55:hover { color: rgba(0,0,0,0.53) !important; }
+html:not(.dark) .hover\:text-white\/50:hover { color: rgba(0,0,0,0.50) !important; }
+html:not(.dark) .hover\:text-white\/40:hover { color: rgba(0,0,0,0.40) !important; }
 
-  /* Placeholder text */
-  .placeholder-white\/25::placeholder { color: rgba(0,0,0,0.28) !important; }
-  .placeholder-white\/30::placeholder { color: rgba(0,0,0,0.32) !important; }
-  .placeholder-white\/35::placeholder { color: rgba(0,0,0,0.35) !important; }
-
-  /* Hover text */
-  .hover\:text-white\/85:hover { color: rgba(0,0,0,0.83) !important; }
-  .hover\:text-white\/80:hover { color: rgba(0,0,0,0.78) !important; }
-  .hover\:text-white\/75:hover { color: rgba(0,0,0,0.73) !important; }
-  .hover\:text-white\/70:hover { color: rgba(0,0,0,0.68) !important; }
-  .hover\:text-white\/65:hover { color: rgba(0,0,0,0.63) !important; }
-  .hover\:text-white\/60:hover { color: rgba(0,0,0,0.60) !important; }
-  .hover\:text-white\/55:hover { color: rgba(0,0,0,0.53) !important; }
-  .hover\:text-white\/50:hover { color: rgba(0,0,0,0.50) !important; }
-  .hover\:text-white\/40:hover { color: rgba(0,0,0,0.40) !important; }
-
-  /* Active state in nav */
-  .text-white { color: rgba(0,0,0,0.88) !important; }
+/* Light mode: additional fixes */
+html:not(.dark) .bg-white\/\[0\.04\].border-white\/\[0\.08\] {
+  background-color: rgba(0,0,0,0.03) !important;
+  border-color: rgba(0,0,0,0.09) !important;
 }
-
-/* ── Dark mode: boost dim text visibility ─────────────────────────────────── */
-/* Minimum floor: secondary text ~0.60, tertiary/label text ~0.50            */
-html.dark .text-white\/15 { color: rgba(255,255,255,0.46) !important; }
-html.dark .text-white\/18 { color: rgba(255,255,255,0.50) !important; }
-html.dark .text-white\/20 { color: rgba(255,255,255,0.54) !important; }
-html.dark .text-white\/25 { color: rgba(255,255,255,0.60) !important; }
-html.dark .text-white\/28 { color: rgba(255,255,255,0.63) !important; }
-html.dark .text-white\/30 { color: rgba(255,255,255,0.66) !important; }
-html.dark .text-white\/35 { color: rgba(255,255,255,0.70) !important; }
-html.dark .text-white\/38 { color: rgba(255,255,255,0.72) !important; }
-html.dark .text-white\/40 { color: rgba(255,255,255,0.74) !important; }
-html.dark .text-white\/45 { color: rgba(255,255,255,0.78) !important; }
-html.dark .text-white\/50 { color: rgba(255,255,255,0.82) !important; }
-html.dark .text-white\/52 { color: rgba(255,255,255,0.84) !important; }
-html.dark .text-white\/55 { color: rgba(255,255,255,0.86) !important; }
+html:not(.dark) .bg-indigo-600 { background-color: #4f46e5 !important; }
+html:not(.dark) .hover\:bg-indigo-500:hover { background-color: #6366f1 !important; }
+html:not(.dark) .bg-indigo-500\/\[0\.22\] { background-color: rgba(99,102,241,0.18) !important; }
+html:not(.dark) .bg-indigo-500\/\[0\.38\] { background-color: rgba(99,102,241,0.32) !important; }
+html:not(.dark) .bg-indigo-500\/\[0\.58\] { background-color: rgba(99,102,241,0.50) !important; }
+html:not(.dark) .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.72) !important; }
 
 @layer base {
   * {
@@ -289,20 +280,3 @@ html.dark .text-white\/55 { color: rgba(255,255,255,0.86) !important; }
   }
 }
 
-/* ── Light mode: additional fixes ── */
-html:not(.dark) {
-  /* Input fields in light mode */
-  .bg-white\/\[0\.04\].border-white\/\[0\.08\] {
-    background-color: rgba(0,0,0,0.03) !important;
-    border-color: rgba(0,0,0,0.09) !important;
-  }
-  /* Primary indigo buttons stay indigo in light mode */
-  .bg-indigo-600 { background-color: #4f46e5 !important; }
-  .hover\:bg-indigo-500:hover { background-color: #6366f1 !important; }
-
-  /* HabitHeatmap cells — boost contrast on warm parchment background */
-  .bg-indigo-500\/\[0\.22\] { background-color: rgba(99,102,241,0.18) !important; }
-  .bg-indigo-500\/\[0\.38\] { background-color: rgba(99,102,241,0.32) !important; }
-  .bg-indigo-500\/\[0\.58\] { background-color: rgba(99,102,241,0.50) !important; }
-  .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.72) !important; }
-}

@@ -16,9 +16,9 @@ const TYPE_OPTIONS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  draft:     "text-white/45 bg-white/[0.05] border border-white/[0.08]",
+  draft:     "text-white/72 bg-white/[0.05] border border-white/[0.08]",
   published: "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20",
-  archived:  "text-white/25 bg-white/[0.03] border border-white/[0.05]",
+  archived:  "text-white/55 bg-white/[0.03] border border-white/[0.05]",
 };
 
 function timeAgo(iso: string): string {
@@ -33,7 +33,7 @@ function timeAgo(iso: string): string {
 }
 
 function ArticleRow({ article }: { article: ArticleListItem }) {
-  const statusCls = STATUS_COLORS[article.status] ?? "text-white/40";
+  const statusCls = STATUS_COLORS[article.status] ?? "text-white/68";
   return (
     <a
       href={`/knowledge/${article.id}`}
@@ -53,7 +53,7 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${statusCls}`}>
             {article.status_label}
           </span>
-          <span className="text-[10px] font-semibold text-white/25 uppercase tracking-widest">{article.type_label}</span>
+          <span className="text-[10px] font-semibold text-white/55 uppercase tracking-widest">{article.type_label}</span>
           {article.tags.map((t) => (
             <span key={t.id} className="text-[10px] font-medium text-indigo-400/80 bg-indigo-500/10 border border-indigo-500/15 px-1.5 py-0.5 rounded-full">
               #{t.name}
@@ -61,7 +61,7 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
           ))}
         </div>
       </div>
-      <div className="text-[11px] font-medium text-white/25 shrink-0 mt-1">{timeAgo(article.updated_at)}</div>
+      <div className="text-[11px] font-medium text-white/55 shrink-0 mt-1">{timeAgo(article.updated_at)}</div>
     </a>
   );
 }
@@ -94,7 +94,7 @@ export default function KnowledgePage() {
         {/* Controls */}
         <div className="flex gap-2 mb-6">
           <div className="relative flex-1">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" />
             <input
               type="text"
               value={search}
@@ -126,14 +126,14 @@ export default function KnowledgePage() {
           </div>
         )}
         {isError && (
-          <div className="text-white/40 text-sm text-center mt-12">Не удалось загрузить статьи</div>
+          <div className="text-white/68 text-sm text-center mt-12">Не удалось загрузить статьи</div>
         )}
         {data && data.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-              <BookOpen size={22} className="text-white/20" />
+              <BookOpen size={22} className="text-white/50" />
             </div>
-            <p className="text-sm font-medium text-white/35">
+            <p className="text-sm font-medium text-white/65">
               {debouncedSearch || typeFilter ? "Ничего не найдено" : "База знаний пуста"}
             </p>
             {!debouncedSearch && !typeFilter && (
@@ -150,7 +150,7 @@ export default function KnowledgePage() {
           <div className="space-y-5">
             {pinned.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3 px-1">
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3 px-1">
                   Закреплённые
                 </p>
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -161,7 +161,7 @@ export default function KnowledgePage() {
             {rest.length > 0 && (
               <div>
                 {pinned.length > 0 && (
-                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3 px-1">
+                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3 px-1">
                     Остальные
                   </p>
                 )}
@@ -170,7 +170,7 @@ export default function KnowledgePage() {
                 </div>
               </div>
             )}
-            <div className="text-[10px] font-semibold text-white/25 uppercase tracking-widest text-center pt-1">
+            <div className="text-[10px] font-semibold text-white/55 uppercase tracking-widest text-center pt-1">
               {data.length} {data.length === 1 ? "статья" : data.length < 5 ? "статьи" : "статей"}
             </div>
           </div>

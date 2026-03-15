@@ -45,10 +45,10 @@ export function HabitHeatmap({ cells }: Props) {
         ))}
       </div>
       <div className="flex justify-between mt-2">
-        <span className="text-[10px] text-white/20 tabular-nums">
+        <span className="text-[10px] text-white/50 tabular-nums">
           {cells[0]?.date?.slice(5)}
         </span>
-        <span className="text-[10px] text-white/20 tabular-nums">
+        <span className="text-[10px] text-white/50 tabular-nums">
           {cells[cells.length - 1]?.date?.slice(5)}
         </span>
       </div>

@@ -27,7 +27,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 space-y-3">
-      <h2 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">
+      <h2 className="text-[11px] font-semibold text-white/68 uppercase tracking-widest">
         Финансовое состояние
       </h2>
 
@@ -58,15 +58,15 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       <div className="space-y-1">
         {rub && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] text-white/30">Доходная нагрузка</span>
-            <span className="text-[11px] text-white/45 tabular-nums">
+            <span className="text-[11px] text-white/60">Доходная нагрузка</span>
+            <span className="text-[11px] text-white/72 tabular-nums">
               {rub.income > 0 ? Math.round((rub.expense / rub.income) * 100) : 0}%
             </span>
           </div>
         )}
         {delta !== null && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] text-white/30">Капитал за 30 дн.</span>
+            <span className="text-[11px] text-white/60">Капитал за 30 дн.</span>
             <span className={clsx(
               "text-[11px] tabular-nums font-medium",
               delta >= 0 ? "text-emerald-400/70" : "text-red-400/70"
@@ -79,10 +79,10 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
       {/* Quick links */}
       <div className="border-t border-white/[0.05] pt-2 flex gap-4">
-        <a href="/legacy/wallets" className="text-[11px] font-medium text-white/28 hover:text-indigo-400 transition-colors">
+        <a href="/legacy/wallets" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
           Кошельки →
         </a>
-        <a href="/legacy/budget" className="text-[11px] font-medium text-white/28 hover:text-indigo-400 transition-colors">
+        <a href="/legacy/budget" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
           Бюджет →
         </a>
       </div>

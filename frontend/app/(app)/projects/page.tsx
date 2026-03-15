@@ -33,7 +33,7 @@ export default function ProjectsPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   status === value
                     ? "bg-white/[0.09] text-white shadow-sm"
-                    : "text-white/35 hover:text-white/65"
+                    : "text-white/65 hover:text-white/65"
                 }`}
               >
                 {label}
@@ -79,10 +79,10 @@ export default function ProjectsPage() {
         {projects && projects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
-              <FolderOpen size={24} className="text-white/20" />
+              <FolderOpen size={24} className="text-white/50" />
             </div>
-            <p className="text-sm font-medium text-white/35">Проектов пока нет</p>
-            <p className="text-xs text-white/25 mt-1 mb-5">Создайте первый проект, чтобы начать работу</p>
+            <p className="text-sm font-medium text-white/65">Проектов пока нет</p>
+            <p className="text-xs text-white/55 mt-1 mb-5">Создайте первый проект, чтобы начать работу</p>
             <Link
               href="/projects/new"
               className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"

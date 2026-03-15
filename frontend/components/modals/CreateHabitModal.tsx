@@ -9,7 +9,7 @@ interface Props {
 }
 
 const inputCls = "w-full px-3 h-9 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
-const labelCls = "block text-xs font-medium text-white/45 uppercase tracking-wider mb-1.5";
+const labelCls = "block text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
 
 const FREQ_OPTIONS = [
   { value: "DAILY",   label: "Каждый день" },
@@ -113,7 +113,7 @@ export function CreateHabitModal({ onClose }: Props) {
           </h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/35 hover:text-white/65 hover:bg-white/[0.07] transition-colors text-sm"
+            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/65 hover:text-white/65 hover:bg-white/[0.07] transition-colors text-sm"
           >
             ✕
           </button>
@@ -162,7 +162,7 @@ export function CreateHabitModal({ onClose }: Props) {
                   className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-colors ${
                     freq === f.value
                       ? "bg-indigo-600 border-indigo-500 text-white"
-                      : "bg-white/[0.03] border-white/[0.08] text-white/45 hover:text-white/65 hover:bg-white/[0.05]"
+                      : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
                   }`}
                 >
                   {f.label}
@@ -183,7 +183,7 @@ export function CreateHabitModal({ onClose }: Props) {
                     className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors ${
                       weekdays.includes(d.value)
                         ? "bg-indigo-600 border-indigo-500 text-white"
-                        : "bg-white/[0.03] border-white/[0.08] text-white/45 hover:text-white/65 hover:bg-white/[0.05]"
+                        : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
                     }`}
                   >
                     {d.label}
@@ -219,7 +219,7 @@ export function CreateHabitModal({ onClose }: Props) {
                   className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-colors ${
                     level === l.value
                       ? "bg-indigo-600 border-indigo-500 text-white"
-                      : "bg-white/[0.03] border-white/[0.08] text-white/45 hover:text-white/65 hover:bg-white/[0.05]"
+                      : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
                   }`}
                 >
                   {l.label}
@@ -257,7 +257,7 @@ export function CreateHabitModal({ onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/40 hover:text-white/65 hover:bg-white/[0.08] transition-colors"
+              className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.08] transition-colors"
             >
               Отмена
             </button>

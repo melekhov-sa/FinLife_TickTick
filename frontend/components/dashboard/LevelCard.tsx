@@ -27,10 +27,10 @@ export function LevelCard({ level }: Props) {
           {level.level}
         </span>
         <div className="pb-1 space-y-0.5">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
+          <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
             Уровень
           </p>
-          <p className="text-xs text-white/45 tabular-nums">
+          <p className="text-xs text-white/72 tabular-nums">
             {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)} XP
           </p>
         </div>
@@ -49,13 +49,13 @@ export function LevelCard({ level }: Props) {
       </div>
 
       <div className="flex justify-between text-[11px]">
-        <span className="text-white/35">
+        <span className="text-white/65">
           Этот месяц:{" "}
           <span className="text-indigo-400 font-semibold tabular-nums">
             {fmt(level.xp_this_month)} XP
           </span>
         </span>
-        <span className="text-white/20 tabular-nums">{fmt(level.total_xp)} всего</span>
+        <span className="text-white/50 tabular-nums">{fmt(level.total_xp)} всего</span>
       </div>
     </div>
   );

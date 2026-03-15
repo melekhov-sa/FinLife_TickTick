@@ -143,7 +143,7 @@ export default function MoneyPage() {
 
         {/* Filters */}
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 mb-5 space-y-3">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Фильтры</p>
+          <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">Фильтры</p>
           <div className="flex flex-wrap gap-2">
             <select value={opTypeFilter} onChange={(e) => { setOpTypeFilter(e.target.value); setPage(1); }} className={inputCls}>
               <option value="">Все типы</option>
@@ -176,7 +176,7 @@ export default function MoneyPage() {
             {hasFilters && (
               <button
                 onClick={resetFilters}
-                className="text-xs font-medium text-white/30 hover:text-white/55 transition-colors px-2"
+                className="text-xs font-medium text-white/60 hover:text-white/55 transition-colors px-2"
               >
                 Сбросить
               </button>
@@ -186,7 +186,7 @@ export default function MoneyPage() {
 
         {/* Stats */}
         {data && (
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-4">
+          <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
             Найдено: {data.total} операций
           </p>
         )}
@@ -208,7 +208,7 @@ export default function MoneyPage() {
             <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
               <span className="text-xl">💳</span>
             </div>
-            <p className="text-white/30 text-sm font-medium">Нет операций по заданным фильтрам</p>
+            <p className="text-white/60 text-sm font-medium">Нет операций по заданным фильтрам</p>
           </div>
         )}
 
@@ -232,10 +232,10 @@ export default function MoneyPage() {
                         {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
                       </span>
                       {tx.category_title && tx.description && (
-                        <span className="text-xs text-white/30 shrink-0">{tx.category_title}</span>
+                        <span className="text-xs text-white/60 shrink-0">{tx.category_title}</span>
                       )}
                     </div>
-                    <div className="text-[11px] text-white/30 mt-0.5">
+                    <div className="text-[11px] text-white/60 mt-0.5">
                       {tx.operation_type === "TRANSFER"
                         ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
                         : walletMap[tx.wallet_id ?? 0] ?? ""}
@@ -245,7 +245,7 @@ export default function MoneyPage() {
                     <p className={clsx("text-sm font-semibold tabular-nums", OP_TYPE_COLORS[tx.operation_type])}>
                       {formatAmount(tx.amount, tx.operation_type, tx.currency)}
                     </p>
-                    <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-white/55 mt-0.5 tabular-nums">
                       {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
                     </p>
                   </div>
@@ -259,17 +259,17 @@ export default function MoneyPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 text-xs font-medium rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/45 hover:text-white/70 disabled:opacity-30 transition-colors"
+                  className="px-4 py-2 text-xs font-medium rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/72 hover:text-white/70 disabled:opacity-30 transition-colors"
                 >
                   ← Назад
                 </button>
-                <span className="text-xs font-medium text-white/35 tabular-nums">
+                <span className="text-xs font-medium text-white/65 tabular-nums">
                   {page} / {data.pages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
                   disabled={page === data.pages}
-                  className="px-4 py-2 text-xs font-medium rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/45 hover:text-white/70 disabled:opacity-30 transition-colors"
+                  className="px-4 py-2 text-xs font-medium rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/72 hover:text-white/70 disabled:opacity-30 transition-colors"
                 >
                   Вперёд →
                 </button>

@@ -43,7 +43,7 @@ export function KanbanTaskCard({ task, allTags }: Props) {
     >
       <p className={clsx(
         "text-sm font-medium line-clamp-2",
-        task.board_status === "done" ? "text-white/35 line-through" : "text-white/85"
+        task.board_status === "done" ? "text-white/65 line-through" : "text-white/85"
       )} style={{ letterSpacing: "-0.005em" }}>
         {task.title}
       </p>
@@ -59,7 +59,7 @@ export function KanbanTaskCard({ task, allTags }: Props) {
                 key={tid}
                 className={clsx(
                   "text-[10px] font-medium px-1.5 py-0.5 rounded-md",
-                  TAG_COLOR_MAP[tag.color] ?? "bg-white/10 text-white/40"
+                  TAG_COLOR_MAP[tag.color] ?? "bg-white/10 text-white/68"
                 )}
               >
                 {tag.name}
@@ -76,7 +76,7 @@ export function KanbanTaskCard({ task, allTags }: Props) {
             "text-[10px] font-semibold px-1.5 py-0.5 rounded-md",
             task.is_overdue
               ? "bg-red-500/10 border border-red-500/20 text-red-400"
-              : "text-white/30"
+              : "text-white/60"
           )}>
             {task.due_date}
           </span>

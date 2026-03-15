@@ -26,7 +26,7 @@ interface ArticleDetail {
 const STATUS_STYLES: Record<string, string> = {
   published: "bg-emerald-500/12 border-emerald-500/20 text-emerald-400",
   draft:     "bg-amber-500/12 border-amber-500/20 text-amber-400",
-  archived:  "bg-white/[0.05] border-white/[0.08] text-white/30",
+  archived:  "bg-white/[0.05] border-white/[0.08] text-white/60",
 };
 
 function formatDate(iso: string) {
@@ -42,8 +42,8 @@ function renderMarkdown(md: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white/85">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em class="text-white/70 italic">$1</em>')
     .replace(/`(.+?)`/g, '<code class="bg-indigo-500/[0.12] border border-indigo-500/20 px-1.5 py-0.5 rounded-md text-indigo-300/90 text-[0.82em] font-mono">$1</code>')
-    .replace(/^- (.+)$/gm, '<li class="ml-5 text-white/62 list-disc marker:text-white/20 mb-0.5">$1</li>')
-    .replace(/^\d+\. (.+)$/gm, '<li class="ml-5 text-white/62 list-decimal marker:text-white/30 mb-0.5">$1</li>')
+    .replace(/^- (.+)$/gm, '<li class="ml-5 text-white/62 list-disc marker:text-white/50 mb-0.5">$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-5 text-white/62 list-decimal marker:text-white/60 mb-0.5">$1</li>')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-500/30 transition-colors" target="_blank">$1</a>')
     .replace(/\n\n/g, '</p><p class="text-white/60 text-sm leading-relaxed mb-3 mt-0">')
     .replace(/\n/g, "<br />");
@@ -80,7 +80,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
           {isError && (
             <div className="text-center py-20">
               <p className="text-4xl mb-4">📄</p>
-              <p className="text-white/35 text-sm mb-5">Статья не найдена</p>
+              <p className="text-white/65 text-sm mb-5">Статья не найдена</p>
               <Link
                 href="/knowledge"
                 className="inline-flex items-center gap-1.5 text-xs text-indigo-400/70 hover:text-indigo-400 transition-colors"
@@ -95,7 +95,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               {/* Back link */}
               <Link
                 href="/knowledge"
-                className="inline-flex items-center gap-1.5 text-xs text-white/25 hover:text-white/55 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/55 transition-colors"
               >
                 <ArrowLeft size={12} /> Все статьи
               </Link>
@@ -105,13 +105,13 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                 {/* Meta row */}
                 <div className="flex items-center gap-2 flex-wrap mb-3">
                   <span className="text-base">{data.type_emoji}</span>
-                  <span className="text-[10px] font-semibold text-white/35 uppercase tracking-widest">
+                  <span className="text-[10px] font-semibold text-white/65 uppercase tracking-widest">
                     {data.type_label}
                   </span>
                   <span className="text-white/15">·</span>
                   <span className={clsx(
                     "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                    STATUS_STYLES[data.status] ?? "bg-white/[0.05] border-white/[0.08] text-white/30"
+                    STATUS_STYLES[data.status] ?? "bg-white/[0.05] border-white/[0.08] text-white/60"
                   )}>
                     {data.status_label}
                   </span>
@@ -128,7 +128,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                 </h1>
 
                 {/* Date */}
-                <div className="flex items-center gap-1.5 text-[11px] text-white/25">
+                <div className="flex items-center gap-1.5 text-[11px] text-white/55">
                   <Calendar size={11} />
                   <span>Обновлено {formatDate(data.updated_at)}</span>
                 </div>
@@ -152,7 +152,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               <div>
                 <a
                   href={`/legacy/knowledge/${data.id}/edit`}
-                  className="inline-flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/40 hover:text-white/70 hover:border-white/[0.12] transition-all"
+                  className="inline-flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/68 hover:text-white/70 hover:border-white/[0.12] transition-all"
                 >
                   <Pencil size={11} /> Редактировать
                 </a>
@@ -168,14 +168,14 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                     }}
                   />
                 ) : (
-                  <p className="text-white/20 text-sm italic text-center py-8">Содержимое отсутствует</p>
+                  <p className="text-white/50 text-sm italic text-center py-8">Содержимое отсутствует</p>
                 )}
               </div>
 
               {/* Linked projects */}
               {data.linked_projects.length > 0 && (
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
-                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
+                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
                     Связанные проекты
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -183,7 +183,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                       <Link
                         key={p.id}
                         href={`/projects/${p.id}`}
-                        className="text-xs px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/45 hover:text-white/75 hover:border-white/[0.12] transition-all"
+                        className="text-xs px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/72 hover:text-white/75 hover:border-white/[0.12] transition-all"
                       >
                         {p.title}
                       </Link>

@@ -87,7 +87,7 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
         <div className="flex items-center gap-1.5">
           <span className={clsx(
             "text-sm truncate",
-            entry.is_done ? "line-through text-white/30"
+            entry.is_done ? "line-through text-white/60"
               : entry.is_overdue ? "text-red-400/90"
               : "text-white/85"
           )}>
@@ -95,13 +95,13 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
             {entry.title}
           </span>
           {entry.time && (
-            <span className="text-[10px] font-medium text-white/30 shrink-0 tabular-nums">
+            <span className="text-[10px] font-medium text-white/60 shrink-0 tabular-nums">
               {entry.time}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] font-semibold text-white/25 uppercase tracking-widest">
+          <span className="text-[10px] font-semibold text-white/55 uppercase tracking-widest">
             {KIND_LABELS[entry.kind] ?? entry.kind}
           </span>
           {entry.kind === "planned_op" && Boolean(entry.meta.amount_formatted) && (
@@ -112,7 +112,7 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
             </span>
           )}
           {entry.kind === "habit" && Boolean(entry.meta.current_streak) ? (
-            <span className="text-[10px] text-white/25">🔥 {String(entry.meta.current_streak)}</span>
+            <span className="text-[10px] text-white/55">🔥 {String(entry.meta.current_streak)}</span>
           ) : null}
         </div>
       </div>
@@ -138,11 +138,11 @@ function DayGroupCard({ group }: { group: DayGroup }) {
           "text-[10px] font-semibold uppercase tracking-widest",
           group.is_overdue_group ? "text-red-400/80"
             : group.is_today ? "text-indigo-400/80"
-            : "text-white/35"
+            : "text-white/65"
         )}>
           {group.date_label}
         </h3>
-        <span className="text-[10px] font-medium text-white/25 bg-white/[0.05] px-1.5 py-0.5 rounded-full">
+        <span className="text-[10px] font-medium text-white/55 bg-white/[0.05] px-1.5 py-0.5 rounded-full">
           {group.entries.length}
         </span>
       </div>
@@ -185,7 +185,7 @@ export default function PlanPage() {
                   "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
                   tab === t.value
                     ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.05]"
+                    : "text-white/68 hover:text-white/70 hover:bg-white/[0.05]"
                 )}
               >
                 {t.label}
@@ -203,7 +203,7 @@ export default function PlanPage() {
                   "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
                   range === r.value
                     ? "bg-white/[0.12] text-white/90 shadow-sm"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.05]"
+                    : "text-white/68 hover:text-white/70 hover:bg-white/[0.05]"
                 )}
               >
                 {r.label}
@@ -232,7 +232,7 @@ export default function PlanPage() {
                 <p className={clsx("text-3xl font-bold tabular-nums", kpi.color)} style={{ letterSpacing: "-0.04em" }}>
                   {kpi.value}
                 </p>
-                <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-1.5">{kpi.label}</p>
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-1.5">{kpi.label}</p>
               </div>
             ))}
           </div>
@@ -255,7 +255,7 @@ export default function PlanPage() {
             <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <span className="text-xl">📅</span>
             </div>
-            <p className="text-white/30 text-sm font-medium">Ничего не запланировано на этот период</p>
+            <p className="text-white/60 text-sm font-medium">Ничего не запланировано на этот период</p>
             <button
               onClick={() => setShowCreateTask(true)}
               className="mt-4 text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"

@@ -30,12 +30,12 @@ function formatDate(iso: string) {
 export function UpcomingPayments({ payments }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
         Ближайшие платежи
       </p>
 
       {payments.length === 0 ? (
-        <p className="text-xs text-white/20 py-2">Нет платежей на ближайшие 30 дней</p>
+        <p className="text-xs text-white/50 py-2">Нет платежей на ближайшие 30 дней</p>
       ) : (
         <div className="space-y-0.5">
           {payments.map((p) => (
@@ -49,7 +49,7 @@ export function UpcomingPayments({ payments }: Props) {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-white/80 truncate leading-snug">{p.title}</p>
-                <p className="text-[11px] text-white/28 mt-0.5 tabular-nums">
+                <p className="text-[11px] text-white/58 mt-0.5 tabular-nums">
                   {p.days_until < 0
                     ? `просрочено ${Math.abs(p.days_until)} дн.`
                     : p.days_until === 0
@@ -68,7 +68,7 @@ export function UpcomingPayments({ payments }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/legacy/planned-operations" className="text-[11px] font-medium text-white/28 hover:text-indigo-400 transition-colors">
+        <a href="/legacy/planned-operations" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
           Все плановые →
         </a>
       </div>

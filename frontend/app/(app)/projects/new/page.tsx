@@ -10,7 +10,7 @@ const STATUS_OPTIONS = [
   { value: "planned",   label: "Планируемый", color: "text-blue-400" },
   { value: "active",    label: "Активный",    color: "text-emerald-400" },
   { value: "on_hold",   label: "На паузе",    color: "text-amber-400" },
-  { value: "completed", label: "Завершён",    color: "text-white/40" },
+  { value: "completed", label: "Завершён",    color: "text-white/68" },
 ];
 
 export default function NewProjectPage() {
@@ -57,7 +57,7 @@ export default function NewProjectPage() {
 
   const inputCls =
     "w-full px-3.5 py-2.5 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all";
-  const labelCls = "block text-xs font-semibold text-white/35 uppercase tracking-widest mb-1.5";
+  const labelCls = "block text-xs font-semibold text-white/65 uppercase tracking-widest mb-1.5";
 
   return (
     <>
@@ -75,7 +75,7 @@ export default function NewProjectPage() {
                 <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
                   Создать проект
                 </h2>
-                <p className="text-xs text-white/30 mt-0.5">Заполните основную информацию</p>
+                <p className="text-xs text-white/60 mt-0.5">Заполните основную информацию</p>
               </div>
             </div>
 
@@ -119,7 +119,7 @@ export default function NewProjectPage() {
                         "text-xs font-medium px-3 py-1.5 rounded-xl border transition-all",
                         status === o.value
                           ? "bg-white/[0.10] border-white/[0.18] text-white/90"
-                          : "bg-white/[0.03] border-white/[0.06] text-white/35 hover:text-white/60 hover:border-white/[0.10]"
+                          : "bg-white/[0.03] border-white/[0.06] text-white/65 hover:text-white/60 hover:border-white/[0.10]"
                       )}
                     >
                       {o.label}
@@ -168,7 +168,7 @@ export default function NewProjectPage() {
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="px-4 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/45 hover:text-white/70 hover:border-white/[0.12] transition-all"
+                  className="px-4 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/72 hover:text-white/70 hover:border-white/[0.12] transition-all"
                 >
                   Отмена
                 </button>

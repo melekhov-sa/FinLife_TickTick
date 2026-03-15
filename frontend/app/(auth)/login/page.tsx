@@ -50,26 +50,26 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-white/40 mb-1.5">Email</label>
+            <label className="block text-xs text-white/68 mb-1.5">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/20"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="block text-xs text-white/40 mb-1.5">Password</label>
+            <label className="block text-xs text-white/68 mb-1.5">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/20"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
               placeholder="••••••••"
             />
           </div>

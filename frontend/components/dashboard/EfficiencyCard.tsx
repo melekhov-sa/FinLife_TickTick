@@ -47,7 +47,7 @@ export function EfficiencyCard({ efficiency }: Props) {
           >
             {score}
           </span>
-          <span className="text-sm text-white/30 pb-1 font-medium">/ 100</span>
+          <span className="text-sm text-white/60 pb-1 font-medium">/ 100</span>
         </div>
         <span className={clsx("text-xs font-semibold pb-1", tier.color)}>
           {tier.label}
@@ -73,7 +73,7 @@ export function EfficiencyCard({ efficiency }: Props) {
       </div>
 
       {efficiency.snapshot_date && (
-        <p className="text-[10px] text-white/20 mt-2.5">
+        <p className="text-[10px] text-white/50 mt-2.5">
           Индекс за 7 дней · {efficiency.snapshot_date}
         </p>
       )}

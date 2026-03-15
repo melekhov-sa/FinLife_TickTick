@@ -59,7 +59,7 @@ export function TaskRow({ task, onComplete, onArchive }: TaskRowProps) {
         className={clsx(
           "flex-1 text-sm min-w-0 truncate",
           isDone || isArchived
-            ? "line-through text-white/30"
+            ? "line-through text-white/60"
             : "text-white/80 font-medium"
         )}
       >
@@ -75,7 +75,7 @@ export function TaskRow({ task, onComplete, onArchive }: TaskRowProps) {
 
       {/* Due date */}
       {dateLabel && !task.is_overdue && (
-        <span className="text-[11px] font-medium shrink-0 tabular-nums text-white/30">
+        <span className="text-[11px] font-medium shrink-0 tabular-nums text-white/60">
           {dateLabel}
         </span>
       )}
@@ -84,7 +84,7 @@ export function TaskRow({ task, onComplete, onArchive }: TaskRowProps) {
       {!isDone && !isArchived && (
         <button
           onClick={() => onArchive?.(task.task_id)}
-          className="shrink-0 text-white/0 group-hover:text-white/20 hover:!text-white/55 transition-colors"
+          className="shrink-0 text-white/0 group-hover:text-white/50 hover:!text-white/55 transition-colors"
           title="В архив"
         >
           <Archive size={13} />

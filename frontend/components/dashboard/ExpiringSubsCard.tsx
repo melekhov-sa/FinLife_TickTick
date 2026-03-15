@@ -14,12 +14,12 @@ function formatDate(iso: string) {
 export function ExpiringSubsCard({ subs }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
         Скоро заканчивается
       </p>
 
       {subs.length === 0 ? (
-        <p className="text-xs text-white/20 py-2">Нет истекающих подписок</p>
+        <p className="text-xs text-white/50 py-2">Нет истекающих подписок</p>
       ) : (
         <div className="space-y-0.5">
           {subs.map((s) => (
@@ -31,9 +31,9 @@ export function ExpiringSubsCard({ subs }: Props) {
                 <p className="text-[13px] font-semibold text-white/82 truncate leading-snug">
                   {s.subscription_title}
                   {" "}
-                  <span className="text-[11px] text-white/30 font-normal">до {formatDate(s.paid_until)}</span>
+                  <span className="text-[11px] text-white/60 font-normal">до {formatDate(s.paid_until)}</span>
                 </p>
-                <p className="text-[11px] text-white/30 mt-0.5 truncate">{s.contact_name}</p>
+                <p className="text-[11px] text-white/60 mt-0.5 truncate">{s.contact_name}</p>
               </div>
               <span
                 className={clsx(
@@ -42,7 +42,7 @@ export function ExpiringSubsCard({ subs }: Props) {
                     ? "bg-red-500/12 border-red-500/20 text-red-400"
                     : s.days_left <= 14
                     ? "bg-amber-500/12 border-amber-500/20 text-amber-400"
-                    : "bg-white/[0.06] border-white/[0.08] text-white/35"
+                    : "bg-white/[0.06] border-white/[0.08] text-white/65"
                 )}
               >
                 {s.days_left === 0 ? "сегодня" : `${s.days_left} дн.`}
@@ -53,7 +53,7 @@ export function ExpiringSubsCard({ subs }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/subscriptions" className="text-[11px] font-medium text-white/28 hover:text-indigo-400 transition-colors">
+        <a href="/subscriptions" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
           Все подписки →
         </a>
       </div>

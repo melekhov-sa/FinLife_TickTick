@@ -112,7 +112,7 @@ export function MobileNav() {
                   "transition-colors",
                   active
                     ? "text-indigo-500"
-                    : isDark ? "text-white/35" : "text-black/35"
+                    : isDark ? "text-white/65" : "text-black/35"
                 )}
               />
               <span
@@ -120,7 +120,7 @@ export function MobileNav() {
                   "text-[10px] font-medium",
                   active
                     ? "text-indigo-500"
-                    : isDark ? "text-white/35" : "text-black/35"
+                    : isDark ? "text-white/65" : "text-black/35"
                 )}
               >
                 {label}
@@ -140,7 +140,7 @@ export function MobileNav() {
               "transition-colors",
               moreOpen
                 ? "text-indigo-500"
-                : isDark ? "text-white/35" : "text-black/35"
+                : isDark ? "text-white/65" : "text-black/35"
             )}
           />
           <span
@@ -148,7 +148,7 @@ export function MobileNav() {
               "text-[10px] font-medium",
               moreOpen
                 ? "text-indigo-500"
-                : isDark ? "text-white/35" : "text-black/35"
+                : isDark ? "text-white/65" : "text-black/35"
             )}
           >
             Ещё

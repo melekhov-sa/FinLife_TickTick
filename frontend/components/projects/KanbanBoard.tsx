@@ -157,7 +157,7 @@ function KanbanColumn({
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
-        <span className="text-[10px] font-semibold text-white/45 uppercase tracking-widest">
+        <span className="text-[10px] font-semibold text-white/72 uppercase tracking-widest">
           {column.label}
         </span>
         <span
@@ -167,7 +167,7 @@ function KanbanColumn({
               ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
               : tasks.length > 0
               ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20"
-              : "bg-white/[0.06] text-white/25 border border-white/[0.08]"
+              : "bg-white/[0.06] text-white/55 border border-white/[0.08]"
           )}
         >
           {tasks.length}

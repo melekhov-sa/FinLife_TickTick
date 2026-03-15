@@ -95,13 +95,13 @@ function MetricCardRow({ card }: { card: MetricCard }) {
               {badge.label}
             </span>
           </div>
-          <p className="text-xs text-white/40 leading-snug">{card.description}</p>
+          <p className="text-xs text-white/68 leading-snug">{card.description}</p>
         </div>
         <div className="ml-4 text-right shrink-0">
           <div className="text-lg font-semibold text-white/90 tabular-nums" style={{ letterSpacing: "-0.03em" }}>
             {formatRaw(card)}
           </div>
-          <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-0.5">
+          <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-0.5">
             {Math.round(card.weight * 100)}% веса
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function EfficiencyPage() {
         )}
 
         {isError && (
-          <div className="text-white/40 text-sm text-center mt-12">
+          <div className="text-white/68 text-sm text-center mt-12">
             Не удалось загрузить данные
           </div>
         )}
@@ -160,13 +160,13 @@ export default function EfficiencyPage() {
                   ? "Есть куда расти"
                   : "Требует внимания"}
               </div>
-              <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mt-2">
+              <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-2">
                 Снимок за {new Date(data.snapshot_date).toLocaleDateString("ru-RU")}
               </div>
             </div>
 
             {/* Metrics section label */}
-            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-1">
+            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
               Метрики
             </p>
 
@@ -180,7 +180,7 @@ export default function EfficiencyPage() {
             {/* Settings link */}
             <a
               href="/legacy/efficiency/settings"
-              className="block text-center text-xs font-medium text-white/30 hover:text-white/55 transition-colors py-2"
+              className="block text-center text-xs font-medium text-white/60 hover:text-white/55 transition-colors py-2"
             >
               Настроить пороги и веса →
             </a>

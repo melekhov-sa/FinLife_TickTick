@@ -37,7 +37,7 @@ export default function TasksPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   status === value
                     ? "bg-white/[0.09] text-white shadow-sm"
-                    : "text-white/35 hover:text-white/65"
+                    : "text-white/65 hover:text-white/65"
                 }`}
               >
                 {label}
@@ -77,10 +77,10 @@ export default function TasksPage() {
               {status === "DONE" ? (
                 <CheckCircle2 size={22} className="text-emerald-400/40" />
               ) : (
-                <ClipboardList size={22} className="text-white/20" />
+                <ClipboardList size={22} className="text-white/50" />
               )}
             </div>
-            <p className="text-sm font-medium text-white/30">
+            <p className="text-sm font-medium text-white/60">
               {status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
             </p>
             {status === "ACTIVE" && (

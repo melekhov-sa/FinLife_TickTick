@@ -193,7 +193,7 @@ export function AppSidebar() {
           className={clsx(
             linkBase,
             isDark
-              ? "text-white/45 hover:text-red-400/70 hover:bg-red-500/[0.07]"
+              ? "text-white/72 hover:text-red-400/70 hover:bg-red-500/[0.07]"
               : "text-black/30 hover:text-red-600/60 hover:bg-red-50"
           )}
         >
