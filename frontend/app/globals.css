@@ -119,19 +119,22 @@
 }
 
 /* ── App-level theme tokens ──────────────────────────────────────────────── */
+/* Default = dark (app always starts in dark mode) */
 :root {
-  --app-bg:            #f2efe8;
-  --app-sidebar-bg:    #ffffff;
-  --app-topbar-bg:     #ffffff;
-  --app-border:        rgba(0,0,0,0.08);
-  --app-border-subtle: rgba(0,0,0,0.05);
+  --app-bg:            radial-gradient(ellipse 70% 45% at 12% 6%, rgba(99,102,241,0.08) 0%, transparent 55%),
+                       radial-gradient(ellipse 55% 45% at 88% 94%, rgba(139,92,246,0.05) 0%, transparent 55%),
+                       #070b16;
+  --app-sidebar-bg:    #0c1122;
+  --app-topbar-bg:     #0c1122;
+  --app-border:        rgba(255,255,255,0.07);
+  --app-border-subtle: rgba(255,255,255,0.04);
 
-  /* Text hierarchy — light mode */
-  --t-primary:   rgba(0,0,0,0.88);
-  --t-secondary: rgba(0,0,0,0.65);
-  --t-muted:     rgba(0,0,0,0.50);
-  --t-faint:     rgba(0,0,0,0.38);
-  --t-label:     rgba(0,0,0,0.42);
+  /* Text hierarchy — dark mode defaults */
+  --t-primary:   rgba(255,255,255,0.92);
+  --t-secondary: rgba(255,255,255,0.78);
+  --t-muted:     rgba(255,255,255,0.62);
+  --t-faint:     rgba(255,255,255,0.50);
+  --t-label:     rgba(255,255,255,0.55);
 }
 
 .dark {
@@ -143,12 +146,25 @@
   --app-border:        rgba(255,255,255,0.07);
   --app-border-subtle: rgba(255,255,255,0.04);
 
-  /* Text hierarchy — dark mode (readable on #070b16) */
   --t-primary:   rgba(255,255,255,0.92);
   --t-secondary: rgba(255,255,255,0.78);
   --t-muted:     rgba(255,255,255,0.62);
   --t-faint:     rgba(255,255,255,0.50);
   --t-label:     rgba(255,255,255,0.55);
+}
+
+html:not(.dark) {
+  --app-bg:            #f2efe8;
+  --app-sidebar-bg:    #ffffff;
+  --app-topbar-bg:     #ffffff;
+  --app-border:        rgba(0,0,0,0.08);
+  --app-border-subtle: rgba(0,0,0,0.05);
+
+  --t-primary:   rgba(0,0,0,0.88);
+  --t-secondary: rgba(0,0,0,0.65);
+  --t-muted:     rgba(0,0,0,0.50);
+  --t-faint:     rgba(0,0,0,0.38);
+  --t-label:     rgba(0,0,0,0.42);
 }
 
 /* ── Light mode: flat selectors (no nesting) — white-opacity → black-opacity */
