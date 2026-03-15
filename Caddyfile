@@ -2,3 +2,7 @@ centricore.ru, www.centricore.ru {
   encode gzip
   reverse_proxy centricore_frontend:3000
 }
+
+mealie.centricore.ru {
+  reverse_proxy 172.17.0.1:9925
+}
