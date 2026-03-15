@@ -221,18 +221,20 @@ html:not(.dark) {
 }
 
 /* ── Dark mode: boost dim text visibility ─────────────────────────────────── */
-/* text-white/15..35 → minimum 42% so secondary text is readable */
-html.dark .text-white\/15 { color: rgba(255,255,255,0.32) !important; }
-html.dark .text-white\/18 { color: rgba(255,255,255,0.35) !important; }
-html.dark .text-white\/20 { color: rgba(255,255,255,0.38) !important; }
-html.dark .text-white\/25 { color: rgba(255,255,255,0.42) !important; }
-html.dark .text-white\/28 { color: rgba(255,255,255,0.44) !important; }
-html.dark .text-white\/30 { color: rgba(255,255,255,0.48) !important; }
-html.dark .text-white\/35 { color: rgba(255,255,255,0.52) !important; }
-html.dark .text-white\/38 { color: rgba(255,255,255,0.55) !important; }
-html.dark .text-white\/40 { color: rgba(255,255,255,0.58) !important; }
-html.dark .text-white\/45 { color: rgba(255,255,255,0.62) !important; }
-html.dark .text-white\/50 { color: rgba(255,255,255,0.66) !important; }
+/* Minimum floor: secondary text ~0.60, tertiary/label text ~0.50            */
+html.dark .text-white\/15 { color: rgba(255,255,255,0.46) !important; }
+html.dark .text-white\/18 { color: rgba(255,255,255,0.50) !important; }
+html.dark .text-white\/20 { color: rgba(255,255,255,0.54) !important; }
+html.dark .text-white\/25 { color: rgba(255,255,255,0.60) !important; }
+html.dark .text-white\/28 { color: rgba(255,255,255,0.63) !important; }
+html.dark .text-white\/30 { color: rgba(255,255,255,0.66) !important; }
+html.dark .text-white\/35 { color: rgba(255,255,255,0.70) !important; }
+html.dark .text-white\/38 { color: rgba(255,255,255,0.72) !important; }
+html.dark .text-white\/40 { color: rgba(255,255,255,0.74) !important; }
+html.dark .text-white\/45 { color: rgba(255,255,255,0.78) !important; }
+html.dark .text-white\/50 { color: rgba(255,255,255,0.82) !important; }
+html.dark .text-white\/52 { color: rgba(255,255,255,0.84) !important; }
+html.dark .text-white\/55 { color: rgba(255,255,255,0.86) !important; }
 
 @layer base {
   * {
@@ -241,9 +243,15 @@ html.dark .text-white\/50 { color: rgba(255,255,255,0.66) !important; }
   body {
     background: var(--app-bg);
     @apply text-foreground;
+    font-weight: 400;
     font-feature-settings: "kern", "liga", "calt";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* In dark mode make thin text slightly heavier so it reads on dark bg */
+  html.dark body {
+    -webkit-font-smoothing: subpixel-antialiased;
   }
   html {
     @apply font-sans;

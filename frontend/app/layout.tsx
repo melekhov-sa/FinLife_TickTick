@@ -6,7 +6,7 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin", "cyrillic"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 

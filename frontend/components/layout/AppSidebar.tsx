@@ -83,8 +83,8 @@ export function AppSidebar() {
     : "bg-indigo-50 text-indigo-700 font-medium";
 
   const inactiveStyle = isDark
-    ? "text-white/52 hover:text-white/80 hover:bg-white/[0.05] font-normal"
-    : "text-black/55 hover:text-black/80 hover:bg-black/[0.04] font-normal";
+    ? "text-white/70 hover:text-white/90 hover:bg-white/[0.05] font-normal"
+    : "text-black/60 hover:text-black/85 hover:bg-black/[0.04] font-normal";
 
   return (
     <aside
@@ -151,7 +151,7 @@ export function AppSidebar() {
           <div key={section.label} className="pt-3">
             <p
               className="px-3 mb-1 text-[10px] font-semibold tracking-widest"
-              style={{ color: isDark ? "rgba(255,255,255,0.32)" : "rgba(0,0,0,0.38)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.42)" }}
             >
               {section.label}
             </p>
@@ -193,7 +193,7 @@ export function AppSidebar() {
           className={clsx(
             linkBase,
             isDark
-              ? "text-white/25 hover:text-red-400/60 hover:bg-red-500/[0.07]"
+              ? "text-white/45 hover:text-red-400/70 hover:bg-red-500/[0.07]"
               : "text-black/30 hover:text-red-600/60 hover:bg-red-50"
           )}
         >
