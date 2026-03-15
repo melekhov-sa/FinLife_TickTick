@@ -11,6 +11,7 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  useDroppable,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
@@ -142,11 +143,17 @@ function KanbanColumn({
   allTags: ProjectDetail["tags"];
 }) {
   const isDone = column.key === "done";
+  const { setNodeRef, isOver } = useDroppable({ id: column.key });
 
   return (
     <div
-      className="flex flex-col w-[280px] shrink-0 bg-white/[0.03] rounded-2xl border border-white/[0.07]"
-      id={column.key}
+      ref={setNodeRef}
+      className={clsx(
+        "flex flex-col w-[280px] shrink-0 rounded-2xl border transition-colors",
+        isOver
+          ? "bg-indigo-500/[0.06] border-indigo-500/25"
+          : "bg-white/[0.03] border-white/[0.07]"
+      )}
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
