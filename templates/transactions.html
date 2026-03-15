@@ -107,20 +107,15 @@
     </div>
 
     <div class="form-row" id="categoryField">
-      <label>Категория</label>
+      <label>Статья</label>
       <select name="category_id" id="categorySelect" onchange="updateSubscriptionBlock()">
-        <option value="">Без категории</option>
-        {% if frequent_category_ids %}
-        {% set _freq_map = {} %}
-        {% for c in categories %}{% if c.category_id in frequent_category_ids %}{% set _ = _freq_map.update({c.category_id: c}) %}{% endif %}{% endfor %}
-        {% for fid in frequent_category_ids %}{% if fid in _freq_map %}
-        {% set c = _freq_map[fid] %}
-        <option value="{{ c.category_id }}" data-type="{{ c.category_type }}" data-freq="1">★ {{ c.title }}</option>
-        {% endif %}{% endfor %}
-        <option disabled data-sep="1">──────────</option>
-        {% endif %}
+        <option value="">Без статьи</option>
         {% for c in categories %}
-        <option value="{{ c.category_id }}" data-type="{{ c.category_type }}">{{ c.title }}</option>
+        <option value="{{ c.category_id }}"
+          data-type="{{ c.category_type }}"
+          {% if c.category_id in freq_income_ids %}data-freq-income="1"{% endif %}
+          {% if c.category_id in freq_expense_ids %}data-freq-expense="1"{% endif %}
+        >{{ c.title }}</option>
         {% endfor %}
       </select>
     </div>
@@ -429,28 +424,36 @@ var _allCategoryOpts = [];
   var sel = document.getElementById('categorySelect');
   var opts = sel.querySelectorAll('option[data-type]');
   for (var i = 0; i < opts.length; i++) {
-    _allCategoryOpts.push({ value: opts[i].value, label: opts[i].textContent, type: opts[i].dataset.type, freq: !!opts[i].dataset.freq });
+    _allCategoryOpts.push({
+      value: opts[i].value,
+      label: opts[i].textContent.trim(),
+      type: opts[i].dataset.type,
+      freqIncome: !!opts[i].dataset.freqIncome,
+      freqExpense: !!opts[i].dataset.freqExpense,
+    });
   }
 })();
 
 function filterCategories(opType) {
   var sel = document.getElementById('categorySelect');
   var match = opType === 'INCOME' ? 'INCOME' : 'EXPENSE';
+  var freqKey = opType === 'INCOME' ? 'freqIncome' : 'freqExpense';
   while (sel.options.length > 1) {
     sel.removeChild(sel.options[1]);
   }
   var freqItems = [];
   var regularItems = [];
   for (var i = 0; i < _allCategoryOpts.length; i++) {
-    if (_allCategoryOpts[i].type === match) {
-      if (_allCategoryOpts[i].freq) freqItems.push(_allCategoryOpts[i]);
-      else regularItems.push(_allCategoryOpts[i]);
+    var item = _allCategoryOpts[i];
+    if (item.type === match) {
+      if (item[freqKey]) freqItems.push(item);
+      else regularItems.push(item);
     }
   }
   for (var f = 0; f < freqItems.length; f++) {
     var opt = document.createElement('option');
     opt.value = freqItems[f].value;
-    opt.textContent = freqItems[f].label;
+    opt.textContent = '★ ' + freqItems[f].label;
     opt.dataset.type = freqItems[f].type;
     sel.appendChild(opt);
   }
@@ -470,19 +473,30 @@ function filterCategories(opType) {
   sel.value = '';
 }
 
-function filterWalletsByKind(type) {
+var _allWalletOpts = [];
+(function() {
   var sel = document.getElementById('walletSelect');
   var opts = sel.options;
   for (var i = 0; i < opts.length; i++) {
-    var hide = type === 'EXPENSE' && walletTypeMap[opts[i].value] === 'SAVINGS';
-    opts[i].style.display = hide ? 'none' : '';
-    opts[i].disabled = hide;
+    _allWalletOpts.push({ value: opts[i].value, label: opts[i].textContent.trim() });
   }
-  if (type === 'EXPENSE' && walletTypeMap[sel.value] === 'SAVINGS') {
-    for (var j = 0; j < opts.length; j++) {
-      if (!opts[j].disabled) { sel.value = opts[j].value; break; }
-    }
+})();
+
+function filterWalletsByKind(type) {
+  var sel = document.getElementById('walletSelect');
+  var prevVal = sel.value;
+  while (sel.options.length > 0) { sel.removeChild(sel.options[0]); }
+  var firstVal = null;
+  for (var i = 0; i < _allWalletOpts.length; i++) {
+    var w = _allWalletOpts[i];
+    if (type === 'EXPENSE' && walletTypeMap[w.value] === 'SAVINGS') continue;
+    var opt = document.createElement('option');
+    opt.value = w.value;
+    opt.textContent = w.label;
+    sel.appendChild(opt);
+    if (firstVal === null) firstVal = w.value;
   }
+  sel.value = (walletTypeMap[prevVal] === 'SAVINGS' && type === 'EXPENSE') ? firstVal : prevVal;
 }
 
 function updateFormFields() {

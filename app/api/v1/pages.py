@@ -1406,22 +1406,29 @@ def transactions_page(
     active_categories = [c for c in all_categories if not c.is_archived]
     category_map = {c.category_id: c for c in all_categories}
 
-    # Часто используемые категории (топ-7 за последние 30 дней)
+    # Часто используемые категории — топ-5 отдельно для INCOME и EXPENSE за 30 дней
     today = date.today()
     _freq_since = today - timedelta(days=30)
-    _freq_rows = (
-        db.query(TransactionFeed.category_id, func.count().label("cnt"))
-        .filter(
-            TransactionFeed.account_id == user_id,
-            TransactionFeed.category_id.isnot(None),
-            TransactionFeed.occurred_at >= _freq_since,
+
+    def _top5_freq(op_type: str) -> list:
+        rows = (
+            db.query(TransactionFeed.category_id, func.count().label("cnt"))
+            .filter(
+                TransactionFeed.account_id == user_id,
+                TransactionFeed.category_id.isnot(None),
+                TransactionFeed.operation_type == op_type,
+                TransactionFeed.occurred_at >= _freq_since,
+            )
+            .group_by(TransactionFeed.category_id)
+            .order_by(func.count().desc())
+            .limit(5)
+            .all()
         )
-        .group_by(TransactionFeed.category_id)
-        .order_by(func.count().desc())
-        .limit(7)
-        .all()
-    )
-    frequent_category_ids = [r.category_id for r in _freq_rows]
+        return [r.category_id for r in rows]
+
+    freq_income_ids = _top5_freq("INCOME")
+    freq_expense_ids = _top5_freq("EXPENSE")
+    frequent_category_ids = list(set(freq_income_ids) | set(freq_expense_ids))
 
     # Базовый запрос
     q = db.query(TransactionFeed).filter(TransactionFeed.account_id == user_id)
@@ -1573,6 +1580,8 @@ def transactions_page(
         "categories": active_categories,
         "category_map": category_map,
         "frequent_category_ids": frequent_category_ids,
+        "freq_income_ids": freq_income_ids,
+        "freq_expense_ids": freq_expense_ids,
         "transactions": transactions,
         "page": page,
         "total_pages": total_pages,
