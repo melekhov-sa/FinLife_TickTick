@@ -33,33 +33,25 @@ const SECTIONS = [
   {
     label: "ФИНАНСЫ",
     items: [
-      { href: "/money",                       label: "Деньги" },
-      { href: "/legacy/transactions",         label: "Операции" },
-      { href: "/legacy/categories",           label: "Категории" },
-      { href: "/legacy/goals",                label: "Цели" },
-      { href: "/subscriptions",               label: "Подписки" },
-      { href: "/legacy/planned-operations",   label: "Плановые операции" },
+      { href: "/money",                     label: "Деньги" },
+      { href: "/legacy/transactions",       label: "Операции" },
+      { href: "/subscriptions",             label: "Подписки" },
     ],
   },
   {
     label: "ДЕЛА",
     items: [
-      { href: "/tasks",                       label: "Задачи" },
-      { href: "/projects",                    label: "Проекты" },
-      { href: "/habits",                      label: "Привычки" },
-      { href: "/events",                      label: "События" },
-      { href: "/legacy/piggybanks",           label: "Копилки" },
-      { href: "/legacy/task-categories",      label: "Категории дел" },
-      { href: "/legacy/task-templates",       label: "Шаблоны задач" },
-      { href: "/legacy/postpone-reasons",     label: "Причины переноса" },
-      { href: "/knowledge",                   label: "База знаний" },
+      { href: "/tasks",                     label: "Задачи" },
+      { href: "/projects",                  label: "Проекты" },
+      { href: "/habits",                    label: "Привычки" },
+      { href: "/events",                    label: "События" },
+      { href: "/knowledge",                 label: "База знаний" },
     ],
   },
   {
     label: "СИСТЕМА",
     items: [
-      { href: "/legacy/contacts",             label: "Контакты" },
-      { href: "/profile",                     label: "Профиль" },
+      { href: "/profile",                   label: "Профиль" },
     ],
   },
 ];
@@ -91,8 +83,8 @@ export function AppSidebar() {
     : "bg-indigo-50 text-indigo-700 font-medium";
 
   const inactiveStyle = isDark
-    ? "text-white/38 hover:text-white/70 hover:bg-white/[0.05] font-normal"
-    : "text-black/45 hover:text-black/72 hover:bg-black/[0.04] font-normal";
+    ? "text-white/52 hover:text-white/80 hover:bg-white/[0.05] font-normal"
+    : "text-black/55 hover:text-black/80 hover:bg-black/[0.04] font-normal";
 
   return (
     <aside
@@ -159,7 +151,7 @@ export function AppSidebar() {
           <div key={section.label} className="pt-3">
             <p
               className="px-3 mb-1 text-[10px] font-semibold tracking-widest"
-              style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.28)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.32)" : "rgba(0,0,0,0.38)" }}
             >
               {section.label}
             </p>

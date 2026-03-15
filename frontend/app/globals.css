@@ -220,6 +220,20 @@ html:not(.dark) {
   .text-white { color: rgba(0,0,0,0.88) !important; }
 }
 
+/* ── Dark mode: boost dim text visibility ─────────────────────────────────── */
+/* text-white/15..35 → minimum 42% so secondary text is readable */
+html.dark .text-white\/15 { color: rgba(255,255,255,0.32) !important; }
+html.dark .text-white\/18 { color: rgba(255,255,255,0.35) !important; }
+html.dark .text-white\/20 { color: rgba(255,255,255,0.38) !important; }
+html.dark .text-white\/25 { color: rgba(255,255,255,0.42) !important; }
+html.dark .text-white\/28 { color: rgba(255,255,255,0.44) !important; }
+html.dark .text-white\/30 { color: rgba(255,255,255,0.48) !important; }
+html.dark .text-white\/35 { color: rgba(255,255,255,0.52) !important; }
+html.dark .text-white\/38 { color: rgba(255,255,255,0.55) !important; }
+html.dark .text-white\/40 { color: rgba(255,255,255,0.58) !important; }
+html.dark .text-white\/45 { color: rgba(255,255,255,0.62) !important; }
+html.dark .text-white\/50 { color: rgba(255,255,255,0.66) !important; }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
