@@ -62,7 +62,7 @@ class TaskCard(BaseModel):
 class ProjectTag(BaseModel):
     id: int
     name: str
-    color: str
+    color: str | None = None
 
 
 class BoardColumn(BaseModel):
