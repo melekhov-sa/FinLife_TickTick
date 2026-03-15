@@ -5,39 +5,62 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
   LayoutDashboard,
-  FolderKanban,
-  CheckSquare,
-  Target,
+  ClipboardList,
   BarChart3,
   Bell,
-  Wallet,
-  BookOpen,
-  Settings,
-  LogOut,
+  Target,
   Sun,
   Moon,
-  Repeat2,
-  CalendarDays,
-  CreditCard,
-  ClipboardList,
+  LogOut,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
-const NAV_ITEMS = [
-  { href: "/dashboard",      label: "Дашборд",       icon: LayoutDashboard },
-  { href: "/plan",           label: "План",           icon: ClipboardList },
-  { href: "/projects",       label: "Проекты",       icon: FolderKanban },
-  { href: "/tasks",          label: "Задачи",        icon: CheckSquare },
-  { href: "/strategy",       label: "Стратегия",     icon: Target },
-  { href: "/efficiency",     label: "Эффективность", icon: BarChart3 },
-  { href: "/habits",         label: "Привычки",      icon: Repeat2 },
-  { href: "/events",         label: "События",       icon: CalendarDays },
-  { href: "/subscriptions",  label: "Подписки",      icon: CreditCard },
-  { href: "/money",          label: "Финансы",       icon: Wallet },
-  { href: "/notifications",  label: "Уведомления",   icon: Bell },
-  { href: "/knowledge",      label: "База знаний",   icon: BookOpen },
+// Primary nav — with icons
+const PRIMARY_NAV = [
+  { href: "/dashboard",   label: "Дашборд",       icon: LayoutDashboard },
+  { href: "/plan",        label: "План",           icon: ClipboardList },
+  { href: "/legacy/budget", label: "Бюджет",       icon: null },
+  { href: "/strategy",    label: "Стратегия",      icon: Target },
+  { href: "/efficiency",  label: "Эффективность",  icon: BarChart3 },
+  { href: "/notifications", label: "Уведомления",  icon: Bell, badge: true },
+];
+
+// Grouped nav — text only, denser
+const SECTIONS = [
+  {
+    label: "ФИНАНСЫ",
+    items: [
+      { href: "/money",                       label: "Деньги" },
+      { href: "/legacy/transactions",         label: "Операции" },
+      { href: "/legacy/categories",           label: "Категории" },
+      { href: "/legacy/goals",                label: "Цели" },
+      { href: "/subscriptions",               label: "Подписки" },
+      { href: "/legacy/planned-operations",   label: "Плановые операции" },
+    ],
+  },
+  {
+    label: "ДЕЛА",
+    items: [
+      { href: "/tasks",                       label: "Задачи" },
+      { href: "/projects",                    label: "Проекты" },
+      { href: "/habits",                      label: "Привычки" },
+      { href: "/events",                      label: "События" },
+      { href: "/legacy/piggybanks",           label: "Копилки" },
+      { href: "/legacy/task-categories",      label: "Категории дел" },
+      { href: "/legacy/task-templates",       label: "Шаблоны задач" },
+      { href: "/legacy/postpone-reasons",     label: "Причины переноса" },
+      { href: "/knowledge",                   label: "База знаний" },
+    ],
+  },
+  {
+    label: "СИСТЕМА",
+    items: [
+      { href: "/legacy/contacts",             label: "Контакты" },
+      { href: "/profile",                     label: "Профиль" },
+    ],
+  },
 ];
 
 export function AppSidebar() {
@@ -54,8 +77,21 @@ export function AppSidebar() {
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    if (href.startsWith("/legacy/")) return pathname === href;
     return pathname.startsWith(href);
   }
+
+  const linkBase = clsx(
+    "flex items-center gap-2 px-3 py-1.5 rounded-md text-[12.5px] transition-all duration-100 leading-snug"
+  );
+
+  const activeStyle = isDark
+    ? "bg-indigo-500/[0.13] text-white font-medium"
+    : "bg-indigo-50 text-indigo-700 font-medium";
+
+  const inactiveStyle = isDark
+    ? "text-white/38 hover:text-white/70 hover:bg-white/[0.05] font-normal"
+    : "text-black/45 hover:text-black/72 hover:bg-black/[0.04] font-normal";
 
   return (
     <aside
@@ -67,7 +103,7 @@ export function AppSidebar() {
       }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-[18px] mb-1">
+      <div className="flex items-center gap-2.5 px-4 py-4 mb-0.5 shrink-0">
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
@@ -85,95 +121,90 @@ export function AppSidebar() {
         </span>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2.5 space-y-px overflow-y-auto">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href);
-          const isNotifications = href === "/notifications";
-          const unread = isNotifications ? (badge?.unread_count ?? 0) : 0;
+      {/* Scrollable nav */}
+      <nav className="flex-1 overflow-y-auto px-2 space-y-px pb-2">
 
+        {/* Primary nav (with icons) */}
+        {PRIMARY_NAV.map(({ href, label, icon: Icon, badge: hasBadge }) => {
+          const active = isActive(href);
+          const unread = hasBadge ? (badge?.unread_count ?? 0) : 0;
           return (
             <Link
               key={href}
               href={href}
-              className={clsx(
-                "relative flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
-                active
-                  ? isDark
-                    ? "bg-indigo-500/[0.14] text-white"
-                    : "bg-indigo-50 text-indigo-700"
-                  : isDark
-                    ? "text-white/40 hover:text-white/72 hover:bg-white/[0.05]"
-                    : "text-black/45 hover:text-black/75 hover:bg-black/[0.045]"
-              )}
+              className={clsx(linkBase, active ? activeStyle : inactiveStyle, "relative")}
             >
-              {/* Active left accent bar */}
               {active && (
-                <span
-                  className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-500"
+                <span className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-indigo-500" />
+              )}
+              {Icon && (
+                <Icon
+                  size={14}
+                  className={clsx("shrink-0", active ? "text-indigo-400" : "opacity-60")}
                 />
               )}
-              <Icon
-                size={15}
-                className={clsx(
-                  "shrink-0 transition-colors",
-                  active ? "text-indigo-400" : "text-current opacity-75"
-                )}
-              />
               <span className="flex-1 truncate">{label}</span>
-              {isNotifications && unread > 0 && (
-                <span className="text-[10px] font-semibold bg-indigo-500/25 text-indigo-300 rounded-full px-1.5 py-px min-w-[18px] text-center leading-none">
+              {unread > 0 && (
+                <span className="text-[10px] font-semibold bg-indigo-500/20 text-indigo-400 rounded-full px-1.5 leading-[1.6]">
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
             </Link>
           );
         })}
+
+        {/* Grouped sections */}
+        {SECTIONS.map((section) => (
+          <div key={section.label} className="pt-3">
+            <p
+              className="px-3 mb-1 text-[10px] font-semibold tracking-widest"
+              style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.28)" }}
+            >
+              {section.label}
+            </p>
+            {section.items.map(({ href, label }) => {
+              const active = isActive(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={clsx(linkBase, "relative pl-4", active ? activeStyle : inactiveStyle)}
+                >
+                  {active && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-indigo-500" />
+                  )}
+                  <span className="truncate">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Bottom actions */}
+      {/* Bottom */}
       <div
-        className="px-2.5 pb-4 space-y-px pt-2 border-t"
+        className="px-2 pb-3 pt-2 space-y-px border-t shrink-0"
         style={{ borderColor: "var(--app-border)" }}
       >
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}
-          className={clsx(
-            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all",
-            isDark
-              ? "text-white/30 hover:text-white/60 hover:bg-white/[0.05]"
-              : "text-black/40 hover:text-black/65 hover:bg-black/[0.045]"
-          )}
+          className={clsx(linkBase, inactiveStyle, "w-full")}
         >
           {isDark
-            ? <Sun size={15} className="shrink-0 opacity-75" />
-            : <Moon size={15} className="shrink-0 opacity-75" />}
+            ? <Sun size={14} className="shrink-0 opacity-60" />
+            : <Moon size={14} className="shrink-0 opacity-60" />}
           {isDark ? "Светлая тема" : "Тёмная тема"}
         </button>
-
-        <Link
-          href="/profile"
-          className={clsx(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all",
-            pathname === "/profile"
-              ? isDark ? "bg-indigo-500/[0.14] text-white" : "bg-indigo-50 text-indigo-700"
-              : isDark ? "text-white/30 hover:text-white/60 hover:bg-white/[0.05]" : "text-black/40 hover:text-black/65 hover:bg-black/[0.045]"
-          )}
-        >
-          <Settings size={15} className="shrink-0 opacity-75" />
-          Профиль
-        </Link>
-
         <a
           href="/logout"
           className={clsx(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all",
+            linkBase,
             isDark
-              ? "text-white/30 hover:text-red-400/60 hover:bg-red-500/[0.07]"
-              : "text-black/35 hover:text-red-600/70 hover:bg-red-50"
+              ? "text-white/25 hover:text-red-400/60 hover:bg-red-500/[0.07]"
+              : "text-black/30 hover:text-red-600/60 hover:bg-red-50"
           )}
         >
-          <LogOut size={15} className="shrink-0 opacity-75" />
+          <LogOut size={14} className="shrink-0 opacity-60" />
           Выйти
         </a>
       </div>
