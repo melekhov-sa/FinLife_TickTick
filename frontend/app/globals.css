@@ -130,11 +130,11 @@
   --app-border-subtle: rgba(255,255,255,0.04);
 
   /* Text hierarchy — dark mode defaults */
-  --t-primary:   rgba(255,255,255,0.92);
-  --t-secondary: rgba(255,255,255,0.78);
-  --t-muted:     rgba(255,255,255,0.62);
-  --t-faint:     rgba(255,255,255,0.50);
-  --t-label:     rgba(255,255,255,0.55);
+  --t-primary:   #ffffff;
+  --t-secondary: rgba(255,255,255,0.90);
+  --t-muted:     rgba(255,255,255,0.75);
+  --t-faint:     rgba(255,255,255,0.60);
+  --t-label:     rgba(255,255,255,0.68);
 }
 
 .dark {
@@ -146,11 +146,11 @@
   --app-border:        rgba(255,255,255,0.07);
   --app-border-subtle: rgba(255,255,255,0.04);
 
-  --t-primary:   rgba(255,255,255,0.92);
-  --t-secondary: rgba(255,255,255,0.78);
-  --t-muted:     rgba(255,255,255,0.62);
-  --t-faint:     rgba(255,255,255,0.50);
-  --t-label:     rgba(255,255,255,0.55);
+  --t-primary:   #ffffff;
+  --t-secondary: rgba(255,255,255,0.90);
+  --t-muted:     rgba(255,255,255,0.75);
+  --t-faint:     rgba(255,255,255,0.60);
+  --t-label:     rgba(255,255,255,0.68);
 }
 
 html:not(.dark) {
@@ -270,9 +270,11 @@ html:not(.dark) .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* In dark mode make thin text slightly heavier so it reads on dark bg */
-  html.dark body {
-    -webkit-font-smoothing: subpixel-antialiased;
+  /* In dark mode use medium weight — Inter 400 is too thin on dark backgrounds */
+  html.dark body,
+  .dark body {
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
   }
   html {
     @apply font-sans;
