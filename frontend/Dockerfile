@@ -10,7 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Backend URL is resolved at runtime via rewrites, not baked in
+# BACKEND_URL is baked into the Next.js rewrites at build time
+ARG BACKEND_URL=http://centricore_app:8000
+ENV BACKEND_URL=$BACKEND_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

@@ -46,9 +46,6 @@ services:
       dockerfile: Dockerfile
     container_name: centricore_frontend
     restart: unless-stopped
-    environment:
-      # Next.js rewrites proxy /api/* and /legacy/* to this URL (container-internal)
-      BACKEND_URL: "http://centricore_app:8000"
     depends_on:
       - app
     networks:
