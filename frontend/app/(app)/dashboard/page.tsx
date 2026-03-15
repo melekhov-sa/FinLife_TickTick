@@ -46,16 +46,14 @@ export default function DashboardPage() {
               <Skeleton className="h-40" />
               <Skeleton className="h-36" />
               <Skeleton className="h-36" />
-              <Skeleton className="h-48" />
             </div>
             <div className="space-y-4">
               <Skeleton className="h-72" />
               <Skeleton className="h-48" />
             </div>
-            <div className="space-y-4">
+            <div className="hidden lg:space-y-4">
               <Skeleton className="h-36" />
               <Skeleton className="h-48" />
-              <Skeleton className="h-40" />
             </div>
           </div>
         )}
@@ -81,7 +79,7 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Правая колонка: платежи + события + окончания ────────────── */}
-            <div className="space-y-4">
+            <div className="hidden lg:block space-y-4">
               <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />
               <ExpiringSubsCard subs={data.expiring_subs} />

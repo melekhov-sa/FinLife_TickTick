@@ -1,0 +1,17 @@
+{
+  "name": "FinLife",
+  "short_name": "FinLife",
+  "description": "Personal finance & productivity",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#070b16",
+  "theme_color": "#070b16",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "256x256",
+      "type": "image/x-icon"
+    }
+  ]
+}
