@@ -106,9 +106,9 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
           </span>
           {entry.kind === "planned_op" && entry.meta.amount_formatted && (
             <span className={clsx("text-[10px] font-semibold tabular-nums",
-              entry.meta.op_kind === "INCOME" ? "text-emerald-400/70" : "text-red-400/70"
+              (entry.meta.op_kind as string) === "INCOME" ? "text-emerald-400/70" : "text-red-400/70"
             )}>
-              {entry.meta.op_kind === "INCOME" ? "+" : "−"}{String(entry.meta.amount_formatted)} ₽
+              {(entry.meta.op_kind as string) === "INCOME" ? "+" : "−"}{String(entry.meta.amount_formatted)} ₽
             </span>
           )}
           {entry.kind === "habit" && entry.meta.current_streak ? (
