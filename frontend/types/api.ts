@@ -89,6 +89,38 @@ export interface FeedGroup {
   events: FeedEvent[];
 }
 
+export interface LevelBlock {
+  level: number;
+  total_xp: number;
+  current_level_xp: number;
+  xp_to_next_level: number;
+  percent_progress: number;
+  xp_this_month: number;
+}
+
+export interface EfficiencyBlock {
+  score: number;
+  snapshot_date: string | null;
+}
+
+export interface WeekEvent {
+  event_id: number;
+  occurrence_id: number;
+  title: string;
+  start_date: string;
+  start_time: string | null;
+  category_emoji: string | null;
+  is_today: boolean;
+}
+
+export interface ExpiringSub {
+  member_id: number;
+  contact_name: string;
+  subscription_title: string;
+  paid_until: string;
+  days_left: number;
+}
+
 export interface DashboardData {
   today: TodayBlock;
   upcoming_payments: UpcomingPayment[];
@@ -96,6 +128,10 @@ export interface DashboardData {
   financial_summary: Record<string, FinancialCurrencyBlock>;
   fin_state: FinStateBlock;
   feed: FeedGroup[];
+  level: LevelBlock | null;
+  efficiency: EfficiencyBlock | null;
+  week_events: WeekEvent[];
+  expiring_subs: ExpiringSub[];
 }
 
 // ── /api/v2/projects ──────────────────────────────────────────────────────────
@@ -151,7 +187,44 @@ export interface TaskItem {
   due_date: string | null;
   completed_at: string | null;
   project_id: number | null;
+  category_id: number | null;
+  category_emoji: string | null;
   is_overdue: boolean;
+}
+
+// ── /api/v2/habits ────────────────────────────────────────────────────────────
+
+export interface HabitItem {
+  habit_id: number;
+  title: string;
+  note: string | null;
+  level: number;
+  level_label: string;
+  category_id: number | null;
+  category_emoji: string | null;
+  category_title: string | null;
+  current_streak: number;
+  best_streak: number;
+  done_count_30d: number;
+  reminder_time: string | null;
+}
+
+// ── /api/v2/efficiency ────────────────────────────────────────────────────────
+
+export interface MetricCard {
+  key: string;
+  label: string;
+  description: string;
+  raw_value: number;
+  sub_score: number; // 40 / 70 / 100
+  weight: number;
+  higher_is_better: boolean;
+}
+
+export interface EfficiencyData {
+  score: number;
+  snapshot_date: string;
+  metrics: MetricCard[];
 }
 
 // ── /api/v2/notifications ─────────────────────────────────────────────────────
@@ -170,4 +243,127 @@ export interface NotificationItem {
 
 export interface BadgeResponse {
   unread_count: number;
+}
+
+// ── /api/v2/subscriptions ─────────────────────────────────────────────────────
+
+export interface SubscriptionMember {
+  member_id: number;
+  contact_id: number;
+  contact_name: string;
+  paid_until: string | null;
+  days_left: number | null;
+  payment_per_month: number | null;
+}
+
+export interface SubscriptionItem {
+  id: number;
+  name: string;
+  paid_until_self: string | null;
+  days_left_self: number | null;
+  members: SubscriptionMember[];
+  total_members: number;
+}
+
+// ── /api/v2/events ────────────────────────────────────────────────────────────
+
+export interface EventItem {
+  occurrence_id: number;
+  event_id: number;
+  title: string;
+  description: string | null;
+  start_date: string;
+  start_time: string | null;
+  end_date: string | null;
+  is_all_day: boolean;
+  category_emoji: string | null;
+  category_title: string | null;
+  is_today: boolean;
+  is_past: boolean;
+}
+
+// ── /api/v2/knowledge ─────────────────────────────────────────────────────────
+
+export interface ArticleTag {
+  id: number;
+  name: string;
+}
+
+export interface ArticleListItem {
+  id: number;
+  title: string;
+  type: string;
+  type_label: string;
+  type_emoji: string;
+  status: string;
+  status_label: string;
+  pinned: boolean;
+  updated_at: string;
+  tags: ArticleTag[];
+}
+
+// ── /api/v2/strategy ──────────────────────────────────────────────────────────
+
+export interface StrategyScoreItem {
+  key: string;
+  label: string;
+  score: number;
+  raw_value: number | null;
+  raw_label: string | null;
+}
+
+export interface StrategyHistoryPoint {
+  year: number;
+  month: number;
+  life_score: number;
+  finance_score: number;
+  discipline_score: number;
+  project_score: number;
+  focus_score: number;
+}
+
+export interface StrategyTarget {
+  id: number;
+  title: string;
+  metric_type: string;
+  target_value: number;
+  current_value: number | null;
+  progress_pct: number | null;
+  is_active: boolean;
+}
+
+export interface StrategyData {
+  year: number;
+  month: number;
+  life_score: number;
+  scores: StrategyScoreItem[];
+  history: StrategyHistoryPoint[];
+  targets: StrategyTarget[];
+}
+
+// ── /api/v2/work-categories ───────────────────────────────────────────────────
+
+export interface WorkCategoryItem {
+  category_id: number;
+  title: string;
+  emoji: string | null;
+}
+
+// ── /api/v2/wallets ───────────────────────────────────────────────────────────
+
+export interface WalletItem {
+  wallet_id: number;
+  title: string;
+  currency: string;
+  wallet_type: string;
+  balance: string;
+}
+
+// ── /api/v2/fin-categories ────────────────────────────────────────────────────
+
+export interface FinCategoryItem {
+  category_id: number;
+  title: string;
+  category_type: string; // INCOME | EXPENSE
+  parent_id: number | null;
 }

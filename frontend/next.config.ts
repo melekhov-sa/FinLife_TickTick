@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://127.0.0.1:8000";
+// Server-side only — proxied by Next.js rewrites, never sent to the browser.
+// In production this is set via BACKEND_URL env var (container name DNS).
+const BACKEND = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   /**
    * Proxy API calls and session-sensitive routes to the FastAPI backend.
    * This keeps everything same-origin from the browser's perspective,

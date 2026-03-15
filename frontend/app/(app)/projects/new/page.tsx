@@ -1,0 +1,182 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { AppTopbar } from "@/components/layout/AppTopbar";
+import { clsx } from "clsx";
+import { FolderPlus } from "lucide-react";
+
+const STATUS_OPTIONS = [
+  { value: "planned",   label: "Планируемый", color: "text-blue-400" },
+  { value: "active",    label: "Активный",    color: "text-emerald-400" },
+  { value: "on_hold",   label: "На паузе",    color: "text-amber-400" },
+  { value: "completed", label: "Завершён",    color: "text-white/40" },
+];
+
+export default function NewProjectPage() {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState("planned");
+  const [startDate, setStartDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) { setError("Название проекта не может быть пустым"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/v2/projects", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          status,
+          start_date: startDate || null,
+          due_date: dueDate || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail ?? "Ошибка при создании проекта");
+        return;
+      }
+      const { id } = await res.json();
+      router.push(`/projects/${id}`);
+    } catch {
+      setError("Не удалось подключиться к серверу");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls =
+    "w-full px-3.5 py-2.5 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all";
+  const labelCls = "block text-xs font-semibold text-white/35 uppercase tracking-widest mb-1.5";
+
+  return (
+    <>
+      <AppTopbar title="Новый проект" />
+      <main className="flex-1 overflow-auto p-6 flex items-start justify-center">
+        <div className="w-full max-w-[500px]">
+          {/* Card */}
+          <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-5 border-b border-white/[0.06]">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
+                <FolderPlus size={16} className="text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
+                  Создать проект
+                </h2>
+                <p className="text-xs text-white/30 mt-0.5">Заполните основную информацию</p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {/* Title */}
+              <div>
+                <label className={labelCls}>Название *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Название проекта"
+                  className={inputCls}
+                  autoFocus
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className={labelCls}>Описание</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Краткое описание проекта (необязательно)"
+                  rows={3}
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+
+              {/* Status pills */}
+              <div>
+                <label className={labelCls}>Статус</label>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => setStatus(o.value)}
+                      className={clsx(
+                        "text-xs font-medium px-3 py-1.5 rounded-xl border transition-all",
+                        status === o.value
+                          ? "bg-white/[0.10] border-white/[0.18] text-white/90"
+                          : "bg-white/[0.03] border-white/[0.06] text-white/35 hover:text-white/60 hover:border-white/[0.10]"
+                      )}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Дата начала</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className={labelCls}>Дедлайн</label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3.5 py-2.5">
+                  {error}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                >
+                  {saving ? "Создаём…" : "Создать проект"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="px-4 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/45 hover:text-white/70 hover:border-white/[0.12] transition-all"
+                >
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </>
+  );
+}

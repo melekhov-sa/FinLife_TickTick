@@ -12,6 +12,14 @@ const STATUS_COLORS: Record<string, string> = {
   archived: "bg-white/5 text-white/25",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  active:   "Активный",
+  planned:  "Планируемый",
+  paused:   "На паузе",
+  done:     "Завершён",
+  archived: "Архив",
+};
+
 interface Props {
   project: ProjectSummary;
 }
@@ -22,39 +30,42 @@ export function ProjectCard({ project }: Props) {
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="block bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] rounded-xl p-5 transition-colors group"
+      className="block bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-5 transition-all hover:-translate-y-px group"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="text-sm font-medium text-white/80 group-hover:text-white transition-colors line-clamp-2">
+        <h3 className="text-sm font-semibold text-white/85 group-hover:text-white/95 transition-colors line-clamp-2"
+          style={{ letterSpacing: "-0.01em" }}>
           {project.title}
         </h3>
         <span
           className={clsx(
-            "text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 capitalize",
-            STATUS_COLORS[project.status] ?? "bg-white/10 text-white/40"
+            "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0",
+            STATUS_COLORS[project.status] ?? "bg-white/10 border-white/10 text-white/40"
           )}
         >
-          {project.status}
+          {STATUS_LABELS[project.status] ?? project.status}
         </span>
       </div>
 
       {/* Description */}
       {project.description && (
-        <p className="text-xs text-white/30 line-clamp-2 mb-4">{project.description}</p>
+        <p className="text-xs text-white/35 line-clamp-2 mb-4">{project.description}</p>
       )}
 
       {/* Progress bar */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] text-white/25">
-          <span>{project.done_tasks} / {project.total_tasks} tasks</span>
-          <span>{pct}%</span>
+        <div className="flex justify-between text-[10px] font-medium text-white/30">
+          <span>{project.done_tasks} / {project.total_tasks} задач</span>
+          <span className="tabular-nums">{pct}%</span>
         </div>
-        <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
+        <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
           <div
             className={clsx(
               "h-full rounded-full transition-all",
-              pct === 100 ? "bg-emerald-500" : "bg-indigo-500"
+              pct === 100
+                ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                : "bg-gradient-to-r from-indigo-500 to-indigo-400"
             )}
             style={{ width: `${pct}%` }}
           />
@@ -63,7 +74,7 @@ export function ProjectCard({ project }: Props) {
 
       {/* Due date */}
       {project.due_date && (
-        <p className="text-[10px] text-white/20 mt-3">Due {project.due_date}</p>
+        <p className="text-[10px] text-white/25 mt-3 tabular-nums">Срок: {project.due_date}</p>
       )}
     </Link>
   );

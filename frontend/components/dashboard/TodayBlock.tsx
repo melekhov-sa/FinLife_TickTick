@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { clsx } from "clsx";
+import { CheckCircle2 } from "lucide-react";
 import type { TodayBlock as TodayBlockType } from "@/types/api";
+import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
+import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 
 interface Props {
   today: TodayBlockType;
@@ -23,35 +27,35 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-start gap-2.5 py-2.5 border-b border-white/[0.04] last:border-0",
+        "flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0",
         isDone && "opacity-40"
       )}
     >
       <div
         className={clsx(
-          "w-4 h-4 mt-0.5 rounded-full border shrink-0",
+          "w-[15px] h-[15px] rounded-full border-[1.5px] shrink-0 transition-colors",
           isDone
-            ? "bg-indigo-500/40 border-indigo-500/40"
+            ? "bg-indigo-500/50 border-indigo-500/50"
             : isOverdue
-            ? "border-red-500/60"
-            : "border-white/20"
+            ? "border-red-500/70"
+            : "border-white/25"
         )}
       />
       <div className="flex-1 min-w-0">
         <span
           className={clsx(
-            "text-sm",
-            isDone ? "line-through text-white/30" : "text-white/75"
+            "text-sm leading-snug",
+            isDone ? "line-through text-white/30" : "text-white/80"
           )}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {title}
         </span>
-        {time && <span className="ml-1.5 text-xs text-white/30">{time}</span>}
+        {time && <span className="ml-2 text-xs text-white/30 tabular-nums">{time}</span>}
       </div>
       {isOverdue && !isDone && (
-        <span className="text-[10px] text-red-400/70 bg-red-500/10 px-1.5 py-0.5 rounded shrink-0">
-          overdue
+        <span className="text-[10px] font-medium text-red-400 bg-red-500/[0.12] px-1.5 py-0.5 rounded-md shrink-0">
+          просрочено
         </span>
       )}
     </div>
@@ -61,88 +65,129 @@ function Item({
 export function TodayBlock({ today }: Props) {
   const { overdue, active, done, events, progress } = today;
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+  const isEmpty = overdue.length === 0 && active.length === 0 && events.length === 0 && done.length === 0;
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showOpModal, setShowOpModal] = useState(false);
 
   return (
-    <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-white/60">Today</h2>
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-20 bg-white/[0.08] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all"
-              style={{ width: `${progressPct}%` }}
-            />
+    <>
+      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
+      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+
+      <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
+              Сегодня
+            </h2>
+            {progress.total > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-20 bg-white/[0.07] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progressPct}%`,
+                      background: progressPct === 100
+                        ? "linear-gradient(90deg, #10b981, #34d399)"
+                        : "linear-gradient(90deg, #6366f1, #818cf8)",
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-white/35 tabular-nums">
+                  {progress.done}/{progress.total}
+                </span>
+              </div>
+            )}
           </div>
-          <span className="text-xs text-white/30">
-            {progress.done}/{progress.total}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowTaskModal(true)}
+              className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/[0.12] border border-indigo-500/20 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-500/[0.18] transition-all font-medium"
+            >
+              + Задача
+            </button>
+            <button
+              onClick={() => setShowOpModal(true)}
+              className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/40 hover:text-white/65 hover:bg-white/[0.07] transition-all font-medium"
+            >
+              + Операция
+            </button>
+          </div>
         </div>
+
+        {/* Overdue section */}
+        {overdue.length > 0 && (
+          <div className="mb-2 pl-3 border-l-2 border-red-500/40">
+            <p className="text-[10px] font-semibold text-red-400/70 uppercase tracking-widest mb-1.5">
+              Просрочено · {overdue.length}
+            </p>
+            {overdue.map((item) => (
+              <Item
+                key={`${item.kind}-${item.id}`}
+                title={item.title}
+                emoji={item.category_emoji}
+                isDone={false}
+                isOverdue={true}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Events */}
+        {events.length > 0 && (
+          <div className="mb-2">
+            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-1.5">
+              События
+            </p>
+            {events.map((item) => (
+              <Item
+                key={`${item.kind}-${item.id}`}
+                title={item.title}
+                emoji={item.category_emoji}
+                isDone={false}
+                isOverdue={false}
+                time={item.time ?? undefined}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Active tasks */}
+        {active.map((item) => (
+          <Item
+            key={`${item.kind}-${item.id}`}
+            title={item.title}
+            emoji={item.category_emoji}
+            isDone={false}
+            isOverdue={false}
+            time={item.time ?? undefined}
+          />
+        ))}
+
+        {/* Done tasks */}
+        {done.length > 0 && (
+          <div className="mt-2">
+            {done.map((item) => (
+              <Item
+                key={`${item.kind}-${item.id}`}
+                title={item.title}
+                emoji={item.category_emoji}
+                isDone={true}
+                isOverdue={false}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {isEmpty && (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <CheckCircle2 size={28} className="text-white/15" />
+            <p className="text-sm text-white/25">На сегодня ничего не запланировано</p>
+          </div>
+        )}
       </div>
-
-      {/* Overdue */}
-      {overdue.length > 0 && (
-        <div className="mb-3">
-          <p className="text-[10px] text-red-400/60 uppercase tracking-wider mb-1">Overdue</p>
-          {overdue.map((item) => (
-            <Item
-              key={`${item.kind}-${item.id}`}
-              title={item.title}
-              emoji={item.category_emoji}
-              isDone={false}
-              isOverdue={true}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Events */}
-      {events.length > 0 && (
-        <div className="mb-3">
-          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">Events</p>
-          {events.map((item) => (
-            <Item
-              key={`${item.kind}-${item.id}`}
-              title={item.title}
-              emoji={item.category_emoji}
-              isDone={false}
-              isOverdue={false}
-              time={item.time ?? undefined}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Active */}
-      {active.map((item) => (
-        <Item
-          key={`${item.kind}-${item.id}`}
-          title={item.title}
-          emoji={item.category_emoji}
-          isDone={false}
-          isOverdue={false}
-          time={item.time ?? undefined}
-        />
-      ))}
-
-      {/* Done */}
-      {done.length > 0 && (
-        <div className="mt-2">
-          {done.map((item) => (
-            <Item
-              key={`${item.kind}-${item.id}`}
-              title={item.title}
-              emoji={item.category_emoji}
-              isDone={true}
-              isOverdue={false}
-            />
-          ))}
-        </div>
-      )}
-
-      {overdue.length === 0 && active.length === 0 && events.length === 0 && done.length === 0 && (
-        <p className="text-sm text-white/20 text-center py-4">Nothing planned for today</p>
-      )}
-    </div>
+    </>
   );
 }

@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, FolderOpen } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
 
 const STATUSES = [
-  { value: undefined, label: "Active" },
-  { value: "planned", label: "Planned" },
-  { value: "paused", label: "Paused" },
-  { value: "done", label: "Done" },
-  { value: "archived", label: "Archived" },
+  { value: undefined, label: "Активные" },
+  { value: "planned", label: "Планируемые" },
+  { value: "paused",  label: "На паузе" },
+  { value: "done",    label: "Завершённые" },
+  { value: "archived",label: "Архив" },
 ];
 
 export default function ProjectsPage() {
@@ -21,20 +21,19 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <AppTopbar title="Projects" />
-      <main className="flex-1 p-6">
+      <AppTopbar title="Проекты" />
+      <main className="flex-1 overflow-auto p-6 max-w-[1400px]">
         {/* Controls */}
         <div className="flex items-center justify-between mb-6">
-          {/* Status filter */}
-          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
             {STATUSES.map(({ value, label }) => (
               <button
                 key={label}
                 onClick={() => setStatus(value)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   status === value
-                    ? "bg-white/[0.08] text-white"
-                    : "text-white/35 hover:text-white/60"
+                    ? "bg-white/[0.09] text-white shadow-sm"
+                    : "text-white/35 hover:text-white/65"
                 }`}
               >
                 {label}
@@ -42,20 +41,19 @@ export default function ProjectsPage() {
             ))}
           </div>
 
-          {/* New project — opens SSR form */}
           <Link
-            href="/legacy/projects/create"
-            className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors"
+            href="/projects/new"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"
           >
-            <Plus size={14} />
-            New project
+            <Plus size={13} strokeWidth={2.5} />
+            Новый проект
           </Link>
         </div>
 
         {/* Error */}
         {isError && (
           <p className="text-red-400/70 text-sm text-center py-12">
-            Failed to load projects
+            Не удалось загрузить проекты
           </p>
         )}
 
@@ -63,7 +61,7 @@ export default function ProjectsPage() {
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-44 bg-white/[0.03] rounded-xl animate-pulse" />
+              <div key={i} className="h-44 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
         )}
@@ -79,16 +77,17 @@ export default function ProjectsPage() {
 
         {/* Empty state */}
         {projects && projects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-12 h-12 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-              <ExternalLink size={20} className="text-white/20" />
+          <div className="flex flex-col items-center justify-center py-28 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
+              <FolderOpen size={24} className="text-white/20" />
             </div>
-            <p className="text-sm text-white/30">No projects yet</p>
+            <p className="text-sm font-medium text-white/35">Проектов пока нет</p>
+            <p className="text-xs text-white/25 mt-1 mb-5">Создайте первый проект, чтобы начать работу</p>
             <Link
-              href="/legacy/projects/create"
-              className="mt-4 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              href="/projects/new"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"
             >
-              Create your first project →
+              Создать проект →
             </Link>
           </div>
         )}

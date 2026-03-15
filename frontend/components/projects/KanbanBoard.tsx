@@ -145,17 +145,22 @@ function KanbanColumn({
 
   return (
     <div
-      className="flex flex-col w-72 shrink-0 bg-white/[0.02] rounded-xl border border-white/[0.05]"
-      // Make the whole column a drop target
+      className="flex flex-col w-[280px] shrink-0 bg-white/[0.03] rounded-2xl border border-white/[0.07]"
       id={column.key}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
-        <span className="text-xs font-medium text-white/50">{column.label}</span>
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
+        <span className="text-[10px] font-semibold text-white/45 uppercase tracking-widest">
+          {column.label}
+        </span>
         <span
           className={clsx(
-            "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-            isDone ? "bg-emerald-500/15 text-emerald-400" : "bg-white/[0.06] text-white/30"
+            "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+            isDone
+              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+              : tasks.length > 0
+              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20"
+              : "bg-white/[0.06] text-white/25 border border-white/[0.08]"
           )}
         >
           {tasks.length}
@@ -172,8 +177,8 @@ function KanbanColumn({
             <KanbanTaskCard key={task.task_id} task={task} allTags={allTags} />
           ))}
           {tasks.length === 0 && (
-            <div className="h-16 rounded-lg border border-dashed border-white/[0.06] flex items-center justify-center">
-              <span className="text-xs text-white/15">Drop here</span>
+            <div className="h-16 rounded-xl border border-dashed border-white/[0.06] flex items-center justify-center">
+              <span className="text-xs text-white/15">Перетащить сюда</span>
             </div>
           )}
         </div>

@@ -40,6 +40,21 @@ services:
      - default    
 
   
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: centricore_frontend
+    restart: unless-stopped
+    environment:
+      # Next.js rewrites proxy /api/* and /legacy/* to this URL (container-internal)
+      BACKEND_URL: "http://centricore_app:8000"
+    depends_on:
+      - app
+    networks:
+      - shared
+      - default
+
   caddy:
     image: caddy:2
     container_name: centricore_caddy
@@ -52,10 +67,10 @@ services:
       - centricore_caddy_data:/data
       - centricore_caddy_config:/config
     depends_on:
-      - app
+      - frontend
     networks:
       - shared
-      - default 
+      - default
 
 volumes:
   centricore_pgdata:

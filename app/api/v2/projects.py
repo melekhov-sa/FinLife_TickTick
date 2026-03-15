@@ -5,13 +5,13 @@ GET /api/v2/projects/{id}   — project board detail
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel, field_serializer
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.application.projects import ProjectReadService
+from app.application.projects import ProjectReadService, CreateProjectUseCase, ProjectValidationError
 
 router = APIRouter()
 
@@ -143,3 +143,37 @@ def get_project(
         groups=groups,
         tags=tags,
     )
+
+
+# ── Create project ─────────────────────────────────────────────────────────────
+
+class CreateProjectRequest(BaseModel):
+    title: str
+    description: str | None = None
+    status: str = "planned"
+    start_date: date | None = None
+    due_date: date | None = None
+
+
+class CreateProjectResponse(BaseModel):
+    id: int
+
+
+@router.post("/projects", response_model=CreateProjectResponse, status_code=201)
+def create_project(
+    body: CreateProjectRequest,
+    user_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        project_id = CreateProjectUseCase(db).execute(
+            account_id=user_id,
+            title=body.title,
+            description=body.description,
+            status=body.status,
+            start_date=body.start_date,
+            due_date=body.due_date,
+        )
+    except ProjectValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return CreateProjectResponse(id=project_id)
