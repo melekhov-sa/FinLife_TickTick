@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   LogOut,
+  PieChart,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import { api } from "@/lib/api";
 const PRIMARY_NAV = [
   { href: "/dashboard",   label: "Дашборд",       icon: LayoutDashboard },
   { href: "/plan",        label: "План",           icon: ClipboardList },
-  { href: "/legacy/budget", label: "Бюджет",       icon: null },
+  { href: "/legacy/budget", label: "Бюджет",       icon: PieChart },
   { href: "/strategy",    label: "Стратегия",      icon: Target },
   { href: "/efficiency",  label: "Эффективность",  icon: BarChart3 },
   { href: "/notifications", label: "Уведомления",  icon: Bell, badge: true },
