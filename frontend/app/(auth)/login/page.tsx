@@ -18,20 +18,20 @@ export default function LoginPage() {
       formData.append("email", email);
       formData.append("password", password);
 
-      const res = await fetch("/login", {
+      const res = await fetch("/api/v2/auth/login", {
         method: "POST",
         body: formData,
-        redirect: "manual",
         credentials: "include",
       });
 
-      if (res.status === 200 || res.status === 0 || res.type === "opaqueredirect") {
+      if (res.ok) {
         window.location.href = "/";
       } else {
-        setError("Invalid email or password");
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Неверный email или пароль");
       }
     } catch {
-      setError("Connection error");
+      setError("Ошибка соединения");
     } finally {
       setLoading(false);
     }
