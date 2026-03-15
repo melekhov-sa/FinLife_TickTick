@@ -29,11 +29,20 @@ def get_profile(request: Request, db: Session = Depends(get_db)):
             result.append(d)
         return result
 
+    xp_raw = data["xp"]
+    xp = {
+        "level": xp_raw["level"],
+        "xp_total": xp_raw["total_xp"],
+        "xp_in_level": xp_raw["current_level_xp"],
+        "xp_needed": xp_raw["xp_to_next_level"],
+        "progress_pct": xp_raw["percent_progress"],
+    }
+
     return {
         "email": data["email"],
         "registration_date": data["registration_date"],
         "days_in_system": data["days_in_system"],
-        "xp": data["xp"],
+        "xp": xp,
         "level_title": data["level_title"],
         "recent_xp_events": _ser_list(data["recent_xp_events"]),
         "daily_xp": data["daily_xp"],
