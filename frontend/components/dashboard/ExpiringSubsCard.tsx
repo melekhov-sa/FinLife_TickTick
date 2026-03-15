@@ -14,12 +14,12 @@ function formatDate(iso: string) {
 export function ExpiringSubsCard({ subs }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Скоро заканчивается
       </p>
 
       {subs.length === 0 ? (
-        <p className="text-xs text-white/50 py-2">Нет истекающих подписок</p>
+        <p className="text-xs py-2" style={{ color: "var(--t-faint)" }}>Нет истекающих подписок</p>
       ) : (
         <div className="space-y-0.5">
           {subs.map((s) => (
@@ -28,12 +28,12 @@ export function ExpiringSubsCard({ subs }: Props) {
               className="flex items-start justify-between gap-3 py-2 border-b border-white/[0.04] last:border-0"
             >
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white/82 truncate leading-snug">
+                <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                   {s.subscription_title}
                   {" "}
-                  <span className="text-[11px] text-white/60 font-normal">до {formatDate(s.paid_until)}</span>
+                  <span className="text-[11px] font-normal" style={{ color: "var(--t-muted)" }}>до {formatDate(s.paid_until)}</span>
                 </p>
-                <p className="text-[11px] text-white/60 mt-0.5 truncate">{s.contact_name}</p>
+                <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
               </div>
               <span
                 className={clsx(
@@ -42,8 +42,9 @@ export function ExpiringSubsCard({ subs }: Props) {
                     ? "bg-red-500/12 border-red-500/20 text-red-400"
                     : s.days_left <= 14
                     ? "bg-amber-500/12 border-amber-500/20 text-amber-400"
-                    : "bg-white/[0.06] border-white/[0.08] text-white/65"
+                    : "bg-white/[0.06] border-white/[0.08]"
                 )}
+                style={s.days_left > 14 ? { color: "var(--t-secondary)" } : undefined}
               >
                 {s.days_left === 0 ? "сегодня" : `${s.days_left} дн.`}
               </span>
@@ -53,7 +54,7 @@ export function ExpiringSubsCard({ subs }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/subscriptions" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
+        <a href="/subscriptions" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Все подписки →
         </a>
       </div>

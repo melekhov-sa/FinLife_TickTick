@@ -17,10 +17,17 @@ function kindPill(kind: string, kindLabel: string, amountFormatted: string) {
     isExpense  ? "bg-red-500/12   border-red-500/25   text-red-400"
     : isIncome  ? "bg-emerald-500/12 border-emerald-500/25 text-emerald-400"
     : isTransfer ? "bg-indigo-500/12  border-indigo-500/25  text-indigo-400"
-    :              "bg-white/[0.07]  border-white/[0.10]  text-white/50"
+    :              "bg-white/[0.07]  border-white/[0.10]"
   );
 
-  return <span className={cls}>{kindLabel} {amountFormatted}</span>;
+  return (
+    <span
+      className={cls}
+      style={!isExpense && !isIncome && !isTransfer ? { color: "var(--t-faint)" } : undefined}
+    >
+      {kindLabel} {amountFormatted}
+    </span>
+  );
 }
 
 function formatDate(iso: string) {
@@ -30,12 +37,12 @@ function formatDate(iso: string) {
 export function UpcomingPayments({ payments }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Ближайшие платежи
       </p>
 
       {payments.length === 0 ? (
-        <p className="text-xs text-white/50 py-2">Нет платежей на ближайшие 30 дней</p>
+        <p className="text-xs py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
       ) : (
         <div className="space-y-0.5">
           {payments.map((p) => (
@@ -48,8 +55,8 @@ export function UpcomingPayments({ payments }: Props) {
 
               {/* Text */}
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-white/80 truncate leading-snug">{p.title}</p>
-                <p className="text-[11px] text-white/58 mt-0.5 tabular-nums">
+                <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
+                <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: "var(--t-muted)" }}>
                   {p.days_until < 0
                     ? `просрочено ${Math.abs(p.days_until)} дн.`
                     : p.days_until === 0
@@ -68,7 +75,7 @@ export function UpcomingPayments({ payments }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/legacy/planned-operations" className="text-[11px] font-medium text-white/58 hover:text-indigo-400 transition-colors">
+        <a href="/legacy/planned-operations" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Все плановые →
         </a>
       </div>

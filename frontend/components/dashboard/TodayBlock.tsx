@@ -45,13 +45,14 @@ function Item({
         <span
           className={clsx(
             "text-sm leading-snug",
-            isDone ? "line-through text-white/60" : "text-white/80"
+            isDone ? "line-through" : ""
           )}
+          style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {title}
         </span>
-        {time && <span className="ml-2 text-xs text-white/60 tabular-nums">{time}</span>}
+        {time && <span className="ml-2 text-xs tabular-nums" style={{ color: "var(--t-muted)" }}>{time}</span>}
       </div>
       {isOverdue && !isDone && (
         <span className="text-[10px] font-medium text-red-400 bg-red-500/[0.12] px-1.5 py-0.5 rounded-md shrink-0">
@@ -78,7 +79,7 @@ export function TodayBlock({ today }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
+            <h2 className="text-sm font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
               Сегодня
             </h2>
             {progress.total > 0 && (
@@ -94,7 +95,7 @@ export function TodayBlock({ today }: Props) {
                     }}
                   />
                 </div>
-                <span className="text-xs text-white/65 tabular-nums">
+                <span className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
                   {progress.done}/{progress.total}
                 </span>
               </div>
@@ -109,7 +110,8 @@ export function TodayBlock({ today }: Props) {
             </button>
             <button
               onClick={() => setShowOpModal(true)}
-              className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.07] transition-all font-medium"
+              className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all font-medium"
+              style={{ color: "var(--t-secondary)" }}
             >
               + Операция
             </button>
@@ -137,7 +139,7 @@ export function TodayBlock({ today }: Props) {
         {/* Events */}
         {events.length > 0 && (
           <div className="mb-2">
-            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-muted)" }}>
               События
             </p>
             {events.map((item) => (
@@ -184,7 +186,7 @@ export function TodayBlock({ today }: Props) {
         {isEmpty && (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
             <CheckCircle2 size={28} className="text-white/15" />
-            <p className="text-sm text-white/55">На сегодня ничего не запланировано</p>
+            <p className="text-sm" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
           </div>
         )}
       </div>

@@ -35,7 +35,7 @@ export function EfficiencyCard({ efficiency }: Props) {
 
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
-      <h2 className="text-sm font-semibold text-white/85 mb-4" style={{ letterSpacing: "-0.01em" }}>
+      <h2 className="text-sm font-semibold mb-4" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Эффективность
       </h2>
 
@@ -47,7 +47,7 @@ export function EfficiencyCard({ efficiency }: Props) {
           >
             {score}
           </span>
-          <span className="text-sm text-white/60 pb-1 font-medium">/ 100</span>
+          <span className="text-sm pb-1 font-medium" style={{ color: "var(--t-muted)" }}>/ 100</span>
         </div>
         <span className={clsx("text-xs font-semibold pb-1", tier.color)}>
           {tier.label}
@@ -73,7 +73,7 @@ export function EfficiencyCard({ efficiency }: Props) {
       </div>
 
       {efficiency.snapshot_date && (
-        <p className="text-[10px] text-white/50 mt-2.5">
+        <p className="text-[10px] mt-2.5" style={{ color: "var(--t-faint)" }}>
           Индекс за 7 дней · {efficiency.snapshot_date}
         </p>
       )}

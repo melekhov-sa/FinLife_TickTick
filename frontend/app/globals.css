@@ -125,6 +125,13 @@
   --app-topbar-bg:     #ffffff;
   --app-border:        rgba(0,0,0,0.08);
   --app-border-subtle: rgba(0,0,0,0.05);
+
+  /* Text hierarchy — light mode */
+  --t-primary:   rgba(0,0,0,0.88);
+  --t-secondary: rgba(0,0,0,0.65);
+  --t-muted:     rgba(0,0,0,0.50);
+  --t-faint:     rgba(0,0,0,0.38);
+  --t-label:     rgba(0,0,0,0.42);
 }
 
 .dark {
@@ -135,6 +142,13 @@
   --app-topbar-bg:     #0c1122;
   --app-border:        rgba(255,255,255,0.07);
   --app-border-subtle: rgba(255,255,255,0.04);
+
+  /* Text hierarchy — dark mode (readable on #070b16) */
+  --t-primary:   rgba(255,255,255,0.92);
+  --t-secondary: rgba(255,255,255,0.78);
+  --t-muted:     rgba(255,255,255,0.62);
+  --t-faint:     rgba(255,255,255,0.50);
+  --t-label:     rgba(255,255,255,0.55);
 }
 
 /* ── Light mode: flat selectors (no nesting) — white-opacity → black-opacity */
