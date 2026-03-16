@@ -19,7 +19,7 @@ import { useTheme } from "next-themes";
 const PRIMARY_NAV = [
   { href: "/dashboard",   label: "Дашборд",       icon: LayoutDashboard },
   { href: "/plan",        label: "План",           icon: ClipboardList },
-  { href: "/legacy/budget", label: "Бюджет",       icon: PieChart },
+  { href: "/budget",        label: "Бюджет",        icon: PieChart },
   { href: "/strategy",    label: "Стратегия",      icon: Target },
   { href: "/efficiency",  label: "Эффективность",  icon: BarChart3 },
 ];
@@ -32,6 +32,7 @@ const SECTIONS = [
       { href: "/money",                     label: "Деньги" },
       { href: "/wallets",                   label: "Кошельки" },
       { href: "/legacy/planned-ops",        label: "Плановые операции" },
+      { href: "/legacy/budget",             label: "Бюджет (расшир.)" },
       { href: "/subscriptions",             label: "Подписки" },
     ],
   },
