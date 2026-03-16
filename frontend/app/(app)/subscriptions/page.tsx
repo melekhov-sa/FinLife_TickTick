@@ -1,18 +1,13 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
-import { CreditCard, ArrowRight } from "lucide-react";
+import { CreditCard, MoreHorizontal } from "lucide-react";
 import { clsx } from "clsx";
 
-function daysColor(days: number | null): string {
-  if (days === null) return "text-white/60";
-  if (days < 0) return "text-red-400";
-  if (days <= 7) return "text-red-400";
-  if (days <= 30) return "text-amber-400";
-  return "text-emerald-400";
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function daysLabel(days: number | null): string {
   if (days === null) return "—";
@@ -21,37 +16,77 @@ function daysLabel(days: number | null): string {
   return `${days}д`;
 }
 
-function statusBadge(days: number | null) {
-  if (days === null) return null;
-  if (days < 0) return "bg-red-500/10 border border-red-500/20 text-red-400";
-  if (days <= 7) return "bg-red-500/10 border border-red-500/20 text-red-400";
-  if (days <= 30) return "bg-amber-500/10 border border-amber-500/20 text-amber-400";
-  return "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400";
+function daysBadgeCls(days: number | null): string {
+  if (days === null) return "bg-white/[0.06] border-white/10 text-white/50";
+  if (days < 0)    return "bg-red-500/10 border-red-500/20 text-red-400";
+  if (days <= 7)   return "bg-red-500/10 border-red-500/20 text-red-400";
+  if (days <= 30)  return "bg-amber-500/10 border-amber-500/20 text-amber-400";
+  return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
 }
 
+function daysTextCls(days: number | null): string {
+  if (days === null) return "";
+  if (days < 0)   return "text-red-400";
+  if (days <= 7)  return "text-red-400";
+  if (days <= 30) return "text-amber-400";
+  return "text-emerald-400";
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+/** Earliest days_left across self + all members (nulls last). */
+function getMinDaysLeft(sub: SubscriptionItem): number | null {
+  const all = [sub.days_left_self, ...sub.members.map((m) => m.days_left)]
+    .filter((d): d is number => d !== null);
+  if (all.length === 0) return null;
+  return Math.min(...all);
+}
+
+function getMonthlyTotal(sub: SubscriptionItem): number {
+  return sub.members.reduce((s, m) => s + (m.payment_per_month ?? 0), 0);
+}
+
+// ── MemberRow ─────────────────────────────────────────────────────────────────
+
 function MemberRow({ member }: { member: SubscriptionMember }) {
-  const badge = statusBadge(member.days_left);
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-7 h-7 rounded-full bg-indigo-500/15 flex items-center justify-center text-xs font-semibold text-indigo-400 shrink-0">
-          {member.contact_name[0]?.toUpperCase()}
-        </div>
-        <span className="text-sm text-white/72 truncate font-medium">{member.contact_name}</span>
-        {member.payment_per_month && (
-          <span className="text-xs text-white/60 shrink-0 tabular-nums">
-            {member.payment_per_month.toLocaleString("ru-RU")} ₽/мес
-          </span>
+    <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.06] last:border-0 rounded-lg px-2 -mx-2 hover:bg-white/[0.03] transition-colors">
+      {/* Avatar */}
+      <div className="w-8 h-8 rounded-full bg-indigo-500/15 flex items-center justify-center text-[11px] font-bold text-indigo-300/80 shrink-0">
+        {getInitials(member.contact_name)}
+      </div>
+
+      {/* Name + cost */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>
+          {member.contact_name}
+        </p>
+        {member.payment_per_month ? (
+          <p className="text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
+            {member.payment_per_month.toLocaleString("ru-RU")} ₽&nbsp;/&nbsp;мес
+          </p>
+        ) : (
+          <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>нет суммы</p>
         )}
       </div>
-      <div className="flex items-center gap-2 shrink-0 ml-3">
+
+      {/* Date + badge */}
+      <div className="flex flex-col items-end gap-1 shrink-0">
         {member.paid_until && (
-          <span className="text-[11px] text-white/65">
-            до {new Date(member.paid_until).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+          <span className="text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
+            до {formatDate(member.paid_until)}
           </span>
         )}
-        {badge && (
-          <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", badge)}>
+        {member.days_left !== null && (
+          <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border", daysBadgeCls(member.days_left))}>
             {daysLabel(member.days_left)}
           </span>
         )}
@@ -60,137 +95,339 @@ function MemberRow({ member }: { member: SubscriptionMember }) {
   );
 }
 
-function SubCard({ sub }: { sub: SubscriptionItem }) {
-  const selfBadge = statusBadge(sub.days_left_self);
-  return (
-    <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/15 flex items-center justify-center">
-            <CreditCard size={15} className="text-indigo-400" />
-          </div>
-          <div>
-            <span className="text-sm font-semibold text-white/88" style={{ letterSpacing: "-0.01em" }}>
-              {sub.name}
-            </span>
-            <span className="text-[11px] text-white/60 ml-2">{sub.total_members} уч.</span>
-          </div>
-        </div>
-        {sub.paid_until_self && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-white/65">
-              до {new Date(sub.paid_until_self).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-            </span>
-            {selfBadge && (
-              <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", selfBadge)}>
-                {daysLabel(sub.days_left_self)}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+// ── Quick Actions Menu ────────────────────────────────────────────────────────
 
-      {/* Members */}
-      {sub.members.length > 0 ? (
-        <div className="px-5 py-1">
-          {sub.members.map((m) => (
-            <MemberRow key={m.member_id} member={m} />
+function QuickMenu({ subId }: { subId: number }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOut(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOut);
+    return () => document.removeEventListener("mousedown", onClickOut);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative" onClick={(e) => e.preventDefault()}>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
+        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/[0.08]"
+        style={{ color: "var(--t-muted)" }}
+        title="Действия"
+      >
+        <MoreHorizontal size={15} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[160px]">
+          {[
+            { label: "Редактировать", href: `/legacy/subscriptions/${subId}/edit` },
+            { label: "Добавить участника", href: `/legacy/subscriptions/${subId}/members/add` },
+            { label: "Удалить", href: `/legacy/subscriptions/${subId}/delete`, danger: true },
+          ].map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={(e) => e.stopPropagation()}
+              className={clsx(
+                "block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05]",
+                item.danger ? "text-red-400/80 hover:text-red-400" : "hover:text-white/90"
+              )}
+              style={{ color: item.danger ? undefined : "var(--t-secondary)" }}
+            >
+              {item.label}
+            </a>
           ))}
         </div>
-      ) : (
-        <div className="px-5 py-3 text-xs text-white/55">Нет участников</div>
       )}
     </div>
   );
 }
 
+// ── SubCard ───────────────────────────────────────────────────────────────────
+
+function SubCard({ sub }: { sub: SubscriptionItem }) {
+  const minDays = getMinDaysLeft(sub);
+  const monthlyTotal = getMonthlyTotal(sub);
+
+  return (
+    <div className="relative group rounded-[14px] border border-white/[0.07] overflow-hidden transition-colors hover:bg-white/[0.03] hover:border-white/[0.10] bg-white/[0.03]">
+      <a href={`/legacy/subscriptions/${sub.id}`} className="block">
+        {/* Card header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Icon */}
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
+              <CreditCard size={16} className="text-indigo-400/80" />
+            </div>
+            {/* Name + meta */}
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold leading-snug truncate" style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}>
+                {sub.name}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+                  {sub.total_members} {sub.total_members === 1 ? "участник" : "участников"}
+                </span>
+                {monthlyTotal > 0 && (
+                  <span className="text-[12px] font-semibold tabular-nums money-expense">
+                    {monthlyTotal.toLocaleString("ru-RU")} ₽&nbsp;/&nbsp;мес
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: expiry + menu */}
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            {sub.paid_until_self && (
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
+                  до {formatDate(sub.paid_until_self)}
+                </span>
+                {minDays !== null && (
+                  <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border", daysBadgeCls(minDays))}>
+                    {daysLabel(minDays)}
+                  </span>
+                )}
+              </div>
+            )}
+            {!sub.paid_until_self && minDays !== null && (
+              <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border", daysBadgeCls(minDays))}>
+                {daysLabel(minDays)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Members */}
+        {sub.members.length > 0 ? (
+          <div className="px-5 py-1">
+            {sub.members.map((m) => (
+              <MemberRow key={m.member_id} member={m} />
+            ))}
+          </div>
+        ) : (
+          <div className="px-5 py-4 flex items-center justify-between">
+            <span className="text-[13px]" style={{ color: "var(--t-faint)" }}>Нет участников</span>
+            <span className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors">
+              + Добавить участника
+            </span>
+          </div>
+        )}
+      </a>
+
+      {/* Quick menu — overlaid so it doesn't trigger card navigation */}
+      <div className="absolute top-3.5 right-3.5 z-10">
+        <QuickMenu subId={sub.id} />
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+type FilterKind = "all" | "active" | "overdue" | "expiring";
+type SortKind   = "expiry" | "cost" | "name";
+
+const FILTERS: { value: FilterKind; label: string }[] = [
+  { value: "all",      label: "Все" },
+  { value: "active",   label: "Активные" },
+  { value: "overdue",  label: "Просроченные" },
+  { value: "expiring", label: "Скоро истекают" },
+];
+
+const SORTS: { value: SortKind; label: string }[] = [
+  { value: "expiry", label: "По дате окончания" },
+  { value: "cost",   label: "По стоимости" },
+  { value: "name",   label: "По названию" },
+];
+
+function applyFilter(subs: SubscriptionItem[], filter: FilterKind): SubscriptionItem[] {
+  if (filter === "all") return subs;
+  return subs.filter((sub) => {
+    const min = getMinDaysLeft(sub);
+    if (filter === "active")   return min === null || min >= 0;
+    if (filter === "overdue")  return min !== null && min < 0;
+    if (filter === "expiring") return min !== null && min >= 0 && min <= 30;
+    return true;
+  });
+}
+
+function applySort(subs: SubscriptionItem[], sort: SortKind): SubscriptionItem[] {
+  return [...subs].sort((a, b) => {
+    if (sort === "name")   return a.name.localeCompare(b.name, "ru");
+    if (sort === "cost")   return getMonthlyTotal(b) - getMonthlyTotal(a);
+    if (sort === "expiry") {
+      const da = getMinDaysLeft(a);
+      const db = getMinDaysLeft(b);
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    }
+    return 0;
+  });
+}
+
 export default function SubscriptionsPage() {
   const { data, isLoading, isError } = useSubscriptions();
+  const [filter, setFilter] = useState<FilterKind>("all");
+  const [sort, setSort]     = useState<SortKind>("expiry");
 
-  const dateSubtitle = new Date().toLocaleDateString("ru-RU", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
-  const expiringCount = data?.reduce((n, s) => {
-    const soon = s.members.filter(
-      (m) => m.days_left !== null && m.days_left >= 0 && m.days_left <= 14
-    ).length;
-    return n + soon;
+  const monthlyExpense = data?.reduce((sum, sub) => sum + getMonthlyTotal(sub), 0) ?? 0;
+  const expiringCount  = data?.reduce((n, sub) => {
+    const min = getMinDaysLeft(sub);
+    return n + (min !== null && min >= 0 && min <= 14 ? 1 : 0);
   }, 0) ?? 0;
+
+  const filtered = data ? applySort(applyFilter(data, filter), sort) : [];
 
   return (
     <>
-      <AppTopbar title="Подписки" subtitle={dateSubtitle} />
+      <AppTopbar title="Подписки" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[760px]">
+
+          {/* ── Header actions ──────────────────────────────────────── */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+              Управление подписками
+            </h2>
+            <a
+              href="/legacy/subscriptions/new"
+              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
+            >
+              <span className="text-[16px] leading-none">+</span>
+              Подписка
+            </a>
+          </div>
+
           {isLoading && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-32 bg-white/[0.03] rounded-2xl animate-pulse" />
+                <div key={i} className="h-32 bg-white/[0.03] rounded-[14px] animate-pulse" />
               ))}
             </div>
           )}
 
           {isError && (
-            <div className="text-white/68 text-sm text-center mt-12">
+            <div className="text-red-400/70 text-sm text-center mt-12">
               Не удалось загрузить подписки
             </div>
           )}
 
           {data && (
             <div className="space-y-5">
-              {/* Controls */}
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
-                  Управление подписками
-                </p>
-                <a
-                  href="/legacy/subscriptions"
-                  className="flex items-center gap-1 text-xs text-white/65 hover:text-white/60 transition-colors"
-                >
-                  Все подписки <ArrowRight size={12} />
-                </a>
-              </div>
-
-              {/* KPI */}
+              {/* ── KPI ───────────────────────────────────────────── */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { value: data.length,                                        label: "Подписок",       color: "text-white/88" },
-                  { value: data.reduce((s, x) => s + x.total_members, 0),     label: "Участников",     color: "text-white/88" },
-                  { value: expiringCount, label: "Истекают ≤14д", color: expiringCount > 0 ? "text-amber-400" : "text-white/88" },
+                  {
+                    value: data.length,
+                    label: "Подписок",
+                    color: "var(--t-primary)",
+                    border: "border-white/[0.07]",
+                    bg: "bg-white/[0.04]",
+                  },
+                  {
+                    value: monthlyExpense > 0
+                      ? monthlyExpense.toLocaleString("ru-RU") + " ₽"
+                      : "—",
+                    label: "Расход в месяц",
+                    color: "#ff6b6b",
+                    border: "border-red-500/20",
+                    bg: "bg-red-500/[0.04]",
+                  },
+                  {
+                    value: expiringCount,
+                    label: "Истекают ≤14д",
+                    color: expiringCount > 0 ? "#fbbf24" : "var(--t-primary)",
+                    border: expiringCount > 0 ? "border-amber-500/20" : "border-white/[0.07]",
+                    bg: expiringCount > 0 ? "bg-amber-500/[0.04]" : "bg-white/[0.04]",
+                  },
                 ].map((kpi) => (
-                  <div key={kpi.label} className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4 text-center">
-                    <div className={clsx("text-3xl font-bold tabular-nums", kpi.color)}
-                      style={{ letterSpacing: "-0.04em" }}>
+                  <div
+                    key={kpi.label}
+                    className={clsx("rounded-[14px] border p-4 text-center min-h-[72px] flex flex-col items-center justify-center gap-1", kpi.border, kpi.bg)}
+                  >
+                    <p
+                      className="text-[24px] font-bold tabular-nums leading-none"
+                      style={{ color: kpi.color, letterSpacing: "-0.03em" }}
+                    >
                       {kpi.value}
-                    </div>
-                    <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-1.5">
+                    </p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
                       {kpi.label}
-                    </div>
+                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* List */}
-              {data.length === 0 ? (
+              {/* ── Filters + Sort ────────────────────────────────── */}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Filter pills */}
+                <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
+                  {FILTERS.map((f) => (
+                    <button
+                      key={f.value}
+                      onClick={() => setFilter(f.value)}
+                      className={clsx(
+                        "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
+                        filter === f.value
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "hover:bg-white/[0.05]"
+                      )}
+                      style={{ color: filter === f.value ? undefined : "var(--t-secondary)" }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sort select */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--t-faint)" }}>
+                    Сортировка
+                  </span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as SortKind)}
+                    className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[13px] font-medium outline-none cursor-pointer hover:bg-white/[0.07] transition-colors"
+                    style={{ color: "var(--t-secondary)" }}
+                  >
+                    {SORTS.map((s) => (
+                      <option key={s.value} value={s.value} className="bg-[#1a2233]">
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* ── Subscription list ─────────────────────────────── */}
+              {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                    <CreditCard size={20} className="text-white/55" />
+                    <CreditCard size={20} className="text-white/35" />
                   </div>
-                  <p className="text-sm text-white/60 font-medium">Нет активных подписок</p>
-                  <a
-                    href="/legacy/subscriptions"
-                    className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
-                  >
-                    + Добавить подписку →
-                  </a>
+                  <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
+                    {filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
+                  </p>
+                  {filter === "all" && (
+                    <a
+                      href="/legacy/subscriptions/new"
+                      className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
+                    >
+                      + Добавить подписку
+                    </a>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {data.map((s) => (
+                  {filtered.map((s) => (
                     <SubCard key={s.id} sub={s} />
                   ))}
                 </div>
