@@ -14,12 +14,12 @@ function formatDate(iso: string) {
 export function ExpiringSubsCard({ subs }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Скоро заканчивается
       </p>
 
       {subs.length === 0 ? (
-        <p className="text-xs py-2" style={{ color: "var(--t-faint)" }}>Нет истекающих подписок</p>
+        <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет истекающих подписок</p>
       ) : (
         <div className="space-y-0.5">
           {subs.map((s) => (
@@ -31,9 +31,9 @@ export function ExpiringSubsCard({ subs }: Props) {
                 <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                   {s.subscription_title}
                   {" "}
-                  <span className="text-[11px] font-normal" style={{ color: "var(--t-muted)" }}>до {formatDate(s.paid_until)}</span>
+                  <span className="text-xs font-normal" style={{ color: "var(--t-muted)" }}>до {formatDate(s.paid_until)}</span>
                 </p>
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
               </div>
               <span
                 className={clsx(
@@ -54,7 +54,7 @@ export function ExpiringSubsCard({ subs }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/subscriptions" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/subscriptions" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Все подписки →
         </a>
       </div>

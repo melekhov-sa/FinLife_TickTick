@@ -73,7 +73,7 @@ export function EfficiencyCard({ efficiency }: Props) {
       </div>
 
       {efficiency.snapshot_date && (
-        <p className="text-[10px] mt-2.5" style={{ color: "var(--t-faint)" }}>
+        <p className="text-[11px] mt-2.5" style={{ color: "var(--t-faint)" }}>
           Индекс за 7 дней · {efficiency.snapshot_date}
         </p>
       )}

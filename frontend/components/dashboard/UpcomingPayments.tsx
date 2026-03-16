@@ -37,12 +37,12 @@ function formatDate(iso: string) {
 export function UpcomingPayments({ payments }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Ближайшие платежи
       </p>
 
       {payments.length === 0 ? (
-        <p className="text-xs py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
+        <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
       ) : (
         <div className="space-y-0.5">
           {payments.map((p) => (
@@ -56,7 +56,7 @@ export function UpcomingPayments({ payments }: Props) {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
-                <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: "var(--t-muted)" }}>
+                <p className="text-xs mt-0.5 tabular-nums" style={{ color: "var(--t-muted)" }}>
                   {p.days_until < 0
                     ? `просрочено ${Math.abs(p.days_until)} дн.`
                     : p.days_until === 0
@@ -75,7 +75,7 @@ export function UpcomingPayments({ payments }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/legacy/planned-operations" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/legacy/planned-operations" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Все плановые →
         </a>
       </div>

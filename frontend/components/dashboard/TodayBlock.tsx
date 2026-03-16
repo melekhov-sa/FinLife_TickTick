@@ -52,7 +52,7 @@ function Item({
           {emoji && <span className="mr-1">{emoji}</span>}
           {title}
         </span>
-        {time && <span className="ml-2 text-xs tabular-nums" style={{ color: "var(--t-muted)" }}>{time}</span>}
+        {time && <span className="ml-2 text-[13px] tabular-nums" style={{ color: "var(--t-muted)" }}>{time}</span>}
       </div>
       {isOverdue && !isDone && (
         <span className="text-[10px] font-medium text-red-400 bg-red-500/[0.12] px-1.5 py-0.5 rounded-md shrink-0">
@@ -95,7 +95,7 @@ export function TodayBlock({ today }: Props) {
                     }}
                   />
                 </div>
-                <span className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                <span className="text-[13px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
                   {progress.done}/{progress.total}
                 </span>
               </div>
@@ -104,13 +104,13 @@ export function TodayBlock({ today }: Props) {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowTaskModal(true)}
-              className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/[0.12] border border-indigo-500/20 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-500/[0.18] transition-all font-medium"
+              className="text-[13px] px-2.5 py-1 rounded-lg bg-indigo-500/[0.12] border border-indigo-500/20 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-500/[0.18] transition-all font-medium"
             >
               + Задача
             </button>
             <button
               onClick={() => setShowOpModal(true)}
-              className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all font-medium"
+              className="text-[13px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all font-medium"
               style={{ color: "var(--t-secondary)" }}
             >
               + Операция
@@ -121,7 +121,7 @@ export function TodayBlock({ today }: Props) {
         {/* Overdue section */}
         {overdue.length > 0 && (
           <div className="mb-2 pl-3 border-l-2 border-red-500/40">
-            <p className="text-[10px] font-semibold text-red-400/70 uppercase tracking-widest mb-1.5">
+            <p className="text-[11px] font-semibold text-red-400/70 uppercase tracking-widest mb-1.5">
               Просрочено · {overdue.length}
             </p>
             {overdue.map((item) => (
@@ -139,7 +139,7 @@ export function TodayBlock({ today }: Props) {
         {/* Events */}
         {events.length > 0 && (
           <div className="mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-muted)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-muted)" }}>
               События
             </p>
             {events.map((item) => (

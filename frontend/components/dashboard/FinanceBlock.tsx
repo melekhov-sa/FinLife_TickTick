@@ -27,7 +27,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 space-y-3">
-      <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-label)" }}>
+      <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--t-label)" }}>
         Финансовое состояние
       </h2>
 
@@ -35,8 +35,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       <div className="space-y-1.5">
         {rows.map(({ label, value, color }) => (
           <div key={label} className="flex items-baseline justify-between gap-2">
-            <span className="text-[12.5px] truncate" style={{ color: "var(--t-muted)" }}>{label}</span>
-            <span className={clsx("text-[12.5px] font-medium tabular-nums shrink-0", color ?? "")}
+            <span className="text-[13px] truncate" style={{ color: "var(--t-muted)" }}>{label}</span>
+            <span className={clsx("text-[13px] font-medium tabular-nums shrink-0", color ?? "")}
               style={!color ? { color: "var(--t-secondary)" } : undefined}>
               {fmt(value)} руб.
             </span>
@@ -46,7 +46,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
       {/* Financial result */}
       <div className="border-t border-white/[0.06] pt-2.5 flex items-baseline justify-between gap-2">
-        <span className="text-[12.5px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
+        <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
         <span className={clsx("text-[13px] font-semibold tabular-nums shrink-0", !resultPositive && "text-red-400")}
           style={resultPositive ? { color: "var(--t-primary)" } : undefined}>
           {resultPositive ? "" : "-"}{fmt(Math.abs(result))} руб.
@@ -57,17 +57,17 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       <div className="space-y-1">
         {rub && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>Доходная нагрузка</span>
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
+            <span className="text-xs" style={{ color: "var(--t-muted)" }}>Доходная нагрузка</span>
+            <span className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
               {rub.income > 0 ? Math.round((rub.expense / rub.income) * 100) : 0}%
             </span>
           </div>
         )}
         {delta !== null && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>Капитал за 30 дн.</span>
+            <span className="text-xs" style={{ color: "var(--t-muted)" }}>Капитал за 30 дн.</span>
             <span className={clsx(
-              "text-[11px] tabular-nums font-medium",
+              "text-xs tabular-nums font-medium",
               delta >= 0 ? "text-emerald-400/70" : "text-red-400/70"
             )}>
               {delta >= 0 ? "+" : ""}{fmt(delta)} ₽
@@ -78,10 +78,10 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
       {/* Quick links */}
       <div className="border-t border-white/[0.05] pt-2 flex gap-4">
-        <a href="/legacy/wallets" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/legacy/wallets" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Кошельки →
         </a>
-        <a href="/legacy/budget" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/legacy/budget" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Бюджет →
         </a>
       </div>

@@ -27,10 +27,10 @@ export function LevelCard({ level }: Props) {
           {level.level}
         </span>
         <div className="pb-1 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-muted)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-muted)" }}>
             Уровень
           </p>
-          <p className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
+          <p className="text-[13px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
             {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)} XP
           </p>
         </div>
@@ -48,7 +48,7 @@ export function LevelCard({ level }: Props) {
         />
       </div>
 
-      <div className="flex justify-between text-[11px]">
+      <div className="flex justify-between text-xs">
         <span style={{ color: "var(--t-secondary)" }}>
           Этот месяц:{" "}
           <span className="text-indigo-400 font-semibold tabular-nums">

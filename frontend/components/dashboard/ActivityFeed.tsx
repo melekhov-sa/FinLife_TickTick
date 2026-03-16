@@ -18,7 +18,7 @@ export function ActivityFeed({ feed }: Props) {
       <div className="space-y-5">
         {feed.map((group) => (
           <div key={group.date}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-label)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-label)" }}>
               {group.label}
             </p>
             <div className="space-y-1.5">
@@ -31,14 +31,14 @@ export function ActivityFeed({ feed }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate leading-snug" style={{ color: "var(--t-secondary)" }}>{ev.title}</p>
                     {ev.subtitle && (
-                      <p className="text-xs truncate leading-snug" style={{ color: "var(--t-muted)" }}>{ev.subtitle}</p>
+                      <p className="text-[13px] truncate leading-snug" style={{ color: "var(--t-muted)" }}>{ev.subtitle}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
                     {ev.amount_label && (
                       <p
                         className={clsx(
-                          "text-xs font-semibold tabular-nums",
+                          "text-[13px] font-semibold tabular-nums",
                           ev.amount_css === "income"
                             ? "text-emerald-400"
                             : ev.amount_css === "expense"

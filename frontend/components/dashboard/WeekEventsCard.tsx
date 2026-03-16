@@ -19,12 +19,12 @@ function formatEventDate(iso: string, isToday: boolean): string {
 export function WeekEventsCard({ events }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         События на неделе
       </p>
 
       {events.length === 0 ? (
-        <p className="text-xs py-2" style={{ color: "var(--t-faint)" }}>Нет событий на ближайшие 7 дней</p>
+        <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет событий на ближайшие 7 дней</p>
       ) : (
         <div className="space-y-0.5">
           {events.map((ev) => (
@@ -48,7 +48,7 @@ export function WeekEventsCard({ events }: Props) {
                   {ev.category_emoji && <span className="mr-1">{ev.category_emoji}</span>}
                   {ev.title}
                 </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+                <p className="text-xs mt-0.5" style={{ color: "var(--t-muted)" }}>
                   {formatEventDate(ev.start_date, ev.is_today)}
                   {ev.start_time && (
                     <span className="ml-1.5 tabular-nums">{ev.start_time.slice(0, 5)}</span>
@@ -61,7 +61,7 @@ export function WeekEventsCard({ events }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/events" className="text-[11px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/events" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Все события →
         </a>
       </div>
