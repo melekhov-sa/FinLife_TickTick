@@ -53,22 +53,22 @@ export function UpcomingPayments({ payments }: Props) {
               {/* Icon */}
               <span className="text-base shrink-0">📅</span>
 
-              {/* Text */}
+              {/* Text + pill */}
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
-                <p className="text-xs mt-0.5 tabular-nums" style={{ color: "var(--t-muted)" }}>
-                  {p.days_until < 0
-                    ? `просрочено ${Math.abs(p.days_until)} дн.`
-                    : p.days_until === 0
-                    ? "Сегодня"
-                    : `через ${p.days_until} дн.`}
-                  {" "}
-                  <span className="text-white/18">({formatDate(p.scheduled_date)})</span>
-                </p>
+                <p className="text-[13px] font-medium leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-xs tabular-nums" style={{ color: "var(--t-muted)" }}>
+                    {p.days_until < 0
+                      ? `просрочено ${Math.abs(p.days_until)} дн.`
+                      : p.days_until === 0
+                      ? "Сегодня"
+                      : `через ${p.days_until} дн.`}
+                    {" "}
+                    <span style={{ color: "var(--t-faint)" }}>({formatDate(p.scheduled_date)})</span>
+                  </p>
+                  {kindPill(p.kind, p.kind_label, p.amount_formatted)}
+                </div>
               </div>
-
-              {/* Amount pill */}
-              {kindPill(p.kind, p.kind_label, p.amount_formatted)}
             </div>
           ))}
         </div>
