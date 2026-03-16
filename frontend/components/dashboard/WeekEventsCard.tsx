@@ -19,7 +19,7 @@ function formatEventDate(iso: string, isToday: boolean): string {
 export function WeekEventsCard({ events }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="block-title" style={{ color: "var(--t-muted)" }}>
         События на неделе
       </p>
 

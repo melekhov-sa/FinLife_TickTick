@@ -27,7 +27,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 space-y-3">
-      <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--t-label)" }}>
+      <h2 className="block-title" style={{ color: "var(--t-label)" }}>
         Финансовое состояние
       </h2>
 

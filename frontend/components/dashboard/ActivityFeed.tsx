@@ -12,7 +12,7 @@ export function ActivityFeed({ feed }: Props) {
 
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
-      <h2 className="text-sm font-semibold mb-4" style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}>
+      <h2 className="block-title" style={{ color: "var(--t-primary)" }}>
         Активность
       </h2>
       <div className="space-y-5">

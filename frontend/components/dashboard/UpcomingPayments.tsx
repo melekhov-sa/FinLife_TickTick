@@ -37,7 +37,7 @@ function formatDate(iso: string) {
 export function UpcomingPayments({ payments }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="block-title" style={{ color: "var(--t-muted)" }}>
         Ближайшие платежи
       </p>
 
