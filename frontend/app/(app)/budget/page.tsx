@@ -165,12 +165,14 @@ export default function BudgetPage() {
 
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
 
-  const { data, isLoading, isError } = useQuery<BudgetData>({
+  const { data, isPending, isError } = useQuery<BudgetData>({
     queryKey: ["budget", year, month],
     queryFn: () =>
-      fetch(`/api/v2/budget?year=${year}&month=${month}`, { credentials: "include" }).then((r) => r.json()),
+      fetch(`/api/v2/budget?year=${year}&month=${month}`, { credentials: "include" })
+        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
     staleTime: 60_000,
   });
+  const isLoading = isPending;
 
   function goBack() {
     const p = prevMonth(year, month);
