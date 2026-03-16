@@ -41,7 +41,7 @@ export default function DashboardPage() {
         )}
 
         {isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_260px] gap-4 max-w-[1400px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr_300px] gap-4 max-w-[1400px]">
             <div className="space-y-4">
               <Skeleton className="h-40" />
               <Skeleton className="h-36" />
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         )}
 
         {data && (
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_260px] gap-4 max-w-[1400px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr_300px] gap-4 max-w-[1400px]">
 
             {/* ── Левая колонка: финансы + уровень + эффективность ─────────── */}
             <div className="space-y-4">
