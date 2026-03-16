@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   ClipboardList,
   BarChart3,
-  Bell,
   Target,
   Sun,
   Moon,
@@ -15,8 +14,6 @@ import {
   PieChart,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 
 // Primary nav — with icons
 const PRIMARY_NAV = [
@@ -25,7 +22,6 @@ const PRIMARY_NAV = [
   { href: "/legacy/budget", label: "Бюджет",       icon: PieChart },
   { href: "/strategy",    label: "Стратегия",      icon: Target },
   { href: "/efficiency",  label: "Эффективность",  icon: BarChart3 },
-  { href: "/notifications", label: "Уведомления",  icon: Bell, badge: true },
 ];
 
 // Grouped nav — text only, denser
@@ -60,13 +56,6 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-
-  const { data: badge } = useQuery<{ unread_count: number }>({
-    queryKey: ["notifications-badge"],
-    queryFn: () => api.get("/api/v2/notifications/badge"),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-  });
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
@@ -118,9 +107,8 @@ export function AppSidebar() {
       <nav className="flex-1 overflow-y-auto px-2 space-y-px pb-2">
 
         {/* Primary nav (with icons) */}
-        {PRIMARY_NAV.map(({ href, label, icon: Icon, badge: hasBadge }) => {
+        {PRIMARY_NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
-          const unread = hasBadge ? (badge?.unread_count ?? 0) : 0;
           return (
             <Link
               key={href}
@@ -137,11 +125,6 @@ export function AppSidebar() {
                 />
               )}
               <span className="flex-1 truncate">{label}</span>
-              {unread > 0 && (
-                <span className="text-[10px] font-semibold bg-indigo-500/20 text-indigo-400 rounded-full px-1.5 leading-[1.6]">
-                  {unread > 99 ? "99+" : unread}
-                </span>
-              )}
             </Link>
           );
         })}

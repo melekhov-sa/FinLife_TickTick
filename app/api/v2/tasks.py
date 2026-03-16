@@ -22,6 +22,7 @@ router = APIRouter()
 class TaskItem(BaseModel):
     task_id: int
     title: str
+    note: str | None
     status: str
     due_date: date | None
     completed_at: datetime | None
@@ -72,6 +73,7 @@ def list_tasks(
         TaskItem(
             task_id=t.task_id,
             title=t.title,
+            note=t.note,
             status=t.status,
             due_date=t.due_date,
             completed_at=t.completed_at,
@@ -157,6 +159,109 @@ def archive_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     except TaskValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
+
+
+@router.get("/tasks/{task_id}", response_model=TaskItem)
+def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    today = date.today()
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    emoji = None
+    if task.category_id:
+        cat = db.query(WorkCategory).filter(WorkCategory.category_id == task.category_id).first()
+        emoji = cat.emoji if cat else None
+    return TaskItem(
+        task_id=task.task_id,
+        title=task.title,
+        note=task.note,
+        status=task.status,
+        due_date=task.due_date,
+        completed_at=task.completed_at,
+        project_id=task.project_id,
+        category_id=task.category_id,
+        category_emoji=emoji,
+        is_overdue=(task.due_date is not None and task.due_date < today and task.status == "ACTIVE"),
+    )
+
+
+class UpdateTaskRequest(BaseModel):
+    title: str | None = None
+    note: str | None = None
+    due_date: str | None = None
+    category_id: int | None = None
+
+
+@router.patch("/tasks/{task_id}")
+def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    fields = body.model_fields_set
+    if "title" in fields:
+        if not body.title or not body.title.strip():
+            raise HTTPException(status_code=400, detail="Название не может быть пустым")
+        task.title = body.title.strip()
+    if "note" in fields:
+        task.note = body.note or None
+    if "due_date" in fields:
+        if body.due_date:
+            task.due_date = date.fromisoformat(body.due_date)
+            task.due_kind = "DATE"
+        else:
+            task.due_date = None
+            task.due_kind = "NONE"
+    if "category_id" in fields:
+        task.category_id = body.category_id
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/tasks/{task_id}")
+def delete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    db.delete(task)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/tasks/{task_id}/duplicate")
+def duplicate_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    new_task = TaskModel(
+        account_id=user_id,
+        title=f"{task.title} (копия)",
+        note=task.note,
+        due_kind=task.due_kind,
+        due_date=task.due_date,
+        due_time=task.due_time,
+        category_id=task.category_id,
+        project_id=task.project_id,
+        status="ACTIVE",
+    )
+    db.add(new_task)
+    db.commit()
+    return {"id": new_task.task_id}
 
 
 class BoardStatusRequest(BaseModel):

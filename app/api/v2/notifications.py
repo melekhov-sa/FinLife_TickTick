@@ -90,3 +90,14 @@ def mark_read(notification_id: int, request: Request, db: Session = Depends(get_
     n.is_read = True
     db.commit()
     return {"ok": True}
+
+
+@router.post("/notifications/mark-all-read")
+def mark_all_read(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    db.query(NotificationModel).filter(
+        NotificationModel.user_id == user_id,
+        NotificationModel.is_read == False,  # noqa: E712
+    ).update({"is_read": True})
+    db.commit()
+    return {"ok": True}

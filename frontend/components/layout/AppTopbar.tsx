@@ -1,8 +1,8 @@
 "use client";
 
-import { Bell } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface AppTopbarProps {
   title?: string;
@@ -41,14 +41,9 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
           )}
         </div>
       )}
-      <div className="flex items-center gap-3 ml-auto">
+      <div className="flex items-center gap-2 ml-auto">
         {actions && <div className="flex items-center gap-2">{actions}</div>}
-        <button
-          className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.06]"
-          style={{ color: textMuted }}
-        >
-          <Bell size={15} />
-        </button>
+        <NotificationBell />
         <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center">
           <span className="text-indigo-400 text-xs font-medium">
             {me?.email?.[0]?.toUpperCase() ?? "?"}

@@ -183,6 +183,7 @@ export interface ProjectDetail extends ProjectSummary {
 export interface TaskItem {
   task_id: number;
   title: string;
+  note: string | null;
   status: string;
   due_date: string | null;
   completed_at: string | null;
@@ -207,6 +208,8 @@ export interface HabitItem {
   best_streak: number;
   done_count_30d: number;
   reminder_time: string | null;
+  done_today: boolean;
+  recent_days: boolean[];
 }
 
 // ── /api/v2/efficiency ────────────────────────────────────────────────────────
@@ -276,6 +279,7 @@ export interface EventItem {
   start_time: string | null;
   end_date: string | null;
   is_all_day: boolean;
+  category_id: number | null;
   category_emoji: string | null;
   category_title: string | null;
   is_today: boolean;

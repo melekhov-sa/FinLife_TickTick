@@ -10,6 +10,18 @@ export function useTasks(status = "ACTIVE") {
   });
 }
 
+export function useCreateTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title: string; due_date?: string; category_id?: number }) =>
+      api.post(`/api/v2/tasks`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 export function useCompleteTask() {
   const qc = useQueryClient();
   return useMutation({
@@ -25,6 +37,40 @@ export function useArchiveTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/archive`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+export function useUpdateTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, data }: { taskId: number; data: Partial<{ title: string; note: string | null; due_date: string | null; category_id: number | null }> }) =>
+      api.patch(`/api/v2/tasks/${taskId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
+    },
+  });
+}
+
+export function useDeleteTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: number) => api.delete(`/api/v2/tasks/${taskId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useDuplicateTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/duplicate`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
