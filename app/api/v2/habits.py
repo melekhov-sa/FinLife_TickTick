@@ -1,6 +1,7 @@
 """
-GET  /api/v2/habits  — habit list with streaks and categories
-POST /api/v2/habits  — create a habit (with recurrence rule)
+GET  /api/v2/habits                                  — habit list with streaks and categories
+POST /api/v2/habits                                  — create a habit (with recurrence rule)
+POST /api/v2/habits/occurrences/{id}/complete        — complete a habit occurrence
 """
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -112,3 +113,31 @@ def create_habit(body: CreateHabitRequest, request: Request, db: Session = Depen
     except HabitValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": habit_id}
+
+
+@router.post("/habits/occurrences/{occurrence_id}/complete")
+def complete_habit_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.habits import CompleteHabitOccurrenceUseCase
+    user_id = get_user_id(request)
+    try:
+        CompleteHabitOccurrenceUseCase(db).execute(occurrence_id, user_id, actor_user_id=user_id)
+    except HabitValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@router.post("/task-occurrences/{occurrence_id}/complete")
+def complete_task_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.task_templates import CompleteTaskOccurrenceUseCase, TaskTemplateValidationError
+    user_id = get_user_id(request)
+    try:
+        CompleteTaskOccurrenceUseCase(db).execute(
+            occurrence_id=occurrence_id, account_id=user_id, actor_user_id=user_id
+        )
+    except TaskTemplateValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
