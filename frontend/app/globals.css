@@ -264,7 +264,8 @@ html:not(.dark) .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.
   body {
     background: var(--app-bg);
     @apply text-foreground;
-    font-weight: 500;
+    font-weight: 400;
+    letter-spacing: 0.02em;
     font-feature-settings: "kern", "liga", "calt";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

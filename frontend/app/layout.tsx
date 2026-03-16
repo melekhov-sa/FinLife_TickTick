@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import { Nunito, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const manrope = Manrope({
+const nunito = Nunito({
   variable: "--font-geist-sans",
   subsets: ["latin", "cyrillic"],
   weight: ["400", "500", "600", "700", "800"],
@@ -41,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className="dark" suppressHydrationWarning>
       <body
-        className={`${manrope.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${nunito.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
