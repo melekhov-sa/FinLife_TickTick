@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
+import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { clsx } from "clsx";
 
 interface PlanEntry {
@@ -57,15 +58,6 @@ const RANGES = [
   { value: 90, label: "3 месяца" },
 ];
 
-const KIND_DOTS: Record<string, string> = {
-  task:       "bg-indigo-500",
-  task_occ:   "bg-indigo-400",
-  event:      "bg-blue-500",
-  planned_op: "bg-amber-500",
-  habit:      "bg-emerald-500",
-  wish:       "bg-pink-500",
-};
-
 const KIND_LABELS: Record<string, string> = {
   task:       "Задача",
   task_occ:   "Задача",
@@ -75,14 +67,54 @@ const KIND_LABELS: Record<string, string> = {
   wish:       "Желание",
 };
 
-function EntryRow({ entry }: { entry: PlanEntry }) {
-  const dot = KIND_DOTS[entry.kind] ?? "bg-white/20";
+type CompletableKind = "task" | "habit" | "task_occ";
+
+function isCompletable(kind: string): kind is CompletableKind {
+  return kind === "task" || kind === "habit" || kind === "task_occ";
+}
+
+function EntryRow({
+  entry,
+  onComplete,
+}: {
+  entry: PlanEntry;
+  onComplete: (entry: PlanEntry) => void;
+}) {
+  const canComplete = isCompletable(entry.kind) && !entry.is_done;
+  const isEvent = entry.kind === "event";
+
   return (
     <div className={clsx(
       "flex items-start gap-3 py-2.5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] rounded-lg px-1.5 -mx-1.5 transition-colors",
       entry.is_done && "opacity-40"
     )}>
-      <div className={clsx("w-2 h-2 rounded-full mt-1.5 shrink-0 shadow-[0_0_6px_currentColor]", dot)} />
+      {/* Left indicator: checkbox for tasks/habits, event icon, dot for others */}
+      <div className="mt-1 shrink-0">
+        {canComplete ? (
+          <button
+            onClick={() => onComplete(entry)}
+            className={clsx(
+              "w-[17px] h-[17px] rounded-full border-[1.5px] transition-all hover:scale-110",
+              entry.is_overdue
+                ? "border-red-400/70 hover:bg-red-500/20 hover:border-red-400"
+                : "border-white/35 hover:bg-white/10 hover:border-white/60"
+            )}
+            title="Отметить как выполненное"
+          />
+        ) : entry.is_done && isCompletable(entry.kind) ? (
+          <div className="w-[17px] h-[17px] rounded-full bg-indigo-500/50 border-[1.5px] border-indigo-500/50 flex items-center justify-center">
+            <span className="text-[9px] text-white/80">✓</span>
+          </div>
+        ) : isEvent ? (
+          <span className="text-sm">📅</span>
+        ) : (
+          <div className={clsx(
+            "w-2 h-2 rounded-full mt-1 shadow-[0_0_6px_currentColor]",
+            entry.kind === "planned_op" ? "bg-amber-500" : "bg-white/20"
+          )} />
+        )}
+      </div>
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className={clsx(
@@ -111,11 +143,12 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
               {(entry.meta.op_kind as string) === "INCOME" ? "+" : "−"}{String(entry.meta.amount_formatted)} ₽
             </span>
           )}
-          {entry.kind === "habit" && Boolean(entry.meta.current_streak) ? (
+          {entry.kind === "habit" && Boolean(entry.meta.current_streak) && (
             <span className="text-[10px] text-white/55">🔥 {String(entry.meta.current_streak)}</span>
-          ) : null}
+          )}
         </div>
       </div>
+
       {entry.is_overdue && !entry.is_done && (
         <span className="text-[10px] font-semibold text-red-400 bg-red-500/[0.12] border border-red-500/20 px-1.5 py-0.5 rounded-md shrink-0">
           просрочено
@@ -125,7 +158,13 @@ function EntryRow({ entry }: { entry: PlanEntry }) {
   );
 }
 
-function DayGroupCard({ group }: { group: DayGroup }) {
+function DayGroupCard({
+  group,
+  onComplete,
+}: {
+  group: DayGroup;
+  onComplete: (entry: PlanEntry) => void;
+}) {
   return (
     <div className={clsx(
       "bg-white/[0.03] rounded-2xl border p-5",
@@ -147,7 +186,7 @@ function DayGroupCard({ group }: { group: DayGroup }) {
         </span>
       </div>
       {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} />
+        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} />
       ))}
     </div>
   );
@@ -157,6 +196,8 @@ export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done" | "archive">("active");
   const [range, setRange] = useState(7);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
+  const qc = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<PlanData>({
     queryKey: ["plan", tab, range],
@@ -170,12 +211,23 @@ export default function PlanPage() {
   return (
     <>
       {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
+      {confirmEntry && isCompletable(confirmEntry.kind) && (
+        <ConfirmCompleteModal
+          kind={confirmEntry.kind as CompletableKind}
+          id={confirmEntry.id}
+          title={confirmEntry.title}
+          onClose={() => {
+            setConfirmEntry(null);
+            qc.invalidateQueries({ queryKey: ["plan"] });
+          }}
+        />
+      )}
+
       <AppTopbar title="План" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[860px]">
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          {/* Tab switcher */}
           <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
             {TABS.map((t) => (
               <button
@@ -193,7 +245,6 @@ export default function PlanPage() {
             ))}
           </div>
 
-          {/* Range switcher */}
           <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
             {RANGES.map((r) => (
               <button
@@ -223,12 +274,12 @@ export default function PlanPage() {
         {summary && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             {[
-              { label: "Сегодня",         value: summary.today_count,      color: "text-white/88",    bg: "" },
-              { label: "На неделе",       value: summary.week_count,       color: "text-blue-400",    bg: "" },
-              { label: "Просрочено",      value: summary.overdue_count,    color: summary.overdue_count > 0 ? "text-red-400" : "text-white/88", bg: summary.overdue_count > 0 ? "border-red-500/20" : "" },
-              { label: "Сделано сегодня", value: summary.done_today_count, color: "text-emerald-400", bg: "" },
+              { label: "Сегодня",         value: summary.today_count,      color: "text-white/88",    border: "" },
+              { label: "На неделе",       value: summary.week_count,       color: "text-blue-400",    border: "" },
+              { label: "Просрочено",      value: summary.overdue_count,    color: summary.overdue_count > 0 ? "text-red-400" : "text-white/88", border: summary.overdue_count > 0 ? "border-red-500/20" : "" },
+              { label: "Сделано сегодня", value: summary.done_today_count, color: "text-emerald-400", border: "" },
             ].map((kpi) => (
-              <div key={kpi.label} className={clsx("bg-white/[0.04] border rounded-2xl p-4 text-center", kpi.bg || "border-white/[0.07]")}>
+              <div key={kpi.label} className={clsx("bg-white/[0.04] border rounded-2xl p-4 text-center", kpi.border || "border-white/[0.07]")}>
                 <p className={clsx("text-3xl font-bold tabular-nums", kpi.color)} style={{ letterSpacing: "-0.04em" }}>
                   {kpi.value}
                 </p>
@@ -268,7 +319,7 @@ export default function PlanPage() {
         {data && (
           <div className="space-y-4">
             {data.day_groups.map((g, i) => (
-              <DayGroupCard key={i} group={g} />
+              <DayGroupCard key={i} group={g} onComplete={setConfirmEntry} />
             ))}
 
             {tab === "active" && data.done_today.length > 0 && (
@@ -277,7 +328,7 @@ export default function PlanPage() {
                   ✓ Выполнено сегодня ({data.done_today.length})
                 </h3>
                 {data.done_today.map((e) => (
-                  <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} />
+                  <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={setConfirmEntry} />
                 ))}
               </div>
             )}
