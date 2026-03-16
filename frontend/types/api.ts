@@ -361,6 +361,9 @@ export interface WalletItem {
   currency: string;
   wallet_type: string;
   balance: string;
+  delta_30d: string;
+  operations_count_30d: number;
+  last_operation_at: string | null;
 }
 
 // ── /api/v2/fin-categories ────────────────────────────────────────────────────

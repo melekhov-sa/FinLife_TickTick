@@ -121,7 +121,7 @@ export default function MoneyPage() {
 
   const categoryOptions = useMemo(() => [
     { value: "", label: "Все категории" },
-    ...(finCats ?? []).filter((c) => c.parent_id !== null).map((c) => ({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined })),
+    ...(finCats ?? []).filter((c) => c.parent_id !== null).map((c) => ({ value: String(c.category_id), label: c.title })),
   ], [finCats]);
 
   function resetFilters() {
@@ -140,7 +140,7 @@ export default function MoneyPage() {
         {/* Header actions */}
         <div className="flex items-center gap-2.5 mb-6">
           <a
-            href="/legacy/wallets"
+            href="/wallets"
             className="text-xs font-medium px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/75 hover:bg-white/[0.08] transition-colors"
           >
             Кошельки →

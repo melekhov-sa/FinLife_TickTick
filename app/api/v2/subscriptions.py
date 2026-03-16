@@ -1,7 +1,7 @@
 """GET /api/v2/subscriptions — subscription list with members and paid_until status."""
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -107,3 +107,91 @@ def get_subscriptions(
         ))
 
     return result
+
+
+# ── Update subscription ─────────────────────────────────────────────────────
+
+class UpdateSubscriptionRequest(BaseModel):
+    name: str | None = None
+    paid_until_self: str | None = None   # "YYYY-MM-DD" or "" to clear
+
+
+@router.patch("/subscriptions/{sub_id}")
+def update_subscription(
+    sub_id: int, body: UpdateSubscriptionRequest,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request)
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    fields = body.model_fields_set
+    if "name" in fields and body.name:
+        sub.name = body.name.strip()
+    if "paid_until_self" in fields:
+        if body.paid_until_self:
+            sub.paid_until_self = date.fromisoformat(body.paid_until_self)
+        else:
+            sub.paid_until_self = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/subscriptions/{sub_id}", status_code=204)
+def archive_subscription(sub_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    sub.is_archived = True
+    db.commit()
+
+
+# ── Update / archive member ──────────────────────────────────────────────────
+
+class UpdateMemberRequest(BaseModel):
+    paid_until: str | None = None       # "YYYY-MM-DD" or "" to clear
+    payment_per_month: float | None = None   # None to leave unchanged
+
+
+@router.patch("/subscriptions/{sub_id}/members/{member_id}")
+def update_member(
+    sub_id: int, member_id: int, body: UpdateMemberRequest,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request)
+    member = db.query(SubscriptionMemberModel).filter(
+        SubscriptionMemberModel.id == member_id,
+        SubscriptionMemberModel.subscription_id == sub_id,
+        SubscriptionMemberModel.account_id == user_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    fields = body.model_fields_set
+    if "paid_until" in fields:
+        member.paid_until = date.fromisoformat(body.paid_until) if body.paid_until else None
+    if "payment_per_month" in fields:
+        member.payment_per_month = body.payment_per_month
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/subscriptions/{sub_id}/members/{member_id}", status_code=204)
+def archive_member(
+    sub_id: int, member_id: int,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request)
+    member = db.query(SubscriptionMemberModel).filter(
+        SubscriptionMemberModel.id == member_id,
+        SubscriptionMemberModel.subscription_id == sub_id,
+        SubscriptionMemberModel.account_id == user_id,
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    member.is_archived = True
+    db.commit()

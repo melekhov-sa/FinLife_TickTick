@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
 import { CreditCard, MoreHorizontal } from "lucide-react";
 import { Select } from "@/components/ui/Select";
@@ -98,7 +99,7 @@ function MemberRow({ member }: { member: SubscriptionMember }) {
 
 // ── Quick Actions Menu ────────────────────────────────────────────────────────
 
-function QuickMenu({ subId }: { subId: number }) {
+function QuickMenu({ subId, onOpen }: { subId: number; onOpen: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -125,22 +126,29 @@ function QuickMenu({ subId }: { subId: number }) {
       {open && (
         <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[160px]">
           {[
-            { label: "Редактировать", href: `/legacy/subscriptions/${subId}/edit` },
+            { label: "Открыть", action: () => { onOpen(); setOpen(false); } },
             { label: "Добавить участника", href: `/legacy/subscriptions/${subId}/members/add` },
-            { label: "Удалить", href: `/legacy/subscriptions/${subId}/delete`, danger: true },
           ].map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              onClick={(e) => e.stopPropagation()}
-              className={clsx(
-                "block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05]",
-                item.danger ? "text-red-400/80 hover:text-red-400" : "hover:text-white/90"
-              )}
-              style={{ color: item.danger ? undefined : "var(--t-secondary)" }}
-            >
-              {item.label}
-            </a>
+            "href" in item ? (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={(e) => e.stopPropagation()}
+                className="block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <button
+                key={item.label}
+                onClick={(e) => { e.stopPropagation(); item.action(); }}
+                className="w-full text-left block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                {item.label}
+              </button>
+            )
           ))}
         </div>
       )}
@@ -150,13 +158,13 @@ function QuickMenu({ subId }: { subId: number }) {
 
 // ── SubCard ───────────────────────────────────────────────────────────────────
 
-function SubCard({ sub }: { sub: SubscriptionItem }) {
+function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void }) {
   const minDays = getMinDaysLeft(sub);
   const monthlyTotal = getMonthlyTotal(sub);
 
   return (
     <div className="relative group rounded-[14px] border border-white/[0.07] overflow-hidden transition-colors hover:bg-white/[0.03] hover:border-white/[0.10] bg-white/[0.03]">
-      <a href={`/legacy/subscriptions/${sub.id}`} className="block">
+      <div onClick={onOpen} className="block cursor-pointer">
         {/* Card header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-3 min-w-0">
@@ -219,11 +227,11 @@ function SubCard({ sub }: { sub: SubscriptionItem }) {
             </span>
           </div>
         )}
-      </a>
+      </div>
 
       {/* Quick menu — overlaid so it doesn't trigger card navigation */}
-      <div className="absolute top-3.5 right-3.5 z-10">
-        <QuickMenu subId={sub.id} />
+      <div className="absolute top-3.5 right-3.5 z-10" onClick={(e) => e.stopPropagation()}>
+        <QuickMenu subId={sub.id} onOpen={onOpen} />
       </div>
     </div>
   );
@@ -276,8 +284,9 @@ function applySort(subs: SubscriptionItem[], sort: SortKind): SubscriptionItem[]
 
 export default function SubscriptionsPage() {
   const { data, isLoading, isError } = useSubscriptions();
-  const [filter, setFilter] = useState<FilterKind>("all");
-  const [sort, setSort]     = useState<SortKind>("expiry");
+  const [filter, setFilter]         = useState<FilterKind>("all");
+  const [sort, setSort]             = useState<SortKind>("expiry");
+  const [selectedSub, setSelectedSub] = useState<SubscriptionItem | null>(null);
 
   const monthlyExpense = data?.reduce((sum, sub) => sum + getMonthlyTotal(sub), 0) ?? 0;
   const expiringCount  = data?.reduce((n, sub) => {
@@ -287,8 +296,14 @@ export default function SubscriptionsPage() {
 
   const filtered = data ? applySort(applyFilter(data, filter), sort) : [];
 
+  // Keep selectedSub in sync after mutations (data refreshes)
+  const freshSub = selectedSub ? (data?.find((s) => s.id === selectedSub.id) ?? null) : null;
+
   return (
     <>
+      {freshSub && (
+        <SubscriptionDetailPanel sub={freshSub} onClose={() => setSelectedSub(null)} />
+      )}
       <AppTopbar title="Подписки" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[760px]">
@@ -424,7 +439,7 @@ export default function SubscriptionsPage() {
               ) : (
                 <div className="space-y-3">
                   {filtered.map((s) => (
-                    <SubCard key={s.id} sub={s} />
+                    <SubCard key={s.id} sub={s} onOpen={() => setSelectedSub(s)} />
                   ))}
                 </div>
               )}

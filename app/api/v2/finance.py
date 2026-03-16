@@ -27,6 +27,9 @@ class WalletItem(BaseModel):
     currency: str
     wallet_type: str
     balance: str
+    delta_30d: str
+    operations_count_30d: int
+    last_operation_at: str | None
 
 
 @router.get("/wallets", response_model=list[WalletItem])
@@ -45,9 +48,41 @@ def list_wallets(request: Request, db: Session = Depends(get_db)):
             currency=w.currency,
             wallet_type=w.wallet_type,
             balance=str(w.balance),
+            delta_30d=str(w.balance - (w.balance_30d_ago or w.balance)),
+            operations_count_30d=w.operations_count_30d,
+            last_operation_at=w.last_operation_at.isoformat() if w.last_operation_at else None,
         )
         for w in wallets
     ]
+
+
+class RenameWalletRequest(BaseModel):
+    title: str
+
+
+@router.patch("/wallets/{wallet_id}")
+def rename_wallet(wallet_id: int, body: RenameWalletRequest, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    wallet = db.query(WalletBalance).filter(
+        WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
+    ).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    wallet.title = body.title.strip()
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/wallets/{wallet_id}", status_code=204)
+def archive_wallet(wallet_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    wallet = db.query(WalletBalance).filter(
+        WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
+    ).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    wallet.is_archived = True
+    db.commit()
 
 
 # ── Financial categories ───────────────────────────────────────────────────

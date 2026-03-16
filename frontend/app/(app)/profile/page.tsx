@@ -47,7 +47,7 @@ const LEVEL_GRADIENTS = [
 const QUICK_LINKS = [
   { label: "Настройки уведомлений", href: "/legacy/settings/notifications", icon: Bell },
   { label: "Настройки эффективности", href: "/legacy/efficiency/settings", icon: TrendingUp },
-  { label: "Кошельки", href: "/legacy/wallets", icon: Wallet },
+  { label: "Кошельки", href: "/wallets", icon: Wallet },
   { label: "Смена пароля", href: "/legacy/profile", icon: Lock },
 ];
 

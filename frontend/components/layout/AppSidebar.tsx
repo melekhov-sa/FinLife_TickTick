@@ -30,7 +30,7 @@ const SECTIONS = [
     label: "ФИНАНСЫ",
     items: [
       { href: "/money",                     label: "Деньги" },
-      { href: "/legacy/transactions",       label: "Операции" },
+      { href: "/wallets",                   label: "Кошельки" },
       { href: "/subscriptions",             label: "Подписки" },
     ],
   },

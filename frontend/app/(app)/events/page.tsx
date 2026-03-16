@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { EventDetailPanel } from "@/components/events/EventDetailPanel";
 import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
@@ -312,7 +312,15 @@ export default function EventsPage() {
   const [calYear,  setCalYear]  = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth());
 
-  const { data, isLoading, isError } = useEvents(days);
+  const effectiveDays = useMemo(() => {
+    if (!selectedDate) return days;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const sel = new Date(selectedDate + "T00:00:00");
+    const diff = Math.ceil((sel.getTime() - today.getTime()) / 86400000);
+    return diff > 0 ? Math.max(days, Math.min(diff + 1, 90)) : days;
+  }, [days, selectedDate]);
+
+  const { data, isLoading, isError } = useEvents(effectiveDays);
   const { mutate: deleteEvent }      = useDeleteEvent();
   const { mutate: duplicateEvent }   = useDuplicateEvent();
 
