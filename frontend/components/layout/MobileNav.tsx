@@ -30,6 +30,8 @@ const MORE_ITEMS = [
   { href: "/notifications",  label: "Уведомления" },
   { href: "/knowledge",      label: "База знаний" },
   { href: "/legacy/budget",  label: "Бюджет" },
+  { href: "/legacy/planned-ops", label: "Плановые" },
+  { href: "/legacy/tasks?mode=recurring", label: "Повторяющиеся" },
   { href: "/legacy/transactions", label: "Операции" },
   { href: "/profile",        label: "Профиль" },
 ];
