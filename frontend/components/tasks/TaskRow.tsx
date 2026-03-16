@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
-import { Check, MoreHorizontal, GripVertical } from "lucide-react";
+import { Check, MoreHorizontal, GripVertical, Repeat2 } from "lucide-react";
 import type { TaskItem } from "@/types/api";
 import { useArchiveTask, useDeleteTask, useDuplicateTask, useUpdateTask } from "@/hooks/useTasks";
 
 interface TaskRowProps {
   task: TaskItem;
-  onComplete?: (id: number) => void;
+  onComplete?: (task: TaskItem) => void;
   onOpen?: (task: TaskItem) => void;
   isDragging?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
@@ -51,12 +51,14 @@ function QuickMenu({ task, onOpen }: { task: TaskItem; onOpen?: (t: TaskItem) =>
   const isDone     = task.status === "DONE";
   const isArchived = task.status === "ARCHIVED";
 
-  const items = [
-    { label: "Открыть",     action: () => { onOpen?.(task); setOpen(false); } },
-    { label: "Дублировать", action: () => { duplicate(task.task_id); setOpen(false); } },
-    ...(!isDone && !isArchived ? [{ label: "В архив", action: () => { archive(task.task_id); setOpen(false); } }] : []),
-    { label: "Удалить", action: () => { del(task.task_id); setOpen(false); }, danger: true },
-  ];
+  const items = task.is_recurring
+    ? [{ label: "Открыть", action: () => { onOpen?.(task); setOpen(false); } }]
+    : [
+        { label: "Открыть",     action: () => { onOpen?.(task); setOpen(false); } },
+        { label: "Дублировать", action: () => { duplicate(task.task_id); setOpen(false); } },
+        ...(!isDone && !isArchived ? [{ label: "В архив", action: () => { archive(task.task_id); setOpen(false); } }] : []),
+        { label: "Удалить", action: () => { del(task.task_id); setOpen(false); }, danger: true },
+      ];
 
   return (
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
@@ -104,7 +106,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
   const dateInfo = dueDateInfo(task.due_date, isDone);
 
   function startEdit(e: React.MouseEvent) {
-    if (isDone || isArchived) return;
+    if (isDone || isArchived || task.is_recurring) return;
     e.stopPropagation();
     setEditVal(task.title);
     setEditing(true);
@@ -142,7 +144,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
 
       {/* Checkbox */}
       <button
-        onClick={(e) => { e.stopPropagation(); !isDone && !isArchived && onComplete?.(task.task_id); }}
+        onClick={(e) => { e.stopPropagation(); !isDone && !isArchived && onComplete?.(task); }}
         disabled={isDone || isArchived}
         className={clsx(
           "shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
@@ -154,8 +156,13 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
         <Check size={10} strokeWidth={2.5} />
       </button>
 
+      {/* Recurring indicator */}
+      {task.is_recurring && (
+        <Repeat2 size={13} className="shrink-0 text-indigo-400/60" />
+      )}
+
       {/* Category emoji */}
-      {task.category_emoji && (
+      {task.category_emoji && !task.is_recurring && (
         <span className="text-sm shrink-0 leading-none">{task.category_emoji}</span>
       )}
 

@@ -5,7 +5,7 @@ import { Plus, CheckCircle2, ClipboardList } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
-import { useTasks, useCompleteTask, useCreateTask } from "@/hooks/useTasks";
+import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
 import type { TaskItem } from "@/types/api";
 
 const TABS = [
@@ -28,7 +28,16 @@ export default function TasksPage() {
 
   const { data: rawTasks, isLoading, isError } = useTasks(status);
   const { mutate: complete }           = useCompleteTask();
+  const { mutate: completeOcc }        = useCompleteTaskOccurrence();
   const { mutate: createTask }         = useCreateTask();
+
+  function handleComplete(task: TaskItem) {
+    if (task.is_recurring && task.occurrence_id) {
+      completeOcc(task.occurrence_id);
+    } else {
+      complete(task.task_id);
+    }
+  }
 
   // Apply drag-based order override
   const tasks = (() => {
@@ -201,7 +210,7 @@ export default function TasksPage() {
               >
                 <TaskRow
                   task={task}
-                  onComplete={complete}
+                  onComplete={handleComplete}
                   onOpen={setSelectedTask}
                   isDragging={draggedId === task.task_id}
                   dragHandleProps={{

@@ -7,7 +7,7 @@ import { clsx } from "clsx";
 import type { TaskItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
-import { useCompleteTask, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
+import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 
 interface Props {
   task: TaskItem;
@@ -46,7 +46,8 @@ export function TaskDetailPanel({ task, onClose }: Props) {
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { mutate: complete } = useCompleteTask();
+  const { mutate: complete }    = useCompleteTask();
+  const { mutate: completeOcc } = useCompleteTaskOccurrence();
   const { mutate: archive }  = useArchiveTask();
   const { mutate: update }   = useUpdateTask();
   const { mutate: del }      = useDeleteTask();
@@ -137,7 +138,7 @@ export function TaskDetailPanel({ task, onClose }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              {isDone ? "Выполнено" : isArchived ? "Архив" : "Задача"}
+              {isDone ? "Выполнено" : isArchived ? "Архив" : task.is_recurring ? "Повторяющаяся" : "Задача"}
             </span>
             {task.category_emoji && (
               <span className="text-base">{task.category_emoji}</span>
@@ -163,7 +164,7 @@ export function TaskDetailPanel({ task, onClose }: Props) {
               onFocus={() => setTitleFocused(true)}
               onBlur={() => { setTitleFocused(false); saveTitle(); }}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } if (e.key === "Escape") { setTitle(task.title); titleRef.current?.blur(); } }}
-              disabled={isDone || isArchived}
+              disabled={isDone || isArchived || task.is_recurring}
               className={clsx(
                 "w-full text-[18px] font-semibold bg-transparent outline-none resize-none leading-snug",
                 "border-b transition-colors pb-1",
@@ -250,14 +251,21 @@ export function TaskDetailPanel({ task, onClose }: Props) {
         <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex items-center gap-2">
           {!isDone && !isArchived && (
             <button
-              onClick={() => { complete(task.task_id); onClose(); }}
+              onClick={() => {
+                if (task.is_recurring && task.occurrence_id) {
+                  completeOcc(task.occurrence_id);
+                } else {
+                  complete(task.task_id);
+                }
+                onClose();
+              }}
               className="flex items-center gap-2 flex-1 justify-center py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold transition-colors"
             >
               <CheckCircle2 size={15} />
               Выполнено
             </button>
           )}
-          {!isDone && !isArchived && (
+          {!isDone && !isArchived && !task.is_recurring && (
             <button
               onClick={() => { archive(task.task_id); onClose(); }}
               className="flex items-center gap-2 py-2.5 px-3.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors"
@@ -267,21 +275,31 @@ export function TaskDetailPanel({ task, onClose }: Props) {
               <Archive size={14} />
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            className={clsx(
-              "flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium",
-              confirmDelete
-                ? "bg-red-600 border-red-500 text-white"
-                : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-            )}
-            style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
-            title={confirmDelete ? "Нажмите ещё раз для подтверждения" : "Удалить"}
-            onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
-          >
-            <Trash2 size={14} />
-            {confirmDelete && <span>Удалить?</span>}
-          </button>
+          {task.is_recurring ? (
+            <a
+              href="/legacy/tasks?mode=recurring"
+              className="flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors text-[12px] font-medium"
+              style={{ color: "var(--t-faint)" }}
+            >
+              Управление →
+            </a>
+          ) : (
+            <button
+              onClick={handleDelete}
+              className={clsx(
+                "flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium",
+                confirmDelete
+                  ? "bg-red-600 border-red-500 text-white"
+                  : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+              )}
+              style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
+              title={confirmDelete ? "Нажмите ещё раз для подтверждения" : "Удалить"}
+              onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
+            >
+              <Trash2 size={14} />
+              {confirmDelete && <span>Удалить?</span>}
+            </button>
+          )}
         </div>
       </div>
 

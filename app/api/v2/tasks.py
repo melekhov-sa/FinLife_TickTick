@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.infrastructure.db.models import TaskModel, WorkCategory
+from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence
 
 router = APIRouter()
 
@@ -30,6 +30,8 @@ class TaskItem(BaseModel):
     category_id: int | None
     category_emoji: str | None
     is_overdue: bool
+    is_recurring: bool = False
+    occurrence_id: int | None = None
 
     @field_serializer("due_date")
     def _date(self, v: date | None) -> str | None:
@@ -62,14 +64,14 @@ def list_tasks(
     else:
         tasks = q.order_by(TaskModel.due_date.asc().nullslast(), TaskModel.task_id.desc()).limit(limit).all()
 
-    # Batch-load category emojis
+    # Batch-load category emojis for regular tasks
     cat_ids = {t.category_id for t in tasks if t.category_id}
     emoji_map: dict[int, str] = {}
     if cat_ids:
         cats = db.query(WorkCategory).filter(WorkCategory.category_id.in_(cat_ids)).all()
         emoji_map = {c.category_id: c.emoji for c in cats if c.emoji}
 
-    return [
+    regular_items = [
         TaskItem(
             task_id=t.task_id,
             title=t.title,
@@ -88,6 +90,72 @@ def list_tasks(
         )
         for t in tasks
     ]
+
+    # --- Recurring task occurrences (project_id filter skips them) ---
+    if project_id is not None or status == "ARCHIVED":
+        return regular_items
+
+    if status == "ACTIVE":
+        occ_q = (
+            db.query(TaskOccurrence, TaskTemplateModel)
+            .join(TaskTemplateModel, TaskOccurrence.template_id == TaskTemplateModel.template_id)
+            .filter(
+                TaskOccurrence.account_id == user_id,
+                TaskOccurrence.status == "ACTIVE",
+                TaskOccurrence.scheduled_date <= today,
+                TaskTemplateModel.is_archived == False,  # noqa: E712
+            )
+            .order_by(TaskOccurrence.scheduled_date.asc())
+            .limit(limit)
+        )
+    else:  # DONE
+        occ_q = (
+            db.query(TaskOccurrence, TaskTemplateModel)
+            .join(TaskTemplateModel, TaskOccurrence.template_id == TaskTemplateModel.template_id)
+            .filter(
+                TaskOccurrence.account_id == user_id,
+                TaskOccurrence.status == "DONE",
+                TaskTemplateModel.is_archived == False,  # noqa: E712
+            )
+            .order_by(TaskOccurrence.completed_at.desc())
+            .limit(limit)
+        )
+
+    occ_rows = occ_q.all()
+
+    # Batch-load category emojis for templates
+    tmpl_cat_ids = {tmpl.category_id for _, tmpl in occ_rows if tmpl.category_id}
+    tmpl_emoji_map: dict[int, str] = {}
+    if tmpl_cat_ids:
+        tmpl_cats = db.query(WorkCategory).filter(WorkCategory.category_id.in_(tmpl_cat_ids)).all()
+        tmpl_emoji_map = {c.category_id: c.emoji for c in tmpl_cats if c.emoji}
+
+    occ_items = [
+        TaskItem(
+            task_id=occ.id,          # use occurrence id as task_id
+            title=tmpl.title,
+            note=tmpl.note,
+            status=occ.status,
+            due_date=occ.scheduled_date,
+            completed_at=occ.completed_at,
+            project_id=None,
+            category_id=tmpl.category_id,
+            category_emoji=tmpl_emoji_map.get(tmpl.category_id) if tmpl.category_id else None,
+            is_overdue=(occ.scheduled_date < today and occ.status == "ACTIVE"),
+            is_recurring=True,
+            occurrence_id=occ.id,
+        )
+        for occ, tmpl in occ_rows
+    ]
+
+    # Merge: sort by due_date asc (None last) for ACTIVE, by completed_at desc for DONE
+    all_items = regular_items + occ_items
+    if status == "DONE":
+        all_items.sort(key=lambda x: x.completed_at or datetime.min, reverse=True)
+    else:
+        all_items.sort(key=lambda x: (x.due_date is None, x.due_date or date.max))
+
+    return all_items
 
 
 class WorkCategoryItem(BaseModel):

@@ -33,6 +33,17 @@ export function useCompleteTask() {
   });
 }
 
+export function useCompleteTaskOccurrence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (occurrenceId: number) => api.post(`/api/v2/task-occurrences/${occurrenceId}/complete`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
 export function useArchiveTask() {
   const qc = useQueryClient();
   return useMutation({

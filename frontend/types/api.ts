@@ -191,6 +191,8 @@ export interface TaskItem {
   category_id: number | null;
   category_emoji: string | null;
   is_overdue: boolean;
+  is_recurring: boolean;
+  occurrence_id: number | null;
 }
 
 // ── /api/v2/habits ────────────────────────────────────────────────────────────
