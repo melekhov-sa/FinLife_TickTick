@@ -21,7 +21,7 @@ export function LevelCard({ level }: Props) {
 
       <div className="flex items-end gap-3 mb-3">
         <span
-          className="text-[42px] font-bold tabular-nums leading-none"
+          className="text-[32px] font-bold tabular-nums leading-none"
           style={{ letterSpacing: "-0.04em", color: "var(--t-primary)" }}
         >
           {level.level}
@@ -30,7 +30,7 @@ export function LevelCard({ level }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-muted)" }}>
             Уровень
           </p>
-          <p className="text-[13px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
+          <p className="t-secondary tabular-nums" style={{ color: "var(--t-secondary)" }}>
             {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)} XP
           </p>
         </div>
@@ -49,13 +49,13 @@ export function LevelCard({ level }: Props) {
       </div>
 
       <div className="flex justify-between text-xs">
-        <span style={{ color: "var(--t-secondary)" }}>
+        <span className="t-secondary" style={{ color: "var(--t-secondary)" }}>
           Этот месяц:{" "}
           <span className="text-indigo-400 font-semibold tabular-nums">
             {fmt(level.xp_this_month)} XP
           </span>
         </span>
-        <span className="tabular-nums" style={{ color: "var(--t-faint)" }}>{fmt(level.total_xp)} всего</span>
+        <span className="t-secondary tabular-nums" style={{ color: "var(--t-faint)" }}>{fmt(level.total_xp)} всего</span>
       </div>
     </div>
   );

@@ -60,7 +60,7 @@ function Item({
 
       <div className="flex-1 min-w-0">
         <span
-          className={clsx("text-sm leading-snug", isDone ? "line-through" : "")}
+          className={clsx("t-main leading-snug", isDone ? "line-through" : "")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
@@ -104,7 +104,7 @@ export function TodayBlock({ today }: Props) {
         />
       )}
 
-      <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
+      <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -124,7 +124,7 @@ export function TodayBlock({ today }: Props) {
                     }}
                   />
                 </div>
-                <span className="text-[13px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                <span className="t-secondary tabular-nums" style={{ color: "var(--t-secondary)" }}>
                   {progress.done}/{progress.total}
                 </span>
               </div>

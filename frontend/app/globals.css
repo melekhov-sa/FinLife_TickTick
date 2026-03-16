@@ -268,35 +268,60 @@ html:not(.dark) .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.
     font-size: 14px;
     font-weight: 400;
     line-height: 1.6;
-    letter-spacing: 0.005em;
+    letter-spacing: 0em;
     font-feature-settings: "kern", "liga", "calt", "cv11";
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Dark mode: slightly lighter card backgrounds for better contrast */
+  /* ── Card surface: premium dark bg instead of transparent ──────── */
   html.dark .bg-white\/\[0\.03\],
-  .dark .bg-white\/\[0\.03\] { background-color: rgba(255,255,255,0.07) !important; }
+  .dark .bg-white\/\[0\.03\] { background-color: #1E2636 !important; border-color: rgba(255,255,255,0.04) !important; }
   html.dark .bg-white\/\[0\.04\],
-  .dark .bg-white\/\[0\.04\] { background-color: rgba(255,255,255,0.09) !important; }
+  .dark .bg-white\/\[0\.04\] { background-color: #1E2636 !important; border-color: rgba(255,255,255,0.04) !important; }
   html.dark .bg-white\/\[0\.02\],
-  .dark .bg-white\/\[0\.02\] { background-color: rgba(255,255,255,0.05) !important; }
+  .dark .bg-white\/\[0\.02\] { background-color: rgba(255,255,255,0.03) !important; }
 
   html {
     @apply font-sans;
     font-size: 100%;
   }
 
-  /* Section block headers (ФИНАНСОВОЕ СОСТОЯНИЕ etc.) */
+  /* ── Typography tokens ──────────────────────────────────────────── */
+
+  /* Card section title: "ФИНАНСОВОЕ СОСТОЯНИЕ" */
   .block-title {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    opacity: 0.8;
+    opacity: 0.6;
     margin-bottom: 12px;
+    display: block;
   }
+
+  /* Main label text: wallet names, item titles */
+  .t-main {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* Secondary / meta text */
+  .t-secondary {
+    font-size: 13px;
+    opacity: 0.65;
+  }
+
+  /* Financial numbers */
+  .t-number {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Money colors */
+  .money-income  { color: #2ed573; }
+  .money-expense { color: #ff6b6b; }
 
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.015em;

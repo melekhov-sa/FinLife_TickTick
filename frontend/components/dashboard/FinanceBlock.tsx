@@ -19,14 +19,14 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
   const rows = [
     { label: "Обычные кошельки", value: finState.regular_total, color: null },
-    { label: "Кредиты",          value: finState.credit_total,  color: "text-red-400" },
-    { label: "Накопления",       value: finState.savings_total, color: "text-emerald-400" },
+    { label: "Кредиты",          value: finState.credit_total,  color: "money-expense" },
+    { label: "Накопления",       value: finState.savings_total, color: "money-income" },
   ];
 
   const rub = financialSummary?.["RUB"];
 
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4 space-y-3">
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5 space-y-3">
       <h2 className="block-title" style={{ color: "var(--t-label)" }}>
         Финансовое состояние
       </h2>
@@ -35,8 +35,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       <div className="space-y-1.5">
         {rows.map(({ label, value, color }) => (
           <div key={label} className="flex items-baseline justify-between gap-2">
-            <span className="text-[13px] truncate" style={{ color: "var(--t-muted)" }}>{label}</span>
-            <span className={clsx("text-[13px] font-medium tabular-nums shrink-0", color ?? "")}
+            <span className="t-main truncate" style={{ color: "var(--t-muted)" }}>{label}</span>
+            <span className={clsx("t-number shrink-0", color ?? "")}
               style={!color ? { color: "var(--t-secondary)" } : undefined}>
               {fmt(value)} руб.
             </span>
@@ -47,8 +47,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       {/* Financial result */}
       <div className="border-t border-white/[0.06] pt-2.5 flex items-baseline justify-between gap-2">
         <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
-        <span className={clsx("text-[13px] font-semibold tabular-nums shrink-0", !resultPositive && "text-red-400")}
-          style={resultPositive ? { color: "var(--t-primary)" } : undefined}>
+        <span className={clsx("t-number shrink-0", resultPositive ? "money-income" : "money-expense")}>
           {resultPositive ? "" : "-"}{fmt(Math.abs(result))} руб.
         </span>
       </div>
@@ -57,7 +56,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
       <div className="space-y-1">
         {rub && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs" style={{ color: "var(--t-muted)" }}>Доходная нагрузка</span>
+            <span className="t-secondary" style={{ color: "var(--t-muted)" }}>Доходная нагрузка</span>
             <span className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
               {rub.income > 0 ? Math.round((rub.expense / rub.income) * 100) : 0}%
             </span>
@@ -65,7 +64,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
         )}
         {delta !== null && (
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs" style={{ color: "var(--t-muted)" }}>Капитал за 30 дн.</span>
+            <span className="t-secondary" style={{ color: "var(--t-muted)" }}>Капитал за 30 дн.</span>
             <span className={clsx(
               "text-xs tabular-nums font-medium",
               delta >= 0 ? "text-emerald-400/70" : "text-red-400/70"

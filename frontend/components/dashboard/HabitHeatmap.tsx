@@ -27,7 +27,7 @@ export function HabitHeatmap({ cells }: Props) {
   if (cells.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
       <h2 className="text-sm font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Привычки
       </h2>
@@ -45,10 +45,10 @@ export function HabitHeatmap({ cells }: Props) {
         ))}
       </div>
       <div className="flex justify-between mt-2">
-        <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+        <span className="t-secondary tabular-nums" style={{ color: "var(--t-faint)" }}>
           {cells[0]?.date?.slice(5)}
         </span>
-        <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+        <span className="t-secondary tabular-nums" style={{ color: "var(--t-faint)" }}>
           {cells[cells.length - 1]?.date?.slice(5)}
         </span>
       </div>

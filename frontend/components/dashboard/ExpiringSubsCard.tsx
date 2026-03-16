@@ -13,7 +13,7 @@ function formatDate(iso: string) {
 
 export function ExpiringSubsCard({ subs }: Props) {
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
       <p className="block-title" style={{ color: "var(--t-muted)" }}>
         Скоро заканчивается
       </p>
@@ -28,12 +28,12 @@ export function ExpiringSubsCard({ subs }: Props) {
               className="flex items-start justify-between gap-3 py-2 border-b border-white/[0.04] last:border-0"
             >
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
+                <p className="t-main font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                   {s.subscription_title}
                   {" "}
                   <span className="text-xs font-normal" style={{ color: "var(--t-muted)" }}>до {formatDate(s.paid_until)}</span>
                 </p>
-                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
+                <p className="t-secondary mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
               </div>
               <span
                 className={clsx(

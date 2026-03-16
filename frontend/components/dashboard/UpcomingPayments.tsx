@@ -36,7 +36,7 @@ function formatDate(iso: string) {
 
 export function UpcomingPayments({ payments }: Props) {
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
       <p className="block-title" style={{ color: "var(--t-muted)" }}>
         Ближайшие платежи
       </p>
@@ -55,9 +55,9 @@ export function UpcomingPayments({ payments }: Props) {
 
               {/* Text + pill */}
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
+                <p className="t-main leading-snug" style={{ color: "var(--t-primary)" }}>{p.title}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <p className="text-xs tabular-nums" style={{ color: "var(--t-muted)" }}>
+                  <p className="t-secondary tabular-nums" style={{ color: "var(--t-muted)" }}>
                     {p.days_until < 0
                       ? `просрочено ${Math.abs(p.days_until)} дн.`
                       : p.days_until === 0

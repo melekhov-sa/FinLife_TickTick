@@ -25,13 +25,13 @@ export function ActivityFeed({ feed }: Props) {
               {group.events.map((ev, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors group"
+                  className="flex items-center gap-3 py-[14px] px-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors group"
                 >
                   <span className="text-base shrink-0">{ev.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate leading-snug" style={{ color: "var(--t-secondary)" }}>{ev.title}</p>
+                    <p className="t-main truncate leading-snug" style={{ color: "var(--t-secondary)" }}>{ev.title}</p>
                     {ev.subtitle && (
-                      <p className="text-[13px] truncate leading-snug" style={{ color: "var(--t-muted)" }}>{ev.subtitle}</p>
+                      <p className="t-secondary truncate leading-snug" style={{ color: "var(--t-muted)" }}>{ev.subtitle}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
@@ -40,9 +40,9 @@ export function ActivityFeed({ feed }: Props) {
                         className={clsx(
                           "text-[13px] font-semibold tabular-nums",
                           ev.amount_css === "income"
-                            ? "text-emerald-400"
+                            ? "money-income"
                             : ev.amount_css === "expense"
-                            ? "text-red-400"
+                            ? "money-expense"
                             : ""
                         )}
                         style={!ev.amount_css || ev.amount_css === "neutral" ? { color: "var(--t-muted)" } : undefined}

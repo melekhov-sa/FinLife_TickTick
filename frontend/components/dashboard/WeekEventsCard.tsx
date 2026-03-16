@@ -18,7 +18,7 @@ function formatEventDate(iso: string, isToday: boolean): string {
 
 export function WeekEventsCard({ events }: Props) {
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
       <p className="block-title" style={{ color: "var(--t-muted)" }}>
         События на неделе
       </p>
@@ -42,13 +42,13 @@ export function WeekEventsCard({ events }: Props) {
               />
               <div className="flex-1 min-w-0">
                 <p
-                  className="text-[13px] font-medium truncate leading-snug"
+                  className="t-main truncate leading-snug"
                   style={{ color: ev.is_today ? "var(--t-primary)" : "var(--t-secondary)" }}
                 >
                   {ev.category_emoji && <span className="mr-1">{ev.category_emoji}</span>}
                   {ev.title}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--t-muted)" }}>
+                <p className="t-secondary mt-0.5" style={{ color: "var(--t-muted)" }}>
                   {formatEventDate(ev.start_date, ev.is_today)}
                   {ev.start_time && (
                     <span className="ml-1.5 tabular-nums">{ev.start_time.slice(0, 5)}</span>
