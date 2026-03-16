@@ -14,7 +14,7 @@ function formatDate(iso: string) {
 export function ExpiringSubsCard({ subs }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Скоро заканчивается
       </p>
 
@@ -37,7 +37,7 @@ export function ExpiringSubsCard({ subs }: Props) {
               </div>
               <span
                 className={clsx(
-                  "text-[11px] font-semibold shrink-0 tabular-nums px-1.5 py-0.5 rounded-md border",
+                  "text-xs font-semibold shrink-0 tabular-nums px-1.5 py-0.5 rounded-md border",
                   s.days_left <= 3
                     ? "bg-red-500/12 border-red-500/20 text-red-400"
                     : s.days_left <= 14

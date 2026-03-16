@@ -131,10 +131,10 @@
 
   /* Text hierarchy — dark mode defaults */
   --t-primary:   #ffffff;
-  --t-secondary: rgba(255,255,255,0.90);
-  --t-muted:     rgba(255,255,255,0.75);
-  --t-faint:     rgba(255,255,255,0.60);
-  --t-label:     rgba(255,255,255,0.68);
+  --t-secondary: rgba(255,255,255,0.95);
+  --t-muted:     rgba(255,255,255,0.82);
+  --t-faint:     rgba(255,255,255,0.68);
+  --t-label:     rgba(255,255,255,0.75);
 }
 
 .dark {
@@ -147,10 +147,10 @@
   --app-border-subtle: rgba(255,255,255,0.04);
 
   --t-primary:   #ffffff;
-  --t-secondary: rgba(255,255,255,0.90);
-  --t-muted:     rgba(255,255,255,0.75);
-  --t-faint:     rgba(255,255,255,0.60);
-  --t-label:     rgba(255,255,255,0.68);
+  --t-secondary: rgba(255,255,255,0.95);
+  --t-muted:     rgba(255,255,255,0.82);
+  --t-faint:     rgba(255,255,255,0.68);
+  --t-label:     rgba(255,255,255,0.75);
 }
 
 html:not(.dark) {
@@ -276,6 +276,12 @@ html:not(.dark) .bg-indigo-500\/\[0\.82\] { background-color: rgba(99,102,241,0.
     font-weight: 500;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Dark mode: slightly lighter card backgrounds for better contrast */
+  html.dark .bg-white\/\[0\.03\] { background-color: rgba(255,255,255,0.06) !important; }
+  html.dark .bg-white\/\[0\.04\] { background-color: rgba(255,255,255,0.07) !important; }
+  html.dark .bg-white\/\[0\.02\] { background-color: rgba(255,255,255,0.05) !important; }
+
   html {
     @apply font-sans;
   }

@@ -13,7 +13,7 @@ function kindPill(kind: string, kindLabel: string, amountFormatted: string) {
   const isIncome   = kind === "INCOME"   || kind === "income";
 
   const cls = clsx(
-    "text-[11px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border",
+    "text-xs font-semibold px-2 py-0.5 rounded-md whitespace-nowrap shrink-0 border",
     isExpense  ? "bg-red-500/12   border-red-500/25   text-red-400"
     : isIncome  ? "bg-emerald-500/12 border-emerald-500/25 text-emerald-400"
     : isTransfer ? "bg-indigo-500/12  border-indigo-500/25  text-indigo-400"
@@ -37,7 +37,7 @@ function formatDate(iso: string) {
 export function UpcomingPayments({ payments }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+      <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
         Ближайшие платежи
       </p>
 

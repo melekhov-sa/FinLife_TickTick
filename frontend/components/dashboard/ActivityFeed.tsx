@@ -18,7 +18,7 @@ export function ActivityFeed({ feed }: Props) {
       <div className="space-y-5">
         {feed.map((group) => (
           <div key={group.date}>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-label)" }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-label)" }}>
               {group.label}
             </p>
             <div className="space-y-1.5">
@@ -50,7 +50,7 @@ export function ActivityFeed({ feed }: Props) {
                         {ev.amount_label}
                       </p>
                     )}
-                    <p className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
+                    <p className="text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
                   </div>
                 </div>
               ))}
