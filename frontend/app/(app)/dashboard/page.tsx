@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
@@ -9,8 +8,6 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
-import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
-import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { useDashboard } from "@/hooks/useDashboard";
 
 function Skeleton({ className }: { className?: string }) {
@@ -19,8 +16,6 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
-  const [showTaskModal, setShowTaskModal]   = useState(false);
-  const [showOpModal,   setShowOpModal]     = useState(false);
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -28,40 +23,11 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-  const quickActions = (
-    <>
-      <button
-        onClick={() => setShowTaskModal(true)}
-        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
-      >
-        + Задача
-      </button>
-      <button
-        onClick={() => setShowOpModal(true)}
-        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.09] hover:bg-white/[0.09] transition-colors"
-        style={{ color: "var(--t-secondary)" }}
-      >
-        + Операция
-      </button>
-      <a
-        href="/legacy/subscriptions/new"
-        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.09] hover:bg-white/[0.09] transition-colors"
-        style={{ color: "var(--t-secondary)" }}
-      >
-        + Подписка
-      </a>
-    </>
-  );
-
   return (
     <>
-      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
-      {showOpModal   && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
-
       <AppTopbar
         title="Главная"
         subtitle={todayLabel}
-        actions={quickActions}
       />
 
       <main className="flex-1 overflow-auto p-4 md:p-6">
@@ -106,7 +72,10 @@ export default function DashboardPage() {
 
             {/* ── Центр ─────────────────────────────────────────────── */}
             <div className="space-y-4">
-              <TodayBlock today={data.today} />
+              <TodayBlock
+                  today={data.today}
+                  plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}
+                />
               <ActivityFeed feed={data.feed} />
             </div>
 

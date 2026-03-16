@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { clsx } from "clsx";
 import { CheckCircle2 } from "lucide-react";
-import type { TodayBlock as TodayBlockType, DashboardItem } from "@/types/api";
+import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 
 interface Props {
   today: TodayBlockType;
+  plannedOps: UpcomingPayment[];
 }
 
 type CompletableKind = "task" | "habit" | "task_occ";
@@ -50,9 +51,7 @@ function Item({
         <div
           className={clsx(
             "w-[18px] h-[18px] rounded-full border-[1.5px] shrink-0",
-            isDone
-              ? "bg-indigo-500/50 border-indigo-500/50"
-              : "border-white/20"
+            isDone ? "bg-indigo-500/50 border-indigo-500/50" : "border-white/20"
           )}
         />
       )}
@@ -81,17 +80,56 @@ function Item({
   );
 }
 
-export function TodayBlock({ today }: Props) {
+function FinanceItem({ op, onClick }: { op: UpcomingPayment; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 py-2.5 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors text-left"
+    >
+      <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-white/20 shrink-0" />
+      <span className="flex-1 min-w-0 text-[14px] font-[500] truncate" style={{ color: "var(--t-primary)" }}>
+        {op.title}
+      </span>
+      <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
+        {op.kind_label} · {op.amount_formatted}
+      </span>
+    </button>
+  );
+}
+
+function SectionLabel({ label, count }: { label: string; count: number }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+      {label} · {count}
+    </p>
+  );
+}
+
+export function TodayBlock({ today, plannedOps }: Props) {
   const { overdue, active, done, events, progress } = today;
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-  const isEmpty = overdue.length === 0 && active.length === 0 && events.length === 0 && done.length === 0;
-
-  const taskCount = [...overdue, ...active].filter((i) => i.kind !== "event").length;
-  const eventCount = events.length;
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpModal, setShowOpModal] = useState(false);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
+
+  const taskItems = [
+    ...overdue.filter((i) => i.kind === "task" || i.kind === "task_occ"),
+    ...active.filter((i) => i.kind === "task" || i.kind === "task_occ"),
+    ...done.filter((i) => i.kind === "task" || i.kind === "task_occ"),
+  ];
+
+  const habitItems = [
+    ...overdue.filter((i) => i.kind === "habit"),
+    ...active.filter((i) => i.kind === "habit"),
+    ...done.filter((i) => i.kind === "habit"),
+  ];
+
+  const isEmpty =
+    taskItems.length === 0 &&
+    habitItems.length === 0 &&
+    events.length === 0 &&
+    plannedOps.length === 0;
 
   return (
     <>
@@ -106,7 +144,6 @@ export function TodayBlock({ today }: Props) {
         />
       )}
 
-      {/* Stronger indigo border — main focus block */}
       <div className="rounded-[14px] border p-5" style={{ borderColor: "rgba(120,140,255,0.4)", background: "rgba(99,102,241,0.04)" }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -115,21 +152,6 @@ export function TodayBlock({ today }: Props) {
               Сегодня
             </h2>
 
-            {/* Task / event count pills */}
-            <div className="flex items-center gap-1.5">
-              {taskCount > 0 && (
-                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300/80">
-                  {taskCount} задач
-                </span>
-              )}
-              {eventCount > 0 && (
-                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-300/80">
-                  {eventCount} событий
-                </span>
-              )}
-            </div>
-
-            {/* Progress bar */}
             {progress.total > 0 && (
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-20 bg-white/[0.07] rounded-full overflow-hidden">
@@ -167,40 +189,42 @@ export function TodayBlock({ today }: Props) {
           </div>
         </div>
 
-        {/* Overdue */}
-        {overdue.length > 0 && (
-          <div className="mb-2 pl-3 border-l-2 border-red-500/40">
-            <p className="text-[11px] font-semibold text-red-400/70 uppercase tracking-widest mb-1.5">
-              Просрочено · {overdue.length}
-            </p>
-            {overdue.map((item) => (
+        {/* ЗАДАЧИ */}
+        {taskItems.length > 0 && (
+          <div className="mb-3">
+            <SectionLabel label="Задачи" count={taskItems.length} />
+            {taskItems.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
             ))}
           </div>
         )}
 
-        {/* Events */}
+        {/* ПРИВЫЧКИ */}
+        {habitItems.length > 0 && (
+          <div className="mb-3">
+            <SectionLabel label="Привычки" count={habitItems.length} />
+            {habitItems.map((item) => (
+              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+            ))}
+          </div>
+        )}
+
+        {/* СОБЫТИЯ */}
         {events.length > 0 && (
-          <div className="mb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-muted)" }}>
-              События
-            </p>
+          <div className="mb-3">
+            <SectionLabel label="События" count={events.length} />
             {events.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
             ))}
           </div>
         )}
 
-        {/* Active */}
-        {active.map((item) => (
-          <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
-        ))}
-
-        {/* Done */}
-        {done.length > 0 && (
-          <div className="mt-2">
-            {done.map((item) => (
-              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+        {/* ФИНАНСЫ */}
+        {plannedOps.length > 0 && (
+          <div className="mb-3">
+            <SectionLabel label="Финансы" count={plannedOps.length} />
+            {plannedOps.map((op) => (
+              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setShowOpModal(true)} />
             ))}
           </div>
         )}

@@ -58,7 +58,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
   return (
     <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5 space-y-4">
       <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
-        Прогресс
+        Продуктивность
       </h2>
 
       {/* ── Level ─────────────────────────────────────────── */}
