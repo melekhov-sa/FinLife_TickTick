@@ -52,11 +52,17 @@ const QUICK_LINKS = [
 ];
 
 export default function ProfilePage() {
-  const { data, isLoading, isError } = useQuery<ProfileData>({
+  const { data: rawData, isPending, isError } = useQuery<ProfileData>({
     queryKey: ["profile"],
-    queryFn: () => fetch("/api/v2/profile", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () =>
+      fetch("/api/v2/profile", { credentials: "include" })
+        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
     staleTime: 60_000,
   });
+
+  const isLoading = isPending;
+  // Guard: only use data if it has the expected shape
+  const data = rawData?.xp ? rawData : undefined;
 
   const maxMonthlyXp = data ? Math.max(...(data.monthly_xp ?? []).map((m) => m.xp), 1) : 1;
 

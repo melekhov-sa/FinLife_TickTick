@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Check, MoreHorizontal, Repeat2, Flame, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -232,11 +232,15 @@ export default function HabitsPage() {
   const [selectedHabit, setSelectedHabit]     = useState<HabitItem | null>(null);
   const [filter, setFilter]                   = useState<FilterValue>("all");
 
-  const { data, isLoading, isError } = useHabits();
+  const { data, isPending, isError } = useHabits();
+  const isLoading = isPending;
 
-  const dateSubtitle = new Date().toLocaleDateString("ru-RU", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  const [dateSubtitle, setDateSubtitle] = useState("");
+  useEffect(() => {
+    setDateSubtitle(new Date().toLocaleDateString("ru-RU", {
+      weekday: "long", day: "numeric", month: "long",
+    }));
+  }, []);
 
   const habits = data ?? [];
   const filtered = habits.filter((h) => {
