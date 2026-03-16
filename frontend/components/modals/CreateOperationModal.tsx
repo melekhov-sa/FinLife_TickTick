@@ -81,14 +81,14 @@ export function CreateOperationModal({ onClose }: Props) {
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];
     if (freqCats.length > 0) {
-      freqCats.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined, group: "★ Частые" }));
+      freqCats.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые" }));
     }
     parentCats.forEach((parent) => {
       const children = relevantCats.filter((c) => c.parent_id === parent.category_id);
       if (children.length === 0) {
-        opts.push({ value: String(parent.category_id), label: parent.title, emoji: parent.emoji ?? undefined });
+        opts.push({ value: String(parent.category_id), label: parent.title });
       } else {
-        children.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined, group: parent.title }));
+        children.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: parent.title }));
       }
     });
     return opts;
