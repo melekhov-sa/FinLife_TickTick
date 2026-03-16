@@ -5,6 +5,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
 import { CreditCard, MoreHorizontal } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { clsx } from "clsx";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -392,18 +393,13 @@ export default function SubscriptionsPage() {
                   <span className="text-[11px] font-semibold uppercase tracking-widest shrink-0" style={{ color: "var(--t-faint)" }}>
                     Сортировка
                   </span>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value as SortKind)}
-                    className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[13px] font-medium outline-none cursor-pointer hover:bg-white/[0.07] transition-colors"
-                    style={{ color: "var(--t-secondary)" }}
-                  >
-                    {SORTS.map((s) => (
-                      <option key={s.value} value={s.value} className="bg-[#1a2233]">
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="w-52">
+                    <Select
+                      value={sort}
+                      onChange={(v) => setSort(v as SortKind)}
+                      options={SORTS.map((s) => ({ value: s.value, label: s.label }))}
+                    />
+                  </div>
                 </div>
               </div>
 

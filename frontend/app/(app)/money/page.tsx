@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
+import { Select } from "@/components/ui/Select";
 import { clsx } from "clsx";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 
@@ -106,6 +107,23 @@ export default function MoneyPage() {
 
   const inputCls = "px-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 focus:outline-none focus:border-indigo-500/40 transition-colors [color-scheme:dark]";
 
+  const opTypeOptions = useMemo(() => [
+    { value: "", label: "Все типы" },
+    { value: "INCOME",   label: "Доходы" },
+    { value: "EXPENSE",  label: "Расходы" },
+    { value: "TRANSFER", label: "Переводы" },
+  ], []);
+
+  const walletOptions = useMemo(() => [
+    { value: "", label: "Все кошельки" },
+    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: w.title })),
+  ], [wallets]);
+
+  const categoryOptions = useMemo(() => [
+    { value: "", label: "Все категории" },
+    ...(finCats ?? []).filter((c) => c.parent_id !== null).map((c) => ({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined })),
+  ], [finCats]);
+
   function resetFilters() {
     setOpTypeFilter(""); setWalletFilter(""); setCategoryFilter("");
     setDateFrom(""); setDateTo(""); setSearch(""); setPage(1);
@@ -145,24 +163,15 @@ export default function MoneyPage() {
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 mb-5 space-y-3">
           <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">Фильтры</p>
           <div className="flex flex-wrap gap-2">
-            <select value={opTypeFilter} onChange={(e) => { setOpTypeFilter(e.target.value); setPage(1); }} className={inputCls}>
-              <option value="">Все типы</option>
-              <option value="INCOME">Доходы</option>
-              <option value="EXPENSE">Расходы</option>
-              <option value="TRANSFER">Переводы</option>
-            </select>
-            <select value={walletFilter} onChange={(e) => { setWalletFilter(e.target.value); setPage(1); }} className={inputCls}>
-              <option value="">Все кошельки</option>
-              {(wallets ?? []).map((w) => (
-                <option key={w.wallet_id} value={w.wallet_id}>{w.title}</option>
-              ))}
-            </select>
-            <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} className={inputCls}>
-              <option value="">Все категории</option>
-              {(finCats ?? []).filter((c) => c.parent_id !== null).map((c) => (
-                <option key={c.category_id} value={c.category_id}>{c.title}</option>
-              ))}
-            </select>
+            <div className="w-40">
+              <Select value={opTypeFilter} onChange={(v) => { setOpTypeFilter(v); setPage(1); }} options={opTypeOptions} />
+            </div>
+            <div className="w-44">
+              <Select value={walletFilter} onChange={(v) => { setWalletFilter(v); setPage(1); }} options={walletOptions} />
+            </div>
+            <div className="w-48">
+              <Select value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={categoryOptions} searchable />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={inputCls} placeholder="От" />

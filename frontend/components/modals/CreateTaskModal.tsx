@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkCategoryItem } from "@/types/api";
+import { Select } from "@/components/ui/Select";
 
 interface Props {
   onClose: () => void;
@@ -117,18 +118,15 @@ export function CreateTaskModal({ onClose }: Props) {
           {categories && categories.length > 0 && (
             <div>
               <label className={labelCls}>Категория</label>
-              <select
+              <Select
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : "")}
-                className={inputCls}
-              >
-                <option value="">— без категории —</option>
-                {categories.map((c) => (
-                  <option key={c.category_id} value={c.category_id}>
-                    {c.emoji ? `${c.emoji} ` : ""}{c.title}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setCategoryId(v ? Number(v) : "")}
+                placeholder="— без категории —"
+                options={[
+                  { value: "", label: "— без категории —" },
+                  ...categories.map((c) => ({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined })),
+                ]}
+              />
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useKnowledge } from "@/hooks/useKnowledge";
+import { Select } from "@/components/ui/Select";
 import type { ArticleListItem } from "@/types/api";
 
 const TYPE_OPTIONS = [
@@ -103,15 +104,9 @@ export default function KnowledgePage() {
               className="w-full pl-8 pr-3 py-2 text-sm rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-colors"
             />
           </div>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/60 focus:outline-none focus:border-indigo-500/50 transition-colors"
-          >
-            {TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <div className="w-40">
+            <Select value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
+          </div>
           <a
             href="/legacy/knowledge/create"
             className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors whitespace-nowrap"

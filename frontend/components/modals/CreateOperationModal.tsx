@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
+import { Select } from "@/components/ui/Select";
+import type { SelectOption } from "@/components/ui/Select";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -63,6 +65,34 @@ export function CreateOperationModal({ onClose }: Props) {
   const visibleWallets = (wallets ?? []).filter(
     (w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS")
   );
+
+  // Build wallet SelectOptions
+  const walletOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— выберите кошелёк —" },
+    ...visibleWallets.map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
+  ], [visibleWallets]);
+
+  const allWalletOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— кошелёк —" },
+    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: w.title })),
+  ], [wallets]);
+
+  // Build category SelectOptions with groups (★ Частые, then parent/child groups)
+  const categoryOptions: SelectOption[] = useMemo(() => {
+    const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];
+    if (freqCats.length > 0) {
+      freqCats.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined, group: "★ Частые" }));
+    }
+    parentCats.forEach((parent) => {
+      const children = relevantCats.filter((c) => c.parent_id === parent.category_id);
+      if (children.length === 0) {
+        opts.push({ value: String(parent.category_id), label: parent.title, emoji: parent.emoji ?? undefined });
+      } else {
+        children.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined, group: parent.title }));
+      }
+    });
+    return opts;
+  }, [freqCats, parentCats, relevantCats]);
 
   // Close on Escape
   useEffect(() => {
@@ -183,46 +213,32 @@ export function CreateOperationModal({ onClose }: Props) {
               {opType !== "TRANSFER" ? (
                 <div>
                   <label className={labelCls}>Кошелёк *</label>
-                  <select
+                  <Select
                     value={walletId}
-                    onChange={(e) => setWalletId(e.target.value ? Number(e.target.value) : "")}
-                    className={inputCls}
-                  >
-                    <option value="">— выберите кошелёк —</option>
-                    {visibleWallets.map((w) => (
-                      <option key={w.wallet_id} value={w.wallet_id}>
-                        {w.title} ({w.currency})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setWalletId(v ? Number(v) : "")}
+                    options={walletOptions}
+                    placeholder="— выберите кошелёк —"
+                  />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>Откуда *</label>
-                    <select
+                    <Select
                       value={fromWalletId}
-                      onChange={(e) => setFromWalletId(e.target.value ? Number(e.target.value) : "")}
-                      className={inputCls}
-                    >
-                      <option value="">— кошелёк —</option>
-                      {(wallets ?? []).map((w) => (
-                        <option key={w.wallet_id} value={w.wallet_id}>{w.title}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => setFromWalletId(v ? Number(v) : "")}
+                      options={allWalletOptions}
+                      placeholder="— кошелёк —"
+                    />
                   </div>
                   <div>
                     <label className={labelCls}>Куда *</label>
-                    <select
+                    <Select
                       value={toWalletId}
-                      onChange={(e) => setToWalletId(e.target.value ? Number(e.target.value) : "")}
-                      className={inputCls}
-                    >
-                      <option value="">— кошелёк —</option>
-                      {(wallets ?? []).map((w) => (
-                        <option key={w.wallet_id} value={w.wallet_id}>{w.title}</option>
-                      ))}
-                    </select>
+                      onChange={(v) => setToWalletId(v ? Number(v) : "")}
+                      options={allWalletOptions}
+                      placeholder="— кошелёк —"
+                    />
                   </div>
                 </div>
               )}
@@ -231,33 +247,13 @@ export function CreateOperationModal({ onClose }: Props) {
               {(opType === "INCOME" || opType === "EXPENSE") && (
                 <div>
                   <label className={labelCls}>Категория</label>
-                  <select
+                  <Select
                     value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : "")}
-                    className={inputCls}
-                  >
-                    <option value="">— без категории —</option>
-                    {freqCats.length > 0 && (
-                      <optgroup label="★ Частые">
-                        {freqCats.map((c) => (
-                          <option key={`freq-${c.category_id}`} value={c.category_id}>★ {c.title}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {parentCats.map((parent) => {
-                      const children = relevantCats.filter((c) => c.parent_id === parent.category_id);
-                      if (children.length === 0) {
-                        return <option key={parent.category_id} value={parent.category_id}>{parent.title}</option>;
-                      }
-                      return (
-                        <optgroup key={parent.category_id} label={parent.title}>
-                          {children.map((c) => (
-                            <option key={c.category_id} value={c.category_id}>{c.title}</option>
-                          ))}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
+                    onChange={(v) => setCategoryId(v ? Number(v) : "")}
+                    options={categoryOptions}
+                    placeholder="— без категории —"
+                    searchable
+                  />
                 </div>
               )}
 
