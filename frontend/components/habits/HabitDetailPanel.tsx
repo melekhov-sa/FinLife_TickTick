@@ -83,7 +83,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
     onClose();
   }
 
-  const doneCount = habit.recent_days.filter(Boolean).length;
+  const doneCount = (habit.recent_days ?? []).filter(Boolean).length;
 
   return (
     <>
@@ -162,7 +162,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
               Последние 14 дней
             </p>
             <div className="flex items-center gap-1">
-              {habit.recent_days.map((done, i) => (
+              {(habit.recent_days ?? []).map((done, i) => (
                 <div
                   key={i}
                   title={done ? "Выполнено" : "Не выполнено"}

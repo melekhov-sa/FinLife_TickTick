@@ -155,7 +155,7 @@ function HabitCard({
 
       {/* 14-day dot tracker */}
       <div className="flex items-center gap-0.5 mt-3.5">
-        {habit.recent_days.map((done, i) => (
+        {(habit.recent_days ?? []).map((done, i) => (
           <div
             key={i}
             className={clsx(
@@ -173,7 +173,7 @@ function HabitCard({
       <div className="flex items-center justify-between mt-1">
         <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>14 дней</span>
         <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-          {habit.recent_days.filter(Boolean).length} / 14
+          {(habit.recent_days ?? []).filter(Boolean).length} / 14
         </span>
       </div>
 
