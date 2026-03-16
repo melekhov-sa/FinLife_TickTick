@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
 
@@ -13,77 +15,97 @@ interface Props {
 }
 
 export function FinanceBlock({ finState, financialSummary }: Props) {
+  const [collapsed, setCollapsed] = useState(false);
+
   const result = finState.financial_result;
   const resultPositive = result >= 0;
   const delta = finState.capital_delta_30;
-
-  const rows = [
-    { label: "Обычные кошельки", value: finState.regular_total, color: null },
-    { label: "Кредиты",          value: finState.credit_total,  color: "money-expense" },
-    { label: "Накопления",       value: finState.savings_total, color: "money-income" },
-  ];
-
   const rub = financialSummary?.["RUB"];
 
   return (
-    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5 space-y-3">
-      <h2 className="block-title" style={{ color: "var(--t-label)" }}>
-        Финансовое состояние
-      </h2>
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
+      {/* Header with toggle */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+          Финансы
+        </h2>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.06] transition-colors"
+          style={{ color: "var(--t-faint)" }}
+        >
+          <ChevronDown size={14} className={clsx("transition-transform duration-200", collapsed && "rotate-180")} />
+        </button>
+      </div>
 
-      {/* Wallet rows */}
-      <div className="space-y-1.5">
-        {rows.map(({ label, value, color }) => (
-          <div key={label} className="flex items-baseline justify-between gap-2">
-            <span className="t-main truncate" style={{ color: "var(--t-muted)" }}>{label}</span>
-            <span className={clsx("t-number shrink-0", color ?? "")}
-              style={!color ? { color: "var(--t-secondary)" } : undefined}>
-              {fmt(value)} руб.
+      {!collapsed && (
+        <>
+          {/* Wallet rows */}
+          <div className="space-y-2">
+            {/* Regular */}
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Обычные кошельки</span>
+              <span className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                {fmt(finState.regular_total)} ₽
+              </span>
+            </div>
+
+            {/* Credit */}
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Кредиты</span>
+              <span className="text-[14px] font-semibold tabular-nums money-expense">
+                {fmt(finState.credit_total)} ₽
+              </span>
+            </div>
+
+            {/* Savings — with delta inline */}
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Накопления</span>
+              <div className="text-right">
+                <p className="text-[14px] font-semibold tabular-nums money-income leading-snug">
+                  {fmt(finState.savings_total)} ₽
+                </p>
+                {delta !== null && (
+                  <p className={clsx(
+                    "text-[12px] font-medium tabular-nums leading-snug",
+                    delta >= 0 ? "text-emerald-400/70" : "text-red-400/70"
+                  )}>
+                    {delta >= 0 ? "+" : ""}{fmt(delta)} ₽
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Financial result */}
+          <div className="border-t border-white/[0.06] mt-3 pt-3 flex items-baseline justify-between gap-2">
+            <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
+            <span className={clsx("text-[14px] font-semibold tabular-nums", resultPositive ? "money-income" : "money-expense")}>
+              {resultPositive ? "" : "\u2212"}{fmt(Math.abs(result))} ₽
             </span>
           </div>
-        ))}
-      </div>
 
-      {/* Financial result */}
-      <div className="border-t border-white/[0.06] pt-2.5 flex items-baseline justify-between gap-2">
-        <span className="text-[13px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
-        <span className={clsx("t-number shrink-0", resultPositive ? "money-income" : "money-expense")}>
-          {resultPositive ? "" : "-"}{fmt(Math.abs(result))} руб.
-        </span>
-      </div>
+          {/* Income load */}
+          {rub && rub.income > 0 && (
+            <div className="flex items-baseline justify-between gap-2 mt-1.5">
+              <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>Доходная нагрузка</span>
+              <span className="text-[12px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                {Math.round((rub.expense / rub.income) * 100)}%
+              </span>
+            </div>
+          )}
 
-      {/* Meta */}
-      <div className="space-y-1">
-        {rub && (
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="t-secondary" style={{ color: "var(--t-muted)" }}>Доходная нагрузка</span>
-            <span className="text-xs tabular-nums" style={{ color: "var(--t-secondary)" }}>
-              {rub.income > 0 ? Math.round((rub.expense / rub.income) * 100) : 0}%
-            </span>
+          {/* Quick links */}
+          <div className="border-t border-white/[0.05] mt-3 pt-2.5 flex gap-4">
+            <a href="/legacy/wallets" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+              Кошельки →
+            </a>
+            <a href="/legacy/budget" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+              Бюджет →
+            </a>
           </div>
-        )}
-        {delta !== null && (
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="t-secondary" style={{ color: "var(--t-muted)" }}>Капитал за 30 дн.</span>
-            <span className={clsx(
-              "text-xs tabular-nums font-medium",
-              delta >= 0 ? "text-emerald-400/70" : "text-red-400/70"
-            )}>
-              {delta >= 0 ? "+" : ""}{fmt(delta)} ₽
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Quick links */}
-      <div className="border-t border-white/[0.05] pt-2 flex gap-4">
-        <a href="/legacy/wallets" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
-          Кошельки →
-        </a>
-        <a href="/legacy/budget" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
-          Бюджет →
-        </a>
-      </div>
+        </>
+      )}
     </div>
   );
 }

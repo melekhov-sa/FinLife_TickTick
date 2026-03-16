@@ -1,15 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
 import { UpcomingPayments } from "@/components/dashboard/UpcomingPayments";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { HabitHeatmap } from "@/components/dashboard/HabitHeatmap";
-import { LevelCard } from "@/components/dashboard/LevelCard";
-import { EfficiencyCard } from "@/components/dashboard/EfficiencyCard";
+import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
+import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
+import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { useDashboard } from "@/hooks/useDashboard";
 
 function Skeleton({ className }: { className?: string }) {
@@ -18,22 +19,52 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
+  const [showTaskModal, setShowTaskModal]   = useState(false);
+  const [showOpModal,   setShowOpModal]     = useState(false);
 
-  // Format today's date as Russian string
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
+  const quickActions = (
+    <>
+      <button
+        onClick={() => setShowTaskModal(true)}
+        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+      >
+        + Задача
+      </button>
+      <button
+        onClick={() => setShowOpModal(true)}
+        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.09] hover:bg-white/[0.09] transition-colors"
+        style={{ color: "var(--t-secondary)" }}
+      >
+        + Операция
+      </button>
+      <a
+        href="/legacy/subscriptions/new"
+        className="flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.09] hover:bg-white/[0.09] transition-colors"
+        style={{ color: "var(--t-secondary)" }}
+      >
+        + Подписка
+      </a>
+    </>
+  );
+
   return (
     <>
+      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
+      {showOpModal   && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+
       <AppTopbar
         title="Главная"
         subtitle={todayLabel}
+        actions={quickActions}
       />
 
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-4 md:p-6">
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить дашборд
@@ -41,17 +72,16 @@ export default function DashboardPage() {
         )}
 
         {isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr_300px] gap-4 max-w-[1400px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_290px] gap-4 max-w-[1400px]">
             <div className="space-y-4">
               <Skeleton className="h-40" />
-              <Skeleton className="h-36" />
-              <Skeleton className="h-36" />
+              <Skeleton className="h-48" />
             </div>
             <div className="space-y-4">
               <Skeleton className="h-72" />
               <Skeleton className="h-48" />
             </div>
-            <div className="hidden lg:space-y-4">
+            <div className="hidden lg:block space-y-4">
               <Skeleton className="h-36" />
               <Skeleton className="h-48" />
             </div>
@@ -59,26 +89,28 @@ export default function DashboardPage() {
         )}
 
         {data && (
-          <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr_300px] gap-4 max-w-[1400px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_290px] gap-4 max-w-[1400px]">
 
-            {/* ── Левая колонка: финансы + уровень + эффективность ─────────── */}
+            {/* ── Левая колонка ─────────────────────────────────────── */}
             <div className="space-y-4">
               <FinanceBlock
                 finState={data.fin_state}
                 financialSummary={data.financial_summary}
               />
-              {data.level && <LevelCard level={data.level} />}
-              {data.efficiency && <EfficiencyCard efficiency={data.efficiency} />}
-              <HabitHeatmap cells={data.habit_heatmap} />
+              <ProgressBlock
+                level={data.level}
+                efficiency={data.efficiency}
+                cells={data.habit_heatmap}
+              />
             </div>
 
-            {/* ── Центр: фокус дня + дневник ───────────────────────────────── */}
+            {/* ── Центр ─────────────────────────────────────────────── */}
             <div className="space-y-4">
               <TodayBlock today={data.today} />
               <ActivityFeed feed={data.feed} />
             </div>
 
-            {/* ── Правая колонка: платежи + события + окончания ────────────── */}
+            {/* ── Правая колонка ────────────────────────────────────── */}
             <div className="hidden lg:block space-y-4">
               <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />

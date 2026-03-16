@@ -7,9 +7,10 @@ import { useMe } from "@/hooks/useMe";
 interface AppTopbarProps {
   title?: string;
   subtitle?: string;
+  actions?: React.ReactNode;
 }
 
-export function AppTopbar({ title, subtitle }: AppTopbarProps) {
+export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const { data: me } = useMe();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -41,6 +42,7 @@ export function AppTopbar({ title, subtitle }: AppTopbarProps) {
         </div>
       )}
       <div className="flex items-center gap-3 ml-auto">
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
         <button
           className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/[0.05] dark:hover:bg-white/[0.06]"
           style={{ color: textMuted }}

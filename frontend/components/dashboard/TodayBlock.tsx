@@ -31,11 +31,10 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0",
+        "flex items-center gap-3 py-2.5 border-b border-white/[0.05] last:border-0",
         isDone && "opacity-40"
       )}
     >
-      {/* Checkbox / status circle */}
       {canComplete ? (
         <button
           onClick={() => onComplete(item)}
@@ -43,7 +42,7 @@ function Item({
             "w-[18px] h-[18px] rounded-full border-[1.5px] shrink-0 transition-all hover:scale-110",
             isOverdue
               ? "border-red-400/70 hover:bg-red-500/20 hover:border-red-400"
-              : "border-white/35 hover:bg-white/10 hover:border-white/60"
+              : "border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400/60"
           )}
           title="Отметить как выполненное"
         />
@@ -60,14 +59,14 @@ function Item({
 
       <div className="flex-1 min-w-0">
         <span
-          className={clsx("t-main leading-snug", isDone ? "line-through" : "")}
+          className={clsx("text-[14px] font-[500] leading-snug", isDone ? "line-through" : "")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {title}
         </span>
         {time && (
-          <span className="ml-2 text-[13px] tabular-nums" style={{ color: "var(--t-muted)" }}>
+          <span className="ml-2 text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
             {time}
           </span>
         )}
@@ -87,6 +86,9 @@ export function TodayBlock({ today }: Props) {
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
   const isEmpty = overdue.length === 0 && active.length === 0 && events.length === 0 && done.length === 0;
 
+  const taskCount = [...overdue, ...active].filter((i) => i.kind !== "event").length;
+  const eventCount = events.length;
+
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpModal, setShowOpModal] = useState(false);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
@@ -104,13 +106,30 @@ export function TodayBlock({ today }: Props) {
         />
       )}
 
-      <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
+      {/* Stronger indigo border — main focus block */}
+      <div className="rounded-[14px] border p-5" style={{ borderColor: "rgba(120,140,255,0.4)", background: "rgba(99,102,241,0.04)" }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+            <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
               Сегодня
             </h2>
+
+            {/* Task / event count pills */}
+            <div className="flex items-center gap-1.5">
+              {taskCount > 0 && (
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300/80">
+                  {taskCount} задач
+                </span>
+              )}
+              {eventCount > 0 && (
+                <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-sky-500/10 text-sky-300/80">
+                  {eventCount} событий
+                </span>
+              )}
+            </div>
+
+            {/* Progress bar */}
             {progress.total > 0 && (
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-20 bg-white/[0.07] rounded-full overflow-hidden">
@@ -124,12 +143,13 @@ export function TodayBlock({ today }: Props) {
                     }}
                   />
                 </div>
-                <span className="t-secondary tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                <span className="text-[12px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
                   {progress.done}/{progress.total}
                 </span>
               </div>
             )}
           </div>
+
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowTaskModal(true)}
@@ -147,7 +167,7 @@ export function TodayBlock({ today }: Props) {
           </div>
         </div>
 
-        {/* Overdue section */}
+        {/* Overdue */}
         {overdue.length > 0 && (
           <div className="mb-2 pl-3 border-l-2 border-red-500/40">
             <p className="text-[11px] font-semibold text-red-400/70 uppercase tracking-widest mb-1.5">
@@ -171,7 +191,7 @@ export function TodayBlock({ today }: Props) {
           </div>
         )}
 
-        {/* Active tasks & habits */}
+        {/* Active */}
         {active.map((item) => (
           <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
         ))}
@@ -188,8 +208,8 @@ export function TodayBlock({ today }: Props) {
         {/* Empty state */}
         {isEmpty && (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <CheckCircle2 size={28} className="text-white/15" />
-            <p className="text-sm" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
+            <CheckCircle2 size={28} className="text-indigo-400/30" />
+            <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
           </div>
         )}
       </div>
