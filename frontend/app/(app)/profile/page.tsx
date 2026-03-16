@@ -21,7 +21,7 @@ interface ProfileData {
   level_title: string;
   daily_xp_total: number;
   current_month_label: string;
-  monthly_xp: { label: string; xp: number }[];
+  monthly_xp: { month_name: string; xp: number }[];
   recent_xp_events: { description?: string; xp?: number; occurred_at?: string }[];
   theme: string | null;
   enable_task_expense_link: boolean;
@@ -180,10 +180,10 @@ export default function ProfilePage() {
                                 : "bg-white/[0.08]"
                             )}
                             style={{ height: `${h}px` }}
-                            title={`${m.label}: ${m.xp} XP`}
+                            title={`${m.month_name}: ${m.xp} XP`}
                           />
                           <span className="text-[9px] text-white/50 truncate w-full text-center">
-                            {m.label.slice(0, 3)}
+                            {m.month_name.slice(0, 3)}
                           </span>
                         </div>
                       );
