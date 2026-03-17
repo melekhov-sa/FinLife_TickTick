@@ -210,7 +210,7 @@ export function Select({
               value={search}
               onChange={(e) => { setSearch(e.target.value); setFocusedIdx(0); }}
               placeholder="Поиск..."
-              className="w-full pl-7 pr-3 h-8 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-colors"
+              className="w-full pl-7 pr-3 h-8 text-base md:text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-colors"
               style={{ color: "rgba(255,255,255,0.85)" }}
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") { e.preventDefault(); setFocusedIdx(0); listRef.current?.focus(); }

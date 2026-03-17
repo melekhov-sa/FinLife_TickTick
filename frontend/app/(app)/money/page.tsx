@@ -107,7 +107,7 @@ export default function MoneyPage() {
 
   const walletMap = Object.fromEntries((wallets ?? []).map((w) => [w.wallet_id, w.title]));
 
-  const inputCls = "px-3 py-1.5 md:py-2 text-xs rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 focus:outline-none focus:border-indigo-500/40 transition-colors [color-scheme:dark]";
+  const inputCls = "px-3 py-1.5 md:py-2 text-base md:text-xs rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 focus:outline-none focus:border-indigo-500/40 transition-colors [color-scheme:dark]";
 
   const opTypeOptions = useMemo(() => [
     { value: "", label: "Все типы" },

@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-const inputCls = "w-full px-3 h-9 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
+const inputCls = "w-full px-3 h-9 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
 const labelCls = "block text-[11px] md:text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
 
 export function CreateEventModal({ onClose }: Props) {
@@ -164,7 +164,7 @@ export function CreateEventModal({ onClose }: Props) {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Необязательно"
           rows={2}
-          className="w-full px-3 py-2 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
+          className="w-full px-3 py-2 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
         />
       </div>
 

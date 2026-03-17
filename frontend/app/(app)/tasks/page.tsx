@@ -169,7 +169,7 @@ export default function TasksPage() {
                     if (e.key === "Escape") { setQuickTitle(""); quickInputRef.current?.blur(); }
                   }}
                   placeholder="Новая задача..."
-                  className="flex-1 bg-transparent outline-none text-[13px] md:text-[14px] placeholder-indigo-300/25 font-medium"
+                  className="flex-1 bg-transparent outline-none text-base md:text-[14px] placeholder-indigo-300/25 font-medium"
                   style={{ color: "var(--t-secondary)" }}
                 />
               </div>
