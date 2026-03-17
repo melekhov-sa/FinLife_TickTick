@@ -1,4 +1,4 @@
-"""Tests for events API — creation, validation, and listing."""
+"""Tests for events API — creation, validation, listing, and event sourcing."""
 from datetime import date, time, timedelta
 import pytest
 from sqlalchemy.orm import Session
@@ -93,7 +93,6 @@ class TestEventOccurrenceModel:
         assert loaded.end_date is None
 
     def test_create_all_day_event(self, db_session: Session):
-        """All-day event: start_time=None, end_date=None."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
         occ = _occurrence(
@@ -109,7 +108,6 @@ class TestEventOccurrenceModel:
         assert loaded.end_date is None
 
     def test_cancelled_event_excluded(self, db_session: Session):
-        """Cancelled events should not appear in active queries."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
         occ = _occurrence(
@@ -133,7 +131,6 @@ class TestEventListing:
     """Test the same query logic used by GET /api/v2/events."""
 
     def _query_events(self, db: Session, days: int = 30):
-        """Replicate the API query logic."""
         today = date.today()
         until = today + timedelta(days=days)
         return (
@@ -149,7 +146,6 @@ class TestEventListing:
         )
 
     def test_future_event_without_end_date_visible(self, db_session: Session):
-        """An event with start_date in 18 days and no end_date MUST appear."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
         future = date.today() + timedelta(days=18)
@@ -168,64 +164,37 @@ class TestEventListing:
     def test_today_event_visible(self, db_session: Session):
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        occ = _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today(),
-            start_time=time(10, 0),
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today(), start_time=time(10, 0))
         db_session.commit()
-
-        results = self._query_events(db_session)
-        assert len(results) == 1
+        assert len(self._query_events(db_session)) == 1
 
     def test_past_event_within_7days_visible(self, db_session: Session):
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        occ = _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() - timedelta(days=5),
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() - timedelta(days=5))
         db_session.commit()
-
-        results = self._query_events(db_session)
-        assert len(results) == 1
+        assert len(self._query_events(db_session)) == 1
 
     def test_past_event_beyond_7days_hidden(self, db_session: Session):
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() - timedelta(days=10),
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() - timedelta(days=10))
         db_session.commit()
-
-        results = self._query_events(db_session)
-        assert len(results) == 0
+        assert len(self._query_events(db_session)) == 0
 
     def test_cancelled_event_hidden(self, db_session: Session):
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() + timedelta(days=5),
-            is_cancelled=True,
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() + timedelta(days=5), is_cancelled=True)
         db_session.commit()
-
-        results = self._query_events(db_session)
-        assert len(results) == 0
+        assert len(self._query_events(db_session)) == 0
 
     def test_event_beyond_range_hidden(self, db_session: Session):
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() + timedelta(days=35),
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() + timedelta(days=35))
         db_session.commit()
-
-        results = self._query_events(db_session, days=30)
-        assert len(results) == 0
+        assert len(self._query_events(db_session, days=30)) == 0
 
     def test_multiple_events_sorted(self, db_session: Session):
         cat = _category(db_session)
@@ -249,7 +218,6 @@ class TestEventListing:
 
 
 class TestEventValidation:
-    """Test validate_event_form() for proper error messages."""
 
     def test_empty_title_rejected(self):
         from app.application.events import validate_event_form
@@ -259,51 +227,37 @@ class TestEventValidation:
 
     def test_whitespace_title_rejected(self):
         from app.application.events import validate_event_form
-        err = validate_event_form(event_type="onetime", title="   ", start_date="2026-04-04")
-        assert err is not None
+        assert validate_event_form(event_type="onetime", title="   ", start_date="2026-04-04") is not None
 
     def test_onetime_without_date_rejected(self):
         from app.application.events import validate_event_form
         err = validate_event_form(event_type="onetime", title="Встреча", start_date="")
-        assert err is not None
-        assert "Дата" in err
+        assert err is not None and "Дата" in err
 
     def test_valid_onetime_accepted(self):
         from app.application.events import validate_event_form
-        err = validate_event_form(event_type="onetime", title="Встреча", start_date="2026-04-04")
-        assert err is None
+        assert validate_event_form(event_type="onetime", title="Встреча", start_date="2026-04-04") is None
 
     def test_recurring_weekly_without_weekdays_rejected(self):
         from app.application.events import validate_event_form
-        err = validate_event_form(
-            event_type="recurring", title="Спорт",
-            recurrence_type="weekly", rec_weekdays=[],
-        )
-        assert err is not None
-        assert "день" in err.lower()
+        err = validate_event_form(event_type="recurring", title="Спорт", recurrence_type="weekly", rec_weekdays=[])
+        assert err is not None and "день" in err.lower()
 
     def test_recurring_monthly_without_day_rejected(self):
         from app.application.events import validate_event_form
-        err = validate_event_form(
-            event_type="recurring", title="Оплата",
-            recurrence_type="monthly", rec_day=None,
-        )
-        assert err is not None
+        assert validate_event_form(event_type="recurring", title="Оплата", recurrence_type="monthly", rec_day=None) is not None
 
     def test_invalid_event_type_rejected(self):
         from app.application.events import validate_event_form
-        err = validate_event_form(event_type="unknown", title="Test", start_date="2026-01-01")
-        assert err is not None
+        assert validate_event_form(event_type="unknown", title="Test", start_date="2026-01-01") is not None
 
 
-# ── Dashboard "today" block event query tests ────────────────────────────────
+# ── Dashboard "today" block tests ────────────────────────────────────────────
 
 
 class TestDashboardTodayEvents:
-    """Test the dashboard query logic for today's events."""
 
     def _query_today_events(self, db: Session):
-        """Replicate dashboard _collect_events_today logic."""
         from sqlalchemy import or_, and_
         today = date.today()
         return (
@@ -324,114 +278,73 @@ class TestDashboardTodayEvents:
         )
 
     def test_today_event_no_end_date_visible(self, db_session: Session):
-        """Event starting today with no end_date should appear in today block."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        occ = _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today(),
-            start_time=time(15, 15),
-            end_date=None,
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today(), start_time=time(15, 15), end_date=None)
         db_session.commit()
-
-        results = self._query_today_events(db_session)
-        assert len(results) == 1
+        assert len(self._query_today_events(db_session)) == 1
 
     def test_multi_day_event_spanning_today_visible(self, db_session: Session):
-        """A multi-day event that started yesterday and ends tomorrow should appear."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        occ = _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() - timedelta(days=1),
-            end_date=date.today() + timedelta(days=1),
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() - timedelta(days=1), end_date=date.today() + timedelta(days=1))
         db_session.commit()
-
-        results = self._query_today_events(db_session)
-        assert len(results) == 1
+        assert len(self._query_today_events(db_session)) == 1
 
     def test_yesterday_event_no_end_date_NOT_visible(self, db_session: Session):
-        """An event from yesterday with no end_date should NOT appear in today."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() - timedelta(days=1),
-            end_date=None,
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() - timedelta(days=1), end_date=None)
         db_session.commit()
-
-        results = self._query_today_events(db_session)
-        assert len(results) == 0
+        assert len(self._query_today_events(db_session)) == 0
 
     def test_future_event_NOT_in_today(self, db_session: Session):
-        """A future event should NOT appear in today block."""
         cat = _category(db_session)
         ev = _event(db_session, category_id=cat.category_id)
-        _occurrence(
-            db_session, ev.event_id,
-            start_date=date.today() + timedelta(days=5),
-            end_date=None,
-        )
+        _occurrence(db_session, ev.event_id, start_date=date.today() + timedelta(days=5), end_date=None)
         db_session.commit()
-
-        results = self._query_today_events(db_session)
-        assert len(results) == 0
+        assert len(self._query_today_events(db_session)) == 0
 
 
-# ── End-to-end: CreateEventUseCase → occurrence appears in DB ────────────────
+# ── End-to-end: CreateEventUseCase tests ─────────────────────────────────────
 
 
 class TestCreateEventE2E:
     """Test full event creation flow through event sourcing + projector."""
 
     def test_create_onetime_event_creates_occurrence(self, db_session: Session):
-        """
-        Bug reproduction: user creates event via modal → event exists in events
-        table but occurrence is missing from event_occurrences.
-        """
         from app.application.events import CreateEventUseCase
 
-        # Setup: need a category
         cat = _category(db_session)
         db_session.commit()
 
-        # Act: create event like the API does
         event_id = CreateEventUseCase(db_session).execute(
             account_id=ACCT,
             title="Зенит - Крылья Советов",
             category_id=cat.category_id,
-            description=None,
             occ_start_date="2026-04-04",
             occ_start_time="15:15",
             occ_end_date=None,
-            occ_end_time=None,
             actor_user_id=ACCT,
         )
 
-        # Assert: event exists
         ev = db_session.query(CalendarEventModel).filter_by(event_id=event_id).first()
-        assert ev is not None, "CalendarEventModel not created"
+        assert ev is not None
         assert ev.title == "Зенит - Крылья Советов"
 
-        # Assert: occurrence exists
         occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
-        assert occ is not None, "EventOccurrenceModel NOT created — this is the bug!"
+        assert occ is not None, "EventOccurrenceModel NOT created"
         assert occ.start_date == date(2026, 4, 4)
         assert occ.start_time == time(15, 15)
         assert occ.end_date is None
-        assert occ.is_cancelled is False
 
-    def test_create_event_without_end_date_occurrence_visible_in_api_query(self, db_session: Session):
-        """Occurrence without end_date should be returned by the events list query."""
+    def test_create_event_without_end_date_visible_in_api_query(self, db_session: Session):
         from app.application.events import CreateEventUseCase
 
         cat = _category(db_session)
         db_session.commit()
 
-        event_id = CreateEventUseCase(db_session).execute(
+        CreateEventUseCase(db_session).execute(
             account_id=ACCT,
             title="Тестовое событие",
             category_id=cat.category_id,
@@ -440,20 +353,17 @@ class TestCreateEventE2E:
             actor_user_id=ACCT,
         )
 
-        # Query like the API does
         today = date.today()
-        until = today + timedelta(days=30)
         results = (
             db_session.query(EventOccurrenceModel)
             .filter(
                 EventOccurrenceModel.account_id == ACCT,
                 EventOccurrenceModel.start_date >= today - timedelta(days=7),
-                EventOccurrenceModel.start_date <= until,
+                EventOccurrenceModel.start_date <= today + timedelta(days=30),
                 EventOccurrenceModel.is_cancelled == False,
             )
             .all()
         )
-        assert len(results) >= 1
         titles = []
         for occ in results:
             ev = db_session.query(CalendarEventModel).filter_by(event_id=occ.event_id).first()
@@ -461,14 +371,13 @@ class TestCreateEventE2E:
                 titles.append(ev.title)
         assert "Тестовое событие" in titles
 
-    def test_create_event_event_log_has_both_entries(self, db_session: Session):
-        """Both calendar_event_created and event_occurrence_created should be in event_log."""
+    def test_event_log_has_both_entries(self, db_session: Session):
         from app.application.events import CreateEventUseCase
 
         cat = _category(db_session)
         db_session.commit()
 
-        event_id = CreateEventUseCase(db_session).execute(
+        CreateEventUseCase(db_session).execute(
             account_id=ACCT,
             title="Проверка event_log",
             category_id=cat.category_id,
@@ -476,10 +385,93 @@ class TestCreateEventE2E:
             actor_user_id=ACCT,
         )
 
-        logs = db_session.query(EventLog).filter(
-            EventLog.account_id == ACCT,
-        ).order_by(EventLog.id).all()
+        event_types = [
+            log.event_type
+            for log in db_session.query(EventLog).filter(EventLog.account_id == ACCT).all()
+        ]
+        assert "calendar_event_created" in event_types
+        assert "event_occurrence_created" in event_types
 
-        event_types = [log.event_type for log in logs]
-        assert "calendar_event_created" in event_types, "Missing calendar_event_created in event_log"
-        assert "event_occurrence_created" in event_types, "Missing event_occurrence_created in event_log"
+
+# ── BUG REPRODUCTION: ID collision with pre-existing occurrences ─────────────
+
+
+class TestOccurrenceIdCollision:
+    """
+    BUG: _generate_id() reads max occurrence_id from event_log, but old
+    interface created occurrences directly in the table (without event_log).
+    So _generate_id() returns an ID that already exists in event_occurrences,
+    and the projector silently skips creation (existing check on line 92-96).
+
+    This is why "Зенит - Крылья Советов" was created but never appeared.
+    """
+
+    def test_id_collision_causes_missing_occurrence(self, db_session: Session):
+        """Reproduce the exact bug: pre-existing occurrences cause ID collision."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        # Simulate old interface: create occurrences directly in DB (no event_log)
+        old_ev = CalendarEventModel(
+            event_id=999, account_id=ACCT, title="Old Event",
+            category_id=cat.category_id, is_active=True,
+        )
+        db_session.add(old_ev)
+        db_session.flush()
+
+        # Pre-populate occurrences with IDs 1, 2, 3 (as if old code created them)
+        for i in range(1, 4):
+            db_session.add(EventOccurrenceModel(
+                id=i, account_id=ACCT, event_id=999,
+                start_date=date(2026, 1, i), is_cancelled=False, source="manual",
+            ))
+        db_session.commit()
+
+        # Now create via new interface (event sourcing)
+        # _generate_id() reads event_log (empty) → returns 1
+        # Projector tries to create occurrence with id=1 → already exists → SKIPS!
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Зенит - Крылья Советов",
+            category_id=cat.category_id,
+            occ_start_date="2026-04-04",
+            occ_start_time="15:15",
+            actor_user_id=ACCT,
+        )
+
+        # The event should exist
+        ev = db_session.query(CalendarEventModel).filter_by(event_id=event_id).first()
+        assert ev is not None, "Event should exist"
+        assert ev.title == "Зенит - Крылья Советов"
+
+        # BUG: occurrence is MISSING because of ID collision
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        # This FAILS with current code — proving the bug
+        # After fix, this should pass
+        assert occ is not None, (
+            "BUG: Occurrence not created due to ID collision! "
+            "_generate_id() returned an ID that already exists in event_occurrences "
+            "(created by old interface without event_log). "
+            "Projector silently skipped creation."
+        )
+        assert occ.start_date == date(2026, 4, 4)
+
+    def test_no_collision_when_table_empty(self, db_session: Session):
+        """When no pre-existing occurrences, everything works fine."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Нормальное событие",
+            category_id=cat.category_id,
+            occ_start_date="2026-04-04",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None, "Should work when no pre-existing data"

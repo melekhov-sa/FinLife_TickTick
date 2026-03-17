@@ -209,10 +209,16 @@ class CreateEventUseCase:
         return event_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
+        """Generate a unique event ID from both event_log and events table."""
+        max_from_log = self.db.query(
             func.max(func.cast(EventLog.payload_json['event_id'], CalendarEventModel.event_id.type))
         ).filter(EventLog.event_type == 'calendar_event_created').scalar() or 0
-        return max_id + 1
+
+        max_from_table = self.db.query(
+            func.max(CalendarEventModel.event_id)
+        ).scalar() or 0
+
+        return max(max_from_log, max_from_table) + 1
 
 
 class UpdateEventUseCase:
@@ -300,6 +306,23 @@ class CreateEventOccurrenceUseCase:
         self.db = db
         self.event_repo = EventLogRepository(db)
 
+    def _generate_id(self) -> int:
+        """Generate a unique occurrence ID.
+
+        Takes the max from BOTH event_log payloads AND the event_occurrences
+        table to avoid collisions with occurrences created by the old
+        interface (which wrote directly to the table without event_log).
+        """
+        max_from_log = self.db.query(
+            func.max(func.cast(EventLog.payload_json['occurrence_id'], Integer))
+        ).filter(EventLog.event_type == 'event_occurrence_created').scalar() or 0
+
+        max_from_table = self.db.query(
+            func.max(EventOccurrenceModel.id)
+        ).scalar() or 0
+
+        return max(max_from_log, max_from_table) + 1
+
     def execute(
         self,
         event_id: int,
@@ -367,11 +390,6 @@ class CreateEventOccurrenceUseCase:
             self.db.commit()
             EventsProjector(self.db).run(account_id, event_types=["event_reminder_created"])
 
-    def _generate_id(self) -> int:
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['occurrence_id'], Integer))
-        ).filter(EventLog.event_type == 'event_occurrence_created').scalar() or 0
-        return max_id + 1
 
 
 class UpdateEventOccurrenceUseCase:
