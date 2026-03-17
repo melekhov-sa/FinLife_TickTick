@@ -103,15 +103,15 @@ export default function TasksPage() {
 
       <AppTopbar title="Задачи" />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-2xl">
         {/* Controls */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+        <div className="flex items-center justify-between mb-3 md:mb-5">
+          <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
             {TABS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => handleTabChange(value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-2.5 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg text-[11px] md:text-xs font-medium transition-colors ${
                   status === value
                     ? "bg-white/[0.09] text-white shadow-sm"
                     : "text-white/55 hover:text-white/80"
@@ -124,7 +124,7 @@ export default function TasksPage() {
 
           {/* Count badge */}
           {tasks && tasks.length > 0 && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06]"
+            <span className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06]"
               style={{ color: "var(--t-faint)" }}>
               {tasks.length}
             </span>
@@ -133,9 +133,9 @@ export default function TasksPage() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-11 bg-white/[0.02] rounded-xl animate-pulse" />
+              <div key={i} className="h-10 md:h-11 bg-white/[0.02] rounded-xl animate-pulse" />
             ))}
           </div>
         )}
@@ -149,18 +149,16 @@ export default function TasksPage() {
 
         {/* Task list + quick-add */}
         {!isLoading && !isError && (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
 
             {/* Quick-add row (active tab only) */}
             {status === "ACTIVE" && (
-              <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-white/[0.05]">
+              <div className="flex items-center gap-2 px-3 py-2 md:py-2.5 border-b border-white/[0.05] bg-indigo-500/[0.03]">
                 <button
                   onClick={submitQuickAdd}
-                  className="shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] border-white/20 flex items-center justify-center hover:border-indigo-400/60 hover:bg-indigo-500/10 transition-all"
-                  style={{ color: "transparent" }}
-                  title="Добавить задачу"
+                  className="shrink-0 w-5 h-5 rounded-full border-[1.5px] border-indigo-400/30 flex items-center justify-center hover:border-indigo-400/60 hover:bg-indigo-500/10 transition-all"
                 >
-                  <Plus size={10} strokeWidth={2.5} style={{ color: "var(--t-faint)" }} />
+                  <Plus size={11} strokeWidth={2.5} className="text-indigo-400/60" />
                 </button>
                 <input
                   ref={quickInputRef}
@@ -171,7 +169,7 @@ export default function TasksPage() {
                     if (e.key === "Escape") { setQuickTitle(""); quickInputRef.current?.blur(); }
                   }}
                   placeholder="Новая задача..."
-                  className="flex-1 bg-transparent outline-none text-[14px] placeholder-white/20"
+                  className="flex-1 bg-transparent outline-none text-[13px] md:text-[14px] placeholder-indigo-300/25 font-medium"
                   style={{ color: "var(--t-secondary)" }}
                 />
               </div>
@@ -179,23 +177,23 @@ export default function TasksPage() {
 
             {/* Empty state */}
             {tasks && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
                   {status === "DONE" ? (
-                    <CheckCircle2 size={20} className="text-emerald-400/40" />
+                    <CheckCircle2 size={18} className="text-emerald-400/40" />
                   ) : (
-                    <ClipboardList size={20} className="text-white/30" />
+                    <ClipboardList size={18} className="text-white/30" />
                   )}
                 </div>
-                <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
+                <p className="text-[13px] md:text-sm font-medium" style={{ color: "var(--t-muted)" }}>
                   {status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
                 </p>
                 {status === "ACTIVE" && (
                   <button
                     onClick={() => quickInputRef.current?.focus()}
-                    className="mt-3 text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
+                    className="mt-2 text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
                   >
-                    Напишите задачу выше ↑
+                    Напишите задачу выше
                   </button>
                 )}
               </div>

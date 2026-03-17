@@ -20,7 +20,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
 
   return (
     <header
-      className="h-14 flex items-center justify-between px-6 shrink-0 border-b"
+      className="h-11 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b"
       style={{
         background: "var(--app-topbar-bg)",
         borderColor: "var(--app-border)",
@@ -28,24 +28,24 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
       }}
     >
       {(title || subtitle) && (
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-baseline gap-2 md:gap-3 min-w-0">
           {title && (
-            <h1 className="text-sm font-semibold" style={{ color: textPrimary, letterSpacing: "-0.01em" }}>
+            <h1 className="text-[13px] md:text-sm font-semibold truncate" style={{ color: textPrimary, letterSpacing: "-0.01em" }}>
               {title}
             </h1>
           )}
           {subtitle && (
-            <span className="text-xs" style={{ color: textMuted }}>
+            <span className="text-[11px] md:text-xs shrink-0" style={{ color: textMuted }}>
               {subtitle}
             </span>
           )}
         </div>
       )}
-      <div className="flex items-center gap-2 ml-auto">
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+      <div className="flex items-center gap-1.5 md:gap-2 ml-auto shrink-0">
+        {actions && <div className="flex items-center gap-1.5 md:gap-2">{actions}</div>}
         <NotificationBell />
-        <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center">
-          <span className="text-indigo-400 text-xs font-medium">
+        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-indigo-500/20 flex items-center justify-center">
+          <span className="text-indigo-400 text-[10px] md:text-xs font-medium">
             {me?.email?.[0]?.toUpperCase() ?? "?"}
           </span>
         </div>

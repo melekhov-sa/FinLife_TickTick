@@ -14,7 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-[env(safe-area-inset-bottom)] md:pb-0">
           {/* Extra bottom padding on mobile for the nav bar */}
-          <div className="flex-1 flex flex-col md:pb-0 pb-20">
+          <div className="flex-1 flex flex-col md:pb-0 pb-16">
             {children}
           </div>
         </div>

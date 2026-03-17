@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
-import { Check, MoreHorizontal, GripVertical, Repeat2 } from "lucide-react";
+import { Check, MoreHorizontal, GripVertical, Repeat2, ChevronRight } from "lucide-react";
 import type { TaskItem } from "@/types/api";
 import { useArchiveTask, useDeleteTask, useDuplicateTask, useUpdateTask } from "@/hooks/useTasks";
 
@@ -123,7 +123,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
   return (
     <div
       className={clsx(
-        "group flex items-center gap-2.5 px-3 py-2.5 transition-colors cursor-pointer",
+        "group flex items-center gap-2 md:gap-2.5 px-3 py-2 md:py-2.5 transition-colors cursor-pointer",
         isDragging
           ? "bg-white/[0.06] border border-indigo-500/30 rounded-xl opacity-80"
           : isDone || isArchived
@@ -132,10 +132,10 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
       )}
       onClick={() => !editing && onOpen?.(task)}
     >
-      {/* Drag handle */}
+      {/* Drag handle — desktop only */}
       <div
         {...dragHandleProps}
-        className="shrink-0 opacity-0 group-hover:opacity-40 hover:!opacity-70 cursor-grab active:cursor-grabbing transition-opacity"
+        className="shrink-0 hidden md:block opacity-0 group-hover:opacity-40 hover:!opacity-70 cursor-grab active:cursor-grabbing transition-opacity"
         style={{ color: "var(--t-faint)", touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -147,23 +147,23 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
         onClick={(e) => { e.stopPropagation(); !isDone && !isArchived && onComplete?.(task); }}
         disabled={isDone || isArchived}
         className={clsx(
-          "shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
+          "shrink-0 w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
           isDone
             ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.3)]"
             : "border-white/25 text-transparent hover:border-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-400/50"
         )}
       >
-        <Check size={10} strokeWidth={2.5} />
+        <Check size={9} strokeWidth={2.5} />
       </button>
 
       {/* Recurring indicator */}
       {task.is_recurring && (
-        <Repeat2 size={13} className="shrink-0 text-indigo-400/60" />
+        <Repeat2 size={12} className="shrink-0 text-indigo-400/60" />
       )}
 
       {/* Category emoji */}
       {task.category_emoji && !task.is_recurring && (
-        <span className="text-sm shrink-0 leading-none">{task.category_emoji}</span>
+        <span className="text-[13px] md:text-sm shrink-0 leading-none">{task.category_emoji}</span>
       )}
 
       {/* Title — double-click to edit */}
@@ -179,13 +179,13 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
               if (e.key === "Escape") { setEditing(false); setEditVal(task.title); }
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full bg-transparent outline-none text-[14px] font-medium border-b border-indigo-500/50"
+            className="w-full bg-transparent outline-none text-[13px] md:text-[14px] font-medium border-b border-indigo-500/50"
             style={{ color: "var(--t-primary)" }}
           />
         ) : (
           <p className={clsx(
-            "text-[14px] min-w-0 truncate",
-            isDone || isArchived ? "line-through" : "font-medium"
+            "text-[13px] md:text-[14px] min-w-0 leading-snug",
+            isDone || isArchived ? "line-through truncate" : "font-medium line-clamp-2 md:truncate"
           )} style={{ color: isDone || isArchived ? "var(--t-faint)" : "var(--t-primary)" }}>
             {task.title}
           </p>
@@ -194,15 +194,20 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
 
       {/* Due date */}
       {dateInfo && !editing && (
-        <span className={clsx("text-[11px] font-medium shrink-0 tabular-nums", dateInfo.color)}
+        <span className={clsx("text-[10px] md:text-[11px] font-medium shrink-0 tabular-nums", dateInfo.color)}
           onClick={(e) => e.stopPropagation()}>
           {dateInfo.label}
         </span>
       )}
 
-      {/* Quick actions ⋯ */}
+      {/* Mobile: chevron hint to indicate tappable */}
+      <ChevronRight size={14} className="shrink-0 md:hidden" style={{ color: "var(--t-faint)", opacity: 0.4 }} />
+
+      {/* Quick actions ⋯ — desktop only */}
       {!editing && (
-        <QuickMenu task={task} onOpen={onOpen} />
+        <div className="hidden md:block">
+          <QuickMenu task={task} onOpen={onOpen} />
+        </div>
       )}
     </div>
   );

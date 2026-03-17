@@ -30,7 +30,7 @@ export default function DashboardPage() {
         subtitle={todayLabel}
       />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6">
+      <main className="flex-1 overflow-auto p-3 md:p-6">
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить дашборд
@@ -38,27 +38,53 @@ export default function DashboardPage() {
         )}
 
         {isLoading && (
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_290px] gap-4 max-w-[1400px]">
-            <div className="space-y-4">
-              <Skeleton className="h-40" />
-              <Skeleton className="h-48" />
-            </div>
-            <div className="space-y-4">
-              <Skeleton className="h-72" />
-              <Skeleton className="h-48" />
-            </div>
-            <div className="hidden lg:block space-y-4">
-              <Skeleton className="h-36" />
-              <Skeleton className="h-48" />
-            </div>
+          <div className="space-y-3 md:grid md:grid-cols-[280px_1fr_290px] md:gap-4 md:space-y-0 max-w-[1400px]">
+            <Skeleton className="h-32 md:h-40" />
+            <Skeleton className="h-48 md:h-72" />
+            <Skeleton className="hidden lg:block h-36" />
           </div>
         )}
 
         {data && (
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_290px] gap-4 max-w-[1400px]">
+          <div className="max-w-[1400px]">
+            {/* Desktop: 3-column grid */}
+            <div className="hidden md:grid md:grid-cols-[280px_1fr_290px] gap-4">
+              {/* Left */}
+              <div className="space-y-4">
+                <FinanceBlock
+                  finState={data.fin_state}
+                  financialSummary={data.financial_summary}
+                />
+                <ProgressBlock
+                  level={data.level}
+                  efficiency={data.efficiency}
+                  cells={data.habit_heatmap}
+                />
+              </div>
 
-            {/* ── Левая колонка ─────────────────────────────────────── */}
-            <div className="space-y-4">
+              {/* Center */}
+              <div className="space-y-4">
+                <TodayBlock
+                  today={data.today}
+                  plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}
+                />
+                <ActivityFeed feed={data.feed} />
+              </div>
+
+              {/* Right */}
+              <div className="hidden lg:block space-y-4">
+                <UpcomingPayments payments={data.upcoming_payments} />
+                <WeekEventsCard events={data.week_events} />
+                <ExpiringSubsCard subs={data.expiring_subs} />
+              </div>
+            </div>
+
+            {/* Mobile: reordered single column — action first */}
+            <div className="md:hidden space-y-3">
+              <TodayBlock
+                today={data.today}
+                plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}
+              />
               <FinanceBlock
                 finState={data.fin_state}
                 financialSummary={data.financial_summary}
@@ -68,24 +94,8 @@ export default function DashboardPage() {
                 efficiency={data.efficiency}
                 cells={data.habit_heatmap}
               />
-            </div>
-
-            {/* ── Центр ─────────────────────────────────────────────── */}
-            <div className="space-y-4">
-              <TodayBlock
-                  today={data.today}
-                  plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}
-                />
               <ActivityFeed feed={data.feed} />
             </div>
-
-            {/* ── Правая колонка ────────────────────────────────────── */}
-            <div className="hidden lg:block space-y-4">
-              <UpcomingPayments payments={data.upcoming_payments} />
-              <WeekEventsCard events={data.week_events} />
-              <ExpiringSubsCard subs={data.expiring_subs} />
-            </div>
-
           </div>
         )}
       </main>

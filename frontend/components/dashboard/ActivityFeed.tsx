@@ -23,7 +23,7 @@ function FeedItemMenu() {
   }, [open]);
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={ref} className="relative shrink-0 hidden md:block">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/[0.08]"
@@ -52,10 +52,10 @@ export function ActivityFeed({ feed }: Props) {
   if (feed.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
+    <div className="bg-white/[0.03] rounded-xl md:rounded-[14px] border border-white/[0.06] p-3.5 md:p-5">
       {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
           Активность
         </h2>
         <button
@@ -68,35 +68,35 @@ export function ActivityFeed({ feed }: Props) {
       </div>
 
       {!collapsed && (
-        <div className="space-y-5">
+        <div className="space-y-3.5 md:space-y-5">
           {feed.map((group) => (
             <div key={group.date}>
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-label)" }}>
+              <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1.5 md:mb-2" style={{ color: "var(--t-label)" }}>
                 {group.label}
               </p>
-              <div className="space-y-0.5">
+              <div className="space-y-0">
                 {group.events.map((ev, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 py-3 px-3.5 rounded-xl hover:bg-white/[0.03] transition-colors group"
+                    className="flex items-center gap-2.5 md:gap-3 py-2 md:py-3 px-2.5 md:px-3.5 rounded-xl hover:bg-white/[0.03] transition-colors group"
                   >
-                    <span className="text-base shrink-0">{ev.icon}</span>
+                    <span className="text-sm md:text-base shrink-0">{ev.icon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-[500] truncate leading-snug" style={{ color: "var(--t-secondary)" }}>
+                      <p className="text-[13px] md:text-[14px] font-[500] truncate leading-snug" style={{ color: "var(--t-secondary)" }}>
                         {ev.title}
                       </p>
                       {ev.subtitle && (
-                        <p className="text-[12px] truncate leading-snug opacity-65" style={{ color: "var(--t-muted)" }}>
+                        <p className="text-[11px] md:text-[12px] truncate leading-snug opacity-65" style={{ color: "var(--t-muted)" }}>
                           {ev.subtitle}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                       <div className="text-right">
                         {ev.amount_label && (
                           <p
                             className={clsx(
-                              "text-[13px] font-semibold tabular-nums",
+                              "text-[12px] md:text-[13px] font-semibold tabular-nums",
                               ev.amount_css === "income"
                                 ? "money-income"
                                 : ev.amount_css === "expense"
@@ -108,7 +108,7 @@ export function ActivityFeed({ feed }: Props) {
                             {ev.amount_label}
                           </p>
                         )}
-                        <p className="text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
+                        <p className="text-[10px] md:text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
                       </div>
                       <FeedItemMenu />
                     </div>
