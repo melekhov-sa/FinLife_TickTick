@@ -3,7 +3,7 @@ from datetime import date, time, timedelta
 import pytest
 from sqlalchemy.orm import Session
 from app.infrastructure.db.models import (
-    CalendarEventModel, EventOccurrenceModel, WorkCategory,
+    CalendarEventModel, EventOccurrenceModel, WorkCategory, EventLog,
 )
 
 ACCT = 1
@@ -379,3 +379,107 @@ class TestDashboardTodayEvents:
 
         results = self._query_today_events(db_session)
         assert len(results) == 0
+
+
+# ── End-to-end: CreateEventUseCase → occurrence appears in DB ────────────────
+
+
+class TestCreateEventE2E:
+    """Test full event creation flow through event sourcing + projector."""
+
+    def test_create_onetime_event_creates_occurrence(self, db_session: Session):
+        """
+        Bug reproduction: user creates event via modal → event exists in events
+        table but occurrence is missing from event_occurrences.
+        """
+        from app.application.events import CreateEventUseCase
+
+        # Setup: need a category
+        cat = _category(db_session)
+        db_session.commit()
+
+        # Act: create event like the API does
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Зенит - Крылья Советов",
+            category_id=cat.category_id,
+            description=None,
+            occ_start_date="2026-04-04",
+            occ_start_time="15:15",
+            occ_end_date=None,
+            occ_end_time=None,
+            actor_user_id=ACCT,
+        )
+
+        # Assert: event exists
+        ev = db_session.query(CalendarEventModel).filter_by(event_id=event_id).first()
+        assert ev is not None, "CalendarEventModel not created"
+        assert ev.title == "Зенит - Крылья Советов"
+
+        # Assert: occurrence exists
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None, "EventOccurrenceModel NOT created — this is the bug!"
+        assert occ.start_date == date(2026, 4, 4)
+        assert occ.start_time == time(15, 15)
+        assert occ.end_date is None
+        assert occ.is_cancelled is False
+
+    def test_create_event_without_end_date_occurrence_visible_in_api_query(self, db_session: Session):
+        """Occurrence without end_date should be returned by the events list query."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Тестовое событие",
+            category_id=cat.category_id,
+            occ_start_date="2026-04-04",
+            occ_start_time="10:00",
+            actor_user_id=ACCT,
+        )
+
+        # Query like the API does
+        today = date.today()
+        until = today + timedelta(days=30)
+        results = (
+            db_session.query(EventOccurrenceModel)
+            .filter(
+                EventOccurrenceModel.account_id == ACCT,
+                EventOccurrenceModel.start_date >= today - timedelta(days=7),
+                EventOccurrenceModel.start_date <= until,
+                EventOccurrenceModel.is_cancelled == False,
+            )
+            .all()
+        )
+        assert len(results) >= 1
+        titles = []
+        for occ in results:
+            ev = db_session.query(CalendarEventModel).filter_by(event_id=occ.event_id).first()
+            if ev:
+                titles.append(ev.title)
+        assert "Тестовое событие" in titles
+
+    def test_create_event_event_log_has_both_entries(self, db_session: Session):
+        """Both calendar_event_created and event_occurrence_created should be in event_log."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Проверка event_log",
+            category_id=cat.category_id,
+            occ_start_date="2026-04-10",
+            actor_user_id=ACCT,
+        )
+
+        logs = db_session.query(EventLog).filter(
+            EventLog.account_id == ACCT,
+        ).order_by(EventLog.id).all()
+
+        event_types = [log.event_type for log in logs]
+        assert "calendar_event_created" in event_types, "Missing calendar_event_created in event_log"
+        assert "event_occurrence_created" in event_types, "Missing event_occurrence_created in event_log"

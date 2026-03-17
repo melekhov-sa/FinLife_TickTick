@@ -239,3 +239,21 @@ def duplicate_occurrence(
     db.commit()
     db.refresh(new_occ)
     return {"id": new_occ.id}
+
+
+@router.post("/events/rebuild-projector")
+def rebuild_projector(request: Request, db: Session = Depends(get_db)):
+    """Re-run the events projector to fix missing occurrences."""
+    user_id = get_user_id(request)
+    from app.readmodels.projectors.events import EventsProjector
+    from app.infrastructure.db.models import ProjectorCheckpoint
+    # Reset checkpoint to 0 so projector reprocesses all events
+    cp = db.query(ProjectorCheckpoint).filter(
+        ProjectorCheckpoint.projector_name == "events",
+        ProjectorCheckpoint.account_id == user_id,
+    ).first()
+    if cp:
+        cp.last_event_id = 0
+        db.commit()
+    count = EventsProjector(db).run(user_id)
+    return {"reprocessed": count}
