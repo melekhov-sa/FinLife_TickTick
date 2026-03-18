@@ -114,15 +114,23 @@ class CreateEventRequest(BaseModel):
     end_time: str | None = None
     description: str | None = None
     category_id: int | None = None
+    # Recurring event support
+    freq: str | None = None          # daily, weekly, monthly, yearly
+    start_date_rule: str | None = None  # recurrence rule start
+    # Reminder offset in minutes (e.g. 10, 60, 1440)
+    reminder_offset: int | None = None
 
 
 @router.post("/events", status_code=201)
 def create_event(body: CreateEventRequest, request: Request, db: Session = Depends(get_db)):
-    from app.application.events import CreateEventUseCase, EventValidationError
+    from app.application.events import (
+        CreateEventUseCase, CreateDefaultReminderUseCase, EventValidationError,
+    )
     user_id = get_user_id(request)
     if not body.title.strip():
         raise HTTPException(status_code=400, detail="Название не может быть пустым")
 
+    # Validate category
     cat_id = body.category_id
     if not cat_id:
         cat = db.query(WorkCategory).filter(
@@ -131,13 +139,24 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
         ).first()
         cat_id = cat.category_id if cat else 1
 
+    # Validate end_date >= start_date
+    if body.end_date and body.start_date:
+        if body.end_date < body.start_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Дата окончания не может быть раньше даты начала",
+            )
+
     try:
+        freq = body.freq
         event_id = CreateEventUseCase(db).execute(
             account_id=user_id,
             title=body.title,
             category_id=cat_id,
             description=body.description,
-            occ_start_date=body.start_date,
+            freq=freq if freq else None,
+            start_date=body.start_date_rule if freq else None,
+            occ_start_date=body.start_date if not freq else None,
             occ_start_time=body.start_time,
             occ_end_date=body.end_date,
             occ_end_time=body.end_time,
@@ -145,6 +164,21 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
         )
     except EventValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Create default reminder if requested
+    if body.reminder_offset and body.reminder_offset > 0:
+        try:
+            CreateDefaultReminderUseCase(db).execute(
+                event_id=event_id,
+                account_id=user_id,
+                channel="ui",
+                mode="offset",
+                offset_minutes=body.reminder_offset,
+                actor_user_id=user_id,
+            )
+        except EventValidationError:
+            pass  # non-critical, event already created
+
     return {"id": event_id}
 
 

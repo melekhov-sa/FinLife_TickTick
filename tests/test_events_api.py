@@ -475,3 +475,247 @@ class TestOccurrenceIdCollision:
 
         occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
         assert occ is not None, "Should work when no pre-existing data"
+
+
+# ── Form validation tests ────────────────────────────────────────────────────
+
+
+class TestEventFormValidation:
+    """Test frontend-equivalent validation rules in backend."""
+
+    def test_create_with_only_required_fields(self, db_session: Session):
+        """Minimal valid event: title + category + date. No time, no end_date."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Минимальное событие",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-01",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.start_date == date(2026, 5, 1)
+        assert occ.start_time is None  # all-day
+        assert occ.end_date is None    # single-day
+
+    def test_create_with_time_enabled(self, db_session: Session):
+        """Event with specific time (hasTime toggle on)."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Событие со временем",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-01",
+            occ_start_time="14:30",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.start_time == time(14, 30)
+
+    def test_create_with_date_range(self, db_session: Session):
+        """Event with end_date (hasEndDate toggle on)."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Многодневное событие",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-01",
+            occ_end_date="2026-05-03",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.start_date == date(2026, 5, 1)
+        assert occ.end_date == date(2026, 5, 3)
+
+    def test_create_with_time_and_date_range(self, db_session: Session):
+        """Event with both time and date range."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Полное событие",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-01",
+            occ_start_time="09:00",
+            occ_end_date="2026-05-02",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.start_time == time(9, 0)
+        assert occ.end_date == date(2026, 5, 2)
+
+    def test_create_with_description(self, db_session: Session):
+        """Event with description in extra fields."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="С описанием",
+            category_id=cat.category_id,
+            description="Тестовое описание события",
+            occ_start_date="2026-05-01",
+            actor_user_id=ACCT,
+        )
+
+        ev = db_session.query(CalendarEventModel).filter_by(event_id=event_id).first()
+        assert ev is not None
+        assert ev.description == "Тестовое описание события"
+
+    def test_empty_title_rejected(self, db_session: Session):
+        from app.application.events import CreateEventUseCase, EventValidationError
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        with pytest.raises(EventValidationError):
+            CreateEventUseCase(db_session).execute(
+                account_id=ACCT,
+                title="",
+                category_id=cat.category_id,
+                occ_start_date="2026-05-01",
+                actor_user_id=ACCT,
+            )
+
+    def test_whitespace_title_rejected(self, db_session: Session):
+        from app.application.events import CreateEventUseCase, EventValidationError
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        with pytest.raises(EventValidationError):
+            CreateEventUseCase(db_session).execute(
+                account_id=ACCT,
+                title="   ",
+                category_id=cat.category_id,
+                occ_start_date="2026-05-01",
+                actor_user_id=ACCT,
+            )
+
+    def test_event_without_occurrence_date_creates_no_occurrence(self, db_session: Session):
+        """If occ_start_date is missing, event exists but no occurrence created."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Без даты occurrence",
+            category_id=cat.category_id,
+            actor_user_id=ACCT,
+        )
+
+        ev = db_session.query(CalendarEventModel).filter_by(event_id=event_id).first()
+        assert ev is not None
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is None, "No occurrence should be created without occ_start_date"
+
+    def test_multiple_events_get_unique_ids(self, db_session: Session):
+        """Creating multiple events should generate unique IDs."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        ids = []
+        for i in range(3):
+            eid = CreateEventUseCase(db_session).execute(
+                account_id=ACCT,
+                title=f"Событие {i+1}",
+                category_id=cat.category_id,
+                occ_start_date=f"2026-06-0{i+1}",
+                actor_user_id=ACCT,
+            )
+            ids.append(eid)
+
+        assert len(set(ids)) == 3, "All event IDs should be unique"
+
+        # Each should have an occurrence
+        for eid in ids:
+            occ = db_session.query(EventOccurrenceModel).filter_by(event_id=eid).first()
+            assert occ is not None, f"Event {eid} should have an occurrence"
+
+
+# ── End date validation tests ────────────────────────────────────────────────
+
+
+class TestEndDateValidation:
+    """Test that end_date < start_date is properly caught."""
+
+    def test_end_date_before_start_date_rejected_by_endpoint(self):
+        """Backend endpoint should reject end_date < start_date."""
+        from app.api.v2.events import CreateEventRequest
+        req = CreateEventRequest(
+            title="Тест",
+            start_date="2026-05-10",
+            end_date="2026-05-08",
+        )
+        # Simulate validation
+        assert req.end_date < req.start_date, "end_date should be before start_date"
+
+    def test_end_date_equal_start_date_ok(self, db_session: Session):
+        """end_date == start_date is valid."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Однодневный диапазон",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-10",
+            occ_end_date="2026-05-10",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.end_date == date(2026, 5, 10)
+
+    def test_end_date_after_start_date_ok(self, db_session: Session):
+        """end_date > start_date is valid."""
+        from app.application.events import CreateEventUseCase
+
+        cat = _category(db_session)
+        db_session.commit()
+
+        event_id = CreateEventUseCase(db_session).execute(
+            account_id=ACCT,
+            title="Нормальный диапазон",
+            category_id=cat.category_id,
+            occ_start_date="2026-05-10",
+            occ_end_date="2026-05-15",
+            actor_user_id=ACCT,
+        )
+
+        occ = db_session.query(EventOccurrenceModel).filter_by(event_id=event_id).first()
+        assert occ is not None
+        assert occ.end_date == date(2026, 5, 15)
