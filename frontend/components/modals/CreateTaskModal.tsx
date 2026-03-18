@@ -406,18 +406,15 @@ export function CreateTaskModal({ onClose }: Props) {
       {presets && presets.length > 0 && (
         <div>
           <label className={labelCls}>Шаблон</label>
-          <select
+          <Select
             value=""
-            onChange={(e) => handlePresetSelect(e.target.value)}
-            className={inputCls}
-          >
-            <option value="">— Шаблон —</option>
-            {presets.map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => handlePresetSelect(v)}
+            placeholder="— Шаблон —"
+            options={[
+              { value: "", label: "— Шаблон —" },
+              ...presets.map((p) => ({ value: String(p.id), label: p.name })),
+            ]}
+          />
         </div>
       )}
 
@@ -615,18 +612,17 @@ export function CreateTaskModal({ onClose }: Props) {
                 <div className="mt-2 space-y-2">
                   {reminderPresets && reminderPresets.length > 0 && (
                     <div className="flex gap-2">
-                      <select
-                        value={selectedReminderPreset}
-                        onChange={(e) => setSelectedReminderPreset(e.target.value)}
-                        className={`${inputCls} flex-1`}
-                      >
-                        <option value="">— выберите напоминание —</option>
-                        {reminderPresets.map((p) => (
-                          <option key={p.id} value={String(p.id)}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex-1">
+                        <Select
+                          value={selectedReminderPreset}
+                          onChange={(v) => setSelectedReminderPreset(v)}
+                          placeholder="— выберите напоминание —"
+                          options={[
+                            { value: "", label: "— выберите напоминание —" },
+                            ...reminderPresets.map((p) => ({ value: String(p.id), label: p.label })),
+                          ]}
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={addReminder}

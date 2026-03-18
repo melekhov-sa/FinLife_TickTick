@@ -383,17 +383,12 @@ export function CreateEventModal({ onClose }: Props) {
             {/* Повторение */}
             <div>
               <label className={labelCls}>Повторение</label>
-              <select
+              <Select
                 value={repeat}
-                onChange={(e) => setRepeat(e.target.value)}
-                className={inputCls}
-              >
-                {REPEAT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setRepeat(v)}
+                placeholder="Не повторяется"
+                options={REPEAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
             </div>
 
             {/* Повторение: дни недели (weekly) */}
@@ -448,16 +443,15 @@ export function CreateEventModal({ onClose }: Props) {
               <div className="space-y-2">
                 <div>
                   <label className={labelCls}>Месяц</label>
-                  <select
+                  <Select
                     value={recMonth}
-                    onChange={(e) => setRecMonth(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">— выберите —</option>
-                    {MONTHS.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setRecMonth(v)}
+                    placeholder="— выберите —"
+                    options={[
+                      { value: "", label: "— выберите —" },
+                      ...MONTHS.map((m) => ({ value: m.value, label: m.label })),
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className={labelCls}>День (1–31)</label>
@@ -506,17 +500,12 @@ export function CreateEventModal({ onClose }: Props) {
             {/* Уведомление */}
             <div>
               <label className={labelCls}>Уведомление</label>
-              <select
+              <Select
                 value={reminder}
-                onChange={(e) => setReminder(e.target.value)}
-                className={inputCls}
-              >
-                {REMINDER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setReminder(v)}
+                placeholder="Нет"
+                options={REMINDER_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
             </div>
 
             {/* Описание */}
