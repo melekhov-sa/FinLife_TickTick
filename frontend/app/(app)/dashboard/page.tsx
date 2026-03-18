@@ -63,7 +63,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Center */}
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0 overflow-hidden">
                 <TodayBlock
                   today={data.today}
                   plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}
