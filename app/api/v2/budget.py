@@ -1,11 +1,13 @@
 """
 GET /api/v2/budget?year=YYYY&month=M  — plan-vs-actual summary for one month.
 GET /api/v2/budget/matrix             — full multi-period budget matrix.
+POST /api/v2/budget/plan              — save plan lines for a month.
 """
 from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -166,3 +168,41 @@ def budget_matrix(
         return obj
 
     return serialize(view)
+
+
+class BudgetPlanLine(BaseModel):
+    category_id: int
+    kind: str  # INCOME or EXPENSE
+    plan_amount: str  # Decimal as string
+    note: str | None = None
+
+
+class SaveBudgetPlanRequest(BaseModel):
+    year: int
+    month: int
+    lines: list[BudgetPlanLine]
+    variant_id: int | None = None
+
+
+@router.post("/budget/plan")
+def save_budget_plan(body: SaveBudgetPlanRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.budget import SaveBudgetPlanUseCase, get_active_variant
+    user_id = get_user_id(request)
+
+    variant = get_active_variant(db, user_id, body.variant_id)
+    variant_id = variant.id if variant else None
+
+    lines = [
+        {"category_id": l.category_id, "kind": l.kind, "plan_amount": l.plan_amount, "note": l.note}
+        for l in body.lines
+    ]
+
+    SaveBudgetPlanUseCase(db).execute(
+        account_id=user_id,
+        year=body.year,
+        month=body.month,
+        lines=lines,
+        actor_user_id=user_id,
+        budget_variant_id=variant_id,
+    )
+    return {"ok": True}

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
-import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetSectionTotals } from "@/types/api";
+import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,9 +22,26 @@ function fmtSigned(n: number): string {
   return n > 0 ? `+${s}` : s;
 }
 
+// ── Editing state types ───────────────────────────────────────────────────────
+
+interface EditingCell {
+  rowKey: string;
+  periodIdx: number;
+}
+
+interface EditingProps {
+  editingCell: EditingCell | null;
+  setEditingCell: (v: EditingCell | null) => void;
+  editValue: string;
+  setEditValue: (v: string) => void;
+  savePlan: (year: number, month: number, categoryId: number, kind: string, amount: string) => void;
+  periods: BudgetPeriod[];
+}
+
 // ── Cell rendering ────────────────────────────────────────────────────────────
 
-function PlanCell({ cell, isMuted }: { cell: BudgetCell; isMuted?: boolean }) {
+// Non-editable plan <td> (used in totals, goal rows, result row)
+function PlanTd({ cell, isMuted }: { cell: BudgetCell; isMuted?: boolean }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
   if (!hasPlan && !hasFact) {
@@ -36,6 +53,74 @@ function PlanCell({ cell, isMuted }: { cell: BudgetCell; isMuted?: boolean }) {
       style={{ color: isMuted ? "var(--t-faint)" : "var(--t-secondary)" }}
     >
       {hasPlan ? fmt(cell.plan) : "—"}
+    </td>
+  );
+}
+
+// Editable plan <td> for category rows
+function EditablePlanTd({
+  cell,
+  period,
+  row,
+  editing,
+}: {
+  cell: BudgetCell;
+  period: BudgetPeriod;
+  row: BudgetRow;
+  editing: EditingProps;
+}) {
+  const { editingCell, setEditingCell, editValue, setEditValue, savePlan } = editing;
+  const rowKey = `${row.category_id}-${row.kind}`;
+  const isEditing = editingCell?.rowKey === rowKey && editingCell?.periodIdx === period.index;
+  const canEdit = period.has_manual_plan && !!row.category_id && !row.is_group;
+
+  const hasFact = cell.fact !== 0;
+  const hasPlan = cell.plan !== 0;
+
+  if (!hasPlan && !hasFact && !canEdit) {
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-faint)", opacity: 0.4 }}>—</td>;
+  }
+
+  if (isEditing) {
+    return (
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoFocus
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => {
+            savePlan(period.year, period.month, row.category_id!, row.kind, editValue);
+            setEditingCell(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+            if (e.key === "Escape") { setEditingCell(null); }
+          }}
+          className="w-full bg-transparent border-b border-indigo-500/50 text-right text-[12px] tabular-nums outline-none px-0.5"
+          style={{ color: "var(--t-primary)", maxWidth: 60 }}
+        />
+      </td>
+    );
+  }
+
+  return (
+    <td
+      className="tabular-nums text-right px-2 py-1.5 text-[12px]"
+      style={{ color: "var(--t-secondary)" }}
+    >
+      <span
+        onClick={() => {
+          if (canEdit) {
+            setEditingCell({ rowKey, periodIdx: period.index });
+            setEditValue(cell.plan ? String(Math.round(cell.plan)) : "");
+          }
+        }}
+        className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
+      >
+        {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+      </span>
     </td>
   );
 }
@@ -194,11 +279,11 @@ function TotalsRow({
       </td>
       {totals.cells.slice(0, periodCount).map((cell, i) => (
         <>
-          <PlanCell key={`tp-${i}`} cell={cell} isMuted />
+          <PlanTd key={`tp-${i}`} cell={cell} isMuted />
           <FactCell key={`tf-${i}`} cell={cell} kind={kind} isBold />
         </>
       ))}
-      <PlanCell cell={totals.total} isMuted />
+      <PlanTd cell={totals.total} isMuted />
       <FactCell cell={totals.total} kind={kind} isBold />
     </tr>
   );
@@ -209,9 +294,13 @@ function TotalsRow({
 function CategoryDataRow({
   row,
   periodCount,
+  periods,
+  editing,
 }: {
   row: BudgetRow;
   periodCount: number;
+  periods: BudgetPeriod[];
+  editing: EditingProps;
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
@@ -235,11 +324,11 @@ function CategoryDataRow({
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => (
         <>
-          <PlanCell key={`p-${i}`} cell={cell} />
+          <EditablePlanTd key={`p-${i}`} cell={cell} period={periods[i]} row={row} editing={editing} />
           <FactCell key={`f-${i}`} cell={cell} kind={kind} />
         </>
       ))}
-      <PlanCell cell={row.total} />
+      <PlanTd cell={row.total} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -267,11 +356,11 @@ function GoalDataRow({
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => (
         <>
-          <PlanCell key={`p-${i}`} cell={cell} />
+          <PlanTd key={`p-${i}`} cell={cell} />
           <FactCell key={`f-${i}`} cell={cell} kind={kind} />
         </>
       ))}
-      <PlanCell cell={row.total} />
+      <PlanTd cell={row.total} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -337,6 +426,20 @@ export default function BudgetMatrixPage() {
   const [goalsOpen, setGoalsOpen] = useState(true);
   const [withdrawOpen, setWithdrawOpen] = useState(true);
 
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const qc = useQueryClient();
+
+  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string) {
+    await api.post("/api/v2/budget/plan", {
+      year,
+      month,
+      lines: [{ category_id: categoryId, kind, plan_amount: amount || "0" }],
+    });
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
+
   const { data, isPending, isError } = useQuery<BudgetMatrix>({
     queryKey: ["budget-matrix", year, month, rangeCount],
     queryFn: () =>
@@ -368,6 +471,15 @@ export default function BudgetMatrixPage() {
   const dataCols = (rangeCount + 1) * 2;
   // Total colspan including category column
   const totalCols = dataCols + 1;
+
+  const editingProps: EditingProps = {
+    editingCell,
+    setEditingCell,
+    editValue,
+    setEditValue,
+    savePlan,
+    periods,
+  };
 
   return (
     <>
@@ -491,6 +603,8 @@ export default function BudgetMatrixPage() {
                       key={row.category_id ?? `inc-${i}`}
                       row={row}
                       periodCount={rangeCount}
+                      periods={periods}
+                      editing={editingProps}
                     />
                   ))}
                   <TotalsRow
@@ -512,6 +626,8 @@ export default function BudgetMatrixPage() {
                       key={row.category_id ?? `exp-${i}`}
                       row={row}
                       periodCount={rangeCount}
+                      periods={periods}
+                      editing={editingProps}
                     />
                   ))}
                   <TotalsRow
