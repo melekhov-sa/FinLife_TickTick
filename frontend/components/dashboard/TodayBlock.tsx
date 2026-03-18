@@ -57,7 +57,7 @@ function Item({
 
       <div className="flex-1 min-w-0">
         <span
-          className={clsx("text-[13px] md:text-[14px] font-[500] leading-snug", isDone ? "line-through" : "")}
+          className={clsx("text-[13px] md:text-[14px] font-[500] leading-snug block truncate", isDone ? "line-through" : "")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
