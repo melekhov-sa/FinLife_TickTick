@@ -72,12 +72,12 @@ def json_schema_to_zod(
             default = schema["default"]
             if default is None:
                 base += ".nullish()"
+            elif isinstance(default, bool):
+                base += f".default({'true' if default else 'false'})"
             elif isinstance(default, str):
                 base += f'.default("{default}")'
             elif isinstance(default, (int, float)):
                 base += f".default({default})"
-            elif isinstance(default, bool):
-                base += f".default({'true' if default else 'false'})"
         else:
             base += ".optional()"
 

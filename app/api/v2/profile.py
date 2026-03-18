@@ -1,5 +1,6 @@
 """GET /api/v2/profile — user profile data (XP, level, activity)."""
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -8,6 +9,32 @@ from app.application.profile import ProfileService
 from app.infrastructure.db.models import User
 
 router = APIRouter()
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.post("/profile/change-password")
+def change_password(body: ChangePasswordRequest, request: Request, db: Session = Depends(get_db)):
+    from app.auth import verify_password, hash_password
+
+    user_id = get_user_id(request)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    if not verify_password(body.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Неверный текущий пароль")
+
+    new_pw = body.new_password.strip()
+    if len(new_pw) < 6:
+        raise HTTPException(status_code=400, detail="Новый пароль должен содержать минимум 6 символов")
+
+    user.password_hash = hash_password(new_pw)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/profile")

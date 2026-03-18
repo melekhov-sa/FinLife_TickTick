@@ -4,7 +4,7 @@ GET  /api/v2/fin-categories    — list financial categories (INCOME / EXPENSE)
 GET  /api/v2/transactions      — paginated transaction feed with filters
 POST /api/v2/transactions      — create income / expense / transfer
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
@@ -73,6 +73,31 @@ def rename_wallet(wallet_id: int, body: RenameWalletRequest, request: Request, d
     return {"ok": True}
 
 
+class ActualizeBalanceRequest(BaseModel):
+    target_balance: str  # decimal string
+
+
+@router.post("/wallets/{wallet_id}/actualize-balance")
+def actualize_balance(wallet_id: int, body: ActualizeBalanceRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.transactions import CreateTransactionUseCase
+    user_id = get_user_id(request)
+    try:
+        target = Decimal(body.target_balance)
+        result = CreateTransactionUseCase(db).actualize_balance(
+            account_id=user_id,
+            wallet_id=wallet_id,
+            target_balance=target,
+            actor_user_id=user_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "action": result["action"],
+        "delta": str(result["delta"]),
+        "transaction_id": result["transaction_id"],
+    }
+
+
 @router.delete("/wallets/{wallet_id}", status_code=204)
 def archive_wallet(wallet_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request)
@@ -95,15 +120,27 @@ class FinCategoryItem(BaseModel):
     is_frequent: bool = False
 
 
-@router.get("/fin-categories", response_model=list[FinCategoryItem])
-def list_fin_categories(request: Request, db: Session = Depends(get_db)):
+class FinCategoryItemFull(BaseModel):
+    category_id: int
+    title: str
+    category_type: str   # INCOME | EXPENSE
+    parent_id: int | None
+    is_frequent: bool = False
+    is_archived: bool = False
+    is_system: bool = False
+
+
+@router.get("/fin-categories", response_model=list[FinCategoryItemFull])
+def list_fin_categories(
+    request: Request,
+    db: Session = Depends(get_db),
+    include_archived: bool = Query(False),
+):
     user_id = get_user_id(request)
-    cats = (
-        db.query(CategoryInfo)
-        .filter(CategoryInfo.account_id == user_id, CategoryInfo.is_archived == False)
-        .order_by(CategoryInfo.sort_order, CategoryInfo.title)
-        .all()
-    )
+    q = db.query(CategoryInfo).filter(CategoryInfo.account_id == user_id)
+    if not include_archived:
+        q = q.filter(CategoryInfo.is_archived == False)
+    cats = q.order_by(CategoryInfo.sort_order, CategoryInfo.title).all()
 
     # Top-5 frequent per type (last 30 days)
     since = date.today() - timedelta(days=30)
@@ -127,15 +164,134 @@ def list_fin_categories(request: Request, db: Session = Depends(get_db)):
     freq_ids = _top5("INCOME") | _top5("EXPENSE")
 
     return [
-        FinCategoryItem(
+        FinCategoryItemFull(
             category_id=c.category_id,
             title=c.title,
             category_type=c.category_type,
             parent_id=c.parent_id,
             is_frequent=c.category_id in freq_ids,
+            is_archived=c.is_archived,
+            is_system=c.is_system,
         )
         for c in cats
     ]
+
+
+class CreateFinCategoryRequest(BaseModel):
+    title: str
+    category_type: str  # INCOME or EXPENSE
+    parent_id: int | None = None
+
+
+@router.post("/fin-categories", status_code=201)
+def create_fin_category(
+    body: CreateFinCategoryRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.categories import CreateCategoryUseCase, CategoryValidationError
+    from app.domain.category import CATEGORY_TYPE_INCOME, CATEGORY_TYPE_EXPENSE
+    user_id = get_user_id(request)
+    if body.category_type not in (CATEGORY_TYPE_INCOME, CATEGORY_TYPE_EXPENSE):
+        raise HTTPException(status_code=400, detail="category_type должен быть INCOME или EXPENSE")
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Название не может быть пустым")
+    try:
+        category_id = CreateCategoryUseCase(db).execute(
+            account_id=user_id,
+            title=title,
+            category_type=body.category_type,
+            parent_id=body.parent_id,
+            is_system=False,
+            actor_user_id=user_id,
+        )
+    except CategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
+    if not cat:
+        raise HTTPException(status_code=500, detail="Category creation failed")
+    return FinCategoryItemFull(
+        category_id=cat.category_id,
+        title=cat.title,
+        category_type=cat.category_type,
+        parent_id=cat.parent_id,
+        is_frequent=False,
+        is_archived=cat.is_archived,
+        is_system=cat.is_system,
+    )
+
+
+class UpdateFinCategoryRequest(BaseModel):
+    title: str | None = None
+
+
+@router.patch("/fin-categories/{category_id}")
+def update_fin_category(
+    category_id: int,
+    body: UpdateFinCategoryRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.categories import UpdateCategoryUseCase, CategoryValidationError
+    user_id = get_user_id(request)
+    cat = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    title = body.title.strip() if body.title is not None else None
+    if title is not None and not title:
+        raise HTTPException(status_code=400, detail="Название не может быть пустым")
+    try:
+        UpdateCategoryUseCase(db).execute(
+            category_id=category_id,
+            account_id=user_id,
+            title=title,
+            actor_user_id=user_id,
+        )
+    except CategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@router.post("/fin-categories/{category_id}/archive")
+def archive_fin_category(
+    category_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.categories import ArchiveCategoryUseCase, CategoryValidationError
+    user_id = get_user_id(request)
+    try:
+        ArchiveCategoryUseCase(db).execute(
+            category_id=category_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+        )
+    except CategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@router.post("/fin-categories/{category_id}/restore")
+def restore_fin_category(
+    category_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.categories import UnarchiveCategoryUseCase, CategoryValidationError
+    user_id = get_user_id(request)
+    try:
+        UnarchiveCategoryUseCase(db).execute(
+            category_id=category_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+        )
+    except CategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
 
 
 # ── List transactions ──────────────────────────────────────────────────────
@@ -236,23 +392,63 @@ class CreateTransactionRequest(BaseModel):
     operation_type: str           # INCOME | EXPENSE | TRANSFER
     amount: str                   # decimal string
     description: str = ""
+    occurred_at: str | None = None        # ISO datetime
     # INCOME / EXPENSE
     wallet_id: int | None = None
     category_id: int | None = None
     # TRANSFER
     from_wallet_id: int | None = None
     to_wallet_id: int | None = None
+    from_goal_id: int | None = None       # for SAVINGS wallets
+    to_goal_id: int | None = None         # for SAVINGS wallets
+    # Subscription coverage
+    sub_subscription_id: int | None = None
+    sub_payer_type: str | None = None     # SELF or MEMBER
+    sub_member_id: int | None = None
+    sub_start_date: str | None = None     # YYYY-MM-DD
+    sub_end_date: str | None = None       # YYYY-MM-DD
 
 
 @router.post("/transactions", status_code=201)
 def create_transaction(body: CreateTransactionRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.transactions import CreateTransactionUseCase, TransactionValidationError
+    from app.application.subscriptions import (
+        CreateSubscriptionCoverageUseCase,
+        SubscriptionValidationError,
+        validate_coverage_before_transaction,
+    )
     user_id = get_user_id(request)
 
     try:
         amount = Decimal(body.amount)
     except InvalidOperation:
         raise HTTPException(status_code=400, detail="Некорректная сумма")
+
+    # Parse occurred_at
+    tx_occurred_at = None
+    if body.occurred_at:
+        try:
+            tx_occurred_at = datetime.fromisoformat(body.occurred_at)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Некорректный формат даты occurred_at")
+
+    # Pre-validate subscription coverage before creating the transaction
+    has_coverage = bool(body.sub_subscription_id and body.sub_start_date and body.sub_end_date)
+    if has_coverage:
+        try:
+            cov_start = date.fromisoformat(body.sub_start_date)
+            cov_end = date.fromisoformat(body.sub_end_date)
+            validate_coverage_before_transaction(
+                db,
+                account_id=user_id,
+                subscription_id=body.sub_subscription_id,
+                payer_type=body.sub_payer_type or "SELF",
+                member_id=body.sub_member_id,
+                start_date=cov_start,
+                end_date=cov_end,
+            )
+        except SubscriptionValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     uc = CreateTransactionUseCase(db)
 
@@ -270,6 +466,7 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
                 currency=currency,
                 category_id=body.category_id,
                 description=body.description,
+                occurred_at=tx_occurred_at,
                 actor_user_id=user_id,
             )
         elif body.operation_type == "EXPENSE":
@@ -284,6 +481,7 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
                 currency=currency,
                 category_id=body.category_id,
                 description=body.description,
+                occurred_at=tx_occurred_at,
                 actor_user_id=user_id,
             )
         elif body.operation_type == "TRANSFER":
@@ -298,11 +496,31 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
                 amount=amount,
                 currency=currency,
                 description=body.description,
+                occurred_at=tx_occurred_at,
                 actor_user_id=user_id,
+                from_goal_id=body.from_goal_id,
+                to_goal_id=body.to_goal_id,
             )
         else:
             raise HTTPException(status_code=400, detail="Неизвестный тип операции")
     except TransactionValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Create subscription coverage if fields were provided
+    if has_coverage and tx_id:
+        try:
+            cov_start = date.fromisoformat(body.sub_start_date)
+            cov_end = date.fromisoformat(body.sub_end_date)
+            CreateSubscriptionCoverageUseCase(db).execute(
+                account_id=user_id,
+                subscription_id=body.sub_subscription_id,
+                payer_type=body.sub_payer_type or "SELF",
+                member_id=body.sub_member_id,
+                transaction_id=tx_id,
+                start_date=cov_start,
+                end_date=cov_end,
+            )
+        except SubscriptionValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     return {"id": tx_id}

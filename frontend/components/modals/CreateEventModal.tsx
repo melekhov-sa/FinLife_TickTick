@@ -26,7 +26,25 @@ const REPEAT_OPTIONS = [
   { value: "", label: "Не повторяется" },
   { value: "daily", label: "Ежедневно" },
   { value: "weekly", label: "Еженедельно" },
-  { value: "custom", label: "Настроить…", disabled: true },
+  { value: "monthly", label: "Ежемесячно" },
+  { value: "yearly", label: "Ежегодно" },
+  { value: "interval", label: "Интервал (дней)" },
+];
+
+const WEEKDAYS = [
+  { value: "MO", label: "Пн" }, { value: "TU", label: "Вт" },
+  { value: "WE", label: "Ср" }, { value: "TH", label: "Чт" },
+  { value: "FR", label: "Пт" }, { value: "SA", label: "Сб" },
+  { value: "SU", label: "Вс" },
+];
+
+const MONTHS = [
+  { value: "1", label: "Январь" }, { value: "2", label: "Февраль" },
+  { value: "3", label: "Март" }, { value: "4", label: "Апрель" },
+  { value: "5", label: "Май" }, { value: "6", label: "Июнь" },
+  { value: "7", label: "Июль" }, { value: "8", label: "Август" },
+  { value: "9", label: "Сентябрь" }, { value: "10", label: "Октябрь" },
+  { value: "11", label: "Ноябрь" }, { value: "12", label: "Декабрь" },
 ];
 
 const REMINDER_OPTIONS = [
@@ -55,6 +73,13 @@ export function CreateEventModal({ onClose }: Props) {
   const [repeat, setRepeat] = useState("");
   const [reminder, setReminder] = useState("");
   const [description, setDescription] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [recWeekdays, setRecWeekdays] = useState<string[]>([]);
+  const [recDay, setRecDay] = useState("");
+  const [recMonth, setRecMonth] = useState("");
+  const [recDayYearly, setRecDayYearly] = useState("");
+  const [recInterval, setRecInterval] = useState("1");
+  const [untilDate, setUntilDate] = useState("");
 
   // ── UI state ─────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +117,18 @@ export function CreateEventModal({ onClose }: Props) {
       description: description.trim() || null,
       category_id: categoryId || null,
     };
-    if (repeat && repeat !== "custom") {
+    body.end_time = hasEndDate && endTime ? endTime : null;
+    if (repeat) {
       body.freq = repeat;
       body.start_date_rule = startDate;
+      body.until_date = untilDate || null;
+      if (repeat === "weekly") body.rec_weekdays = recWeekdays.join(",") || null;
+      if (repeat === "monthly") body.rec_day = recDay ? Number(recDay) : null;
+      if (repeat === "yearly") {
+        body.rec_month = recMonth ? Number(recMonth) : null;
+        body.rec_day_yearly = recDayYearly ? Number(recDayYearly) : null;
+      }
+      if (repeat === "interval") body.rec_interval = recInterval ? Number(recInterval) : null;
     }
     if (reminder) {
       body.reminder_offset = Number(reminder);
@@ -301,16 +335,27 @@ export function CreateEventModal({ onClose }: Props) {
           label="Длится несколько дней"
         />
         {hasEndDate && (
-          <div className="mt-2">
-            <label className={labelCls}>Дата окончания</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); clearFieldError("end_date"); }}
-              min={startDate || undefined}
-              className={`${inputCls} ${fieldErrors.end_date ? inputErrorBorder : ""}`}
-            />
-            {fieldErrors.end_date && <p className={errTextCls}>{fieldErrors.end_date}</p>}
+          <div className="mt-2 space-y-2">
+            <div>
+              <label className={labelCls}>Дата окончания</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); clearFieldError("end_date"); }}
+                min={startDate || undefined}
+                className={`${inputCls} ${fieldErrors.end_date ? inputErrorBorder : ""}`}
+              />
+              {fieldErrors.end_date && <p className={errTextCls}>{fieldErrors.end_date}</p>}
+            </div>
+            <div>
+              <label className={labelCls}>Время окончания</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={inputCls}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -344,12 +389,119 @@ export function CreateEventModal({ onClose }: Props) {
                 className={inputCls}
               >
                 {REPEAT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value} disabled={o.disabled}>
+                  <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </select>
             </div>
+
+            {/* Повторение: дни недели (weekly) */}
+            {repeat === "weekly" && (
+              <div>
+                <label className={labelCls}>Дни недели</label>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {WEEKDAYS.map((d) => {
+                    const active = recWeekdays.includes(d.value);
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() =>
+                          setRecWeekdays((prev) =>
+                            active ? prev.filter((x) => x !== d.value) : [...prev, d.value],
+                          )
+                        }
+                        className={clsx(
+                          "px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors",
+                          active
+                            ? "bg-indigo-600 border-indigo-500 text-white"
+                            : "bg-white/[0.05] border-white/[0.08] text-white/50 hover:bg-white/[0.08]",
+                        )}
+                      >
+                        {d.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Повторение: день месяца (monthly) */}
+            {repeat === "monthly" && (
+              <div>
+                <label className={labelCls}>День месяца (1–31)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={recDay}
+                  onChange={(e) => setRecDay(e.target.value)}
+                  placeholder="1"
+                  className={inputCls}
+                />
+              </div>
+            )}
+
+            {/* Повторение: месяц + день (yearly) */}
+            {repeat === "yearly" && (
+              <div className="space-y-2">
+                <div>
+                  <label className={labelCls}>Месяц</label>
+                  <select
+                    value={recMonth}
+                    onChange={(e) => setRecMonth(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">— выберите —</option>
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>День (1–31)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={recDayYearly}
+                    onChange={(e) => setRecDayYearly(e.target.value)}
+                    placeholder="1"
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Повторение: интервал (interval) */}
+            {repeat === "interval" && (
+              <div>
+                <label className={labelCls}>Интервал (дней)</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={recInterval}
+                  onChange={(e) => setRecInterval(e.target.value)}
+                  placeholder="1"
+                  className={inputCls}
+                />
+              </div>
+            )}
+
+            {/* Повторение: дата окончания повторений */}
+            {repeat && (
+              <div>
+                <label className={labelCls}>Повторять до</label>
+                <input
+                  type="date"
+                  value={untilDate}
+                  onChange={(e) => setUntilDate(e.target.value)}
+                  min={startDate || undefined}
+                  className={inputCls}
+                />
+              </div>
+            )}
 
             {/* Уведомление */}
             <div>

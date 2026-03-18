@@ -1,5 +1,5 @@
 /**
- * AUTO-GENERATED from Pydantic models — 2026-03-18 19:32
+ * AUTO-GENERATED from Pydantic models — 2026-03-18 20:28
  * Do not edit manually. Regenerate with:
  *   pnpm gen:api   (or: .venv/Scripts/python.exe scripts/gen_frontend_schemas.py)
  */
@@ -7,12 +7,26 @@
 import { z } from "zod";
 
 export const CreateTaskRequestSchema = z.object({
+  mode: z.string().default("once"),
   title: z.string(),
   note: z.string().nullish(),
+  category_id: z.number().int().nullish(),
   due_kind: z.string().default("NONE"),
   due_date: z.string().nullish(),
   due_time: z.string().nullish(),
-  category_id: z.number().int().nullish(),
+  due_start_time: z.string().nullish(),
+  due_end_time: z.string().nullish(),
+  reminders: z.array(z.unknown()).nullish(),
+  multi_dates: z.string().nullish(),
+  requires_expense: z.boolean().default(false),
+  suggested_expense_category_id: z.number().int().nullish(),
+  suggested_amount: z.string().nullish(),
+  freq: z.string().nullish(),
+  interval: z.number().int().default(1),
+  start_date: z.string().nullish(),
+  active_until: z.string().nullish(),
+  by_weekday: z.string().nullish(),
+  by_monthday: z.number().int().nullish(),
 });
 
 export type CreateTaskRequest = z.infer<typeof CreateTaskRequestSchema>;
@@ -34,10 +48,18 @@ export const CreateTransactionRequestSchema = z.object({
   operation_type: z.string(),
   amount: z.string(),
   description: z.string().default(""),
+  occurred_at: z.string().nullish(),
   wallet_id: z.number().int().nullish(),
   category_id: z.number().int().nullish(),
   from_wallet_id: z.number().int().nullish(),
   to_wallet_id: z.number().int().nullish(),
+  from_goal_id: z.number().int().nullish(),
+  to_goal_id: z.number().int().nullish(),
+  sub_subscription_id: z.number().int().nullish(),
+  sub_payer_type: z.string().nullish(),
+  sub_member_id: z.number().int().nullish(),
+  sub_start_date: z.string().nullish(),
+  sub_end_date: z.string().nullish(),
 });
 
 export type CreateTransactionRequest = z.infer<typeof CreateTransactionRequestSchema>;
@@ -49,6 +71,7 @@ export const CreateHabitRequestSchema = z.object({
   freq: z.string().default("DAILY"),
   interval: z.number().int().default(1),
   start_date: z.string().nullish(),
+  active_until: z.string().nullish(),
   by_weekday: z.string().nullish(),
   by_monthday: z.number().int().nullish(),
   level: z.number().int().default(1),
@@ -83,6 +106,12 @@ export const CreateEventRequestSchema = z.object({
   category_id: z.number().int().nullish(),
   freq: z.string().nullish(),
   start_date_rule: z.string().nullish(),
+  until_date: z.string().nullish(),
+  rec_weekdays: z.string().nullish(),
+  rec_day: z.number().int().nullish(),
+  rec_month: z.number().int().nullish(),
+  rec_day_yearly: z.number().int().nullish(),
+  rec_interval: z.number().int().nullish(),
   reminder_offset: z.number().int().nullish(),
 });
 

@@ -114,9 +114,15 @@ class CreateEventRequest(BaseModel):
     end_time: str | None = None
     description: str | None = None
     category_id: int | None = None
-    # Recurring event support
-    freq: str | None = None          # daily, weekly, monthly, yearly
-    start_date_rule: str | None = None  # recurrence rule start
+    # Recurrence
+    freq: str | None = None              # daily, weekly, monthly, yearly, interval
+    start_date_rule: str | None = None   # recurrence rule start (used for interval)
+    until_date: str | None = None        # end date for recurrence
+    rec_weekdays: str | None = None      # "MO,TU,WE" for weekly
+    rec_day: int | None = None           # day of month for monthly (1-31)
+    rec_month: int | None = None         # month for yearly (1-12)
+    rec_day_yearly: int | None = None    # day for yearly (1-31)
+    rec_interval: int | None = None      # interval in days
     # Reminder offset in minutes (e.g. 10, 60, 1440)
     reminder_offset: int | None = None
 
@@ -148,20 +154,69 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
             )
 
     try:
-        freq = body.freq
-        event_id = CreateEventUseCase(db).execute(
-            account_id=user_id,
-            title=body.title,
-            category_id=cat_id,
-            description=body.description,
-            freq=freq if freq else None,
-            start_date=body.start_date_rule if freq else None,
-            occ_start_date=body.start_date if not freq else None,
-            occ_start_time=body.start_time,
-            occ_end_date=body.end_date,
-            occ_end_time=body.end_time,
-            actor_user_id=user_id,
-        )
+        recurrence_type = body.freq  # daily, weekly, monthly, yearly, interval
+        if not recurrence_type:
+            event_id = CreateEventUseCase(db).execute(
+                account_id=user_id,
+                title=body.title,
+                category_id=cat_id,
+                description=body.description,
+                occ_start_date=body.start_date,
+                occ_start_time=body.start_time,
+                occ_end_date=body.end_date,
+                occ_end_time=body.end_time,
+                actor_user_id=user_id,
+            )
+        else:
+            from datetime import date as _date
+            today = _date.today()
+            freq_val: str | None = None
+            interval: int = 1
+            rule_start_date: str | None = None
+            by_weekday: str | None = None
+            by_monthday: int | None = None
+            by_month: int | None = None
+            by_monthday_for_year: int | None = None
+
+            if recurrence_type == "yearly":
+                freq_val = "YEARLY"
+                by_month = body.rec_month
+                by_monthday_for_year = body.rec_day_yearly
+                if body.rec_month and body.rec_day_yearly:
+                    rule_start_date = f"{today.year}-{body.rec_month:02d}-{body.rec_day_yearly:02d}"
+            elif recurrence_type == "monthly":
+                freq_val = "MONTHLY"
+                by_monthday = body.rec_day
+                rule_start_date = today.isoformat()
+            elif recurrence_type == "weekly":
+                freq_val = "WEEKLY"
+                by_weekday = body.rec_weekdays
+                rule_start_date = today.isoformat()
+            elif recurrence_type == "interval":
+                freq_val = "INTERVAL_DAYS"
+                interval = body.rec_interval or 1
+                rule_start_date = body.start_date_rule or body.start_date
+            elif recurrence_type == "daily":
+                freq_val = "DAILY"
+                rule_start_date = body.start_date_rule or body.start_date
+
+            event_id = CreateEventUseCase(db).execute(
+                account_id=user_id,
+                title=body.title,
+                category_id=cat_id,
+                description=body.description,
+                freq=freq_val,
+                interval=interval,
+                start_date=rule_start_date,
+                by_weekday=by_weekday,
+                by_monthday=by_monthday,
+                by_month=by_month,
+                by_monthday_for_year=by_monthday_for_year,
+                until_date=body.until_date,
+                occ_start_time=body.start_time,
+                occ_end_time=body.end_time,
+                actor_user_id=user_id,
+            )
     except EventValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

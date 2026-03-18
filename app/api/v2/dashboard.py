@@ -273,17 +273,33 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
 
     # ── Expiring subscriptions ─────────────────────────────────────────────────
     try:
-        horizon = today + timedelta(days=30)
+        member_horizon = today + timedelta(days=60)
+        self_horizon = today + timedelta(days=30)
+
         member_rows = (
             db.query(SubscriptionMemberModel)
             .filter(
                 SubscriptionMemberModel.account_id == user_id,
                 SubscriptionMemberModel.paid_until != None,  # noqa: E711
                 SubscriptionMemberModel.paid_until >= today,
-                SubscriptionMemberModel.paid_until <= horizon,
+                SubscriptionMemberModel.paid_until <= member_horizon,
             )
             .order_by(SubscriptionMemberModel.paid_until.asc())
-            .limit(10)
+            .limit(20)
+            .all()
+        )
+
+        self_rows = (
+            db.query(SubscriptionModel)
+            .filter(
+                SubscriptionModel.account_id == user_id,
+                SubscriptionModel.is_archived == False,  # noqa: E712
+                SubscriptionModel.paid_until_self != None,  # noqa: E711
+                SubscriptionModel.paid_until_self >= today,
+                SubscriptionModel.paid_until_self <= self_horizon,
+            )
+            .order_by(SubscriptionModel.paid_until_self.asc())
+            .limit(20)
             .all()
         )
 
@@ -307,10 +323,21 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                 expiring_subs.append(ExpiringSub(
                     member_id=m.id,
                     contact_name=contact.name,
-                    subscription_title=sub.title,
+                    subscription_title=sub.name,
                     paid_until=m.paid_until,
                     days_left=(m.paid_until - today).days,
                 ))
+
+        for s in self_rows:
+            expiring_subs.append(ExpiringSub(
+                member_id=0,
+                contact_name="Вы",
+                subscription_title=s.name,
+                paid_until=s.paid_until_self,
+                days_left=(s.paid_until_self - today).days,
+            ))
+
+        expiring_subs.sort(key=lambda x: x.paid_until)
     except Exception:
         expiring_subs = []
 

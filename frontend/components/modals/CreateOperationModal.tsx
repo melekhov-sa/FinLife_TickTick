@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { WalletItem, FinCategoryItem } from "@/types/api";
+import type { WalletItem, FinCategoryItem, SubscriptionItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -21,6 +21,9 @@ interface Props {
 const inputCls =
   "w-full px-3 h-9 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
 const labelCls = "block text-[11px] md:text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
+const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
+const chipActiveCls = "bg-indigo-600 border-indigo-500 text-white";
+const chipInactiveCls = "bg-white/[0.03] border-white/[0.08] text-white/68 hover:text-white/85 hover:bg-white/[0.05]";
 
 const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
   { value: "INCOME",   label: "Доход",       activeColor: "bg-emerald-600 border-emerald-500 text-white" },
@@ -38,6 +41,20 @@ export function CreateOperationModal({ onClose }: Props) {
   const [toWalletId, setToWalletId] = useState<number | "">("");
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [description, setDescription] = useState("");
+  const [occurredAt, setOccurredAt] = useState("");
+
+  // Transfer goal selectors
+  const [fromGoalId, setFromGoalId] = useState<number | "">("");
+  const [toGoalId, setToGoalId] = useState<number | "">("");
+
+  // Subscription coverage
+  const [subOpen, setSubOpen] = useState(false);
+  const [subSubscriptionId, setSubSubscriptionId] = useState<number | "">("");
+  const [subPayerType, setSubPayerType] = useState<"SELF" | "MEMBER">("SELF");
+  const [subMemberId, setSubMemberId] = useState<number | "">("");
+  const [subStartDate, setSubStartDate] = useState("");
+  const [subEndDate, setSubEndDate] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
@@ -54,6 +71,13 @@ export function CreateOperationModal({ onClose }: Props) {
     queryFn: () => fetch("/api/v2/fin-categories", { credentials: "include" }).then((r) => r.json()),
     staleTime: 5 * 60_000,
     enabled: opType === "INCOME" || opType === "EXPENSE",
+  });
+
+  const { data: subscriptions } = useQuery<SubscriptionItem[]>({
+    queryKey: ["subscriptions"],
+    queryFn: () => fetch("/api/v2/subscriptions", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 5 * 60_000,
+    enabled: opType === "EXPENSE" && subOpen,
   });
 
   const relevantCats = finCats?.filter((c) => c.category_type === opType && c.parent_id !== null) ?? [];
@@ -90,7 +114,36 @@ export function CreateOperationModal({ onClose }: Props) {
     return opts;
   }, [freqCats, parentCats, relevantCats]);
 
+  const subscriptionOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— выберите подписку —" },
+    ...(subscriptions ?? []).map((s) => ({ value: String(s.id), label: s.name })),
+  ], [subscriptions]);
+
+  const selectedSub = (subscriptions ?? []).find((s) => s.id === subSubscriptionId);
+
+  const memberOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— участник —" },
+    ...(selectedSub?.members ?? []).map((m) => ({ value: String(m.member_id), label: m.contact_name })),
+  ], [selectedSub]);
+
   useEffect(() => { setCategoryId(""); }, [opType]);
+
+  // Reset subscription section when opType changes away from EXPENSE
+  useEffect(() => {
+    if (opType !== "EXPENSE") {
+      setSubOpen(false);
+      setSubSubscriptionId("");
+      setSubPayerType("SELF");
+      setSubMemberId("");
+      setSubStartDate("");
+      setSubEndDate("");
+    }
+  }, [opType]);
+
+  // Reset member when payer type changes to SELF
+  useEffect(() => {
+    if (subPayerType === "SELF") setSubMemberId("");
+  }, [subPayerType]);
 
   function clearFieldError(field: string) {
     if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
@@ -102,12 +155,22 @@ export function CreateOperationModal({ onClose }: Props) {
       amount,
       description,
     };
+    body.occurred_at = occurredAt || null;
     if (opType === "TRANSFER") {
       body.from_wallet_id = fromWalletId || null;
       body.to_wallet_id = toWalletId || null;
+      body.from_goal_id = fromGoalId || null;
+      body.to_goal_id = toGoalId || null;
     } else {
       body.wallet_id = walletId || null;
       body.category_id = categoryId || null;
+    }
+    if (opType === "EXPENSE" && subSubscriptionId) {
+      body.sub_subscription_id = subSubscriptionId;
+      body.sub_payer_type = subPayerType;
+      body.sub_member_id = subMemberId || null;
+      body.sub_start_date = subStartDate || null;
+      body.sub_end_date = subEndDate || null;
     }
     return body;
   }
@@ -272,6 +335,34 @@ export function CreateOperationModal({ onClose }: Props) {
             </div>
           )}
 
+          {/* Goal selectors for TRANSFER */}
+          {opType === "TRANSFER" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Цель (откуда)</label>
+                {/* TODO: add v2 endpoint for goals (/api/v2/goals) */}
+                <input
+                  type="number"
+                  value={fromGoalId}
+                  onChange={(e) => setFromGoalId(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="ID цели"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Цель (куда)</label>
+                {/* TODO: add v2 endpoint for goals (/api/v2/goals) */}
+                <input
+                  type="number"
+                  value={toGoalId}
+                  onChange={(e) => setToGoalId(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="ID цели"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Category */}
           {(opType === "INCOME" || opType === "EXPENSE") && (
             <div>
@@ -297,6 +388,98 @@ export function CreateOperationModal({ onClose }: Props) {
               className={inputCls}
             />
           </div>
+
+          {/* Occurred at */}
+          <div>
+            <label className={labelCls}>Дата и время</label>
+            <input
+              type="datetime-local"
+              value={occurredAt}
+              onChange={(e) => setOccurredAt(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+
+          {/* Subscription coverage (EXPENSE only) */}
+          {opType === "EXPENSE" && (
+            <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setSubOpen((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/68 hover:text-white/85 hover:bg-white/[0.03] transition-colors text-left"
+              >
+                <span>{subOpen ? "▾" : "▸"}</span>
+                <span>Привязать к подписке</span>
+              </button>
+
+              {subOpen && (
+                <div className="px-3 pb-3 flex flex-col gap-3 border-t border-white/[0.08] pt-3">
+                  {/* Subscription select */}
+                  <div>
+                    <label className={labelCls}>Подписка</label>
+                    <Select
+                      value={subSubscriptionId}
+                      onChange={(v) => { setSubSubscriptionId(v ? Number(v) : ""); setSubMemberId(""); }}
+                      options={subscriptionOptions}
+                      placeholder="— выберите подписку —"
+                    />
+                  </div>
+
+                  {/* Payer type chips */}
+                  <div>
+                    <label className={labelCls}>Плательщик</label>
+                    <div className="flex gap-2">
+                      {(["SELF", "MEMBER"] as const).map((pt) => (
+                        <button
+                          key={pt}
+                          type="button"
+                          onClick={() => setSubPayerType(pt)}
+                          className={`${chipBaseCls} ${subPayerType === pt ? chipActiveCls : chipInactiveCls}`}
+                        >
+                          {pt === "SELF" ? "Сам" : "Участник"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Member select (only when MEMBER payer type) */}
+                  {subPayerType === "MEMBER" && (
+                    <div>
+                      <label className={labelCls}>Участник</label>
+                      <Select
+                        value={subMemberId}
+                        onChange={(v) => setSubMemberId(v ? Number(v) : "")}
+                        options={memberOptions}
+                        placeholder="— участник —"
+                      />
+                    </div>
+                  )}
+
+                  {/* Coverage dates */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Начало периода</label>
+                      <input
+                        type="date"
+                        value={subStartDate}
+                        onChange={(e) => setSubStartDate(e.target.value)}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Конец периода</label>
+                      <input
+                        type="date"
+                        value={subEndDate}
+                        onChange={(e) => setSubEndDate(e.target.value)}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 

@@ -368,6 +368,22 @@ export interface WalletItem {
   last_operation_at: string | null;
 }
 
+// ── /api/v2/task-templates ────────────────────────────────────────────────────
+
+export interface TaskTemplateItem {
+  template_id: number;
+  title: string;
+  note: string | null;
+  category_id: number | null;
+  category_emoji: string | null;
+  freq: string;
+  interval: number;
+  active_from: string;
+  active_until: string | null;
+  is_archived: boolean;
+  next_occurrence: string | null;
+}
+
 // ── /api/v2/fin-categories ────────────────────────────────────────────────────
 
 export interface FinCategoryItem {

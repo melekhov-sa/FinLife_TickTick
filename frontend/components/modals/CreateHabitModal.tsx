@@ -22,6 +22,7 @@ const FREQ_OPTIONS = [
   { value: "DAILY",   label: "Каждый день" },
   { value: "WEEKLY",  label: "Еженедельно" },
   { value: "MONTHLY", label: "Ежемесячно" },
+  { value: "YEARLY",  label: "Ежегодно" },
 ];
 
 const WEEKDAYS = [
@@ -49,6 +50,10 @@ export function CreateHabitModal({ onClose }: Props) {
   const [byMonthday, setByMonthday] = useState("");
   const [level, setLevel] = useState(1);
   const [categoryId, setCategoryId] = useState<number | "">("");
+  const [interval, setInterval] = useState(1);
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [activeUntil, setActiveUntil] = useState("");
+  const [reminderTime, setReminderTime] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -73,11 +78,15 @@ export function CreateHabitModal({ onClose }: Props) {
     return {
       title: title.trim(),
       freq,
+      interval,
       by_weekday: freq === "WEEKLY" ? weekdays.join(",") : null,
       by_monthday: freq === "MONTHLY" ? Number(byMonthday) || null : null,
       level,
       category_id: categoryId || null,
       note: note.trim() || null,
+      start_date: startDate || null,
+      active_until: activeUntil || null,
+      reminder_time: reminderTime || null,
     };
   }
 
@@ -90,6 +99,7 @@ export function CreateHabitModal({ onClose }: Props) {
     // Layer 2: Business rules
     const custom: FieldErrors = {};
     if (!payload.title) custom.title = "Введите название привычки";
+    if (interval < 1) custom.interval = "Интервал должен быть не менее 1";
     if (freq === "WEEKLY" && weekdays.length === 0) custom.by_weekday = "Выберите хотя бы один день недели";
     if (freq === "MONTHLY" && !byMonthday) custom.by_monthday = "Укажите день месяца";
     if (freq === "MONTHLY" && byMonthday) {
@@ -210,6 +220,19 @@ export function CreateHabitModal({ onClose }: Props) {
         </div>
       </div>
 
+      {/* Interval */}
+      <div>
+        <label className={labelCls}>Интервал (каждые N)</label>
+        <input
+          type="number"
+          min="1"
+          value={interval}
+          onChange={(e) => { setInterval(Math.max(1, Number(e.target.value))); clearFieldError("interval"); }}
+          className={`${inputCls} ${fieldErrors.interval ? inputErrorBorder : ""}`}
+        />
+        {fieldErrors.interval && <p className={errTextCls}>{fieldErrors.interval}</p>}
+      </div>
+
       {/* Weekday picker */}
       {freq === "WEEKLY" && (
         <div>
@@ -250,6 +273,29 @@ export function CreateHabitModal({ onClose }: Props) {
         </div>
       )}
 
+      {/* Start date + Active until */}
+      <div className="flex gap-2.5">
+        <div className="flex-1">
+          <label className={labelCls}>Начать с</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div className="flex-1">
+          <label className={labelCls}>Действует до</label>
+          <input
+            type="date"
+            value={activeUntil}
+            onChange={(e) => setActiveUntil(e.target.value)}
+            className={inputCls}
+          />
+          <p className="mt-1 text-[10px] text-white/40">Оставьте пустым для бессрочного действия</p>
+        </div>
+      </div>
+
       {/* Level */}
       <div>
         <label className={labelCls}>Уровень сложности</label>
@@ -269,6 +315,17 @@ export function CreateHabitModal({ onClose }: Props) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Reminder time */}
+      <div>
+        <label className={labelCls}>Время напоминания</label>
+        <input
+          type="time"
+          value={reminderTime}
+          onChange={(e) => setReminderTime(e.target.value)}
+          className={inputCls}
+        />
       </div>
 
       {/* Note */}

@@ -223,6 +223,7 @@ class CreateHabitRequest(BaseModel):
     freq: str = "DAILY"
     interval: int = 1
     start_date: str | None = None
+    active_until: str | None = None
     by_weekday: str | None = None
     by_monthday: int | None = None
     level: int = 1
@@ -243,6 +244,7 @@ def create_habit(body: CreateHabitRequest, request: Request, db: Session = Depen
             freq=body.freq,
             interval=body.interval,
             start_date=start,
+            active_until=body.active_until,
             by_weekday=body.by_weekday,
             by_monthday=body.by_monthday,
             level=body.level,
