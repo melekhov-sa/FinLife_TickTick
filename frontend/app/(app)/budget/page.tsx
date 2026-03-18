@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
+import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 
@@ -276,13 +277,13 @@ export default function BudgetPage() {
 
         {/* Links to legacy */}
         <div className="mt-6 flex items-center gap-3">
-          <a
-            href="/legacy/budget"
+          <Link
+            href="/budget/matrix"
             className="text-[12px] font-medium px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors"
             style={{ color: "var(--t-muted)" }}
           >
             Расширенный бюджет →
-          </a>
+          </Link>
           <button
             onClick={() => setShowOpModal(true)}
             className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-4 py-2 transition-colors"

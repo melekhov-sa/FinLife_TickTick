@@ -394,3 +394,68 @@ export interface FinCategoryItem {
   parent_id: number | null;
   is_frequent: boolean;
 }
+
+// ── Budget Matrix ──────────────────────────────────────────────────────────
+
+export interface BudgetCell {
+  plan: number;
+  plan_manual: number;
+  plan_planned: number;
+  fact: number;
+  deviation: number;
+  note?: string;
+}
+
+export interface BudgetRow {
+  category_id: number | null;
+  title: string;
+  kind: "INCOME" | "EXPENSE";
+  parent_id: number | null;
+  depth: number;
+  is_group: boolean;
+  is_child: boolean;
+  cells: BudgetCell[];
+  total: BudgetCell;
+  avg_fact?: number;
+}
+
+export interface BudgetGoalRow {
+  goal_id: number;
+  title: string;
+  currency: string;
+  cells: BudgetCell[];
+  total: BudgetCell;
+}
+
+export interface BudgetPeriod {
+  index: number;
+  label: string;
+  short_label: string;
+  range_start: string;
+  range_end: string;
+  year: number;
+  month: number;
+  has_manual_plan: boolean;
+}
+
+export interface BudgetSectionTotals {
+  cells: BudgetCell[];
+  total: BudgetCell;
+  avg_total?: number;
+}
+
+export interface BudgetMatrix {
+  grain: string;
+  range_count: number;
+  periods: BudgetPeriod[];
+  income_rows: BudgetRow[];
+  expense_rows: BudgetRow[];
+  income_totals: BudgetSectionTotals;
+  expense_totals: BudgetSectionTotals;
+  result: { cells: { plan: number; fact: number }[]; total: { plan: number; fact: number } };
+  goal_rows: BudgetGoalRow[];
+  goal_totals: BudgetSectionTotals;
+  withdrawal_rows: BudgetGoalRow[];
+  withdrawal_totals: BudgetSectionTotals;
+  avg_months: number;
+}

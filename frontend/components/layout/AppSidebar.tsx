@@ -33,7 +33,7 @@ const SECTIONS = [
       { href: "/wallets",                   label: "Кошельки" },
       { href: "/goals",                     label: "Цели" },
       { href: "/planned-ops",               label: "Плановые операции" },
-      { href: "/legacy/budget",             label: "Бюджет (расшир.)" },
+      { href: "/budget/matrix",              label: "Бюджет (расшир.)" },
       { href: "/categories",                label: "Статьи расходов/доходов" },
       { href: "/subscriptions",             label: "Подписки" },
     ],
@@ -67,6 +67,8 @@ export function AppSidebar() {
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
     if (href.startsWith("/legacy/")) return pathname === href;
+    if (href === "/budget") return pathname === "/budget";
+    if (href === "/budget/matrix") return pathname.startsWith("/budget/matrix");
     return pathname.startsWith(href);
   }
 

@@ -1,7 +1,9 @@
 """
 GET /api/v2/budget?year=YYYY&month=M  — plan-vs-actual summary for one month.
+GET /api/v2/budget/matrix             — full multi-period budget matrix.
 """
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
@@ -86,3 +88,81 @@ def budget_summary(
         "income_rows": income_rows,
         "expense_rows": expense_rows,
     }
+
+
+@router.get("/budget/matrix")
+def budget_matrix(
+    request: Request,
+    grain: str = Query("month"),
+    range_count: int = Query(4, ge=1, le=12),
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    variant_id: int | None = Query(None),
+    avg_months: int = Query(0),
+    db: Session = Depends(get_db),
+):
+    from app.application.budget_matrix import BudgetMatrixService
+    from app.application.budget import (
+        get_active_variant, get_hidden_category_ids,
+        get_hidden_goal_ids, get_hidden_withdrawal_goal_ids,
+        clamp_granularity, EnsureBudgetMonthUseCase,
+    )
+    from datetime import date as date_type
+
+    user_id = get_user_id(request)
+    today = date_type.today()
+
+    if year is None:
+        year = today.year
+    if month is None:
+        month = today.month
+
+    variant = get_active_variant(db, user_id, variant_id)
+    base_gran = variant.base_granularity if variant else "MONTH"
+    grain = clamp_granularity(grain, base_gran)
+
+    variant_id_resolved = variant.id if variant else None
+
+    hidden_cats = get_hidden_category_ids(db, variant_id_resolved) if variant_id_resolved else set()
+    hidden_goals = get_hidden_goal_ids(db, variant_id_resolved) if variant_id_resolved else set()
+    hidden_wgoals = get_hidden_withdrawal_goal_ids(db, variant_id_resolved) if variant_id_resolved else set()
+
+    if grain == "month":
+        for offset in range(range_count):
+            m = month + offset
+            y = year
+            while m > 12:
+                m -= 12
+                y += 1
+            EnsureBudgetMonthUseCase(db).execute(
+                account_id=user_id,
+                year=y, month=m,
+                budget_variant_id=variant_id_resolved,
+            )
+
+    view = BudgetMatrixService(db).build(
+        account_id=user_id,
+        grain=grain,
+        range_count=range_count,
+        anchor_year=year,
+        anchor_month=month,
+        base_granularity=base_gran,
+        budget_variant_id=variant_id_resolved,
+        hidden_category_ids=hidden_cats,
+        hidden_goal_ids=hidden_goals,
+        hidden_withdrawal_goal_ids=hidden_wgoals,
+        avg_months=avg_months,
+    )
+
+    def serialize(obj):
+        if isinstance(obj, dict):
+            return {k: serialize(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [serialize(v) for v in obj]
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, date_type):
+            return obj.isoformat()
+        return obj
+
+    return serialize(view)
