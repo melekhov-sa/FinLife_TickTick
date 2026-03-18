@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
+import { Select } from "@/components/ui/Select";
 import { Pencil, Check, X, Archive, ArchiveRestore, Plus, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -285,31 +286,18 @@ function AddCategoryForm({
 
       {parents.length > 0 && (
         <div className="flex items-center gap-2">
-          <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+          <span className="text-[11px] shrink-0" style={{ color: "var(--t-faint)" }}>
             Родительская:
           </span>
-          <div className="relative">
-            <select
-              value={parentId ?? ""}
-              onChange={(e) =>
-                setParentId(e.target.value ? Number(e.target.value) : null)
-              }
-              className="text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg pl-2.5 pr-6 py-1 outline-none appearance-none cursor-pointer"
-              style={{ color: "var(--t-secondary)" }}
-            >
-              <option value="">— нет (корневая) —</option>
-              {parents.map((p) => (
-                <option key={p.category_id} value={p.category_id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={11}
-              className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2"
-              style={{ color: "var(--t-faint)" }}
-            />
-          </div>
+          <Select
+            value={parentId ?? ""}
+            onChange={(v) => setParentId(v ? Number(v) : null)}
+            placeholder="— нет (корневая) —"
+            options={[
+              { value: "", label: "— нет (корневая) —" },
+              ...parents.map((p) => ({ value: String(p.category_id), label: p.title })),
+            ]}
+          />
         </div>
       )}
     </form>
