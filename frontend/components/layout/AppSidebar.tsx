@@ -31,6 +31,7 @@ const SECTIONS = [
     items: [
       { href: "/money",                     label: "Деньги" },
       { href: "/wallets",                   label: "Кошельки" },
+      { href: "/goals",                     label: "Цели" },
       { href: "/legacy/planned-ops",        label: "Плановые операции" },
       { href: "/legacy/budget",             label: "Бюджет (расшир.)" },
       { href: "/subscriptions",             label: "Подписки" },
@@ -40,7 +41,7 @@ const SECTIONS = [
     label: "ДЕЛА",
     items: [
       { href: "/tasks",                     label: "Задачи" },
-      { href: "/legacy/tasks?mode=recurring", label: "Повторяющиеся" },
+      { href: "/recurring-tasks",           label: "Повторяющиеся" },
       { href: "/projects",                  label: "Проекты" },
       { href: "/habits",                    label: "Привычки" },
       { href: "/events",                    label: "События" },

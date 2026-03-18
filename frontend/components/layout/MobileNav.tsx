@@ -21,6 +21,7 @@ const TABS = [
 ];
 
 const MORE_ITEMS = [
+  { href: "/goals",          label: "Цели" },
   { href: "/projects",       label: "Проекты" },
   { href: "/habits",         label: "Привычки" },
   { href: "/events",         label: "События" },

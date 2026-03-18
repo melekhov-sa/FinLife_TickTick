@@ -439,15 +439,6 @@ export default function PlanPage() {
           {/* ── Day groups ────────────────────────────────────────────── */}
           {data && (
             <div className="space-y-4">
-              {data.day_groups.map((g, i) => (
-                <DayGroupCard
-                  key={i}
-                  group={g}
-                  onComplete={setConfirmEntry}
-                  onAddTask={() => setShowCreateTask(true)}
-                />
-              ))}
-
               {tab === "active" && data.done_today.length > 0 && (
                 <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
                   <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
@@ -458,6 +449,15 @@ export default function PlanPage() {
                   ))}
                 </div>
               )}
+
+              {data.day_groups.map((g, i) => (
+                <DayGroupCard
+                  key={i}
+                  group={g}
+                  onComplete={setConfirmEntry}
+                  onAddTask={() => setShowCreateTask(true)}
+                />
+              ))}
             </div>
           )}
 

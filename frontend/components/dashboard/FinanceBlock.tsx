@@ -85,12 +85,12 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             </span>
           </div>
 
-          {/* Income load */}
-          {rub && rub.income > 0 && (
+          {/* Debt load */}
+          {finState.debt_load_pct !== null && finState.debt_load_pct !== undefined && (
             <div className="flex items-baseline justify-between gap-2 mt-1">
-              <span className="text-[11px] md:text-[12px]" style={{ color: "var(--t-faint)" }}>Доходная нагрузка</span>
+              <span className="text-[11px] md:text-[12px]" style={{ color: "var(--t-faint)" }}>Долговая нагрузка</span>
               <span className="text-[11px] md:text-[12px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
-                {Math.round((rub.expense / rub.income) * 100)}%
+                {finState.debt_load_pct}%
               </span>
             </div>
           )}

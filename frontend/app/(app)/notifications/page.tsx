@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell, BellOff, ClipboardList, CreditCard, Banknote, Calendar,
-  AlertTriangle, CheckCheck, Eye, Trash2,
+  AlertTriangle, Eye,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -196,11 +196,9 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={() => markAll()}
-              className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
-              style={{ color: "var(--t-faint)" }}
+              className="px-3 py-1.5 text-[11px] md:text-xs font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:text-white/85 hover:bg-white/[0.08] transition-colors"
             >
-              <CheckCheck size={13} />
-              Всё прочитано
+              Очистить все
             </button>
           )}
         </div>

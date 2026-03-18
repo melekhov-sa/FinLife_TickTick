@@ -8,6 +8,64 @@ import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
 import type { TaskItem } from "@/types/api";
 
+const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+function getLocalDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface TaskGroup {
+  label: string;
+  isOverdue: boolean;
+  tasks: TaskItem[];
+}
+
+function groupTasksByDate(tasks: TaskItem[]): TaskGroup[] {
+  const now = new Date();
+  const todayStr   = getLocalDateString(now);
+  const tomorrowD  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowStr = getLocalDateString(tomorrowD);
+
+  const overdue:  TaskItem[] = [];
+  const today:    TaskItem[] = [];
+  const tomorrow: TaskItem[] = [];
+  const noDate:   TaskItem[] = [];
+  const future:   Map<string, TaskItem[]> = new Map();
+
+  for (const task of tasks) {
+    const dd = task.due_date;
+    if (!dd) {
+      noDate.push(task);
+    } else if (dd < todayStr) {
+      overdue.push(task);
+    } else if (dd === todayStr) {
+      today.push(task);
+    } else if (dd === tomorrowStr) {
+      tomorrow.push(task);
+    } else {
+      if (!future.has(dd)) future.set(dd, []);
+      future.get(dd)!.push(task);
+    }
+  }
+
+  const groups: TaskGroup[] = [];
+
+  if (overdue.length)  groups.push({ label: "Просрочено", isOverdue: true,  tasks: overdue });
+  if (today.length)    groups.push({ label: "Сегодня",    isOverdue: false, tasks: today });
+  if (tomorrow.length) groups.push({ label: "Завтра",     isOverdue: false, tasks: tomorrow });
+
+  const sortedFuture = [...future.entries()].sort(([a], [b]) => a.localeCompare(b));
+  for (const [dateStr, ts] of sortedFuture) {
+    const [, m, d] = dateStr.split("-");
+    const label = `${parseInt(d)} ${RU_MONTHS[parseInt(m) - 1]}`;
+    groups.push({ label, isOverdue: false, tasks: ts });
+  }
+
+  if (noDate.length)   groups.push({ label: "Без даты",  isOverdue: false, tasks: noDate });
+
+  return groups;
+}
+
 const TABS = [
   { value: "ACTIVE",   label: "Активные" },
   { value: "DONE",     label: "Выполненные" },
@@ -200,7 +258,7 @@ export default function TasksPage() {
             )}
 
             {/* Rows */}
-            {tasks && tasks.map((task, i) => (
+            {tasks && status !== "ACTIVE" && tasks.map((task, i) => (
               <div
                 key={task.task_id}
                 className={i < tasks.length - 1 ? "border-b border-white/[0.04]" : ""}
@@ -219,6 +277,44 @@ export default function TasksPage() {
                 />
               </div>
             ))}
+
+            {/* Grouped rows (active tab) */}
+            {tasks && status === "ACTIVE" && (() => {
+              const groups = groupTasksByDate(tasks);
+              const allTasks = groups.flatMap((g) => g.tasks);
+              return groups.map((group) => (
+                <div key={group.label}>
+                  <div
+                    className="text-[11px] font-semibold uppercase tracking-widest px-3 pt-4 pb-1.5"
+                    style={{ color: group.isOverdue ? "var(--accent-red)" : "var(--t-faint)" }}
+                  >
+                    {group.label}
+                  </div>
+                  {group.tasks.map((task) => {
+                    const globalIdx = allTasks.indexOf(task);
+                    return (
+                      <div
+                        key={task.task_id}
+                        className={globalIdx < allTasks.length - 1 ? "border-b border-white/[0.04]" : ""}
+                        onDragEnter={() => onDragEnter(task.task_id)}
+                      >
+                        <TaskRow
+                          task={task}
+                          onComplete={handleComplete}
+                          onOpen={setSelectedTask}
+                          isDragging={draggedId === task.task_id}
+                          dragHandleProps={{
+                            draggable: true,
+                            onDragStart: () => onDragStart(task.task_id),
+                            onDragEnd,
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
           </div>
         )}
       </main>

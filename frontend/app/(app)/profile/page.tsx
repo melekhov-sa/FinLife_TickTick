@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { clsx } from "clsx";
 import { ArrowRight, Star, Zap, TrendingUp, Settings, Bell, Wallet, Lock } from "lucide-react";
+import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
 
 interface XpProfile {
   xp_total: number;
@@ -48,10 +50,11 @@ const QUICK_LINKS = [
   { label: "Настройки уведомлений", href: "/legacy/settings/notifications", icon: Bell },
   { label: "Настройки эффективности", href: "/legacy/efficiency/settings", icon: TrendingUp },
   { label: "Кошельки", href: "/wallets", icon: Wallet },
-  { label: "Смена пароля", href: "/legacy/profile", icon: Lock },
 ];
 
 export default function ProfilePage() {
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
   const { data: rawData, isPending, isError } = useQuery<ProfileData>({
     queryKey: ["profile"],
     queryFn: () =>
@@ -230,12 +233,26 @@ export default function ProfilePage() {
                       <ArrowRight size={12} className="text-white/50 group-hover:text-white/72 transition-colors" />
                     </a>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordModal(true)}
+                    className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.07] rounded-xl p-3.5 hover:bg-white/[0.07] hover:border-white/[0.12] transition-all group text-left"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0">
+                      <Lock size={13} className="text-indigo-400" />
+                    </div>
+                    <span className="text-sm text-white/55 group-hover:text-white/80 transition-colors font-medium flex-1">
+                      Смена пароля
+                    </span>
+                    <ArrowRight size={12} className="text-white/50 group-hover:text-white/72 transition-colors" />
+                  </button>
                 </div>
               </div>
             </div>
           )}
         </div>
       </main>
+      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
     </>
   );
 }
