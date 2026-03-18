@@ -269,7 +269,7 @@ export default function WorkCategoriesPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const { data, isLoading, isError } = useWorkCategories(includeArchived);
+  const { data, isLoading, isError, error } = useWorkCategories(includeArchived);
   const cats = data ?? [];
 
   const activeCount = cats.filter((c) => !c.is_archived).length;
@@ -320,9 +320,10 @@ export default function WorkCategoriesPage() {
         )}
 
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
-            Не удалось загрузить категории
-          </p>
+          <div className="text-center py-12">
+            <p className="text-red-400/70 text-sm">Не удалось загрузить категории</p>
+            {error && <p className="text-[11px] text-white/30 mt-2">{String(error)}</p>}
+          </div>
         )}
 
         {!isLoading && !isError && (
