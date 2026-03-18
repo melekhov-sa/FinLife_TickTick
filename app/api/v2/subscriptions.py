@@ -109,6 +109,34 @@ def get_subscriptions(
     return result
 
 
+# ── Create subscription ────────────────────────────────────────────────────
+
+class CreateSubscriptionRequest(BaseModel):
+    name: str
+    expense_category_id: int
+    income_category_id: int
+
+
+@router.post("/subscriptions", status_code=201)
+def create_subscription(
+    body: CreateSubscriptionRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.subscriptions import CreateSubscriptionUseCase, SubscriptionValidationError
+    user_id = get_user_id(request)
+    try:
+        sub_id = CreateSubscriptionUseCase(db).execute(
+            account_id=user_id,
+            name=body.name,
+            expense_category_id=body.expense_category_id,
+            income_category_id=body.income_category_id,
+        )
+    except SubscriptionValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"id": sub_id}
+
+
 # ── Update subscription ─────────────────────────────────────────────────────
 
 class UpdateSubscriptionRequest(BaseModel):

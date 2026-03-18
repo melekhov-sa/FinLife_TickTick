@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
+import { CreateSubscriptionModal } from "@/components/modals/CreateSubscriptionModal";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
 import { CreditCard, MoreHorizontal } from "lucide-react";
 import { Select } from "@/components/ui/Select";
@@ -317,6 +318,7 @@ export default function SubscriptionsPage() {
   const [filter, setFilter]         = useState<FilterKind>("all");
   const [sort, setSort]             = useState<SortKind>("expiry");
   const [selectedSub, setSelectedSub] = useState<SubscriptionItem | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const monthlyExpense = data?.reduce((sum, sub) => sum + getMonthlyTotal(sub), 0) ?? 0;
   const expiringCount  = data?.reduce((n, sub) => {
@@ -334,6 +336,9 @@ export default function SubscriptionsPage() {
       {freshSub && (
         <SubscriptionDetailPanel sub={freshSub} onClose={() => setSelectedSub(null)} />
       )}
+      {showCreate && (
+        <CreateSubscriptionModal onClose={() => setShowCreate(false)} />
+      )}
       <AppTopbar title="Подписки" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[760px]">
@@ -343,13 +348,13 @@ export default function SubscriptionsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Управление подписками
             </h2>
-            <a
-              href="/legacy/subscriptions/new"
+            <button
+              onClick={() => setShowCreate(true)}
               className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
             >
               <span className="text-[16px] leading-none">+</span>
               Подписка
-            </a>
+            </button>
           </div>
 
           {isLoading && (
@@ -458,12 +463,12 @@ export default function SubscriptionsPage() {
                     {filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
                   </p>
                   {filter === "all" && (
-                    <a
-                      href="/legacy/subscriptions/new"
+                    <button
+                      onClick={() => setShowCreate(true)}
                       className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
                     >
                       + Добавить подписку
-                    </a>
+                    </button>
                   )}
                 </div>
               ) : (
