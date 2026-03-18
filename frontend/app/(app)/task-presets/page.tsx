@@ -40,7 +40,7 @@ interface WorkCategory {
 function useAllPresets() {
   return useQuery<TaskPreset[]>({
     queryKey: ["task-presets-all"],
-    queryFn: () => api.get<TaskPreset[]>("/api/v2/task-presets/all"),
+    queryFn: () => api.get<TaskPreset[]>("/api/v2/task-presets?include_inactive=true"),
     staleTime: 30_000,
   });
 }
@@ -48,7 +48,7 @@ function useAllPresets() {
 function useWorkCategories() {
   return useQuery<WorkCategory[]>({
     queryKey: ["work-categories-all"],
-    queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories/all"),
+    queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories?include_archived=true"),
     staleTime: 60_000,
   });
 }

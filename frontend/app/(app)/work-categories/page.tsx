@@ -21,7 +21,7 @@ interface WorkCategory {
 function useWorkCategories(includeArchived: boolean) {
   return useQuery<WorkCategory[]>({
     queryKey: ["work-categories", includeArchived],
-    queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories/all"),
+    queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories?include_archived=true"),
     staleTime: 30_000,
     select: (data) =>
       includeArchived ? data : data.filter((c) => !c.is_archived),

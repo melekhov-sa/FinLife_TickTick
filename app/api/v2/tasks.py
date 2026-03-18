@@ -167,36 +167,22 @@ class WorkCategoryItem(BaseModel):
     emoji: str | None
 
 
-@router.get("/work-categories", response_model=list[WorkCategoryItem])
-def list_work_categories(request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
-    cats = (
-        db.query(WorkCategory)
-        .filter(WorkCategory.account_id == user_id, WorkCategory.is_archived == False)
-        .order_by(WorkCategory.title)
-        .all()
-    )
-    return [WorkCategoryItem(category_id=c.category_id, title=c.title, emoji=c.emoji) for c in cats]
-
-
-class WorkCategoryAllItem(BaseModel):
+class WorkCategoryFullItem(BaseModel):
     category_id: int
     title: str
     emoji: str | None
     is_archived: bool
 
 
-@router.get("/work-categories/all", response_model=list[WorkCategoryAllItem])
-def list_all_work_categories(request: Request, db: Session = Depends(get_db)):
+@router.get("/work-categories")
+def list_work_categories(request: Request, db: Session = Depends(get_db), include_archived: bool = Query(False)):
     user_id = get_user_id(request)
-    cats = (
-        db.query(WorkCategory)
-        .filter(WorkCategory.account_id == user_id)
-        .order_by(WorkCategory.title)
-        .all()
-    )
+    q = db.query(WorkCategory).filter(WorkCategory.account_id == user_id)
+    if not include_archived:
+        q = q.filter(WorkCategory.is_archived == False)  # noqa: E712
+    cats = q.order_by(WorkCategory.title).all()
     return [
-        WorkCategoryAllItem(
+        WorkCategoryFullItem(
             category_id=c.category_id, title=c.title, emoji=c.emoji, is_archived=c.is_archived
         )
         for c in cats
@@ -534,39 +520,24 @@ class TaskPresetItem(BaseModel):
     title_template: str
     description_template: str | None
     default_task_category_id: int | None
+    is_active: bool = True
+    sort_order: int = 0
 
 
-@router.get("/task-presets", response_model=list[TaskPresetItem])
-def list_task_presets(request: Request, db: Session = Depends(get_db)):
+@router.get("/task-presets")
+def list_task_presets(request: Request, db: Session = Depends(get_db), include_inactive: bool = Query(False)):
     from app.infrastructure.db.models import TaskPresetModel
     user_id = get_user_id(request)
-    presets = (
-        db.query(TaskPresetModel)
-        .filter(TaskPresetModel.account_id == user_id, TaskPresetModel.is_active == True)
-        .order_by(TaskPresetModel.sort_order)
-        .all()
-    )
+    q = db.query(TaskPresetModel).filter(TaskPresetModel.account_id == user_id)
+    if not include_inactive:
+        q = q.filter(TaskPresetModel.is_active == True)  # noqa: E712
+    presets = q.order_by(TaskPresetModel.sort_order, TaskPresetModel.id).all()
     return [TaskPresetItem(
         id=p.id, name=p.name, title_template=p.title_template,
         description_template=p.description_template,
         default_task_category_id=p.default_task_category_id,
+        is_active=p.is_active, sort_order=p.sort_order,
     ) for p in presets]
-
-
-@router.get("/task-presets/all")
-def list_all_task_presets(request: Request, db: Session = Depends(get_db)):
-    from app.infrastructure.db.models import TaskPresetModel
-    user_id = get_user_id(request)
-    presets = (
-        db.query(TaskPresetModel)
-        .filter(TaskPresetModel.account_id == user_id)
-        .order_by(TaskPresetModel.sort_order, TaskPresetModel.id)
-        .all()
-    )
-    return [{"id": p.id, "name": p.name, "title_template": p.title_template,
-             "description_template": p.description_template,
-             "default_task_category_id": p.default_task_category_id,
-             "is_active": p.is_active, "sort_order": p.sort_order} for p in presets]
 
 
 class CreateTaskPresetRequest(BaseModel):
