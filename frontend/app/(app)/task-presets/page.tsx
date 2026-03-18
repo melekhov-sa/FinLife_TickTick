@@ -416,7 +416,7 @@ export default function TaskPresetsPage() {
   const [tab, setTab] = useState<"active" | "inactive">("active");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const { data, isLoading, isError } = useAllPresets();
+  const { data, isLoading, isError, error } = useAllPresets();
   const { data: categories = [] } = useWorkCategories();
 
   const allPresets = data ?? [];
@@ -483,11 +483,10 @@ export default function TaskPresetsPage() {
         )}
 
         {isError && (
-          <p
-            className="text-red-400/70 text-sm text-center py-12"
-          >
-            Не удалось загрузить шаблоны
-          </p>
+          <div className="text-center py-12">
+            <p className="text-red-400/70 text-sm">Не удалось загрузить шаблоны</p>
+            {error && <p className="text-[11px] text-white/30 mt-2">{String(error)}</p>}
+          </div>
         )}
 
         {!isLoading && !isError && (
