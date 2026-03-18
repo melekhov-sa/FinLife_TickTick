@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkCategoryItem } from "@/types/api";
+import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
@@ -138,21 +139,19 @@ export function CreateTaskModal({ onClose }: Props) {
   const { data: categories } = useQuery<WorkCategoryItem[]>({
     queryKey: ["work-categories"],
     queryFn: () =>
-      fetch("/api/v2/work-categories", { credentials: "include" }).then((r) => r.json()),
+      api.get<WorkCategoryItem[]>("/api/v2/work-categories"),
     staleTime: 5 * 60_000,
   });
 
   const { data: presets } = useQuery<TaskPreset[]>({
     queryKey: ["task-presets"],
-    queryFn: () =>
-      fetch("/api/v2/task-presets", { credentials: "include" }).then((r) => r.json()),
-    staleTime: 5 * 60_000,
+    queryFn: () => api.get<TaskPreset[]>("/api/v2/task-presets"),
+    staleTime: 60_000,
   });
 
   const { data: reminderPresets } = useQuery<ReminderPreset[]>({
     queryKey: ["reminder-presets"],
-    queryFn: () =>
-      fetch("/api/v2/reminder-presets", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<ReminderPreset[]>("/api/v2/reminder-presets"),
     staleTime: 10 * 60_000,
   });
 

@@ -39,8 +39,12 @@ export function KanbanTaskCard({ task, allTags, onCardClick }: Props) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      onPointerDown={(e) => { pointerStart.current = { x: e.clientX, y: e.clientY }; }}
+      onPointerDown={(e) => {
+        pointerStart.current = { x: e.clientX, y: e.clientY };
+        // Forward to dnd-kit drag listener
+        const dndHandler = (listeners as Record<string, (e: React.PointerEvent) => void> | undefined)?.onPointerDown;
+        dndHandler?.(e);
+      }}
       onClick={(e) => {
         if (!onCardClick) return;
         const start = pointerStart.current;
@@ -52,7 +56,7 @@ export function KanbanTaskCard({ task, allTags, onCardClick }: Props) {
         onCardClick();
       }}
       className={clsx(
-        "bg-white/[0.05] border rounded-xl p-3.5 cursor-pointer active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-indigo-500/25",
+        "bg-white/[0.05] border rounded-xl p-3.5 cursor-grab active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-indigo-500/25",
         isDragging && "opacity-40",
         task.is_overdue ? "border-red-500/25" : "border-white/[0.08]"
       )}
