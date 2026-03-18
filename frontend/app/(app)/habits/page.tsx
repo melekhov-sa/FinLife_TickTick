@@ -85,7 +85,7 @@ function QuickMenu({
 
 function TodaySection({ habits }: { habits: HabitItem[] }) {
   const { mutate: complete } = useCompleteHabitToday();
-  const todayHabits = habits.filter((h) => !h.done_today);
+  const todayHabits = habits.filter((h) => h.scheduled_today && !h.done_today);
 
   return (
     <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-6">

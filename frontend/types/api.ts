@@ -211,6 +211,7 @@ export interface HabitItem {
   done_count_30d: number;
   reminder_time: string | null;
   done_today: boolean;
+  scheduled_today: boolean;
   recent_days: boolean[];
 }
 

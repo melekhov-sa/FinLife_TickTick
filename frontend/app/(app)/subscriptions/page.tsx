@@ -161,6 +161,7 @@ function QuickMenu({ subId, onOpen }: { subId: number; onOpen: () => void }) {
 function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void }) {
   const minDays = getMinDaysLeft(sub);
   const monthlyTotal = getMonthlyTotal(sub);
+  const [membersExpanded, setMembersExpanded] = useState(false);
 
   return (
     <div className="relative group rounded-[14px] border border-white/[0.07] overflow-hidden transition-colors hover:bg-white/[0.03] hover:border-white/[0.10] bg-white/[0.03]">
@@ -214,10 +215,22 @@ function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void })
 
         {/* Members */}
         {sub.members.length > 0 ? (
-          <div className="px-5 py-1">
-            {sub.members.map((m) => (
-              <MemberRow key={m.member_id} member={m} />
-            ))}
+          <div className="px-3 pb-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); setMembersExpanded((v) => !v); }}
+              className="flex items-center gap-2 w-full px-2 py-2 text-[12px] font-medium hover:bg-white/[0.03] transition-colors rounded-lg"
+              style={{ color: "var(--t-muted)" }}
+            >
+              <span className="text-[10px]">{membersExpanded ? "▾" : "▸"}</span>
+              Участники ({sub.members.length})
+            </button>
+            {membersExpanded && (
+              <div className="px-2">
+                {sub.members.map((m) => (
+                  <MemberRow key={m.member_id} member={m} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="px-5 py-3 space-y-2.5">

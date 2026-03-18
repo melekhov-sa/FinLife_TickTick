@@ -37,6 +37,7 @@ class HabitItem(BaseModel):
     done_count_30d: int
     reminder_time: str | None
     done_today: bool
+    scheduled_today: bool
     recent_days: list[bool]   # last 14 days, oldest first
 
 
@@ -88,8 +89,10 @@ def get_habits(
         reminder_str = h.reminder_time.strftime("%H:%M") if h.reminder_time else None
 
         # done_today: today's occurrence is DONE
+        # scheduled_today: any occurrence exists for today (regardless of status)
         today_status = occ_by_habit[h.habit_id].get(today)
         done_today = today_status == "DONE"
+        scheduled_today = today in occ_by_habit[h.habit_id]
 
         # recent_days: last 14 days, oldest first
         recent_days = []
@@ -111,6 +114,7 @@ def get_habits(
             done_count_30d=h.done_count_30d,
             reminder_time=reminder_str,
             done_today=done_today,
+            scheduled_today=scheduled_today,
             recent_days=recent_days,
         ))
     return result
