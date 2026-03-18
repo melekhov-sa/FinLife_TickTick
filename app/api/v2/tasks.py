@@ -198,13 +198,18 @@ class CreateWorkCategoryRequest(BaseModel):
 def create_work_category(
     body: CreateWorkCategoryRequest, request: Request, db: Session = Depends(get_db)
 ):
+    from app.application.work_categories import CreateWorkCategoryUseCase, WorkCategoryValidationError
     user_id = get_user_id(request)
-    if not body.title.strip():
-        raise HTTPException(status_code=400, detail="Название не может быть пустым")
-    cat = WorkCategory(account_id=user_id, title=body.title.strip(), emoji=body.emoji)
-    db.add(cat)
-    db.commit()
-    return {"category_id": cat.category_id, "title": cat.title, "emoji": cat.emoji}
+    try:
+        category_id = CreateWorkCategoryUseCase(db).execute(
+            account_id=user_id,
+            title=body.title,
+            emoji=body.emoji,
+            actor_user_id=user_id,
+        )
+    except WorkCategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"category_id": category_id}
 
 
 class UpdateWorkCategoryRequest(BaseModel):
@@ -219,49 +224,39 @@ def update_work_category(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    from app.application.work_categories import UpdateWorkCategoryUseCase, WorkCategoryValidationError
     user_id = get_user_id(request)
-    cat = db.query(WorkCategory).filter(
-        WorkCategory.category_id == category_id,
-        WorkCategory.account_id == user_id,
-    ).first()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Категория не найдена")
-    fields = body.model_fields_set
-    if "title" in fields:
-        if not body.title or not body.title.strip():
-            raise HTTPException(status_code=400, detail="Название не может быть пустым")
-        cat.title = body.title.strip()
-    if "emoji" in fields:
-        cat.emoji = body.emoji or None
-    db.commit()
+    try:
+        kwargs: dict = dict(category_id=category_id, account_id=user_id, actor_user_id=user_id)
+        if "title" in body.model_fields_set:
+            kwargs["title"] = body.title
+        if "emoji" in body.model_fields_set:
+            kwargs["emoji"] = body.emoji
+        UpdateWorkCategoryUseCase(db).execute(**kwargs)
+    except WorkCategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
 
 
 @router.post("/work-categories/{category_id}/archive")
 def archive_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.work_categories import ArchiveWorkCategoryUseCase, WorkCategoryValidationError
     user_id = get_user_id(request)
-    cat = db.query(WorkCategory).filter(
-        WorkCategory.category_id == category_id,
-        WorkCategory.account_id == user_id,
-    ).first()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Категория не найдена")
-    cat.is_archived = True
-    db.commit()
+    try:
+        ArchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
+    except WorkCategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
 
 
 @router.post("/work-categories/{category_id}/restore")
 def restore_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.work_categories import UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
     user_id = get_user_id(request)
-    cat = db.query(WorkCategory).filter(
-        WorkCategory.category_id == category_id,
-        WorkCategory.account_id == user_id,
-    ).first()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Категория не найдена")
-    cat.is_archived = False
-    db.commit()
+    try:
+        UnarchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
+    except WorkCategoryValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
 
 
