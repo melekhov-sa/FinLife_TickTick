@@ -179,6 +179,106 @@ def list_work_categories(request: Request, db: Session = Depends(get_db)):
     return [WorkCategoryItem(category_id=c.category_id, title=c.title, emoji=c.emoji) for c in cats]
 
 
+class WorkCategoryAllItem(BaseModel):
+    category_id: int
+    title: str
+    emoji: str | None
+    is_archived: bool
+
+
+@router.get("/work-categories/all", response_model=list[WorkCategoryAllItem])
+def list_all_work_categories(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    cats = (
+        db.query(WorkCategory)
+        .filter(WorkCategory.account_id == user_id)
+        .order_by(WorkCategory.title)
+        .all()
+    )
+    return [
+        WorkCategoryAllItem(
+            category_id=c.category_id, title=c.title, emoji=c.emoji, is_archived=c.is_archived
+        )
+        for c in cats
+    ]
+
+
+class CreateWorkCategoryRequest(BaseModel):
+    title: str
+    emoji: str | None = None
+
+
+@router.post("/work-categories", status_code=201)
+def create_work_category(
+    body: CreateWorkCategoryRequest, request: Request, db: Session = Depends(get_db)
+):
+    user_id = get_user_id(request)
+    if not body.title.strip():
+        raise HTTPException(status_code=400, detail="Название не может быть пустым")
+    cat = WorkCategory(account_id=user_id, title=body.title.strip(), emoji=body.emoji)
+    db.add(cat)
+    db.commit()
+    return {"category_id": cat.category_id, "title": cat.title, "emoji": cat.emoji}
+
+
+class UpdateWorkCategoryRequest(BaseModel):
+    title: str | None = None
+    emoji: str | None = None
+
+
+@router.patch("/work-categories/{category_id}")
+def update_work_category(
+    category_id: int,
+    body: UpdateWorkCategoryRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request)
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    fields = body.model_fields_set
+    if "title" in fields:
+        if not body.title or not body.title.strip():
+            raise HTTPException(status_code=400, detail="Название не может быть пустым")
+        cat.title = body.title.strip()
+    if "emoji" in fields:
+        cat.emoji = body.emoji or None
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/work-categories/{category_id}/archive")
+def archive_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    cat.is_archived = True
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/work-categories/{category_id}/restore")
+def restore_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    cat.is_archived = False
+    db.commit()
+    return {"ok": True}
+
+
 class CreateTaskRequest(BaseModel):
     # Mode
     mode: str = "once"  # "once" or "recurring"
@@ -451,6 +551,110 @@ def list_task_presets(request: Request, db: Session = Depends(get_db)):
         description_template=p.description_template,
         default_task_category_id=p.default_task_category_id,
     ) for p in presets]
+
+
+@router.get("/task-presets/all")
+def list_all_task_presets(request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskPresetModel
+    user_id = get_user_id(request)
+    presets = (
+        db.query(TaskPresetModel)
+        .filter(TaskPresetModel.account_id == user_id)
+        .order_by(TaskPresetModel.sort_order, TaskPresetModel.id)
+        .all()
+    )
+    return [{"id": p.id, "name": p.name, "title_template": p.title_template,
+             "description_template": p.description_template,
+             "default_task_category_id": p.default_task_category_id,
+             "is_active": p.is_active, "sort_order": p.sort_order} for p in presets]
+
+
+class CreateTaskPresetRequest(BaseModel):
+    name: str
+    title_template: str
+    description_template: str | None = None
+    default_task_category_id: int | None = None
+
+
+@router.post("/task-presets", status_code=201)
+def create_task_preset(body: CreateTaskPresetRequest, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskPresetModel
+    user_id = get_user_id(request)
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Название шаблона не может быть пустым")
+    if not body.title_template.strip():
+        raise HTTPException(status_code=400, detail="Заголовок задачи не может быть пустым")
+    max_order = db.query(func.coalesce(func.max(TaskPresetModel.sort_order), 0)).filter(
+        TaskPresetModel.account_id == user_id
+    ).scalar()
+    preset = TaskPresetModel(
+        account_id=user_id,
+        name=body.name.strip(),
+        title_template=body.title_template.strip(),
+        description_template=body.description_template,
+        default_task_category_id=body.default_task_category_id,
+        sort_order=max_order + 1,
+    )
+    db.add(preset)
+    db.commit()
+    return {"id": preset.id}
+
+
+class UpdateTaskPresetRequest(BaseModel):
+    name: str | None = None
+    title_template: str | None = None
+    description_template: str | None = None
+    default_task_category_id: int | None = None
+    is_active: bool | None = None
+
+
+@router.patch("/task-presets/{preset_id}")
+def update_task_preset(preset_id: int, body: UpdateTaskPresetRequest, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskPresetModel
+    user_id = get_user_id(request)
+    preset = db.query(TaskPresetModel).filter(TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id).first()
+    if not preset:
+        raise HTTPException(status_code=404, detail="Шаблон не найден")
+    fields = body.model_fields_set
+    if "name" in fields:
+        preset.name = body.name.strip() if body.name else preset.name
+    if "title_template" in fields:
+        preset.title_template = body.title_template.strip() if body.title_template else preset.title_template
+    if "description_template" in fields:
+        preset.description_template = body.description_template
+    if "default_task_category_id" in fields:
+        preset.default_task_category_id = body.default_task_category_id
+    if "is_active" in fields:
+        preset.is_active = body.is_active
+    db.commit()
+    return {"ok": True}
+
+
+class MovePresetRequest(BaseModel):
+    direction: str  # "up" or "down"
+
+
+@router.post("/task-presets/{preset_id}/move")
+def move_task_preset(preset_id: int, body: MovePresetRequest, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskPresetModel
+    user_id = get_user_id(request)
+    preset = db.query(TaskPresetModel).filter(TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id).first()
+    if not preset:
+        raise HTTPException(status_code=404, detail="Шаблон не найден")
+    if body.direction == "up":
+        neighbor = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.sort_order < preset.sort_order
+        ).order_by(TaskPresetModel.sort_order.desc()).first()
+    else:
+        neighbor = db.query(TaskPresetModel).filter(
+            TaskPresetModel.account_id == user_id,
+            TaskPresetModel.sort_order > preset.sort_order
+        ).order_by(TaskPresetModel.sort_order.asc()).first()
+    if neighbor:
+        preset.sort_order, neighbor.sort_order = neighbor.sort_order, preset.sort_order
+        db.commit()
+    return {"ok": True}
 
 
 # --- Reminder Presets ---

@@ -301,7 +301,7 @@ function QuickAddRow({ date }: { date: string }) {
 const DAYS_OPTIONS = [7, 14, 30, 60] as const;
 
 export default function EventsPage() {
-  const [days, setDays]             = useState<number>(30);
+  const [days, setDays]             = useState<number>(14);
   const [search, setSearch]         = useState("");
   const [catFilter, setCatFilter]   = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -333,7 +333,10 @@ export default function EventsPage() {
 
   const eventDates = new Set((data ?? []).map((e) => e.start_date));
 
-  const filtered = (data ?? []).filter((e) => {
+  const today = new Date().toISOString().split("T")[0];
+  const futureEvents = (data ?? []).filter((e) => e.start_date >= today);
+
+  const filtered = futureEvents.filter((e) => {
     if (selectedDate && e.start_date !== selectedDate) return false;
     if (catFilter && e.category_title !== catFilter) return false;
     if (search) {

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.application.projects import ProjectReadService, CreateProjectUseCase, ProjectValidationError
+from app.application.projects import ProjectReadService, CreateProjectUseCase, CreateTaskInProjectUseCase, ProjectValidationError
 
 router = APIRouter()
 
@@ -177,3 +177,40 @@ def create_project(
     except ProjectValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return CreateProjectResponse(id=project_id)
+
+
+# ── Create task in project ─────────────────────────────────────────────────────
+
+class CreateProjectTaskRequest(BaseModel):
+    title: str
+    board_status: str = "backlog"
+    note: str | None = None
+    due_date: str | None = None
+    category_id: int | None = None
+
+
+class CreateProjectTaskResponse(BaseModel):
+    id: int
+
+
+@router.post("/projects/{project_id}/tasks", response_model=CreateProjectTaskResponse, status_code=201)
+def create_project_task(
+    project_id: int,
+    body: CreateProjectTaskRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request)
+    try:
+        task_id = CreateTaskInProjectUseCase(db).execute(
+            account_id=user_id,
+            project_id=project_id,
+            title=body.title,
+            note=body.note,
+            due_date=body.due_date,
+            category_id=body.category_id,
+            board_status=body.board_status,
+        )
+    except ProjectValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return CreateProjectTaskResponse(id=task_id)

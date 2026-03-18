@@ -14,11 +14,12 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api } from "@/lib/api";
 import { KanbanTaskCard } from "./KanbanTaskCard";
-import type { BoardColumn, ProjectDetail, TaskCard } from "@/types/api";
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import type { BoardColumn, ProjectDetail, TaskCard, TaskItem } from "@/types/api";
 
 interface Props {
   project: ProjectDetail;
@@ -27,6 +28,7 @@ interface Props {
 export function KanbanBoard({ project }: Props) {
   const qc = useQueryClient();
   const [activeTask, setActiveTask] = useState<TaskCard | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   // local optimistic groups so UI responds immediately
   const [localGroups, setLocalGroups] = useState<Record<string, TaskCard[]>>(
     () => project.groups
@@ -35,6 +37,14 @@ export function KanbanBoard({ project }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Fetch full TaskItem when a card is clicked
+  const { data: selectedTask } = useQuery<TaskItem>({
+    queryKey: ["task", selectedTaskId],
+    queryFn: () => api.get<TaskItem>(`/api/v2/tasks/${selectedTaskId}`),
+    enabled: selectedTaskId !== null,
+    staleTime: 0,
+  });
 
   function findColumn(taskId: number): string | null {
     for (const [col, tasks] of Object.entries(localGroups)) {
@@ -98,36 +108,62 @@ export function KanbanBoard({ project }: Props) {
     }
   }
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-0">
-        {project.columns.map((col: BoardColumn) => {
-          const tasks = localGroups[col.key] ?? [];
-          return (
-            <KanbanColumn
-              key={col.key}
-              column={col}
-              tasks={tasks}
-              allTags={project.tags}
-            />
-          );
-        })}
-      </div>
+  async function createTaskInColumn(title: string, columnKey: string) {
+    try {
+      await api.post(`/api/v2/projects/${project.id}/tasks`, {
+        title,
+        board_status: columnKey,
+      });
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+    } catch {
+      // silently ignore; board will reload from server state on next query
+    }
+  }
 
-      <DragOverlay>
-        {activeTask && (
-          <div className="rotate-2 opacity-90">
-            <KanbanTaskCard task={activeTask} allTags={project.tags} />
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 overflow-x-auto pb-4 min-h-0">
+          {project.columns.map((col: BoardColumn) => {
+            const tasks = localGroups[col.key] ?? [];
+            return (
+              <KanbanColumn
+                key={col.key}
+                column={col}
+                tasks={tasks}
+                allTags={project.tags}
+                onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                onCreateTask={(title) => createTaskInColumn(title, col.key)}
+              />
+            );
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeTask && (
+            <div className="rotate-2 opacity-90">
+              <KanbanTaskCard task={activeTask} allTags={project.tags} />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+
+      {selectedTaskId !== null && selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          onClose={() => {
+            setSelectedTaskId(null);
+            qc.invalidateQueries({ queryKey: ["project", project.id] });
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -137,13 +173,25 @@ function KanbanColumn({
   column,
   tasks,
   allTags,
+  onTaskClick,
+  onCreateTask,
 }: {
   column: BoardColumn;
   tasks: TaskCard[];
   allTags: ProjectDetail["tags"];
+  onTaskClick: (taskId: number) => void;
+  onCreateTask: (title: string) => void;
 }) {
   const isDone = column.key === "done";
   const { setNodeRef, isOver } = useDroppable({ id: column.key });
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+
+  function handleCreate() {
+    const trimmed = newTaskTitle.trim();
+    if (!trimmed) return;
+    onCreateTask(trimmed);
+    setNewTaskTitle("");
+  }
 
   return (
     <div
@@ -181,7 +229,12 @@ function KanbanColumn({
       >
         <div className="flex-1 p-3 space-y-2 min-h-[80px]">
           {tasks.map((task) => (
-            <KanbanTaskCard key={task.task_id} task={task} allTags={allTags} />
+            <KanbanTaskCard
+              key={task.task_id}
+              task={task}
+              allTags={allTags}
+              onCardClick={() => onTaskClick(task.task_id)}
+            />
           ))}
           {tasks.length === 0 && (
             <div className="h-16 rounded-xl border border-dashed border-white/[0.06] flex items-center justify-center">
@@ -190,6 +243,21 @@ function KanbanColumn({
           )}
         </div>
       </SortableContext>
+
+      {/* Quick-add input */}
+      <div className="mt-auto px-2 pb-2">
+        <input
+          type="text"
+          value={newTaskTitle}
+          onChange={(e) => setNewTaskTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleCreate();
+          }}
+          placeholder="+ Добавить задачу..."
+          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-indigo-500/50 focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
+          style={{ color: "var(--t-primary)" }}
+        />
+      </div>
     </div>
   );
 }

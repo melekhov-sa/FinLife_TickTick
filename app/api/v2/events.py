@@ -67,7 +67,7 @@ def get_events(
         db.query(EventOccurrenceModel)
         .filter(
             EventOccurrenceModel.account_id == user_id,
-            EventOccurrenceModel.start_date >= today - timedelta(days=7),
+            EventOccurrenceModel.start_date >= today.replace(day=1),
             EventOccurrenceModel.start_date <= until,
             EventOccurrenceModel.is_cancelled == False,  # noqa: E712
         )

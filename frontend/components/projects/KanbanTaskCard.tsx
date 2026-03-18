@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { clsx } from "clsx";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -8,6 +9,7 @@ import type { TaskCard, ProjectTag } from "@/types/api";
 interface Props {
   task: TaskCard;
   allTags: ProjectTag[];
+  onCardClick?: () => void;
 }
 
 const TAG_COLOR_MAP: Record<string, string> = {
@@ -18,7 +20,7 @@ const TAG_COLOR_MAP: Record<string, string> = {
   purple: "bg-purple-500/15 text-purple-400",
 };
 
-export function KanbanTaskCard({ task, allTags }: Props) {
+export function KanbanTaskCard({ task, allTags, onCardClick }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.task_id });
 
@@ -29,14 +31,28 @@ export function KanbanTaskCard({ task, allTags }: Props) {
 
   const tagMap = Object.fromEntries(allTags.map((t) => [t.id, t]));
 
+  // Track pointer start to distinguish click from drag
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onPointerDown={(e) => { pointerStart.current = { x: e.clientX, y: e.clientY }; }}
+      onClick={(e) => {
+        if (!onCardClick) return;
+        const start = pointerStart.current;
+        if (start) {
+          const dx = Math.abs(e.clientX - start.x);
+          const dy = Math.abs(e.clientY - start.y);
+          if (dx > 5 || dy > 5) return;
+        }
+        onCardClick();
+      }}
       className={clsx(
-        "bg-white/[0.05] border rounded-xl p-3.5 cursor-grab active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-indigo-500/25",
+        "bg-white/[0.05] border rounded-xl p-3.5 cursor-pointer active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-indigo-500/25",
         isDragging && "opacity-40",
         task.is_overdue ? "border-red-500/25" : "border-white/[0.08]"
       )}

@@ -220,11 +220,28 @@ function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void })
             ))}
           </div>
         ) : (
-          <div className="px-5 py-4 flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: "var(--t-faint)" }}>Нет участников</span>
-            <span className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors">
-              + Добавить участника
-            </span>
+          <div className="px-5 py-3 space-y-2.5">
+            {sub.paid_until_self && (
+              <div className="flex items-center justify-between py-1.5 border-b border-white/[0.06]">
+                <span className="text-[13px] font-medium" style={{ color: "var(--t-secondary)" }}>
+                  Ваша подписка до{" "}
+                  <span className={clsx("tabular-nums", daysTextCls(sub.days_left_self))}>
+                    {formatDate(sub.paid_until_self)}
+                  </span>
+                </span>
+                {sub.days_left_self !== null && (
+                  <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border", daysBadgeCls(sub.days_left_self))}>
+                    {daysLabel(sub.days_left_self)}
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-[13px]" style={{ color: "var(--t-faint)" }}>Нет участников</span>
+              <span className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors">
+                + Добавить участника
+              </span>
+            </div>
           </div>
         )}
       </div>

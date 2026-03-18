@@ -45,6 +45,8 @@ const SECTIONS = [
       { href: "/projects",                  label: "Проекты" },
       { href: "/habits",                    label: "Привычки" },
       { href: "/events",                    label: "События" },
+      { href: "/work-categories",           label: "Категории дел" },
+      { href: "/task-presets",              label: "Шаблоны задач" },
       { href: "/knowledge",                 label: "База знаний" },
     ],
   },

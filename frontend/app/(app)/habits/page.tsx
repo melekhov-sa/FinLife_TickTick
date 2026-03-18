@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Check, MoreHorizontal, Repeat2, Flame, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MoreHorizontal, Repeat2, Flame, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
@@ -41,16 +41,15 @@ function QuickMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   const items = [
-    { label: "Редактировать",   action: () => { onOpen();   setOpen(false); } },
-    { label: "Пропустить сегодня", action: () => { onSkip(); setOpen(false); } },
-    { label: "В архив",         action: () => { onDelete(); setOpen(false); }, danger: true },
+    { label: "Редактировать",      action: () => { onOpen();   setOpen(false); } },
+    { label: "Пропустить сегодня", action: () => { onSkip();   setOpen(false); } },
+    { label: "В архив",            action: () => { onDelete(); setOpen(false); }, danger: true },
   ];
 
   return (
-    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/[0.08]"
@@ -82,6 +81,47 @@ function QuickMenu({
   );
 }
 
+// ── TodaySection ──────────────────────────────────────────────────────────────
+
+function TodaySection({ habits }: { habits: HabitItem[] }) {
+  const { mutate: complete } = useCompleteHabitToday();
+  const todayHabits = habits.filter((h) => !h.done_today);
+
+  return (
+    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-6">
+      <h2
+        className="text-[13px] font-semibold uppercase tracking-widest mb-3"
+        style={{ color: "var(--t-faint)" }}
+      >
+        Сегодня
+      </h2>
+      {todayHabits.length === 0 ? (
+        <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>
+          Все привычки выполнены!
+        </p>
+      ) : (
+        todayHabits.map((h) => (
+          <div
+            key={h.habit_id}
+            className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0"
+          >
+            <span className="text-base">{h.category_emoji ?? "🔄"}</span>
+            <span className="flex-1 text-[14px]" style={{ color: "var(--t-primary)" }}>
+              {h.title}
+            </span>
+            <button
+              onClick={() => complete(h.habit_id)}
+              className="px-3 py-1 text-[11px] font-medium rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white transition-colors"
+            >
+              Отметить
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 // ── HabitCard ─────────────────────────────────────────────────────────────────
 
 function HabitCard({
@@ -91,37 +131,27 @@ function HabitCard({
   habit: HabitItem;
   onOpen: () => void;
 }) {
-  const { mutate: completeToday, isPending: completing } = useCompleteHabitToday();
-  const { mutate: skipToday  }  = useSkipHabitToday();
+  const { mutate: skipToday  } = useSkipHabitToday();
   const { mutate: deleteHabit } = useDeleteHabit();
 
   const levelCls = LEVEL_STYLE[habit.level] ?? "text-white/60 bg-white/[0.05] border-white/[0.08]";
-  const doneCount30 = habit.done_count_30d;
-  const barWidth = Math.min(100, Math.round((doneCount30 / 30) * 100));
 
   return (
     <div
       onClick={onOpen}
-      className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 cursor-pointer hover:bg-white/[0.05] hover:border-white/[0.09] transition-all"
+      className="group bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 cursor-pointer hover:bg-white/[0.05] hover:border-white/[0.09] transition-all"
     >
-      {/* Top row */}
-      <div className="flex items-start gap-3">
-        {/* Emoji */}
-        <div className="w-10 h-10 rounded-xl bg-white/[0.07] flex items-center justify-center text-xl shrink-0">
-          {habit.category_emoji ?? "🔄"}
-        </div>
-
-        {/* Title + meta */}
+      {/* Row 1: emoji + title + streak + menu */}
+      <div className="flex items-center gap-2.5">
+        <span className="text-lg shrink-0">{habit.category_emoji ?? "🔄"}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold truncate" style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}>
-              {habit.title}
-            </span>
-            <span className={clsx("shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-semibold border", levelCls)}>
+          <p className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+            {habit.title}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-full font-semibold border", levelCls)}>
               {habit.level_label}
             </span>
-          </div>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             {habit.category_title && (
               <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>{habit.category_title}</span>
             )}
@@ -130,20 +160,13 @@ function HabitCard({
             )}
           </div>
         </div>
-
-        {/* Streak */}
-        <div className="shrink-0 text-right">
-          <div className={clsx("text-2xl font-bold tabular-nums leading-none", streakColor(habit.current_streak))}
-            style={{ letterSpacing: "-0.04em" }}>
+        <div className="text-right shrink-0">
+          <span className={clsx("text-[18px] font-bold tabular-nums leading-none", streakColor(habit.current_streak))}>
             {habit.current_streak}
-          </div>
-          <div className="text-[10px] font-medium mt-0.5 uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
-            {habit.current_streak === 1 ? "день" : habit.current_streak >= 2 && habit.current_streak <= 4 ? "дня" : "дней"}
-          </div>
+          </span>
+          <p className="text-[10px]" style={{ color: "var(--t-faint)" }}>серия</p>
         </div>
-
-        {/* Quick menu */}
-        <div className="shrink-0 mt-0.5" onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <QuickMenu
             habit={habit}
             onOpen={onOpen}
@@ -153,14 +176,13 @@ function HabitCard({
         </div>
       </div>
 
-      {/* 14-day dot tracker */}
-      <div className="flex items-center gap-0.5 mt-3.5">
+      {/* Row 2: 14-day dot tracker */}
+      <div className="flex gap-0.5 mt-3">
         {(habit.recent_days ?? []).map((done, i) => (
           <div
             key={i}
             className={clsx(
               "flex-1 rounded-sm transition-colors",
-              // Taller for last 7 days, shorter for days 1-7
               i >= 7 ? "h-4" : "h-2.5",
               done
                 ? i >= 7 ? "bg-emerald-500/70" : "bg-emerald-500/40"
@@ -175,43 +197,6 @@ function HabitCard({
         <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
           {(habit.recent_days ?? []).filter(Boolean).length} / 14
         </span>
-      </div>
-
-      {/* 30-day progress bar */}
-      <div className="mt-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>За 30 дней</span>
-          <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--t-muted)" }}>
-            {doneCount30} / 30
-          </span>
-        </div>
-        <div className="h-1 rounded-full bg-white/[0.07]">
-          <div
-            className="h-full rounded-full bg-emerald-500/50 transition-all"
-            style={{ width: `${barWidth}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Mark today button */}
-      <div className="mt-3.5 pt-3.5 border-t border-white/[0.05]" onClick={(e) => e.stopPropagation()}>
-        {habit.done_today ? (
-          <div className="flex items-center gap-2 text-emerald-400 text-[13px] font-semibold">
-            <div className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <Check size={11} strokeWidth={2.5} />
-            </div>
-            Выполнено сегодня
-          </div>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); completeToday(habit.habit_id); }}
-            disabled={completing}
-            className="flex items-center gap-2 w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white text-[13px] font-semibold transition-colors disabled:opacity-60 active:scale-95"
-          >
-            <Check size={13} strokeWidth={2.5} />
-            Отметить сегодня
-          </button>
-        )}
       </div>
     </div>
   );
@@ -249,7 +234,7 @@ export default function HabitsPage() {
     return true;
   });
 
-  const doneToday  = habits.filter((h) => h.done_today).length;
+  const doneToday   = habits.filter((h) => h.done_today).length;
   const totalStreak = habits.reduce((s, h) => s + h.current_streak, 0);
   const activeStreak = habits.filter((h) => h.current_streak > 0).length;
 
@@ -267,7 +252,7 @@ export default function HabitsPage() {
         {isLoading && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-40 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <div key={i} className="h-28 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
         )}
@@ -289,6 +274,9 @@ export default function HabitsPage() {
                 Создать привычку
               </button>
             </div>
+
+            {/* Today section */}
+            {habits.length > 0 && <TodaySection habits={habits} />}
 
             {/* KPI stats */}
             <div className="grid grid-cols-3 gap-3">
@@ -347,7 +335,7 @@ export default function HabitsPage() {
               </div>
             )}
 
-            {/* Habit cards */}
+            {/* Habit cards (analytics) */}
             {filtered.length > 0 && (
               <div className="space-y-3">
                 {filtered.map((h) => (
