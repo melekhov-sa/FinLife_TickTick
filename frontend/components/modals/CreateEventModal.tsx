@@ -7,6 +7,11 @@ import { clsx } from "clsx";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { CreateEventRequestSchema } from "@/schemas/api.generated";
+import {
+  validateWithSchema, mergeErrors, parseBackendErrors,
+  inputErrorBorder, errTextCls, type FieldErrors,
+} from "@/lib/formErrors";
 
 interface Props {
   onClose: () => void;
@@ -53,6 +58,7 @@ export function CreateEventModal({ onClose }: Props) {
 
   // ── UI state ─────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,67 +79,68 @@ export function CreateEventModal({ onClose }: Props) {
     el.style.height = `${el.scrollHeight}px`;
   }, [description]);
 
-  // ── Validation + Submit ──────────────────────────────────────
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
+  }
+
+  function buildPayload() {
+    const body: Record<string, unknown> = {
+      title: title.trim(),
+      start_date: startDate,
+      start_time: hasTime && startTime ? startTime : null,
+      end_date: hasEndDate && endDate ? endDate : null,
+      description: description.trim() || null,
+      category_id: categoryId || null,
+    };
+    if (repeat && repeat !== "custom") {
+      body.freq = repeat;
+      body.start_date_rule = startDate;
+    }
+    if (reminder) {
+      body.reminder_offset = Number(reminder);
+    }
+    return body;
+  }
+
+  function validate(): boolean {
+    const payload = buildPayload();
+
+    // Layer 1: Zod schema (from backend contract)
+    const zodErrs = validateWithSchema(CreateEventRequestSchema, payload);
+
+    // Layer 2: Business rules
+    const custom: FieldErrors = {};
+    if (!title.trim()) custom.title = "Введите название события";
+    if (!categoryId) custom.category_id = "Выберите категорию";
+    if (!startDate) custom.start_date = "Укажите дату";
+    if (hasTime && !startTime) custom.start_time = "Укажите время или отключите переключатель";
+    if (hasEndDate && !endDate) custom.end_date = "Укажите дату окончания или отключите переключатель";
+    if (hasEndDate && endDate && startDate && endDate < startDate) custom.end_date = "Дата окончания не может быть раньше даты начала";
+
+    const merged = mergeErrors(zodErrs, custom);
+    setFieldErrors(merged);
+    setError(null);
+    return Object.keys(merged).length === 0;
+  }
+
+  // ── Submit ───────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-
-    if (!title.trim()) {
-      setError("Введите название события");
-      return;
-    }
-    if (!categoryId) {
-      setError("Выберите категорию");
-      return;
-    }
-    if (!startDate) {
-      setError("Укажите дату");
-      return;
-    }
-    if (hasTime && !startTime) {
-      setError("Укажите время или отключите переключатель");
-      return;
-    }
-    if (hasEndDate && !endDate) {
-      setError("Укажите дату окончания или отключите переключатель");
-      return;
-    }
-    if (hasEndDate && endDate && endDate < startDate) {
-      setError("Дата окончания не может быть раньше даты начала");
-      return;
-    }
+    if (!validate()) return;
 
     setSaving(true);
     try {
-      const body: Record<string, unknown> = {
-        title: title.trim(),
-        start_date: startDate,
-        start_time: hasTime && startTime ? startTime : null,
-        end_date: hasEndDate && endDate ? endDate : null,
-        description: description.trim() || null,
-        category_id: categoryId || null,
-      };
-
-      // Repeat: send freq for backend (daily/weekly)
-      if (repeat && repeat !== "custom") {
-        body.freq = repeat;
-        body.start_date_rule = startDate;
-      }
-
-      // Reminder offset
-      if (reminder) {
-        body.reminder_offset = Number(reminder);
-      }
-
       const res = await fetch("/api/v2/events", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(buildPayload()),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail ?? "Ошибка при создании события");
+        const parsed = parseBackendErrors(res.status, data);
+        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
+        else setError(parsed.message ?? "Ошибка при создании события");
         return;
       }
       qc.invalidateQueries({ queryKey: ["events"] });
@@ -220,11 +227,12 @@ export function CreateEventModal({ onClose }: Props) {
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); clearFieldError("title"); }}
           placeholder="Название события"
-          className={inputCls}
+          className={`${inputCls} ${fieldErrors.title ? inputErrorBorder : ""}`}
           autoFocus
         />
+        {fieldErrors.title && <p className={errTextCls}>{fieldErrors.title}</p>}
       </div>
 
       {/* ── Категория * ── */}
@@ -233,7 +241,7 @@ export function CreateEventModal({ onClose }: Props) {
           <label className={labelCls}>Категория *</label>
           <Select
             value={categoryId}
-            onChange={(v) => setCategoryId(v ? Number(v) : "")}
+            onChange={(v) => { setCategoryId(v ? Number(v) : ""); clearFieldError("category_id"); }}
             placeholder="Выберите категорию"
             options={categories.map((c) => ({
               value: String(c.category_id),
@@ -241,6 +249,7 @@ export function CreateEventModal({ onClose }: Props) {
               emoji: c.emoji ?? undefined,
             }))}
           />
+          {fieldErrors.category_id && <p className={errTextCls}>{fieldErrors.category_id}</p>}
         </div>
       )}
 
@@ -250,9 +259,10 @@ export function CreateEventModal({ onClose }: Props) {
         <input
           type="date"
           value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className={inputCls}
+          onChange={(e) => { setStartDate(e.target.value); clearFieldError("start_date"); }}
+          className={`${inputCls} ${fieldErrors.start_date ? inputErrorBorder : ""}`}
         />
+        {fieldErrors.start_date && <p className={errTextCls}>{fieldErrors.start_date}</p>}
       </div>
 
       {/* ── Переключатель: время ── */}
@@ -262,6 +272,7 @@ export function CreateEventModal({ onClose }: Props) {
           onChange={(v) => {
             setHasTime(v);
             if (!v) setStartTime("");
+            clearFieldError("start_time");
           }}
           label="Указать время"
         />
@@ -270,9 +281,10 @@ export function CreateEventModal({ onClose }: Props) {
             <input
               type="time"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className={inputCls}
+              onChange={(e) => { setStartTime(e.target.value); clearFieldError("start_time"); }}
+              className={`${inputCls} ${fieldErrors.start_time ? inputErrorBorder : ""}`}
             />
+            {fieldErrors.start_time && <p className={errTextCls}>{fieldErrors.start_time}</p>}
           </div>
         )}
       </div>
@@ -284,6 +296,7 @@ export function CreateEventModal({ onClose }: Props) {
           onChange={(v) => {
             setHasEndDate(v);
             if (!v) setEndDate("");
+            clearFieldError("end_date");
           }}
           label="Длится несколько дней"
         />
@@ -293,10 +306,11 @@ export function CreateEventModal({ onClose }: Props) {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => { setEndDate(e.target.value); clearFieldError("end_date"); }}
               min={startDate || undefined}
-              className={inputCls}
+              className={`${inputCls} ${fieldErrors.end_date ? inputErrorBorder : ""}`}
             />
+            {fieldErrors.end_date && <p className={errTextCls}>{fieldErrors.end_date}</p>}
           </div>
         )}
       </div>

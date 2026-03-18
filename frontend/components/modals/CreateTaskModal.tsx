@@ -5,6 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { CreateTaskRequestSchema } from "@/schemas/api.generated";
+import {
+  validateWithSchema, mergeErrors, parseBackendErrors,
+  inputErrorBorder, errTextCls, type FieldErrors,
+} from "@/lib/formErrors";
 
 interface Props {
   onClose: () => void;
@@ -31,6 +36,7 @@ export function CreateTaskModal({ onClose }: Props) {
   const [dueTime, setDueTime] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
@@ -39,9 +45,43 @@ export function CreateTaskModal({ onClose }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
+  }
+
+  function buildPayload() {
+    return {
+      title: title.trim(),
+      note: note.trim() || null,
+      due_kind: dueKind,
+      due_date: dueDate || null,
+      due_time: dueTime || null,
+      category_id: categoryId || null,
+    };
+  }
+
+  function validate(): boolean {
+    const payload = buildPayload();
+
+    // Layer 1: Zod schema validation (from backend contract)
+    const zodErrs = validateWithSchema(CreateTaskRequestSchema, payload);
+
+    // Layer 2: Business rules (contextual)
+    const custom: FieldErrors = {};
+    if (!payload.title) custom.title = "Введите название задачи";
+    if (dueKind !== "NONE" && !dueDate) custom.due_date = "Укажите дату";
+    if (dueKind === "DATETIME" && !dueTime) custom.due_time = "Укажите время";
+
+    const merged = mergeErrors(zodErrs, custom);
+    setFieldErrors(merged);
+    setError(null);
+    return Object.keys(merged).length === 0;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) { setError("Введите название задачи"); return; }
+    if (!validate()) return;
+
     setSaving(true);
     setError(null);
     try {
@@ -49,18 +89,13 @@ export function CreateTaskModal({ onClose }: Props) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          note: note.trim() || null,
-          due_kind: dueKind,
-          due_date: dueDate || null,
-          due_time: dueTime || null,
-          category_id: categoryId || null,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail ?? "Ошибка при создании задачи");
+        const parsed = parseBackendErrors(res.status, data);
+        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
+        else setError(parsed.message ?? "Ошибка при создании задачи");
         return;
       }
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -106,11 +141,12 @@ export function CreateTaskModal({ onClose }: Props) {
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); clearFieldError("title"); }}
           placeholder="Название задачи"
-          className={`${inputCls} h-10`}
+          className={`${inputCls} h-10 ${fieldErrors.title ? inputErrorBorder : ""}`}
           autoFocus
         />
+        {fieldErrors.title && <p className={errTextCls}>{fieldErrors.title}</p>}
       </div>
 
       {/* Due kind — quick chips */}
@@ -121,7 +157,7 @@ export function CreateTaskModal({ onClose }: Props) {
             <button
               key={k.value}
               type="button"
-              onClick={() => { setDueKind(k.value); if (k.value === "NONE") { setDueDate(""); setDueTime(""); } }}
+              onClick={() => { setDueKind(k.value); if (k.value === "NONE") { setDueDate(""); setDueTime(""); } clearFieldError("due_date"); clearFieldError("due_time"); }}
               className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                 dueKind === k.value
                   ? "bg-indigo-600 border-indigo-500 text-white"
@@ -138,13 +174,25 @@ export function CreateTaskModal({ onClose }: Props) {
       {dueKind !== "NONE" && (
         <div className={`grid gap-3 ${dueKind === "DATETIME" ? "grid-cols-2" : "grid-cols-1"}`}>
           <div>
-            <label className={labelCls}>Дата</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputCls} />
+            <label className={labelCls}>Дата *</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => { setDueDate(e.target.value); clearFieldError("due_date"); }}
+              className={`${inputCls} ${fieldErrors.due_date ? inputErrorBorder : ""}`}
+            />
+            {fieldErrors.due_date && <p className={errTextCls}>{fieldErrors.due_date}</p>}
           </div>
           {dueKind === "DATETIME" && (
             <div>
-              <label className={labelCls}>Время</label>
-              <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} className={inputCls} />
+              <label className={labelCls}>Время *</label>
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => { setDueTime(e.target.value); clearFieldError("due_time"); }}
+                className={`${inputCls} ${fieldErrors.due_time ? inputErrorBorder : ""}`}
+              />
+              {fieldErrors.due_time && <p className={errTextCls}>{fieldErrors.due_time}</p>}
             </div>
           )}
         </div>

@@ -5,6 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { CreateHabitRequestSchema } from "@/schemas/api.generated";
+import {
+  validateWithSchema, mergeErrors, parseBackendErrors,
+  inputErrorBorder, errTextCls, type FieldErrors,
+} from "@/lib/formErrors";
 
 interface Props {
   onClose: () => void;
@@ -46,6 +51,7 @@ export function CreateHabitModal({ onClose }: Props) {
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
@@ -56,13 +62,50 @@ export function CreateHabitModal({ onClose }: Props) {
 
   function toggleWeekday(v: string) {
     setWeekdays((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
+    clearFieldError("by_weekday");
+  }
+
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
+  }
+
+  function buildPayload() {
+    return {
+      title: title.trim(),
+      freq,
+      by_weekday: freq === "WEEKLY" ? weekdays.join(",") : null,
+      by_monthday: freq === "MONTHLY" ? Number(byMonthday) || null : null,
+      level,
+      category_id: categoryId || null,
+      note: note.trim() || null,
+    };
+  }
+
+  function validate(): boolean {
+    const payload = buildPayload();
+
+    // Layer 1: Zod schema (from backend contract)
+    const zodErrs = validateWithSchema(CreateHabitRequestSchema, payload);
+
+    // Layer 2: Business rules
+    const custom: FieldErrors = {};
+    if (!payload.title) custom.title = "Введите название привычки";
+    if (freq === "WEEKLY" && weekdays.length === 0) custom.by_weekday = "Выберите хотя бы один день недели";
+    if (freq === "MONTHLY" && !byMonthday) custom.by_monthday = "Укажите день месяца";
+    if (freq === "MONTHLY" && byMonthday) {
+      const day = Number(byMonthday);
+      if (day < 1 || day > 31) custom.by_monthday = "День месяца должен быть от 1 до 31";
+    }
+
+    const merged = mergeErrors(zodErrs, custom);
+    setFieldErrors(merged);
+    setError(null);
+    return Object.keys(merged).length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) { setError("Введите название"); return; }
-    if (freq === "WEEKLY" && weekdays.length === 0) { setError("Выберите хотя бы один день недели"); return; }
-    if (freq === "MONTHLY" && !byMonthday) { setError("Укажите день месяца"); return; }
+    if (!validate()) return;
 
     setSaving(true);
     setError(null);
@@ -71,19 +114,13 @@ export function CreateHabitModal({ onClose }: Props) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          freq,
-          by_weekday: freq === "WEEKLY" ? weekdays.join(",") : null,
-          by_monthday: freq === "MONTHLY" ? Number(byMonthday) : null,
-          level,
-          category_id: categoryId || null,
-          note: note.trim() || null,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail ?? "Ошибка при создании привычки");
+        const parsed = parseBackendErrors(res.status, data);
+        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
+        else setError(parsed.message ?? "Ошибка при создании привычки");
         return;
       }
       qc.invalidateQueries({ queryKey: ["habits"] });
@@ -128,11 +165,12 @@ export function CreateHabitModal({ onClose }: Props) {
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); clearFieldError("title"); }}
           placeholder="Название привычки"
-          className={`${inputCls} h-10`}
+          className={`${inputCls} h-10 ${fieldErrors.title ? inputErrorBorder : ""}`}
           autoFocus
         />
+        {fieldErrors.title && <p className={errTextCls}>{fieldErrors.title}</p>}
       </div>
 
       {/* Category */}
@@ -153,13 +191,13 @@ export function CreateHabitModal({ onClose }: Props) {
 
       {/* Frequency */}
       <div>
-        <label className={labelCls}>Повторение</label>
+        <label className={labelCls}>Повторение *</label>
         <div className="flex gap-1.5">
           {FREQ_OPTIONS.map((f) => (
             <button
               key={f.value}
               type="button"
-              onClick={() => setFreq(f.value)}
+              onClick={() => { setFreq(f.value); clearFieldError("by_weekday"); clearFieldError("by_monthday"); }}
               className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                 freq === f.value
                   ? "bg-indigo-600 border-indigo-500 text-white"
@@ -175,7 +213,7 @@ export function CreateHabitModal({ onClose }: Props) {
       {/* Weekday picker */}
       {freq === "WEEKLY" && (
         <div>
-          <label className={labelCls}>Дни недели</label>
+          <label className={labelCls}>Дни недели *</label>
           <div className="flex gap-1.5 flex-wrap">
             {WEEKDAYS.map((d) => (
               <button
@@ -185,28 +223,30 @@ export function CreateHabitModal({ onClose }: Props) {
                 className={`px-3 py-1.5 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                   weekdays.includes(d.value)
                     ? "bg-indigo-600 border-indigo-500 text-white"
-                    : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
+                    : `bg-white/[0.03] ${fieldErrors.by_weekday ? "border-red-500/50" : "border-white/[0.08]"} text-white/72 hover:text-white/65 hover:bg-white/[0.05]`
                 }`}
               >
                 {d.label}
               </button>
             ))}
           </div>
+          {fieldErrors.by_weekday && <p className={errTextCls}>{fieldErrors.by_weekday}</p>}
         </div>
       )}
 
       {/* Month day */}
       {freq === "MONTHLY" && (
         <div>
-          <label className={labelCls}>День месяца (1–31)</label>
+          <label className={labelCls}>День месяца (1–31) *</label>
           <input
             type="number"
             min="1"
             max="31"
             value={byMonthday}
-            onChange={(e) => setByMonthday(e.target.value)}
-            className={inputCls}
+            onChange={(e) => { setByMonthday(e.target.value); clearFieldError("by_monthday"); }}
+            className={`${inputCls} ${fieldErrors.by_monthday ? inputErrorBorder : ""}`}
           />
+          {fieldErrors.by_monthday && <p className={errTextCls}>{fieldErrors.by_monthday}</p>}
         </div>
       )}
 

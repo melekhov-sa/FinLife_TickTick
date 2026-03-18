@@ -6,6 +6,11 @@ import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { CreateTransactionRequestSchema } from "@/schemas/api.generated";
+import {
+  validateWithSchema, mergeErrors, parseBackendErrors,
+  inputErrorBorder, errTextCls, type FieldErrors,
+} from "@/lib/formErrors";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -34,6 +39,7 @@ export function CreateOperationModal({ onClose }: Props) {
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
   const { data: wallets } = useQuery<WalletItem[]>({
@@ -86,36 +92,68 @@ export function CreateOperationModal({ onClose }: Props) {
 
   useEffect(() => { setCategoryId(""); }, [opType]);
 
+  function clearFieldError(field: string) {
+    if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
+  }
+
+  function buildPayload() {
+    const body: Record<string, unknown> = {
+      operation_type: opType ?? "",
+      amount,
+      description,
+    };
+    if (opType === "TRANSFER") {
+      body.from_wallet_id = fromWalletId || null;
+      body.to_wallet_id = toWalletId || null;
+    } else {
+      body.wallet_id = walletId || null;
+      body.category_id = categoryId || null;
+    }
+    return body;
+  }
+
+  function validate(): boolean {
+    if (!opType) { setError("Выберите тип операции"); return false; }
+
+    const payload = buildPayload();
+
+    // Layer 1: Zod schema (from backend contract)
+    const zodErrs = validateWithSchema(CreateTransactionRequestSchema, payload);
+
+    // Layer 2: Business rules
+    const custom: FieldErrors = {};
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) custom.amount = "Введите корректную сумму";
+    if (opType !== "TRANSFER" && !walletId) custom.wallet_id = "Выберите кошелёк";
+    if (opType === "TRANSFER") {
+      if (!fromWalletId) custom.from_wallet_id = "Выберите кошелёк-источник";
+      if (!toWalletId) custom.to_wallet_id = "Выберите кошелёк-получатель";
+      if (fromWalletId && toWalletId && fromWalletId === toWalletId) custom.to_wallet_id = "Кошельки должны отличаться";
+    }
+
+    const merged = mergeErrors(zodErrs, custom);
+    setFieldErrors(merged);
+    setError(null);
+    return Object.keys(merged).length === 0;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!opType) return;
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      setError("Введите корректную сумму"); return;
-    }
-    if (opType !== "TRANSFER" && !walletId) { setError("Выберите кошелёк"); return; }
-    if (opType === "TRANSFER" && (!fromWalletId || !toWalletId)) { setError("Выберите кошельки"); return; }
+    if (!validate()) return;
 
     setSaving(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = { operation_type: opType, amount, description };
-      if (opType === "TRANSFER") {
-        body.from_wallet_id = fromWalletId;
-        body.to_wallet_id = toWalletId;
-      } else {
-        body.wallet_id = walletId;
-        body.category_id = categoryId || null;
-      }
-
       const res = await fetch("/api/v2/transactions", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(buildPayload()),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.detail ?? "Ошибка при создании операции");
+        const parsed = parseBackendErrors(res.status, data);
+        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
+        else setError(parsed.message ?? "Ошибка при создании операции");
         return;
       }
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -160,21 +198,23 @@ export function CreateOperationModal({ onClose }: Props) {
       onSubmit={handleSubmit}
     >
       {/* Type picker */}
-      <div className="flex gap-1.5">
-        {OP_TYPES.map((op) => (
-          <button
-            key={op.value}
-            type="button"
-            onClick={() => setOpType(op.value)}
-            className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
-              opType === op.value
-                ? op.activeColor
-                : "bg-white/[0.03] border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.05]"
-            }`}
-          >
-            {op.label}
-          </button>
-        ))}
+      <div>
+        <div className="flex gap-1.5">
+          {OP_TYPES.map((op) => (
+            <button
+              key={op.value}
+              type="button"
+              onClick={() => { setOpType(op.value); setError(null); }}
+              className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
+                opType === op.value
+                  ? op.activeColor
+                  : "bg-white/[0.03] border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.05]"
+              }`}
+            >
+              {op.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {opType && (
@@ -187,11 +227,12 @@ export function CreateOperationModal({ onClose }: Props) {
               step="0.01"
               min="0.01"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
               placeholder="0.00"
-              className={`${inputCls} h-10 text-base font-semibold`}
+              className={`${inputCls} h-10 text-base font-semibold ${fieldErrors.amount ? inputErrorBorder : ""}`}
               autoFocus
             />
+            {fieldErrors.amount && <p className={errTextCls}>{fieldErrors.amount}</p>}
           </div>
 
           {/* Wallet(s) */}
@@ -200,10 +241,11 @@ export function CreateOperationModal({ onClose }: Props) {
               <label className={labelCls}>Кошелёк *</label>
               <Select
                 value={walletId}
-                onChange={(v) => setWalletId(v ? Number(v) : "")}
+                onChange={(v) => { setWalletId(v ? Number(v) : ""); clearFieldError("wallet_id"); }}
                 options={walletOptions}
                 placeholder="— выберите кошелёк —"
               />
+              {fieldErrors.wallet_id && <p className={errTextCls}>{fieldErrors.wallet_id}</p>}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -211,19 +253,21 @@ export function CreateOperationModal({ onClose }: Props) {
                 <label className={labelCls}>Откуда *</label>
                 <Select
                   value={fromWalletId}
-                  onChange={(v) => setFromWalletId(v ? Number(v) : "")}
+                  onChange={(v) => { setFromWalletId(v ? Number(v) : ""); clearFieldError("from_wallet_id"); }}
                   options={allWalletOptions}
                   placeholder="— кошелёк —"
                 />
+                {fieldErrors.from_wallet_id && <p className={errTextCls}>{fieldErrors.from_wallet_id}</p>}
               </div>
               <div>
                 <label className={labelCls}>Куда *</label>
                 <Select
                   value={toWalletId}
-                  onChange={(v) => setToWalletId(v ? Number(v) : "")}
+                  onChange={(v) => { setToWalletId(v ? Number(v) : ""); clearFieldError("to_wallet_id"); }}
                   options={allWalletOptions}
                   placeholder="— кошелёк —"
                 />
+                {fieldErrors.to_wallet_id && <p className={errTextCls}>{fieldErrors.to_wallet_id}</p>}
               </div>
             </div>
           )}
