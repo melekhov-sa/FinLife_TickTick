@@ -24,7 +24,7 @@ interface ProfileData {
   daily_xp_total: number;
   current_month_label: string;
   monthly_xp: { month_name: string; xp: number }[];
-  recent_xp_events: { description?: string; xp?: number; occurred_at?: string }[];
+  recent_xp_events: { description?: string; xp_amount?: number; occurred_at?: string }[];
   theme: string | null;
   enable_task_expense_link: boolean;
   enable_task_templates: boolean;
@@ -206,7 +206,7 @@ export default function ProfilePage() {
                       <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
                         <span className="text-sm text-white/65 truncate font-medium">{ev.description ?? "XP"}</span>
                         <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full tabular-nums shrink-0 ml-3">
-                          +{ev.xp ?? 0} XP
+                          +{ev.xp_amount ?? 0} XP
                         </span>
                       </div>
                     ))}

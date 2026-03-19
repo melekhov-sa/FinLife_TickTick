@@ -2,11 +2,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { SubscriptionItem } from "@/types/api";
 
-export function useSubscriptions() {
+export function useSubscriptions(includeArchived = false) {
   return useQuery<SubscriptionItem[]>({
-    queryKey: ["subscriptions"],
-    queryFn: () => api.get<SubscriptionItem[]>("/api/v2/subscriptions"),
+    queryKey: ["subscriptions", includeArchived],
+    queryFn: () => api.get<SubscriptionItem[]>(`/api/v2/subscriptions?include_archived=${includeArchived}`),
     staleTime: 60_000,
+  });
+}
+
+export function useRestoreSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (subId: number) => api.post(`/api/v2/subscriptions/${subId}/restore`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 

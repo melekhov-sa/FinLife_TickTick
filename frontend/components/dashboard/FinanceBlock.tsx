@@ -97,10 +97,10 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
           {/* Quick links */}
           <div className="border-t border-white/[0.05] mt-2.5 md:mt-3 pt-2 md:pt-2.5 flex gap-4">
-            <a href="/legacy/wallets" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+            <a href="/wallets" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
               Кошельки →
             </a>
-            <a href="/legacy/budget" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+            <a href="/budget" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
               Бюджет →
             </a>
           </div>

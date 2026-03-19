@@ -190,10 +190,12 @@ def _run_payment_due_tomorrow(db: Session, user_id: int, today: date, channels: 
     tomorrow = today + timedelta(days=1)
     occurrences = (
         db.query(OperationOccurrence)
+        .join(OperationTemplateModel, OperationTemplateModel.template_id == OperationOccurrence.template_id)
         .filter(
             OperationOccurrence.account_id == user_id,
             OperationOccurrence.scheduled_date == tomorrow,
             OperationOccurrence.status == "ACTIVE",
+            OperationTemplateModel.is_archived == False,
         )
         .all()
     )

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
-import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useSubscriptions, useRestoreSubscription } from "@/hooks/useSubscriptions";
 import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
 import { CreateSubscriptionModal } from "@/components/modals/CreateSubscriptionModal";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
@@ -314,19 +314,27 @@ function applySort(subs: SubscriptionItem[], sort: SortKind): SubscriptionItem[]
 }
 
 export default function SubscriptionsPage() {
-  const { data, isLoading, isError } = useSubscriptions();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data, isLoading, isError } = useSubscriptions(showArchived);
   const [filter, setFilter]         = useState<FilterKind>("all");
   const [sort, setSort]             = useState<SortKind>("expiry");
   const [selectedSub, setSelectedSub] = useState<SubscriptionItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const monthlyExpense = data?.reduce((sum, sub) => sum + getMonthlyTotal(sub), 0) ?? 0;
-  const expiringCount  = data?.reduce((n, sub) => {
+  const { mutate: restoreSub } = useRestoreSubscription();
+
+  // When showArchived is true, show only archived; when false, show only active
+  const visibleData = data
+    ? data.filter((s) => showArchived ? s.is_archived : !s.is_archived)
+    : undefined;
+
+  const monthlyExpense = visibleData?.reduce((sum, sub) => sum + getMonthlyTotal(sub), 0) ?? 0;
+  const expiringCount  = visibleData?.reduce((n, sub) => {
     const min = getMinDaysLeft(sub);
     return n + (min !== null && min >= 0 && min <= 14 ? 1 : 0);
   }, 0) ?? 0;
 
-  const filtered = data ? applySort(applyFilter(data, filter), sort) : [];
+  const filtered = visibleData ? applySort(applyFilter(visibleData, filter), sort) : [];
 
   // Keep selectedSub in sync after mutations (data refreshes)
   const freshSub = selectedSub ? (data?.find((s) => s.id === selectedSub.id) ?? null) : null;
@@ -371,13 +379,13 @@ export default function SubscriptionsPage() {
             </div>
           )}
 
-          {data && (
+          {visibleData && (
             <div className="space-y-5">
               {/* ── KPI ───────────────────────────────────────────── */}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   {
-                    value: data.length,
+                    value: visibleData.length,
                     label: "Подписок",
                     color: "var(--t-primary)",
                     border: "border-white/[0.07]",
@@ -419,24 +427,37 @@ export default function SubscriptionsPage() {
 
               {/* ── Filters + Sort ────────────────────────────────── */}
               <div className="flex flex-wrap items-center gap-4">
-                {/* Filter pills */}
-                <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
-                  {FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFilter(f.value)}
-                      className={clsx(
-                        "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
-                        filter === f.value
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "hover:bg-white/[0.05]"
-                      )}
-                      style={{ color: filter === f.value ? undefined : "var(--t-secondary)" }}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                {/* Archive toggle */}
+                <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={(e) => setShowArchived(e.target.checked)}
+                    className="rounded"
+                  />
+                  Архивные
+                </label>
+
+                {/* Filter pills — only shown when not in archive mode */}
+                {!showArchived && (
+                  <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
+                    {FILTERS.map((f) => (
+                      <button
+                        key={f.value}
+                        onClick={() => setFilter(f.value)}
+                        className={clsx(
+                          "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
+                          filter === f.value
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "hover:bg-white/[0.05]"
+                        )}
+                        style={{ color: filter === f.value ? undefined : "var(--t-secondary)" }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Sort select */}
                 <div className="flex items-center gap-2 ml-auto">
@@ -460,9 +481,9 @@ export default function SubscriptionsPage() {
                     <CreditCard size={20} className="text-white/35" />
                   </div>
                   <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                    {filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
+                    {showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
                   </p>
-                  {filter === "all" && (
+                  {!showArchived && filter === "all" && (
                     <button
                       onClick={() => setShowCreate(true)}
                       className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"

@@ -1,7 +1,7 @@
 """GET /api/v2/subscriptions — subscription list with members and paid_until status."""
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -28,24 +28,21 @@ class SubscriptionItem(BaseModel):
     days_left_self: int | None
     members: list[MemberItem]
     total_members: int
+    is_archived: bool
 
 
 @router.get("/subscriptions", response_model=list[SubscriptionItem])
 def get_subscriptions(
     user_id: int = Depends(get_user_id),
     db: Session = Depends(get_db),
+    include_archived: bool = Query(False),
 ):
     today = date.today()
 
-    subs = (
-        db.query(SubscriptionModel)
-        .filter(
-            SubscriptionModel.account_id == user_id,
-            SubscriptionModel.is_archived == False,
-        )
-        .order_by(SubscriptionModel.name)
-        .all()
-    )
+    q = db.query(SubscriptionModel).filter(SubscriptionModel.account_id == user_id)
+    if not include_archived:
+        q = q.filter(SubscriptionModel.is_archived == False)
+    subs = q.order_by(SubscriptionModel.name).all()
 
     if not subs:
         return []
@@ -104,6 +101,7 @@ def get_subscriptions(
             days_left_self=days_left_self,
             members=members,
             total_members=len(members),
+            is_archived=s.is_archived,
         ))
 
     return result
@@ -177,6 +175,19 @@ def archive_subscription(sub_id: int, request: Request, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Subscription not found")
     sub.is_archived = True
     db.commit()
+
+
+@router.post("/subscriptions/{sub_id}/restore")
+def restore_subscription(sub_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    sub.is_archived = False
+    db.commit()
+    return {"ok": True}
 
 
 # ── Update / archive member ──────────────────────────────────────────────────

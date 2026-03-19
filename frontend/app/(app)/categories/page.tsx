@@ -329,10 +329,13 @@ export default function CategoriesPage() {
   // Orphaned children (parent not in current view)
   const parentIds = new Set(parents.map((p) => p.category_id));
   const orphans = tabCats.filter(
-    (c) => c.parent_id !== null && !parentIds.has(c.parent_id)
+    (c) => c.parent_id !== null && !parentIds.has(c.parent_id) &&
+      (includeArchived ? c.is_archived : !c.is_archived)
   );
 
-  const activeParents = parents.filter((p) => !p.is_archived || includeArchived);
+  const activeParents = parents.filter((p) =>
+    includeArchived ? p.is_archived : !p.is_archived
+  );
 
   const expenseCount = allCats.filter(
     (c) => c.category_type === "EXPENSE" && !c.is_archived
@@ -441,22 +444,24 @@ export default function CategoriesPage() {
               </>
             )}
 
-            {/* Add form or button */}
-            {showAddForm ? (
-              <AddCategoryForm
-                activeTab={activeTab}
-                parents={parents.filter((p) => !p.is_archived)}
-                onDone={() => setShowAddForm(false)}
-              />
-            ) : (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
-                style={{ color: "var(--t-faint)" }}
-              >
-                <Plus size={13} />
-                Добавить категорию
-              </button>
+            {/* Add form or button — only when not viewing archived */}
+            {!includeArchived && (
+              showAddForm ? (
+                <AddCategoryForm
+                  activeTab={activeTab}
+                  parents={parents.filter((p) => !p.is_archived)}
+                  onDone={() => setShowAddForm(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <Plus size={13} />
+                  Добавить категорию
+                </button>
+              )
             )}
           </div>
         )}

@@ -7,7 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
 import {
-  useHabits, useCompleteHabitToday, useSkipHabitToday, useDeleteHabit,
+  useHabits, useCompleteHabitToday, useSkipHabitToday, useDeleteHabit, useRestoreHabit,
 } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
 
@@ -133,13 +133,17 @@ function HabitCard({
 }) {
   const { mutate: skipToday  } = useSkipHabitToday();
   const { mutate: deleteHabit } = useDeleteHabit();
+  const { mutate: restoreHabit } = useRestoreHabit();
 
   const levelCls = LEVEL_STYLE[habit.level] ?? "text-white/60 bg-white/[0.05] border-white/[0.08]";
 
   return (
     <div
-      onClick={onOpen}
-      className="group bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 cursor-pointer hover:bg-white/[0.05] hover:border-white/[0.09] transition-all"
+      onClick={habit.is_archived ? undefined : onOpen}
+      className={clsx(
+        "group bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 transition-all",
+        habit.is_archived ? "opacity-60" : "cursor-pointer hover:bg-white/[0.05] hover:border-white/[0.09]"
+      )}
     >
       {/* Row 1: emoji + title + streak + menu */}
       <div className="flex items-center gap-2.5">
@@ -161,19 +165,32 @@ function HabitCard({
           </div>
         </div>
         <div className="text-right shrink-0">
-          <span className={clsx("text-[18px] font-bold tabular-nums leading-none", streakColor(habit.current_streak))}>
-            {habit.current_streak}
-          </span>
-          <p className="text-[10px]" style={{ color: "var(--t-faint)" }}>серия</p>
+          {habit.is_archived ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); restoreHabit(habit.habit_id); }}
+              className="text-[11px] font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors"
+            >
+              Восстановить
+            </button>
+          ) : (
+            <>
+              <span className={clsx("text-[18px] font-bold tabular-nums leading-none", streakColor(habit.current_streak))}>
+                {habit.current_streak}
+              </span>
+              <p className="text-[10px]" style={{ color: "var(--t-faint)" }}>серия</p>
+            </>
+          )}
         </div>
-        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-          <QuickMenu
-            habit={habit}
-            onOpen={onOpen}
-            onSkip={() => skipToday(habit.habit_id)}
-            onDelete={() => deleteHabit(habit.habit_id)}
-          />
-        </div>
+        {!habit.is_archived && (
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            <QuickMenu
+              habit={habit}
+              onOpen={onOpen}
+              onSkip={() => skipToday(habit.habit_id)}
+              onDelete={() => deleteHabit(habit.habit_id)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Row 2: 14-day dot tracker */}
@@ -216,8 +233,9 @@ export default function HabitsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedHabit, setSelectedHabit]     = useState<HabitItem | null>(null);
   const [filter, setFilter]                   = useState<FilterValue>("all");
+  const [showArchived, setShowArchived]        = useState(false);
 
-  const { data, isPending, isError } = useHabits();
+  const { data, isPending, isError } = useHabits(showArchived);
   const isLoading = isPending;
 
   const [dateSubtitle, setDateSubtitle] = useState("");
@@ -227,8 +245,12 @@ export default function HabitsPage() {
     }));
   }, []);
 
-  const habits = data ?? [];
+  const allHabits = data ?? [];
+  // Filter to only active or only archived
+  const habits = allHabits.filter((h) => showArchived ? h.is_archived : !h.is_archived);
+
   const filtered = habits.filter((h) => {
+    if (showArchived) return true;
     if (filter === "done")    return h.done_today;
     if (filter === "pending") return !h.done_today;
     return true;
@@ -266,57 +288,72 @@ export default function HabitsPage() {
 
             {/* Controls */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors"
-              >
-                <Plus size={13} strokeWidth={2.5} />
-                Создать привычку
-              </button>
+              {!showArchived && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Создать привычку
+                </button>
+              )}
+              <label className="flex items-center gap-2 text-[12px] cursor-pointer ml-auto" style={{ color: "var(--t-muted)" }}>
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="rounded"
+                />
+                Архивные
+              </label>
             </div>
 
             {/* Today section */}
-            {habits.length > 0 && <TodaySection habits={habits} />}
+            {!showArchived && habits.length > 0 && <TodaySection habits={habits} />}
 
-            {/* KPI stats */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: `${doneToday}/${habits.length}`, label: "Сегодня", color: doneToday === habits.length && habits.length > 0 ? "text-emerald-400" : "text-white/85" },
-                { value: activeStreak, label: "Активных серий", color: "text-amber-400" },
-                { value: totalStreak, label: "Суммарная серия", color: "text-indigo-400" },
-              ].map((kpi) => (
-                <div key={kpi.label} className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 text-center">
-                  <div className={clsx("text-[26px] font-bold tabular-nums leading-none", kpi.color)}
-                    style={{ letterSpacing: "-0.04em" }}>
-                    {kpi.value}
+            {/* KPI stats — only for active habits */}
+            {!showArchived && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { value: `${doneToday}/${habits.length}`, label: "Сегодня", color: doneToday === habits.length && habits.length > 0 ? "text-emerald-400" : "text-white/85" },
+                  { value: activeStreak, label: "Активных серий", color: "text-amber-400" },
+                  { value: totalStreak, label: "Суммарная серия", color: "text-indigo-400" },
+                ].map((kpi) => (
+                  <div key={kpi.label} className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4 text-center">
+                    <div className={clsx("text-[26px] font-bold tabular-nums leading-none", kpi.color)}
+                      style={{ letterSpacing: "-0.04em" }}>
+                      {kpi.value}
+                    </div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest mt-1.5" style={{ color: "var(--t-faint)" }}>
+                      {kpi.label}
+                    </div>
                   </div>
-                  <div className="text-[10px] font-semibold uppercase tracking-widest mt-1.5" style={{ color: "var(--t-faint)" }}>
-                    {kpi.label}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            {/* Filter chips */}
-            <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 w-fit">
-              {FILTERS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setFilter(value)}
-                  className={clsx(
-                    "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors",
-                    filter === value ? "bg-white/[0.09] text-white shadow-sm" : "text-white/55 hover:text-white/80"
-                  )}
-                >
-                  {label}
-                  {value === "pending" && habits.filter((h) => !h.done_today).length > 0 && (
-                    <span className="ml-1.5 text-[10px] font-bold text-amber-400 tabular-nums">
-                      {habits.filter((h) => !h.done_today).length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* Filter chips — only for active habits */}
+            {!showArchived && (
+              <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 w-fit">
+                {FILTERS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setFilter(value)}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors",
+                      filter === value ? "bg-white/[0.09] text-white shadow-sm" : "text-white/55 hover:text-white/80"
+                    )}
+                  >
+                    {label}
+                    {value === "pending" && habits.filter((h) => !h.done_today).length > 0 && (
+                      <span className="ml-1.5 text-[10px] font-bold text-amber-400 tabular-nums">
+                        {habits.filter((h) => !h.done_today).length}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Empty state */}
             {filtered.length === 0 && (
@@ -325,9 +362,9 @@ export default function HabitsPage() {
                   {filter === "done" ? <Flame size={20} className="text-amber-400/40" /> : <Repeat2 size={20} style={{ color: "var(--t-faint)" }} />}
                 </div>
                 <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                  {filter === "done" ? "Ничего не выполнено сегодня" : filter === "pending" ? "Все привычки выполнены!" : "Нет активных привычек"}
+                  {showArchived ? "Нет архивных привычек" : filter === "done" ? "Ничего не выполнено сегодня" : filter === "pending" ? "Все привычки выполнены!" : "Нет активных привычек"}
                 </p>
-                {filter === "all" && (
+                {!showArchived && filter === "all" && (
                   <button onClick={() => setShowCreateModal(true)} className="text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors">
                     + Создать первую привычку
                   </button>

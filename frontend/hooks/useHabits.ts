@@ -2,11 +2,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { HabitItem } from "@/types/api";
 
-export function useHabits() {
+export function useHabits(includeArchived = false) {
   return useQuery<HabitItem[]>({
-    queryKey: ["habits"],
-    queryFn: () => api.get<HabitItem[]>("/api/v2/habits"),
+    queryKey: ["habits", includeArchived],
+    queryFn: () => api.get<HabitItem[]>(`/api/v2/habits?include_archived=${includeArchived}`),
     staleTime: 30 * 1000,
+  });
+}
+
+export function useRestoreHabit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (habitId: number) => api.post(`/api/v2/habits/${habitId}/restore`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 

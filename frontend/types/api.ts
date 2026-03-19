@@ -213,6 +213,7 @@ export interface HabitItem {
   done_today: boolean;
   scheduled_today: boolean;
   recent_days: boolean[];
+  is_archived: boolean;
 }
 
 // ── /api/v2/efficiency ────────────────────────────────────────────────────────
@@ -269,6 +270,7 @@ export interface SubscriptionItem {
   days_left_self: number | null;
   members: SubscriptionMember[];
   total_members: number;
+  is_archived: boolean;
 }
 
 // ── /api/v2/events ────────────────────────────────────────────────────────────
@@ -367,6 +369,7 @@ export interface WalletItem {
   delta_30d: string;
   operations_count_30d: number;
   last_operation_at: string | null;
+  is_archived: boolean;
 }
 
 // ── /api/v2/task-templates ────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -21,18 +21,21 @@ class GoalItem(BaseModel):
     percent: float | None
     wallet_count: int
     is_system: bool
+    is_archived: bool
 
 
 @router.get("/goals", response_model=list[GoalItem])
-def list_goals(request: Request, db: Session = Depends(get_db)):
+def list_goals(
+    request: Request,
+    db: Session = Depends(get_db),
+    include_archived: bool = Query(False),
+):
     user_id = get_user_id(request)
 
-    goals = (
-        db.query(GoalInfo)
-        .filter(GoalInfo.account_id == user_id, GoalInfo.is_archived == False)
-        .order_by(GoalInfo.sort_order, GoalInfo.title)
-        .all()
-    )
+    q = db.query(GoalInfo).filter(GoalInfo.account_id == user_id)
+    if not include_archived:
+        q = q.filter(GoalInfo.is_archived == False)
+    goals = q.order_by(GoalInfo.sort_order, GoalInfo.title).all()
 
     balance_rows = (
         db.query(
@@ -61,5 +64,6 @@ def list_goals(request: Request, db: Session = Depends(get_db)):
             percent=pct,
             wallet_count=cnt,
             is_system=g.is_system,
+            is_archived=g.is_archived,
         ))
     return items

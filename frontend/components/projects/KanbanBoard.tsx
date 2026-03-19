@@ -110,13 +110,27 @@ export function KanbanBoard({ project }: Props) {
 
   async function createTaskInColumn(title: string, columnKey: string) {
     try {
-      await api.post(`/api/v2/projects/${project.id}/tasks`, {
+      const res = await api.post<{ task_id: number }>(`/api/v2/projects/${project.id}/tasks`, {
         title,
         board_status: columnKey,
       });
+      setLocalGroups((prev) => ({
+        ...prev,
+        [columnKey]: [...(prev[columnKey] || []), {
+          task_id: res.task_id,
+          title,
+          board_status: columnKey,
+          status: "ACTIVE",
+          due_date: null,
+          completed_at: null,
+          is_overdue: false,
+          tags: [],
+          tag_ids: [],
+        } as TaskCard],
+      }));
       qc.invalidateQueries({ queryKey: ["project", project.id] });
     } catch {
-      // silently ignore; board will reload from server state on next query
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
     }
   }
 
@@ -227,7 +241,7 @@ function KanbanColumn({
         items={tasks.map((t) => t.task_id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex-1 p-3 space-y-2 min-h-[80px]">
+        <div className="flex-1 p-3 space-y-2 min-h-[80px] max-h-[calc(100vh-220px)] overflow-y-auto">
           {tasks.map((task) => (
             <KanbanTaskCard
               key={task.task_id}
@@ -237,8 +251,8 @@ function KanbanColumn({
             />
           ))}
           {tasks.length === 0 && (
-            <div className="h-16 rounded-xl border border-dashed border-white/[0.06] flex items-center justify-center">
-              <span className="text-xs text-white/15">Перетащить сюда</span>
+            <div className="h-32 rounded-xl border border-dashed border-white/[0.10] flex items-center justify-center">
+              <span className="text-xs text-white/20">Перетащить сюда</span>
             </div>
           )}
         </div>

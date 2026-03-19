@@ -330,6 +330,78 @@ def duplicate_occurrence(
     return {"id": new_occ.id}
 
 
+@router.get("/event-templates")
+def list_event_templates(request: Request, db: Session = Depends(get_db)):
+    from datetime import date as date_type
+    user_id = get_user_id(request)
+    events = (
+        db.query(CalendarEventModel)
+        .filter(CalendarEventModel.account_id == user_id)
+        .order_by(CalendarEventModel.created_at.desc())
+        .all()
+    )
+
+    # Load categories
+    cat_ids = {ev.category_id for ev in events if ev.category_id}
+    cats: dict[int, WorkCategory] = {}
+    if cat_ids:
+        rows = db.query(WorkCategory).filter(WorkCategory.category_id.in_(cat_ids)).all()
+        cats = {c.category_id: c for c in rows}
+
+    # Load recurrence rules
+    from app.infrastructure.db.models import RecurrenceRuleModel
+    rule_ids = {ev.repeat_rule_id for ev in events if ev.repeat_rule_id}
+    rules: dict[int, RecurrenceRuleModel] = {}
+    if rule_ids:
+        rows2 = db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all()
+        rules = {r.rule_id: r for r in rows2}
+
+    today = date_type.today()
+    result = []
+    for ev in events:
+        next_occ = (
+            db.query(EventOccurrenceModel)
+            .filter(
+                EventOccurrenceModel.event_id == ev.event_id,
+                EventOccurrenceModel.start_date >= today,
+                EventOccurrenceModel.is_cancelled == False,  # noqa: E712
+            )
+            .order_by(EventOccurrenceModel.start_date.asc())
+            .first()
+        )
+        cat = cats.get(ev.category_id) if ev.category_id else None
+        rule = rules.get(ev.repeat_rule_id) if ev.repeat_rule_id else None
+
+        freq_label: str | None = None
+        if rule:
+            freq_map = {
+                "DAILY": "ежедневно",
+                "WEEKLY": "еженедельно",
+                "MONTHLY": "ежемесячно",
+                "YEARLY": "ежегодно",
+                "INTERVAL_DAYS": f"каждые {rule.interval} дн.",
+            }
+            freq_label = freq_map.get(rule.freq, rule.freq.lower())
+        else:
+            freq_label = "однократно"
+
+        result.append({
+            "event_id": ev.event_id,
+            "title": ev.title,
+            "description": ev.description,
+            "category_id": ev.category_id,
+            "category_emoji": cat.emoji if cat else None,
+            "category_title": cat.title if cat else None,
+            "freq": rule.freq if rule else None,
+            "freq_label": freq_label,
+            "is_archived": not ev.is_active,
+            "next_date": str(next_occ.start_date) if next_occ else None,
+            "created_at": str(ev.created_at),
+        })
+
+    return result
+
+
 @router.post("/events/rebuild-projector")
 def rebuild_projector(request: Request, db: Session = Depends(get_db)):
     """Re-run the events projector to fix missing occurrences."""

@@ -30,17 +30,20 @@ class WalletItem(BaseModel):
     delta_30d: str
     operations_count_30d: int
     last_operation_at: str | None
+    is_archived: bool
 
 
 @router.get("/wallets", response_model=list[WalletItem])
-def list_wallets(request: Request, db: Session = Depends(get_db)):
+def list_wallets(
+    request: Request,
+    db: Session = Depends(get_db),
+    include_archived: bool = Query(False),
+):
     user_id = get_user_id(request)
-    wallets = (
-        db.query(WalletBalance)
-        .filter(WalletBalance.account_id == user_id, WalletBalance.is_archived == False)
-        .order_by(WalletBalance.title)
-        .all()
-    )
+    q = db.query(WalletBalance).filter(WalletBalance.account_id == user_id)
+    if not include_archived:
+        q = q.filter(WalletBalance.is_archived == False)
+    wallets = q.order_by(WalletBalance.title).all()
     return [
         WalletItem(
             wallet_id=w.wallet_id,
@@ -51,9 +54,38 @@ def list_wallets(request: Request, db: Session = Depends(get_db)):
             delta_30d=str(w.balance - (w.balance_30d_ago or w.balance)),
             operations_count_30d=w.operations_count_30d,
             last_operation_at=w.last_operation_at.isoformat() if w.last_operation_at else None,
+            is_archived=w.is_archived,
         )
         for w in wallets
     ]
+
+
+class CreateWalletRequest(BaseModel):
+    title: str
+    wallet_type: str = "REGULAR"  # REGULAR, SAVINGS, CREDIT
+    currency: str = "RUB"
+    initial_balance: str = "0"
+
+
+@router.post("/wallets", status_code=201)
+def create_wallet(body: CreateWalletRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.wallets import CreateWalletUseCase, WalletValidationError
+    user_id = get_user_id(request)
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Название не может быть пустым")
+    try:
+        wallet_id = CreateWalletUseCase(db).execute(
+            account_id=user_id,
+            title=title,
+            wallet_type=body.wallet_type,
+            currency=body.currency.upper().strip(),
+            initial_balance=body.initial_balance,
+            actor_user_id=user_id,
+        )
+    except WalletValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"wallet_id": wallet_id}
 
 
 class RenameWalletRequest(BaseModel):
@@ -108,6 +140,19 @@ def archive_wallet(wallet_id: int, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Wallet not found")
     wallet.is_archived = True
     db.commit()
+
+
+@router.post("/wallets/{wallet_id}/restore", status_code=200)
+def restore_wallet(wallet_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    wallet = db.query(WalletBalance).filter(
+        WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
+    ).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    wallet.is_archived = False
+    db.commit()
+    return {"ok": True}
 
 
 # ── Financial categories ───────────────────────────────────────────────────

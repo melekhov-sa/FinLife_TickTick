@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Target } from "lucide-react";
@@ -15,6 +16,7 @@ interface GoalItem {
   percent: number | null;
   wallet_count: number;
   is_system: boolean;
+  is_archived: boolean;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -48,15 +50,22 @@ function GoalCard({ goal }: { goal: GoalItem }) {
       <div className="flex items-center justify-between gap-2">
         <h3
           className="text-[15px] font-semibold leading-snug truncate"
-          style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}
+          style={{ color: goal.is_archived ? "var(--t-faint)" : "var(--t-primary)", letterSpacing: "-0.01em" }}
         >
           {goal.title}
         </h3>
-        {goal.is_system && (
-          <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/20">
-            Системная
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {goal.is_system && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/20">
+              Системная
+            </span>
+          )}
+          {goal.is_archived && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.08] text-white/40 font-semibold border border-white/[0.10]">
+              Архив
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Progress bar (only when target is set) */}
@@ -97,21 +106,27 @@ function GoalCard({ goal }: { goal: GoalItem }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GoalsPage() {
-  const { data: goals, isLoading, isError } = useQuery<GoalItem[]>({
-    queryKey: ["goals"],
+  const [showArchived, setShowArchived] = useState(false);
+
+  const { data: allGoals, isLoading, isError } = useQuery<GoalItem[]>({
+    queryKey: ["goals", showArchived],
     queryFn: () =>
-      fetch("/api/v2/goals", { credentials: "include" }).then((r) => {
+      fetch(`/api/v2/goals?include_archived=${showArchived}`, { credentials: "include" }).then((r) => {
         if (!r.ok) throw new Error("fetch failed");
         return r.json();
       }),
     staleTime: 60_000,
   });
 
+  const goals = allGoals
+    ? allGoals.filter((g) => showArchived ? g.is_archived : !g.is_archived)
+    : undefined;
+
   return (
     <>
       <AppTopbar
         title="Цели"
-        subtitle={goals ? `${goals.length} активных` : undefined}
+        subtitle={goals ? (showArchived ? "Архивные" : `${goals.length} активных`) : undefined}
       />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-4xl">
@@ -120,13 +135,24 @@ export default function GoalsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
             Накопительные цели
           </p>
-          <a
-            href="/legacy/goals"
-            className="text-[12px] font-medium transition-colors hover:text-indigo-400"
-            style={{ color: "var(--t-muted)" }}
-          >
-            Управление целями →
-          </a>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="rounded"
+              />
+              Архивные
+            </label>
+            <a
+              href="/legacy/goals"
+              className="text-[12px] font-medium transition-colors hover:text-indigo-400"
+              style={{ color: "var(--t-muted)" }}
+            >
+              Управление целями →
+            </a>
+          </div>
         </div>
 
         {/* Loading skeletons */}
@@ -161,14 +187,16 @@ export default function GoalsPage() {
               <Target size={20} className="text-white/35" />
             </div>
             <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-              Нет активных целей
+              {showArchived ? "Нет архивных целей" : "Нет активных целей"}
             </p>
-            <a
-              href="/legacy/goals"
-              className="text-[13px] font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-            >
-              Создать цель →
-            </a>
+            {!showArchived && (
+              <a
+                href="/legacy/goals"
+                className="text-[13px] font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
+              >
+                Создать цель →
+              </a>
+            )}
           </div>
         )}
       </main>

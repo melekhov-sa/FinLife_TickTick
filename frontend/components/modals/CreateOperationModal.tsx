@@ -84,9 +84,10 @@ export function CreateOperationModal({ onClose }: Props) {
   const parentCats = finCats?.filter((c) => c.category_type === opType && c.parent_id === null) ?? [];
   const freqCats = finCats?.filter((c) => c.category_type === opType && c.is_frequent) ?? [];
 
-  const visibleWallets = (wallets ?? []).filter(
-    (w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS")
-  );
+  const visibleWallets = (wallets ?? [])
+    .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
+    .slice()
+    .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
 
   const walletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— выберите кошелёк —" },

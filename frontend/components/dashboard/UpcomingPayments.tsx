@@ -107,7 +107,7 @@ export function UpcomingPayments({ payments }: Props) {
           )}
 
           <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-            <a href="/legacy/planned-ops" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+            <a href="/planned-ops" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
               Все плановые →
             </a>
           </div>

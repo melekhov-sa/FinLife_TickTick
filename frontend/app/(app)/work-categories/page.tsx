@@ -24,7 +24,7 @@ function useWorkCategories(includeArchived: boolean) {
     queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories?include_archived=true"),
     staleTime: 30_000,
     select: (data) =>
-      includeArchived ? data : data.filter((c) => !c.is_archived),
+      data.filter((c) => includeArchived ? c.is_archived : !c.is_archived),
   });
 }
 
@@ -272,7 +272,7 @@ export default function WorkCategoriesPage() {
   const { data, isLoading, isError, error } = useWorkCategories(includeArchived);
   const cats = data ?? [];
 
-  const activeCount = cats.filter((c) => !c.is_archived).length;
+  const displayCount = cats.length;
 
   return (
     <>
@@ -286,7 +286,7 @@ export default function WorkCategoriesPage() {
         {/* Controls */}
         <div className="flex items-center gap-3 mb-4">
           <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
-            {activeCount} {activeCount === 1 ? "категория" : activeCount >= 2 && activeCount <= 4 ? "категории" : "категорий"}
+            {displayCount} {displayCount === 1 ? "категория" : displayCount >= 2 && displayCount <= 4 ? "категории" : "категорий"}
           </span>
 
           <label className="ml-auto flex items-center gap-2 cursor-pointer select-none">
@@ -342,17 +342,19 @@ export default function WorkCategoriesPage() {
               </div>
             )}
 
-            {showAddForm ? (
-              <AddCategoryForm onDone={() => setShowAddForm(false)} />
-            ) : (
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
-                style={{ color: "var(--t-faint)" }}
-              >
-                <Plus size={13} />
-                Добавить категорию
-              </button>
+            {!includeArchived && (
+              showAddForm ? (
+                <AddCategoryForm onDone={() => setShowAddForm(false)} />
+              ) : (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <Plus size={13} />
+                  Добавить категорию
+                </button>
+              )
             )}
           </div>
         )}

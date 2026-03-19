@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import type { WalletItem } from "@/types/api";
+import { CreateWalletModal } from "@/components/modals/CreateWalletModal";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -23,10 +24,10 @@ function formatAmount(amount: string) {
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
-function useWallets() {
+function useWallets(includeArchived: boolean) {
   return useQuery<WalletItem[]>({
-    queryKey: ["wallets"],
-    queryFn: () => api.get<WalletItem[]>("/api/v2/wallets"),
+    queryKey: ["wallets", includeArchived],
+    queryFn: () => api.get<WalletItem[]>(`/api/v2/wallets?include_archived=${includeArchived}`),
     staleTime: 30_000,
   });
 }
@@ -44,6 +45,17 @@ function useArchiveWallet() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (walletId: number) => api.delete(`/api/v2/wallets/${walletId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+function useRestoreWallet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (walletId: number) => api.post(`/api/v2/wallets/${walletId}/restore`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["wallets"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -74,6 +86,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
 
   const { mutate: rename }    = useRenameWallet();
   const { mutate: archive }   = useArchiveWallet();
+  const { mutate: restore }   = useRestoreWallet();
   const { mutate: actualize, isPending: actualizing } = useActualizeBalance();
 
   const balance = parseFloat(wallet.balance);
@@ -102,6 +115,10 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
     archive(wallet.wallet_id);
   }
 
+  function handleRestore() {
+    restore(wallet.wallet_id);
+  }
+
   return (
     <>
       {/* Collapsed row */}
@@ -110,11 +127,12 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
         onClick={toggle}
       >
         <div>
-          <p className="text-[14px] font-medium" style={{ color: "var(--t-primary)" }}>
+          <p className="text-[14px] font-medium" style={{ color: wallet.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}>
             {wallet.title}
           </p>
           <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
             {wallet.currency} · {TYPE_LABELS[wallet.wallet_type] ?? wallet.wallet_type}
+            {wallet.is_archived && " · Архив"}
           </p>
         </div>
         <span
@@ -128,56 +146,68 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
       {/* Expanded detail */}
       {open && (
         <div className="px-4 py-4 bg-white/[0.02] border-b border-white/[0.05] space-y-3">
-          {/* Rename */}
-          <div>
-            <label className="text-[11px] text-white/50 uppercase tracking-wider">Название</label>
-            <input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } }}
-              className={`${inputCls} mt-1`}
-              style={{ color: "var(--t-primary)" }}
-            />
-          </div>
-
-          {/* Actualize balance — REGULAR only */}
-          {wallet.wallet_type === "REGULAR" && (
-            <div>
-              <label className="text-[11px] text-white/50 uppercase tracking-wider">
-                Актуализация баланса
-              </label>
-              <div className="flex gap-2 mt-1">
+          {wallet.is_archived ? (
+            /* Archived wallet: only restore */
+            <button
+              onClick={handleRestore}
+              className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              Восстановить из архива
+            </button>
+          ) : (
+            <>
+              {/* Rename */}
+              <div>
+                <label className="text-[11px] text-white/50 uppercase tracking-wider">Название</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  value={targetBalance}
-                  onChange={(e) => setTargetBalance(e.target.value)}
-                  placeholder={wallet.balance}
-                  className={`${inputCls} flex-1`}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } }}
+                  className={`${inputCls} mt-1`}
                   style={{ color: "var(--t-primary)" }}
                 />
-                <button
-                  onClick={handleActualize}
-                  disabled={actualizing || !targetBalance.trim()}
-                  className="px-3 py-1.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
-                >
-                  Применить
-                </button>
               </div>
-              <p className="text-[10px] text-white/40 mt-1">
-                Текущий: {wallet.balance} {wallet.currency}
-              </p>
-            </div>
-          )}
 
-          {/* Archive */}
-          <button
-            onClick={handleArchive}
-            className="text-[11px] text-red-400 hover:text-red-300 transition-colors"
-          >
-            В архив
-          </button>
+              {/* Actualize balance — REGULAR and CREDIT */}
+              {(wallet.wallet_type === "REGULAR" || wallet.wallet_type === "CREDIT") && (
+                <div>
+                  <label className="text-[11px] text-white/50 uppercase tracking-wider">
+                    Актуализация баланса
+                  </label>
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={targetBalance}
+                      onChange={(e) => setTargetBalance(e.target.value)}
+                      placeholder={wallet.balance}
+                      className={`${inputCls} flex-1`}
+                      style={{ color: "var(--t-primary)" }}
+                    />
+                    <button
+                      onClick={handleActualize}
+                      disabled={actualizing || !targetBalance.trim()}
+                      className="px-3 py-1.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+                    >
+                      Применить
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-white/40 mt-1">
+                    Текущий: {wallet.balance} {wallet.currency}
+                  </p>
+                </div>
+              )}
+
+              {/* Archive */}
+              <button
+                onClick={handleArchive}
+                className="text-[11px] text-red-400 hover:text-red-300 transition-colors"
+              >
+                В архив
+              </button>
+            </>
+          )}
         </div>
       )}
     </>
@@ -187,8 +217,13 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function WalletsPage() {
-  const { data, isLoading, isError } = useWallets();
-  const wallets = data ?? [];
+  const [showArchived, setShowArchived] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { data, isLoading, isError } = useWallets(showArchived);
+
+  const wallets = (data ?? []).filter((w) =>
+    showArchived ? w.is_archived : !w.is_archived
+  );
 
   // Group by type in defined order
   const groups: Record<string, WalletItem[]> = {};
@@ -204,9 +239,12 @@ export default function WalletsPage() {
 
   return (
     <>
+      {showCreateModal && (
+        <CreateWalletModal onClose={() => setShowCreateModal(false)} />
+      )}
       <AppTopbar
         title="Кошельки"
-        subtitle={`${wallets.length} активных`}
+        subtitle={showArchived ? "Архивные" : `${wallets.length} активных`}
       />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
@@ -216,12 +254,25 @@ export default function WalletsPage() {
           <h1 className="text-[18px] font-semibold" style={{ color: "var(--t-primary)" }}>
             Кошельки
           </h1>
-          <a
-            href="/legacy/wallets/new"
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors"
-          >
-            + Создать
-          </a>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="rounded"
+              />
+              Архивные
+            </label>
+            {!showArchived && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors"
+              >
+                + Создать
+              </button>
+            )}
+          </div>
         </div>
 
         {isLoading && (
@@ -242,14 +293,16 @@ export default function WalletsPage() {
               💳
             </div>
             <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-              Нет активных кошельков
+              {showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
             </p>
-            <a
-              href="/legacy/wallets/new"
-              className="text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-            >
-              + Создать первый кошелёк
-            </a>
+            {!showArchived && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
+              >
+                + Создать первый кошелёк
+              </button>
+            )}
           </div>
         )}
 

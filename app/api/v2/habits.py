@@ -9,7 +9,7 @@ POST   /api/v2/habits/occurrences/{id}/complete  — complete specific occurrenc
 """
 from datetime import date, timedelta
 from collections import defaultdict
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -39,25 +39,22 @@ class HabitItem(BaseModel):
     done_today: bool
     scheduled_today: bool
     recent_days: list[bool]   # last 14 days, oldest first
+    is_archived: bool
 
 
 @router.get("/habits", response_model=list[HabitItem])
 def get_habits(
     user_id: int = Depends(get_user_id),
     db: Session = Depends(get_db),
+    include_archived: bool = Query(False),
 ):
     today = date.today()
     history_start = today - timedelta(days=HISTORY_DAYS - 1)
 
-    habits = (
-        db.query(HabitModel)
-        .filter(
-            HabitModel.account_id == user_id,
-            HabitModel.is_archived == False,  # noqa: E712
-        )
-        .order_by(HabitModel.current_streak.desc(), HabitModel.habit_id)
-        .all()
-    )
+    q = db.query(HabitModel).filter(HabitModel.account_id == user_id)
+    if not include_archived:
+        q = q.filter(HabitModel.is_archived == False)  # noqa: E712
+    habits = q.order_by(HabitModel.current_streak.desc(), HabitModel.habit_id).all()
 
     # Load categories
     cat_ids = {h.category_id for h in habits if h.category_id}
@@ -116,6 +113,7 @@ def get_habits(
             done_today=done_today,
             scheduled_today=scheduled_today,
             recent_days=recent_days,
+            is_archived=h.is_archived,
         ))
     return result
 
@@ -220,6 +218,19 @@ def archive_habit(habit_id: int, request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Habit not found")
     habit.is_archived = True
     db.commit()
+
+
+@router.post("/habits/{habit_id}/restore")
+def restore_habit(habit_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    habit = db.query(HabitModel).filter(
+        HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
+    ).first()
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    habit.is_archived = False
+    db.commit()
+    return {"ok": True}
 
 
 class CreateHabitRequest(BaseModel):
