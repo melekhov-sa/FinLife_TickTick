@@ -22,6 +22,31 @@ function fmtSigned(n: number): string {
   return n > 0 ? `+${s}` : s;
 }
 
+type PeriodKind = "past" | "current" | "future";
+
+function getPeriodKind(p: BudgetPeriod): PeriodKind {
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth() + 1;
+  if (p.year < cy || (p.year === cy && p.month < cm)) return "past";
+  if (p.year === cy && p.month === cm) return "current";
+  return "future";
+}
+
+// Columns per period kind:
+// past: Ф, Δ (2)  |  current: П, Ф, Ост, Δ (4)  |  future: П (1)
+function periodColCount(kind: PeriodKind): number {
+  return kind === "current" ? 4 : kind === "past" ? 2 : 1;
+}
+
+// Heatmap background for plan cells
+function planHeatBg(value: number, maxVal: number): string | undefined {
+  if (!value || !maxVal || value <= 0) return undefined;
+  const intensity = Math.min(value / maxVal, 1);
+  const alpha = Math.round(intensity * 18 + 2); // 2-20%
+  return `rgba(99, 102, 241, ${alpha / 100})`;
+}
+
 // ── Editing state types ───────────────────────────────────────────────────────
 
 interface PlanEditTarget {
@@ -265,11 +290,13 @@ function EditablePlanTd({
   period,
   row,
   editing,
+  heatBg,
 }: {
   cell: BudgetCell;
   period: BudgetPeriod;
   row: BudgetRow;
   editing: EditingProps;
+  heatBg?: string;
 }) {
   const { openPlanEdit } = editing;
   const canEdit = period.has_manual_plan && !!row.category_id && !row.is_group;
@@ -299,7 +326,7 @@ function EditablePlanTd({
   return (
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group"
-      style={{ color: "var(--t-secondary)" }}
+      style={{ color: "var(--t-secondary)", background: heatBg }}
     >
       <span
         onClick={handleClick}
@@ -369,16 +396,22 @@ function FactCell({
 function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
   return (
     <>
-      {periods.map((p) => (
-        <th
-          key={p.index}
-          colSpan={2}
-          className="text-[10px] font-semibold uppercase tracking-wider px-2 py-2 text-center border-b border-white/[0.06]"
-          style={{ color: "var(--t-faint)" }}
-        >
-          {p.short_label}
-        </th>
-      ))}
+      {periods.map((p) => {
+        const kind = getPeriodKind(p);
+        return (
+          <th
+            key={p.index}
+            colSpan={periodColCount(kind)}
+            className={clsx(
+              "text-[10px] font-semibold uppercase tracking-wider px-2 py-2 text-center border-b border-white/[0.06]",
+              kind === "current" && "bg-indigo-500/[0.06]"
+            )}
+            style={{ color: kind === "current" ? "var(--t-primary)" : "var(--t-faint)" }}
+          >
+            {p.short_label}
+          </th>
+        );
+      })}
       <th
         colSpan={2}
         className="text-[10px] font-semibold uppercase tracking-wider px-2 py-2 text-center border-b border-white/[0.06]"
@@ -390,27 +423,34 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
   );
 }
 
-function SubHeaders({ count }: { count: number }) {
+const subHdrCls = "text-[9px] font-medium px-2 py-1 text-right border-b border-white/[0.06]";
+const subHdrStyle = { color: "var(--t-faint)", opacity: 0.7 };
+
+function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
   return (
     <>
-      {Array.from({ length: count + 1 }).map((_, i) => (
-        <>
-          <th
-            key={`p-${i}`}
-            className="text-[9px] font-medium px-2 py-1 text-right border-b border-white/[0.06]"
-            style={{ color: "var(--t-faint)", opacity: 0.7 }}
-          >
-            П
-          </th>
-          <th
-            key={`f-${i}`}
-            className="text-[9px] font-medium px-2 py-1 text-right border-b border-white/[0.06]"
-            style={{ color: "var(--t-faint)", opacity: 0.7 }}
-          >
-            Ф
-          </th>
-        </>
-      ))}
+      {periods.map((p) => {
+        const kind = getPeriodKind(p);
+        if (kind === "past") return (
+          <React.Fragment key={p.index}>
+            <th className={subHdrCls} style={subHdrStyle}>Ф</th>
+            <th className={subHdrCls} style={subHdrStyle}>Δ</th>
+          </React.Fragment>
+        );
+        if (kind === "current") return (
+          <React.Fragment key={p.index}>
+            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>П</th>
+            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ф</th>
+            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ост</th>
+            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Δ</th>
+          </React.Fragment>
+        );
+        // future
+        return <th key={p.index} className={subHdrCls} style={subHdrStyle}>П</th>;
+      })}
+      {/* Итого: П + Ф */}
+      <th className={subHdrCls} style={subHdrStyle}>П</th>
+      <th className={subHdrCls} style={subHdrStyle}>Ф</th>
     </>
   );
 }
@@ -459,11 +499,13 @@ function TotalsRow({
   totals,
   kind,
   periodCount,
+  periods,
 }: {
   label: string;
   totals: BudgetSectionTotals;
   kind: "income" | "expense" | "neutral";
   periodCount: number;
+  periods?: BudgetPeriod[];
 }) {
   const labelColor =
     kind === "income" ? "rgb(52 211 153)" : kind === "expense" ? "rgb(248 113 113)" : "var(--t-primary)";
@@ -476,15 +518,50 @@ function TotalsRow({
       >
         {label}
       </td>
-      {totals.cells.slice(0, periodCount).map((cell, i) => (
-        <>
-          <PlanTd key={`tp-${i}`} cell={cell} isMuted />
-          <FactCell key={`tf-${i}`} cell={cell} kind={kind} isBold />
-        </>
-      ))}
+      {totals.cells.slice(0, periodCount).map((cell, i) => {
+        const pk = periods?.[i] ? getPeriodKind(periods[i]) : "current";
+        if (pk === "past") return (
+          <React.Fragment key={i}>
+            <FactCell cell={cell} kind={kind} isBold />
+            <DeviationCell cell={cell} kind={kind} />
+          </React.Fragment>
+        );
+        if (pk === "current") {
+          const remainder = cell.plan - cell.fact;
+          return (
+            <React.Fragment key={i}>
+              <PlanTd cell={cell} isMuted />
+              <FactCell cell={cell} kind={kind} isBold />
+              <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+                {cell.plan ? fmt(remainder) : "—"}
+              </td>
+              <DeviationCell cell={cell} kind={kind} />
+            </React.Fragment>
+          );
+        }
+        // future
+        return <PlanTd key={i} cell={cell} isMuted />;
+      })}
       <PlanTd cell={totals.total} isMuted />
       <FactCell cell={totals.total} kind={kind} isBold />
     </tr>
+  );
+}
+
+function DeviationCell({ cell, kind }: { cell: BudgetCell; kind: "income" | "expense" | "neutral" }) {
+  if (!cell.plan && !cell.fact) {
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-faint)", opacity: 0.4 }}>—</td>;
+  }
+  const dev = cell.deviation;
+  let color = "var(--t-faint)";
+  if (dev !== 0 && cell.plan) {
+    const isGood = (kind === "income" && dev >= 0) || (kind === "expense" && dev <= 0);
+    color = isGood ? "rgb(52 211 153)" : "rgb(248 113 113)";
+  }
+  return (
+    <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color }}>
+      {dev !== 0 ? fmtSigned(dev) : "0"}
+    </td>
   );
 }
 
@@ -496,12 +573,14 @@ function CategoryDataRow({
   periods,
   editing,
   onDrop,
+  maxPlanByPeriod,
 }: {
   row: BudgetRow;
   periodCount: number;
   periods: BudgetPeriod[];
   editing: EditingProps;
   onDrop?: (e: React.DragEvent, catId: number) => void;
+  maxPlanByPeriod?: number[];
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
@@ -543,23 +622,46 @@ function CategoryDataRow({
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
         const p = periods[i];
+        const pk = getPeriodKind(p);
         const canClickFact = !!row.category_id && !row.is_group && cell.fact !== 0;
+        const heatBg = maxPlanByPeriod ? planHeatBg(Math.abs(cell.plan), maxPlanByPeriod[i]) : undefined;
+        const factClick = canClickFact ? () => editing.openFactDetail({
+          categoryId: row.category_id!,
+          categoryTitle: row.title,
+          kind: row.kind,
+          periodLabel: p.label,
+          dateFrom: p.range_start,
+          dateTo: p.range_end,
+          factAmount: cell.fact,
+        }) : undefined;
+
+        if (pk === "past") {
+          // Past: Ф, Δ
+          return (
+            <React.Fragment key={i}>
+              <FactCell cell={cell} kind={kind} onClick={factClick} />
+              <DeviationCell cell={cell} kind={kind} />
+            </React.Fragment>
+          );
+        }
+        if (pk === "current") {
+          // Current: П, Ф, Ост, Δ
+          const remainder = cell.plan - cell.fact;
+          return (
+            <React.Fragment key={i}>
+              <EditablePlanTd cell={cell} period={p} row={row} editing={editing} heatBg={heatBg} />
+              <FactCell cell={cell} kind={kind} onClick={factClick} />
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+                {cell.plan ? fmt(remainder) : "—"}
+              </td>
+              <DeviationCell cell={cell} kind={kind} />
+            </React.Fragment>
+          );
+        }
+        // Future: П only
         return (
           <React.Fragment key={i}>
-            <EditablePlanTd cell={cell} period={p} row={row} editing={editing} />
-            <FactCell
-              cell={cell}
-              kind={kind}
-              onClick={canClickFact ? () => editing.openFactDetail({
-                categoryId: row.category_id!,
-                categoryTitle: row.title,
-                kind: row.kind,
-                periodLabel: p.label,
-                dateFrom: p.range_start,
-                dateTo: p.range_end,
-                factAmount: cell.fact,
-              }) : undefined}
-            />
+            <EditablePlanTd cell={cell} period={p} row={row} editing={editing} heatBg={heatBg} />
           </React.Fragment>
         );
       })}
@@ -575,10 +677,12 @@ function GoalDataRow({
   row,
   periodCount,
   kind,
+  periods,
 }: {
   row: BudgetGoalRow;
   periodCount: number;
   kind: "income" | "expense" | "neutral";
+  periods?: BudgetPeriod[];
 }) {
   return (
     <tr className="border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors">
@@ -589,12 +693,29 @@ function GoalDataRow({
       >
         {row.title}
       </td>
-      {row.cells.slice(0, periodCount).map((cell, i) => (
-        <>
-          <PlanTd key={`p-${i}`} cell={cell} />
-          <FactCell key={`f-${i}`} cell={cell} kind={kind} />
-        </>
-      ))}
+      {row.cells.slice(0, periodCount).map((cell, i) => {
+        const pk = periods?.[i] ? getPeriodKind(periods[i]) : "current";
+        if (pk === "past") return (
+          <React.Fragment key={i}>
+            <FactCell cell={cell} kind={kind} />
+            <DeviationCell cell={cell} kind={kind} />
+          </React.Fragment>
+        );
+        if (pk === "current") {
+          const remainder = cell.plan - cell.fact;
+          return (
+            <React.Fragment key={i}>
+              <PlanTd cell={cell} />
+              <FactCell cell={cell} kind={kind} />
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+                {cell.plan ? fmt(remainder) : "—"}
+              </td>
+              <DeviationCell cell={cell} kind={kind} />
+            </React.Fragment>
+          );
+        }
+        return <PlanTd key={i} cell={cell} />;
+      })}
       <PlanTd cell={row.total} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
@@ -606,9 +727,11 @@ function GoalDataRow({
 function ResultRow({
   result,
   periodCount,
+  periods,
 }: {
   result: BudgetMatrix["result"];
   periodCount: number;
+  periods?: BudgetPeriod[];
 }) {
   return (
     <tr className="border-t-2 border-white/[0.12]">
@@ -619,29 +742,33 @@ function ResultRow({
         Результат
       </td>
       {result.cells.slice(0, periodCount).map((cell, i) => {
+        const pk = periods?.[i] ? getPeriodKind(periods[i]) : "current";
         const planColor = cell.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
         const factColor = cell.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
-        return (
-          <>
-            <td key={`rp-${i}`} className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: planColor }}>
-              {fmtSigned(cell.plan)}
-            </td>
-            <td key={`rf-${i}`} className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: factColor }}>
-              {fmtSigned(cell.fact)}
-            </td>
-          </>
+        const tdCls = "tabular-nums text-right px-2 py-2 text-[12px] font-semibold";
+
+        const dev = cell.fact - cell.plan;
+        if (pk === "past") return (
+          <React.Fragment key={i}>
+            <td className={tdCls} style={{ color: factColor }}>{fmtSigned(cell.fact)}</td>
+            <td className={tdCls} style={{ color: dev >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>{fmtSigned(dev)}</td>
+          </React.Fragment>
         );
+        if (pk === "current") return (
+          <React.Fragment key={i}>
+            <td className={tdCls} style={{ color: planColor }}>{fmtSigned(cell.plan)}</td>
+            <td className={tdCls} style={{ color: factColor }}>{fmtSigned(cell.fact)}</td>
+            <td className={clsx(tdCls, "bg-indigo-500/[0.03]")} style={{ color: (cell.plan - cell.fact) >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>{fmtSigned(cell.plan - cell.fact)}</td>
+            <td className={tdCls} style={{ color: dev >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>{fmtSigned(dev)}</td>
+          </React.Fragment>
+        );
+        // future
+        return <td key={i} className={tdCls} style={{ color: planColor }}>{fmtSigned(cell.plan)}</td>;
       })}
-      <td
-        className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold"
-        style={{ color: result.total.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}
-      >
+      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: result.total.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>
         {fmtSigned(result.total.plan)}
       </td>
-      <td
-        className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold"
-        style={{ color: result.total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}
-      >
+      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: result.total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>
         {fmtSigned(result.total.fact)}
       </td>
     </tr>
@@ -756,10 +883,20 @@ export default function BudgetMatrixPage() {
     ? `${periods[0].short_label} — ${periods[periods.length - 1].short_label}`
     : `${month}/${year}`;
 
-  // Total columns = rangeCount periods * 2 (P+F) + 2 (total P+F)
-  const dataCols = (rangeCount + 1) * 2;
-  // Total colspan including category column
-  const totalCols = dataCols + 1;
+  // Dynamic column count based on period kind
+  const periodCols = periods.reduce((sum, p) => sum + periodColCount(getPeriodKind(p)), 0);
+  const totalCols = 1 + periodCols + 2; // category + period cols + итого (П+Ф)
+
+  // Compute max plan per period for heatmap
+  const maxPlanByPeriod: number[] = periods.map((_, pi) => {
+    let mx = 0;
+    for (const rows of [data?.income_rows, data?.expense_rows]) {
+      for (const row of rows ?? []) {
+        if (row.cells[pi]) mx = Math.max(mx, Math.abs(row.cells[pi].plan));
+      }
+    }
+    return mx;
+  });
 
   const editingProps: EditingProps = {
     openPlanEdit: setPlanEditTarget,
@@ -884,7 +1021,7 @@ export default function BudgetMatrixPage() {
                       className="sticky left-0 z-30 border-b border-white/[0.06]"
                       style={{ background: "var(--app-sidebar-bg)" }}
                     />
-                    <SubHeaders count={rangeCount} />
+                    <SubHeaders periods={periods} />
                   </tr>
                 </thead>
 
@@ -904,6 +1041,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
+                      maxPlanByPeriod={maxPlanByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
@@ -912,6 +1050,7 @@ export default function BudgetMatrixPage() {
                     totals={data.income_totals}
                     kind="income"
                     periodCount={rangeCount}
+                    periods={periods}
                   />
 
                   {/* ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── */}
@@ -954,6 +1093,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
+                      maxPlanByPeriod={maxPlanByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
@@ -962,6 +1102,7 @@ export default function BudgetMatrixPage() {
                     totals={data.expense_totals}
                     kind="expense"
                     periodCount={rangeCount}
+                    periods={periods}
                   />
 
                   {/* ── ОТЛОЖИТЬ ── */}
@@ -991,7 +1132,7 @@ export default function BudgetMatrixPage() {
                   )}
 
                   {/* ── РЕЗУЛЬТАТ ── */}
-                  <ResultRow result={data.result} periodCount={rangeCount} />
+                  <ResultRow result={data.result} periodCount={rangeCount} periods={periods} />
 
                 </tbody>
               </table>
