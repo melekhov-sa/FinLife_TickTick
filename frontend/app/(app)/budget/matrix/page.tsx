@@ -297,12 +297,12 @@ function EditablePlanTd({
         onClick={handleClick}
         className={clsx(
           canEdit && "cursor-pointer hover:text-indigo-400 transition-colors",
-          hasNote && "border-b border-dotted border-indigo-400/40"
+          hasNote && "border-b border-dotted border-amber-400/60"
         )}
         title={cell.note || undefined}
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
-        {hasNote && <span className="text-[9px] text-indigo-400/60 ml-0.5">*</span>}
+        {hasNote && <span className="text-[8px] text-amber-400 ml-0.5 align-super font-bold">●</span>}
       </span>
     </td>
   );
@@ -833,6 +833,32 @@ export default function BudgetMatrixPage() {
                     periodCount={rangeCount}
                   />
 
+                  {/* ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── */}
+                  {data.withdrawal_rows.length > 0 && (
+                    <>
+                      <SectionHeaderRow
+                        label="Взять из отложенного"
+                        colSpan={totalCols}
+                        expanded={withdrawOpen}
+                        onToggle={() => setWithdrawOpen((v) => !v)}
+                      />
+                      {withdrawOpen && data.withdrawal_rows.map((row, i) => (
+                        <GoalDataRow
+                          key={row.goal_id ?? `wd-${i}`}
+                          row={row}
+                          periodCount={rangeCount}
+                          kind="income"
+                        />
+                      ))}
+                      <TotalsRow
+                        label="Итого взять"
+                        totals={data.withdrawal_totals}
+                        kind="income"
+                        periodCount={rangeCount}
+                      />
+                    </>
+                  )}
+
                   {/* ── РАСХОДЫ ── */}
                   <SectionHeaderRow
                     label="Расходы"
@@ -877,32 +903,6 @@ export default function BudgetMatrixPage() {
                         label="Итого отложить"
                         totals={data.goal_totals}
                         kind="expense"
-                        periodCount={rangeCount}
-                      />
-                    </>
-                  )}
-
-                  {/* ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── */}
-                  {data.withdrawal_rows.length > 0 && (
-                    <>
-                      <SectionHeaderRow
-                        label="Взять из отложенного"
-                        colSpan={totalCols}
-                        expanded={withdrawOpen}
-                        onToggle={() => setWithdrawOpen((v) => !v)}
-                      />
-                      {withdrawOpen && data.withdrawal_rows.map((row, i) => (
-                        <GoalDataRow
-                          key={row.goal_id ?? `wd-${i}`}
-                          row={row}
-                          periodCount={rangeCount}
-                          kind="income"
-                        />
-                      ))}
-                      <TotalsRow
-                        label="Итого взять"
-                        totals={data.withdrawal_totals}
-                        kind="income"
                         periodCount={rangeCount}
                       />
                     </>
