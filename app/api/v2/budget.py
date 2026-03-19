@@ -230,3 +230,42 @@ def reorder_categories(body: ReorderRequest, request: Request, db: Session = Dep
 
     db.commit()
     return {"ok": True}
+
+
+class GoalPlanLine(BaseModel):
+    goal_id: int
+    plan_amount: str
+    note: str | None = None
+
+
+class SaveGoalPlanRequest(BaseModel):
+    year: int
+    month: int
+    lines: list[GoalPlanLine]
+    variant_id: int | None = None
+    plan_type: str = "goal"  # "goal" or "withdrawal"
+
+
+@router.post("/budget/goal-plan")
+def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.budget import SaveGoalPlansUseCase, SaveWithdrawalPlansUseCase, get_active_variant
+    user_id = get_user_id(request)
+
+    variant = get_active_variant(db, user_id, body.variant_id)
+    variant_id = variant.id if variant else None
+
+    plans = [
+        {"goal_id": l.goal_id, "plan_amount": l.plan_amount, "note": l.note}
+        for l in body.lines
+    ]
+
+    UseCase = SaveWithdrawalPlansUseCase if body.plan_type == "withdrawal" else SaveGoalPlansUseCase
+    UseCase(db).execute(
+        account_id=user_id,
+        year=body.year,
+        month=body.month,
+        goal_plans=plans,
+        actor_user_id=user_id,
+        budget_variant_id=variant_id,
+    )
+    return {"ok": True}

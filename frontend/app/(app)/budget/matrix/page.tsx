@@ -34,16 +34,16 @@ function getPeriodKind(p: BudgetPeriod): PeriodKind {
 }
 
 // Columns per period kind:
-// past: Ф, Δ (2)  |  current: П, Ф, Ост, Δ (4)  |  future: П (1)
+// past: Ф, Δ (2)  |  current: П, Ф, Ост (3)  |  future: П (1)
 function periodColCount(kind: PeriodKind): number {
-  return kind === "current" ? 4 : kind === "past" ? 2 : 1;
+  return kind === "current" ? 3 : kind === "past" ? 2 : 1;
 }
 
-// Heatmap background for plan cells
+// Heatmap background for plan cells — subtle, max 8%
 function planHeatBg(value: number, maxVal: number): string | undefined {
   if (!value || !maxVal || value <= 0) return undefined;
   const intensity = Math.min(value / maxVal, 1);
-  const alpha = Math.round(intensity * 18 + 2); // 2-20%
+  const alpha = Math.round(intensity * 6 + 2); // 2-8%
   return `rgba(99, 102, 241, ${alpha / 100})`;
 }
 
@@ -58,6 +58,8 @@ interface PlanEditTarget {
   categoryTitle: string;
   currentAmount: number;
   currentNote: string;
+  goalId?: number;        // set for goal/withdrawal rows
+  goalPlanType?: string;  // "goal" or "withdrawal"
 }
 
 interface EditingProps {
@@ -442,7 +444,6 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
             <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>П</th>
             <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ф</th>
             <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ост</th>
-            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Δ</th>
           </React.Fragment>
         );
         // future
@@ -535,7 +536,6 @@ function TotalsRow({
               <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
-              <DeviationCell cell={cell} kind={kind} />
             </React.Fragment>
           );
         }
@@ -645,7 +645,7 @@ function CategoryDataRow({
           );
         }
         if (pk === "current") {
-          // Current: П, Ф, Ост, Δ
+          // Current: П, Ф, Ост
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
@@ -654,7 +654,6 @@ function CategoryDataRow({
               <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
-              <DeviationCell cell={cell} kind={kind} />
             </React.Fragment>
           );
         }
@@ -678,12 +677,32 @@ function GoalDataRow({
   periodCount,
   kind,
   periods,
+  editing,
+  goalPlanType,
 }: {
   row: BudgetGoalRow;
   periodCount: number;
   kind: "income" | "expense" | "neutral";
   periods?: BudgetPeriod[];
+  editing?: EditingProps;
+  goalPlanType?: string;
 }) {
+  function openGoalPlan(p: BudgetPeriod, cell: BudgetCell) {
+    if (!editing || !p.has_manual_plan) return;
+    editing.openPlanEdit({
+      categoryId: 0,
+      kind: kind === "income" ? "INCOME" : "EXPENSE",
+      year: p.year,
+      month: p.month,
+      periodLabel: p.label,
+      categoryTitle: row.title,
+      currentAmount: cell.plan,
+      currentNote: cell.note ?? "",
+      goalId: row.goal_id,
+      goalPlanType: goalPlanType || "goal",
+    });
+  }
+
   return (
     <tr className="border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors">
       <td
@@ -694,7 +713,18 @@ function GoalDataRow({
         {row.title}
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
-        const pk = periods?.[i] ? getPeriodKind(periods[i]) : "current";
+        const p = periods?.[i];
+        const pk = p ? getPeriodKind(p) : "current";
+        const canClick = !!p?.has_manual_plan && !!editing;
+        const planSpan = (
+          <span
+            onClick={canClick && p ? () => openGoalPlan(p, cell) : undefined}
+            className={canClick ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
+          >
+            {cell.plan ? fmt(cell.plan) : (canClick ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+          </span>
+        );
+
         if (pk === "past") return (
           <React.Fragment key={i}>
             <FactCell cell={cell} kind={kind} />
@@ -705,16 +735,20 @@ function GoalDataRow({
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
-              <PlanTd cell={cell} />
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>{planSpan}</td>
               <FactCell cell={cell} kind={kind} />
               <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
-              <DeviationCell cell={cell} kind={kind} />
             </React.Fragment>
           );
         }
-        return <PlanTd key={i} cell={cell} />;
+        // future
+        return (
+          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>
+            {planSpan}
+          </td>
+        );
       })}
       <PlanTd cell={row.total} />
       <FactCell cell={row.total} kind={kind} />
@@ -759,7 +793,6 @@ function ResultRow({
             <td className={tdCls} style={{ color: planColor }}>{fmtSigned(cell.plan)}</td>
             <td className={tdCls} style={{ color: factColor }}>{fmtSigned(cell.fact)}</td>
             <td className={clsx(tdCls, "bg-indigo-500/[0.03]")} style={{ color: (cell.plan - cell.fact) >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>{fmtSigned(cell.plan - cell.fact)}</td>
-            <td className={tdCls} style={{ color: dev >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>{fmtSigned(dev)}</td>
           </React.Fragment>
         );
         // future
@@ -844,14 +877,27 @@ export default function BudgetMatrixPage() {
 
   const qc = useQueryClient();
 
-  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string, note?: string, copyForward?: boolean) {
-    const line = { category_id: categoryId, kind, plan_amount: amount || "0", note: note || null };
-    const months = [month];
+  async function savePlan(target: PlanEditTarget, amount: string, note: string, copyForward: boolean) {
+    const months = [target.month];
     if (copyForward) {
-      for (let m = month + 1; m <= 12; m++) months.push(m);
+      for (let m = target.month + 1; m <= 12; m++) months.push(m);
     }
-    for (const m of months) {
-      await api.post("/api/v2/budget/plan", { year, month: m, lines: [line] });
+
+    if (target.goalId) {
+      // Goal/withdrawal plan
+      for (const m of months) {
+        await api.post("/api/v2/budget/goal-plan", {
+          year: target.year, month: m,
+          lines: [{ goal_id: target.goalId, plan_amount: amount || "0", note: note || null }],
+          plan_type: target.goalPlanType || "goal",
+        });
+      }
+    } else {
+      // Category plan
+      const line = { category_id: target.categoryId, kind: target.kind, plan_amount: amount || "0", note: note || null };
+      for (const m of months) {
+        await api.post("/api/v2/budget/plan", { year: target.year, month: m, lines: [line] });
+      }
     }
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
@@ -913,7 +959,7 @@ export default function BudgetMatrixPage() {
         <PlanEditModal
           target={planEditTarget}
           onSave={async (amount, note, copyForward) => {
-            await savePlan(planEditTarget.year, planEditTarget.month, planEditTarget.categoryId, planEditTarget.kind, amount, note, copyForward);
+            await savePlan(planEditTarget, amount, note, copyForward);
             setPlanEditTarget(null);
           }}
           onClose={() => setPlanEditTarget(null)}
@@ -1068,6 +1114,9 @@ export default function BudgetMatrixPage() {
                           row={row}
                           periodCount={rangeCount}
                           kind="income"
+                          periods={periods}
+                          editing={editingProps}
+                          goalPlanType="withdrawal"
                         />
                       ))}
                       <TotalsRow
@@ -1120,6 +1169,9 @@ export default function BudgetMatrixPage() {
                           row={row}
                           periodCount={rangeCount}
                           kind="expense"
+                          periods={periods}
+                          editing={editingProps}
+                          goalPlanType="goal"
                         />
                       ))}
                       <TotalsRow
