@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm } from "lucide-react";
 import { clsx } from "clsx";
@@ -24,18 +24,103 @@ function fmtSigned(n: number): string {
 
 // ── Editing state types ───────────────────────────────────────────────────────
 
-interface EditingCell {
-  rowKey: string;
-  periodIdx: number;
+interface PlanEditTarget {
+  categoryId: number;
+  kind: string;
+  year: number;
+  month: number;
+  periodLabel: string;
+  categoryTitle: string;
+  currentAmount: number;
+  currentNote: string;
 }
 
 interface EditingProps {
-  editingCell: EditingCell | null;
-  setEditingCell: (v: EditingCell | null) => void;
-  editValue: string;
-  setEditValue: (v: string) => void;
-  savePlan: (year: number, month: number, categoryId: number, kind: string, amount: string) => void;
-  periods: BudgetPeriod[];
+  openPlanEdit: (target: PlanEditTarget) => void;
+}
+
+// ── Plan Edit Modal ──────────────────────────────────────────────────────────
+
+function PlanEditModal({
+  target,
+  onSave,
+  onClose,
+}: {
+  target: PlanEditTarget;
+  onSave: (amount: string, note: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [amount, setAmount] = useState(target.currentAmount ? String(Math.round(target.currentAmount)) : "");
+  const [note, setNote] = useState(target.currentNote);
+  const [saving, setSaving] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await onSave(amount, note);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="w-full max-w-sm mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl p-5">
+        <h3 className="text-[14px] font-semibold mb-0.5" style={{ color: "var(--t-primary)" }}>
+          {target.categoryTitle}
+        </h3>
+        <p className="text-[12px] mb-4" style={{ color: "var(--t-faint)" }}>
+          План на {target.periodLabel}
+        </p>
+
+        <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1">
+          Сумма
+        </label>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoFocus
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,\-]/g, ""))}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+          placeholder="0"
+          className="w-full px-3 h-10 text-base rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors tabular-nums"
+        />
+
+        <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1 mt-3">
+          Комментарий
+        </label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Необязательно"
+          rows={2}
+          className="w-full px-3 py-2 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
+        />
+
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+          >
+            {saving ? "Сохраняем…" : "Сохранить"}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Cell rendering ────────────────────────────────────────────────────────────
@@ -57,7 +142,7 @@ function PlanTd({ cell, isMuted }: { cell: BudgetCell; isMuted?: boolean }) {
   );
 }
 
-// Editable plan <td> for category rows
+// Editable plan <td> for category rows — click opens modal, hover shows note tooltip
 function EditablePlanTd({
   cell,
   period,
@@ -69,57 +154,46 @@ function EditablePlanTd({
   row: BudgetRow;
   editing: EditingProps;
 }) {
-  const { editingCell, setEditingCell, editValue, setEditValue, savePlan } = editing;
-  const rowKey = `${row.category_id}-${row.kind}`;
-  const isEditing = editingCell?.rowKey === rowKey && editingCell?.periodIdx === period.index;
+  const { openPlanEdit } = editing;
   const canEdit = period.has_manual_plan && !!row.category_id && !row.is_group;
 
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
+  const hasNote = !!cell.note;
 
   if (!hasPlan && !hasFact && !canEdit) {
     return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-faint)", opacity: 0.4 }}>—</td>;
   }
 
-  if (isEditing) {
-    return (
-      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>
-        <input
-          type="text"
-          inputMode="decimal"
-          autoFocus
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={() => {
-            savePlan(period.year, period.month, row.category_id!, row.kind, editValue);
-            setEditingCell(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
-            if (e.key === "Escape") { setEditingCell(null); }
-          }}
-          className="w-full bg-transparent border-b border-indigo-500/50 text-right text-[12px] tabular-nums outline-none px-0.5"
-          style={{ color: "var(--t-primary)", maxWidth: 60 }}
-        />
-      </td>
-    );
+  function handleClick() {
+    if (!canEdit) return;
+    openPlanEdit({
+      categoryId: row.category_id!,
+      kind: row.kind,
+      year: period.year,
+      month: period.month,
+      periodLabel: period.label,
+      categoryTitle: row.title,
+      currentAmount: cell.plan,
+      currentNote: cell.note ?? "",
+    });
   }
 
   return (
     <td
-      className="tabular-nums text-right px-2 py-1.5 text-[12px]"
+      className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group"
       style={{ color: "var(--t-secondary)" }}
     >
       <span
-        onClick={() => {
-          if (canEdit) {
-            setEditingCell({ rowKey, periodIdx: period.index });
-            setEditValue(cell.plan ? String(Math.round(cell.plan)) : "");
-          }
-        }}
-        className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
+        onClick={handleClick}
+        className={clsx(
+          canEdit && "cursor-pointer hover:text-indigo-400 transition-colors",
+          hasNote && "border-b border-dotted border-indigo-400/40"
+        )}
+        title={cell.note || undefined}
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+        {hasNote && <span className="text-[9px] text-indigo-400/60 ml-0.5">*</span>}
       </span>
     </td>
   );
@@ -426,16 +500,15 @@ export default function BudgetMatrixPage() {
   const [goalsOpen, setGoalsOpen] = useState(true);
   const [withdrawOpen, setWithdrawOpen] = useState(true);
 
-  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
 
   const qc = useQueryClient();
 
-  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string) {
+  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string, note?: string) {
     await api.post("/api/v2/budget/plan", {
       year,
       month,
-      lines: [{ category_id: categoryId, kind, plan_amount: amount || "0" }],
+      lines: [{ category_id: categoryId, kind, plan_amount: amount || "0", note: note || null }],
     });
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
@@ -473,16 +546,21 @@ export default function BudgetMatrixPage() {
   const totalCols = dataCols + 1;
 
   const editingProps: EditingProps = {
-    editingCell,
-    setEditingCell,
-    editValue,
-    setEditValue,
-    savePlan,
-    periods,
+    openPlanEdit: setPlanEditTarget,
   };
 
   return (
     <>
+      {planEditTarget && (
+        <PlanEditModal
+          target={planEditTarget}
+          onSave={async (amount, note) => {
+            await savePlan(planEditTarget.year, planEditTarget.month, planEditTarget.categoryId, planEditTarget.kind, amount, note);
+            setPlanEditTarget(null);
+          }}
+          onClose={() => setPlanEditTarget(null)}
+        />
+      )}
       <AppTopbar title="Бюджет (матрица)" />
 
       <main className="flex-1 overflow-hidden flex flex-col">
