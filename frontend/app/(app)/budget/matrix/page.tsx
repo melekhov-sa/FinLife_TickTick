@@ -37,6 +37,7 @@ interface PlanEditTarget {
 
 interface EditingProps {
   openPlanEdit: (target: PlanEditTarget) => void;
+  openFactDetail: (target: FactDetailTarget) => void;
 }
 
 // ── Plan Edit Modal ──────────────────────────────────────────────────────────
@@ -47,18 +48,21 @@ function PlanEditModal({
   onClose,
 }: {
   target: PlanEditTarget;
-  onSave: (amount: string, note: string) => Promise<void>;
+  onSave: (amount: string, note: string, copyForward: boolean) => Promise<void>;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState(target.currentAmount ? String(Math.round(target.currentAmount)) : "");
   const [note, setNote] = useState(target.currentNote);
+  const [copyForward, setCopyForward] = useState(false);
   const [saving, setSaving] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const remainingMonths = 12 - target.month;
 
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(amount, note);
+      await onSave(amount, note, copyForward);
     } finally {
       setSaving(false);
     }
@@ -103,6 +107,23 @@ function PlanEditModal({
           className="w-full px-3 py-2 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
         />
 
+        {remainingMonths > 0 && (
+          <label className="flex items-center gap-2.5 mt-3 py-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={copyForward}
+              onChange={(e) => setCopyForward(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
+              Копировать до конца года
+              <span className="ml-1 text-[11px]" style={{ color: "var(--t-faint)" }}>
+                (+{remainingMonths} мес.)
+              </span>
+            </span>
+          </label>
+        )}
+
         <div className="flex gap-2 mt-4">
           <button
             onClick={handleSave}
@@ -116,6 +137,94 @@ function PlanEditModal({
             className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
           >
             Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Fact Detail Modal ────────────────────────────────────────────────────────
+
+interface FactDetailTarget {
+  categoryId: number;
+  categoryTitle: string;
+  kind: string;
+  periodLabel: string;
+  dateFrom: string;
+  dateTo: string;
+  factAmount: number;
+}
+
+interface TransactionRow {
+  id: number;
+  description: string | null;
+  amount: string;
+  occurred_at: string;
+  wallet_title: string | null;
+}
+
+function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClose: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const { data, isPending } = useQuery<{ items: TransactionRow[]; total: number }>({
+    queryKey: ["budget-fact-detail", target.categoryId, target.dateFrom, target.dateTo, target.kind],
+    queryFn: () =>
+      api.get(`/api/v2/transactions?category_id=${target.categoryId}&operation_type=${target.kind}&date_from=${target.dateFrom}&date_to=${target.dateTo}&per_page=100`),
+    staleTime: 30_000,
+  });
+
+  const items = data?.items ?? [];
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="w-full max-w-md mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "80vh" }}>
+        {/* Header */}
+        <div className="p-5 pb-3 shrink-0">
+          <h3 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            {target.categoryTitle}
+          </h3>
+          <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+            Факт за {target.periodLabel} · {fmt(target.factAmount)} ₽
+          </p>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto px-5 pb-4">
+          {isPending && (
+            <p className="text-[13px] py-4 text-center" style={{ color: "var(--t-faint)" }}>Загрузка…</p>
+          )}
+          {!isPending && items.length === 0 && (
+            <p className="text-[13px] py-4 text-center" style={{ color: "var(--t-faint)" }}>Нет операций</p>
+          )}
+          {items.map((tx) => (
+            <div key={tx.id} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] truncate" style={{ color: "var(--t-primary)" }}>
+                  {tx.description || "Без описания"}
+                </p>
+                <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                  {new Date(tx.occurred_at).toLocaleDateString("ru-RU")}
+                  {tx.wallet_title && ` · ${tx.wallet_title}`}
+                </p>
+              </div>
+              <span className="text-[13px] font-medium tabular-nums shrink-0 ml-3" style={{ color: "var(--t-secondary)" }}>
+                {parseFloat(tx.amount).toLocaleString("ru-RU")} ₽
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 pt-2 border-t border-white/[0.06] shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
+          >
+            Закрыть
           </button>
         </div>
       </div>
@@ -203,10 +312,12 @@ function FactCell({
   cell,
   kind,
   isBold,
+  onClick,
 }: {
   cell: BudgetCell;
   kind: "income" | "expense" | "neutral";
   isBold?: boolean;
+  onClick?: () => void;
 }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
@@ -234,7 +345,13 @@ function FactCell({
       className={clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", isBold && "font-semibold")}
       style={{ color: hasFact ? color : "var(--t-faint)" }}
     >
-      {hasFact ? fmt(cell.fact) : "—"}
+      {hasFact && onClick ? (
+        <span onClick={onClick} className="cursor-pointer hover:underline">
+          {fmt(cell.fact)}
+        </span>
+      ) : (
+        hasFact ? fmt(cell.fact) : "—"
+      )}
     </td>
   );
 }
@@ -396,12 +513,28 @@ function CategoryDataRow({
       >
         {row.title}
       </td>
-      {row.cells.slice(0, periodCount).map((cell, i) => (
-        <>
-          <EditablePlanTd key={`p-${i}`} cell={cell} period={periods[i]} row={row} editing={editing} />
-          <FactCell key={`f-${i}`} cell={cell} kind={kind} />
-        </>
-      ))}
+      {row.cells.slice(0, periodCount).map((cell, i) => {
+        const p = periods[i];
+        const canClickFact = !!row.category_id && !row.is_group && cell.fact !== 0;
+        return (
+          <React.Fragment key={i}>
+            <EditablePlanTd cell={cell} period={p} row={row} editing={editing} />
+            <FactCell
+              cell={cell}
+              kind={kind}
+              onClick={canClickFact ? () => editing.openFactDetail({
+                categoryId: row.category_id!,
+                categoryTitle: row.title,
+                kind: row.kind,
+                periodLabel: p.label,
+                dateFrom: p.range_start,
+                dateTo: p.range_end,
+                factAmount: cell.fact,
+              }) : undefined}
+            />
+          </React.Fragment>
+        );
+      })}
       <PlanTd cell={row.total} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
@@ -501,15 +634,19 @@ export default function BudgetMatrixPage() {
   const [withdrawOpen, setWithdrawOpen] = useState(true);
 
   const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
+  const [factDetailTarget, setFactDetailTarget] = useState<FactDetailTarget | null>(null);
 
   const qc = useQueryClient();
 
-  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string, note?: string) {
-    await api.post("/api/v2/budget/plan", {
-      year,
-      month,
-      lines: [{ category_id: categoryId, kind, plan_amount: amount || "0", note: note || null }],
-    });
+  async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string, note?: string, copyForward?: boolean) {
+    const line = { category_id: categoryId, kind, plan_amount: amount || "0", note: note || null };
+    const months = [month];
+    if (copyForward) {
+      for (let m = month + 1; m <= 12; m++) months.push(m);
+    }
+    for (const m of months) {
+      await api.post("/api/v2/budget/plan", { year, month: m, lines: [line] });
+    }
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
@@ -547,15 +684,19 @@ export default function BudgetMatrixPage() {
 
   const editingProps: EditingProps = {
     openPlanEdit: setPlanEditTarget,
+    openFactDetail: setFactDetailTarget,
   };
 
   return (
     <>
+      {factDetailTarget && (
+        <FactDetailModal target={factDetailTarget} onClose={() => setFactDetailTarget(null)} />
+      )}
       {planEditTarget && (
         <PlanEditModal
           target={planEditTarget}
-          onSave={async (amount, note) => {
-            await savePlan(planEditTarget.year, planEditTarget.month, planEditTarget.categoryId, planEditTarget.kind, amount, note);
+          onSave={async (amount, note, copyForward) => {
+            await savePlan(planEditTarget.year, planEditTarget.month, planEditTarget.categoryId, planEditTarget.kind, amount, note, copyForward);
             setPlanEditTarget(null);
           }}
           onClose={() => setPlanEditTarget(null)}
