@@ -206,3 +206,27 @@ def save_budget_plan(body: SaveBudgetPlanRequest, request: Request, db: Session 
         budget_variant_id=variant_id,
     )
     return {"ok": True}
+
+
+class ReorderItem(BaseModel):
+    category_id: int
+    sort_order: int
+
+
+class ReorderRequest(BaseModel):
+    items: list[ReorderItem]
+
+
+@router.post("/categories/reorder")
+def reorder_categories(body: ReorderRequest, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import CategoryInfo
+    user_id = get_user_id(request)
+
+    for item in body.items:
+        db.query(CategoryInfo).filter(
+            CategoryInfo.category_id == item.category_id,
+            CategoryInfo.account_id == user_id,
+        ).update({"sort_order": item.sort_order})
+
+    db.commit()
+    return {"ok": True}

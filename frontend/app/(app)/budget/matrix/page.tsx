@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -38,6 +38,14 @@ interface PlanEditTarget {
 interface EditingProps {
   openPlanEdit: (target: PlanEditTarget) => void;
   openFactDetail: (target: FactDetailTarget) => void;
+  dragHandlers: DragHandlers;
+}
+
+interface DragHandlers {
+  onDragStart: (e: React.DragEvent, catId: number, parentId: number | null) => void;
+  onDragOver: (e: React.DragEvent, catId: number, parentId: number | null) => void;
+  onDragEnd: (e: React.DragEvent) => void;
+  dragOverId: number | null;
 }
 
 // ── Plan Edit Modal ──────────────────────────────────────────────────────────
@@ -487,18 +495,33 @@ function CategoryDataRow({
   periodCount,
   periods,
   editing,
+  onDrop,
 }: {
   row: BudgetRow;
   periodCount: number;
   periods: BudgetPeriod[];
   editing: EditingProps;
+  onDrop?: (e: React.DragEvent, catId: number) => void;
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
   const indent = row.depth > 0 ? "pl-6" : "pl-3";
+  const { dragHandlers } = editing;
+  const canDrag = !!row.category_id && !row.is_group;
+  const isDropTarget = dragHandlers.dragOverId === row.category_id;
 
   return (
-    <tr className="border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors">
+    <tr
+      className={clsx(
+        "border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors",
+        isDropTarget && "bg-indigo-500/[0.08] border-t-indigo-500/30"
+      )}
+      draggable={canDrag}
+      onDragStart={canDrag ? (e) => dragHandlers.onDragStart(e, row.category_id!, row.parent_id) : undefined}
+      onDragOver={canDrag ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
+      onDragEnd={dragHandlers.onDragEnd}
+      onDrop={canDrag && onDrop ? (e) => onDrop(e, row.category_id!) : undefined}
+    >
       <td
         className={clsx(
           "text-[12px] py-1.5 sticky left-0 z-10 max-w-[180px] truncate",
@@ -511,7 +534,12 @@ function CategoryDataRow({
         }}
         title={row.title}
       >
-        {row.title}
+        <span className="inline-flex items-center gap-1">
+          {canDrag && (
+            <GripVertical size={12} className="text-white/20 cursor-grab shrink-0" />
+          )}
+          {row.title}
+        </span>
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
         const p = periods[i];
@@ -636,6 +664,57 @@ export default function BudgetMatrixPage() {
   const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
   const [factDetailTarget, setFactDetailTarget] = useState<FactDetailTarget | null>(null);
 
+  // ── Drag-and-drop reorder state ──
+  const dragSrc = useRef<{ catId: number; parentId: number | null } | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const onDragStart = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
+    dragSrc.current = { catId, parentId };
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
+  const onDragOver = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
+    if (!dragSrc.current) return;
+    // Only allow reorder within same parent group
+    if (dragSrc.current.parentId !== parentId) return;
+    if (dragSrc.current.catId === catId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverId(catId);
+  }, []);
+
+  const onDragEnd = useCallback((_e: React.DragEvent) => {
+    setDragOverId(null);
+    dragSrc.current = null;
+  }, []);
+
+  async function handleDrop(e: React.DragEvent, targetCatId: number, rows: BudgetRow[]) {
+    e.preventDefault();
+    setDragOverId(null);
+    if (!dragSrc.current || dragSrc.current.catId === targetCatId) return;
+
+    const srcId = dragSrc.current.catId;
+    const parentId = dragSrc.current.parentId;
+    dragSrc.current = null;
+
+    // Get siblings (same parent)
+    const siblings = rows.filter((r) =>
+      r.category_id && !r.is_group && r.parent_id === parentId
+    );
+    const ids = siblings.map((r) => r.category_id!);
+    const srcIdx = ids.indexOf(srcId);
+    const tgtIdx = ids.indexOf(targetCatId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    // Move srcId to tgtIdx position
+    ids.splice(srcIdx, 1);
+    ids.splice(tgtIdx, 0, srcId);
+
+    const items = ids.map((id, i) => ({ category_id: id, sort_order: i }));
+    await api.post("/api/v2/categories/reorder", { items });
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
+
   const qc = useQueryClient();
 
   async function savePlan(year: number, month: number, categoryId: number, kind: string, amount: string, note?: string, copyForward?: boolean) {
@@ -685,6 +764,7 @@ export default function BudgetMatrixPage() {
   const editingProps: EditingProps = {
     openPlanEdit: setPlanEditTarget,
     openFactDetail: setFactDetailTarget,
+    dragHandlers: { onDragStart, onDragOver, onDragEnd, dragOverId },
   };
 
   return (
@@ -824,6 +904,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
+                      onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
                   <TotalsRow
@@ -873,6 +954,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
+                      onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
                   <TotalsRow
