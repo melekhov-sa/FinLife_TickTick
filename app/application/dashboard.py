@@ -369,7 +369,8 @@ class DashboardService:
         rows = self.db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "ACTIVE",
-            OperationOccurrence.scheduled_date >= today - timedelta(days=30),
+            OperationOccurrence.scheduled_date >= today - timedelta(days=7),
+            OperationOccurrence.scheduled_date <= today + timedelta(days=30),
         ).order_by(OperationOccurrence.scheduled_date.asc()).limit(limit * 3).all()
 
         wcur_map = self._load_wallet_currency_map(account_id)
