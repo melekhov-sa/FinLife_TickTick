@@ -10,13 +10,15 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { api } from "@/lib/api";
+import type { CollisionDetection } from "@dnd-kit/core";
 import { KanbanTaskCard } from "./KanbanTaskCard";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import type { BoardColumn, ProjectDetail, TaskCard, TaskItem } from "@/types/api";
@@ -24,6 +26,13 @@ import type { BoardColumn, ProjectDetail, TaskCard, TaskItem } from "@/types/api
 interface Props {
   project: ProjectDetail;
 }
+
+// pointerWithin finds the column the pointer is over; rectIntersection as fallback
+const collisionDetection: CollisionDetection = (args) => {
+  const pw = pointerWithin(args);
+  if (pw.length > 0) return pw;
+  return rectIntersection(args);
+};
 
 export function KanbanBoard({ project }: Props) {
   const qc = useQueryClient();
@@ -138,7 +147,7 @@ export function KanbanBoard({ project }: Props) {
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}

@@ -305,6 +305,11 @@ class ChangeTaskBoardStatusUseCase:
             task.completed_at = func.now()
             task.status = "DONE"
 
+        # Un-complete task when moved away from "done" column
+        if new_status != "done" and task.status == "DONE":
+            task.completed_at = None
+            task.status = "ACTIVE"
+
         self.db.commit()
 
 
