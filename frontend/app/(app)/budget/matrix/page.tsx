@@ -1124,6 +1124,7 @@ export default function BudgetMatrixPage() {
                         totals={data.withdrawal_totals}
                         kind="income"
                         periodCount={rangeCount}
+                        periods={periods}
                       />
                     </>
                   )}
@@ -1179,6 +1180,7 @@ export default function BudgetMatrixPage() {
                         totals={data.goal_totals}
                         kind="expense"
                         periodCount={rangeCount}
+                        periods={periods}
                       />
                     </>
                   )}

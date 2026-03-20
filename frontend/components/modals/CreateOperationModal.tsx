@@ -94,10 +94,18 @@ export function CreateOperationModal({ onClose }: Props) {
   const showFromGoal = selectedFromWallet?.wallet_type === "SAVINGS";
   const showToGoal = selectedToWallet?.wallet_type === "SAVINGS";
 
-  const walletOptions: SelectOption[] = useMemo(() => [
-    { value: "", label: "— выберите кошелёк —" },
-    ...visibleWallets.map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
-  ], [visibleWallets]);
+  const walletOptions: SelectOption[] = useMemo(() => {
+    const opts: SelectOption[] = [{ value: "", label: "— выберите кошелёк —" }];
+    const top3 = visibleWallets.slice(0, 3);
+    const rest = visibleWallets.slice(3);
+    if (rest.length > 0) {
+      top3.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})`, group: "★ Частые" }));
+      rest.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})`, group: "Все кошельки" }));
+    } else {
+      visibleWallets.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` }));
+    }
+    return opts;
+  }, [visibleWallets]);
 
   const allWalletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— кошелёк —" },
