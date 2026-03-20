@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { CalendarDays, Pencil, Archive, RotateCcw, X, Check } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 
@@ -55,6 +55,24 @@ function useEventTemplates() {
 export default function EventTemplatesPage() {
   const [archived, setArchived] = useState<TabArchived>(false);
   const { data: all, isLoading, isError } = useEventTemplates();
+  const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+
+  async function handleArchive(id: number) {
+    await api.post(`/api/v2/events/${id}/archive`);
+    qc.invalidateQueries({ queryKey: ["event-templates"] });
+  }
+  async function handleRestore(id: number) {
+    await api.post(`/api/v2/events/${id}/restore`);
+    qc.invalidateQueries({ queryKey: ["event-templates"] });
+  }
+  async function handleSaveTitle(id: number) {
+    if (!editTitle.trim()) return;
+    await api.patch(`/api/v2/events/${id}`, { title: editTitle.trim() });
+    qc.invalidateQueries({ queryKey: ["event-templates"] });
+    setEditingId(null);
+  }
 
   const templates = (all ?? []).filter((ev) => ev.is_archived === archived);
 
@@ -143,23 +161,69 @@ export default function EventTemplatesPage() {
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p
-                    className="text-[14px] font-medium truncate"
-                    style={{ color: item.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}
-                  >
-                    {item.title}
-                  </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
-                    {item.category_title ?? "Без категории"}
-                    {" · "}
-                    {item.freq_label}
-                    {item.next_date && (
-                      <> · Следующий: {formatDate(item.next_date)}</>
-                    )}
-                    {!item.next_date && item.freq && (
-                      <> · Нет запланированных</>
-                    )}
-                  </p>
+                  {editingId === item.event_id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(item.event_id); if (e.key === "Escape") setEditingId(null); }}
+                        className="flex-1 px-2 py-1 text-[14px] rounded-lg bg-white/[0.05] border border-indigo-500/40 outline-none"
+                        style={{ color: "var(--t-primary)" }}
+                      />
+                      <button onClick={() => handleSaveTitle(item.event_id)} className="p-1 rounded-lg hover:bg-white/[0.06]"><Check size={14} className="text-emerald-400" /></button>
+                      <button onClick={() => setEditingId(null)} className="p-1 rounded-lg hover:bg-white/[0.06]"><X size={14} className="text-white/40" /></button>
+                    </div>
+                  ) : (
+                    <>
+                      <p
+                        className="text-[14px] font-medium truncate"
+                        style={{ color: item.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}
+                      >
+                        {item.title}
+                      </p>
+                      <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+                        {item.category_title ?? "Без категории"}
+                        {" · "}
+                        {item.freq_label}
+                        {item.next_date && (
+                          <> · Следующий: {formatDate(item.next_date)}</>
+                        )}
+                        {!item.next_date && item.freq && (
+                          <> · Нет запланированных</>
+                        )}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {!item.is_archived && editingId !== item.event_id && (
+                    <button
+                      onClick={() => { setEditingId(item.event_id); setEditTitle(item.title); }}
+                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      title="Редактировать"
+                    >
+                      <Pencil size={13} className="text-white/40" />
+                    </button>
+                  )}
+                  {item.is_archived ? (
+                    <button
+                      onClick={() => handleRestore(item.event_id)}
+                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      title="Восстановить"
+                    >
+                      <RotateCcw size={13} className="text-indigo-400/60" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleArchive(item.event_id)}
+                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      title="В архив"
+                    >
+                      <Archive size={13} className="text-white/30" />
+                    </button>
+                  )}
                 </div>
 
                 <span
