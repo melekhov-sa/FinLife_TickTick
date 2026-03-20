@@ -170,7 +170,10 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   <div className="flex items-end gap-1.5 h-24">
-                    {data.monthly_xp.map((m, i) => {
+                    {[...data.monthly_xp].sort((a, b) => {
+                      const MONTHS: Record<string, number> = { "Январь": 1, "Февраль": 2, "Март": 3, "Апрель": 4, "Май": 5, "Июнь": 6, "Июль": 7, "Август": 8, "Сентябрь": 9, "Октябрь": 10, "Ноябрь": 11, "Декабрь": 12 };
+                      return (MONTHS[a.month_name] ?? 0) - (MONTHS[b.month_name] ?? 0);
+                    }).map((m, i) => {
                       const h = Math.max(4, Math.round((m.xp / maxMonthlyXp) * 96));
                       const isCurrent = i === data.monthly_xp.length - 1;
                       return (

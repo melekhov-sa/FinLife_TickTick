@@ -245,6 +245,21 @@ function KanbanColumn({
         </span>
       </div>
 
+      {/* Quick-add input — at top for easy access */}
+      <div className="px-2 pt-2">
+        <input
+          type="text"
+          value={newTaskTitle}
+          onChange={(e) => setNewTaskTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleCreate();
+          }}
+          placeholder="+ Добавить задачу..."
+          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-indigo-500/50 focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
+          style={{ color: "var(--t-primary)" }}
+        />
+      </div>
+
       {/* Tasks */}
       <SortableContext
         items={tasks.map((t) => t.task_id)}
@@ -266,21 +281,6 @@ function KanbanColumn({
           )}
         </div>
       </SortableContext>
-
-      {/* Quick-add input */}
-      <div className="mt-auto px-2 pb-2">
-        <input
-          type="text"
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleCreate();
-          }}
-          placeholder="+ Добавить задачу..."
-          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-indigo-500/50 focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
-          style={{ color: "var(--t-primary)" }}
-        />
-      </div>
     </div>
   );
 }

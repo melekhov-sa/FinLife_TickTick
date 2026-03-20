@@ -273,15 +273,14 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
 
     # ── Expiring subscriptions ─────────────────────────────────────────────────
     try:
-        member_horizon = today + timedelta(days=60)
-        self_horizon = today + timedelta(days=30)
+        member_horizon = today + timedelta(days=14)
+        self_horizon = today + timedelta(days=14)
 
         member_rows = (
             db.query(SubscriptionMemberModel)
             .filter(
                 SubscriptionMemberModel.account_id == user_id,
                 SubscriptionMemberModel.paid_until != None,  # noqa: E711
-                SubscriptionMemberModel.paid_until >= today,
                 SubscriptionMemberModel.paid_until <= member_horizon,
             )
             .order_by(SubscriptionMemberModel.paid_until.asc())
@@ -295,7 +294,6 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                 SubscriptionModel.account_id == user_id,
                 SubscriptionModel.is_archived == False,  # noqa: E712
                 SubscriptionModel.paid_until_self != None,  # noqa: E711
-                SubscriptionModel.paid_until_self >= today,
                 SubscriptionModel.paid_until_self <= self_horizon,
             )
             .order_by(SubscriptionModel.paid_until_self.asc())
