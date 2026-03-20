@@ -415,11 +415,13 @@ class UpdateTaskRequest(BaseModel):
     title: str | None = None
     note: str | None = None
     due_date: str | None = None
+    due_time: str | None = None
     category_id: int | None = None
 
 
 @router.patch("/tasks/{task_id}")
 def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Session = Depends(get_db)):
+    from datetime import time as time_type
     user_id = get_user_id(request)
     task = db.query(TaskModel).filter(
         TaskModel.task_id == task_id,
@@ -437,10 +439,21 @@ def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Ses
     if "due_date" in fields:
         if body.due_date:
             task.due_date = date.fromisoformat(body.due_date)
-            task.due_kind = "DATE"
+            task.due_kind = "DATETIME" if task.due_time else "DATE"
         else:
             task.due_date = None
+            task.due_time = None
             task.due_kind = "NONE"
+    if "due_time" in fields:
+        if body.due_time:
+            parsed = time_type.fromisoformat(body.due_time)
+            task.due_time = parsed
+            if task.due_date:
+                task.due_kind = "DATETIME"
+        else:
+            task.due_time = None
+            if task.due_date and task.due_kind == "DATETIME":
+                task.due_kind = "DATE"
     if "category_id" in fields:
         task.category_id = body.category_id
     db.commit()

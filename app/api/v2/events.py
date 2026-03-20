@@ -402,6 +402,50 @@ def list_event_templates(request: Request, db: Session = Depends(get_db)):
     return result
 
 
+class UpdateEventRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    category_id: int | None = None
+
+
+@router.patch("/events/{event_id}")
+def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    if body.title is not None:
+        event.title = body.title
+    if body.description is not None:
+        event.description = body.description
+    if body.category_id is not None:
+        event.category_id = body.category_id
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/events/{event_id}/archive")
+def archive_event(event_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    event.is_active = False
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/events/{event_id}/restore")
+def restore_event(event_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request)
+    event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    event.is_active = True
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/events/rebuild-projector")
 def rebuild_projector(request: Request, db: Session = Depends(get_db)):
     """Re-run the events projector to fix missing occurrences."""

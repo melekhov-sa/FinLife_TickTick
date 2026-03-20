@@ -89,6 +89,11 @@ export function CreateOperationModal({ onClose }: Props) {
     .slice()
     .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
 
+  const selectedFromWallet = (wallets ?? []).find((w) => w.wallet_id === fromWalletId);
+  const selectedToWallet = (wallets ?? []).find((w) => w.wallet_id === toWalletId);
+  const showFromGoal = selectedFromWallet?.wallet_type === "SAVINGS";
+  const showToGoal = selectedToWallet?.wallet_type === "SAVINGS";
+
   const walletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— выберите кошелёк —" },
     ...visibleWallets.map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
@@ -336,31 +341,33 @@ export function CreateOperationModal({ onClose }: Props) {
             </div>
           )}
 
-          {/* Goal selectors for TRANSFER */}
-          {opType === "TRANSFER" && (
+          {/* Goal selectors for TRANSFER — only shown when the wallet is SAVINGS */}
+          {opType === "TRANSFER" && (showFromGoal || showToGoal) && (
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Цель (откуда)</label>
-                {/* TODO: add v2 endpoint for goals (/api/v2/goals) */}
-                <input
-                  type="number"
-                  value={fromGoalId}
-                  onChange={(e) => setFromGoalId(e.target.value ? Number(e.target.value) : "")}
-                  placeholder="ID цели"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Цель (куда)</label>
-                {/* TODO: add v2 endpoint for goals (/api/v2/goals) */}
-                <input
-                  type="number"
-                  value={toGoalId}
-                  onChange={(e) => setToGoalId(e.target.value ? Number(e.target.value) : "")}
-                  placeholder="ID цели"
-                  className={inputCls}
-                />
-              </div>
+              {showFromGoal && (
+                <div>
+                  <label className={labelCls}>Цель (откуда)</label>
+                  <input
+                    type="number"
+                    value={fromGoalId}
+                    onChange={(e) => setFromGoalId(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="ID цели"
+                    className={inputCls}
+                  />
+                </div>
+              )}
+              {showToGoal && (
+                <div>
+                  <label className={labelCls}>Цель (куда)</label>
+                  <input
+                    type="number"
+                    value={toGoalId}
+                    onChange={(e) => setToGoalId(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="ID цели"
+                    className={inputCls}
+                  />
+                </div>
+              )}
             </div>
           )}
 

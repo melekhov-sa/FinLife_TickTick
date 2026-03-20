@@ -11,7 +11,7 @@ from sqlalchemy import func
 from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance, CategoryInfo
 from app.domain.transaction import Transaction
-from app.domain.wallet import WALLET_TYPE_SAVINGS, WALLET_TYPE_REGULAR
+from app.domain.wallet import WALLET_TYPE_SAVINGS, WALLET_TYPE_REGULAR, WALLET_TYPE_CREDIT
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
 from app.readmodels.projectors.transactions_feed import TransactionsFeedProjector
 from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
@@ -360,9 +360,9 @@ class CreateTransactionUseCase:
             raise TransactionValidationError(f"Кошелёк #{wallet_id} не найден")
         if wallet.is_archived:
             raise TransactionValidationError("Нельзя актуализировать архивированный кошелёк")
-        if wallet.wallet_type != WALLET_TYPE_REGULAR:
+        if wallet.wallet_type not in (WALLET_TYPE_REGULAR, WALLET_TYPE_CREDIT):
             raise TransactionValidationError(
-                "Актуализация баланса доступна только для обычных кошельков"
+                "Актуализация баланса доступна только для обычных и кредитных кошельков"
             )
 
         delta = target_balance - wallet.balance

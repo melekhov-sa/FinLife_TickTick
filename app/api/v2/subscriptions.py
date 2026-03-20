@@ -219,6 +219,40 @@ def update_member(
     return {"ok": True}
 
 
+class CompensateRequest(BaseModel):
+    member_id: int
+    wallet_id: int
+    amount: str  # Decimal as string
+    new_paid_until: str  # ISO date string
+
+
+@router.post("/subscriptions/{sub_id}/compensate")
+def compensate_subscription(sub_id: int, body: CompensateRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.subscriptions import CompensateSubscriptionUseCase
+    user_id = get_user_id(request)
+
+    from decimal import Decimal
+    from datetime import date as date_type
+
+    amount = Decimal(body.amount)
+    paid_until = date_type.fromisoformat(body.new_paid_until)
+
+    try:
+        CompensateSubscriptionUseCase(db).execute(
+            account_id=user_id,
+            subscription_id=sub_id,
+            wallet_id=body.wallet_id,
+            amount=amount,
+            member_id=body.member_id,
+            new_paid_until=paid_until,
+            actor_user_id=user_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"ok": True}
+
+
 @router.delete("/subscriptions/{sub_id}/members/{member_id}", status_code=204)
 def archive_member(
     sub_id: int, member_id: int,

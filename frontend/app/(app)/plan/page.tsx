@@ -6,6 +6,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { clsx } from "clsx";
+import { CalendarDays } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface PlanEntry {
   kind: string;
@@ -82,6 +84,115 @@ function isCompletable(kind: string): kind is CompletableKind {
   return kind === "task" || kind === "habit" || kind === "task_occ";
 }
 
+// ── Reschedule Modal ──────────────────────────────────────────────────────────
+
+function RescheduleModal({
+  entry,
+  onClose,
+}: {
+  entry: PlanEntry;
+  onClose: () => void;
+}) {
+  const [date, setDate] = useState(entry.date ?? "");
+  const [time, setTime] = useState(entry.time ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  async function save() {
+    if (!date) { setError("Укажите дату"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await api.patch(`/api/v2/tasks/${entry.id}`, {
+        due_date: date || null,
+        due_time: time || null,
+      });
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      onClose();
+    } catch {
+      setError("Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative bg-[#131b2e] border border-white/[0.10] rounded-2xl shadow-2xl p-5 w-[320px]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            Перенести задачу
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-[18px] leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors"
+            style={{ color: "var(--t-muted)" }}
+          >
+            ×
+          </button>
+        </div>
+
+        <p className="text-[12px] mb-4 truncate" style={{ color: "var(--t-muted)" }}>
+          {entry.title}
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+              Дата
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl px-3 py-2 text-[13px] font-medium border border-white/[0.10] bg-white/[0.04] focus:outline-none focus:border-indigo-500/60 transition-colors"
+              style={{ color: "var(--t-primary)" }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+              Время (необязательно)
+            </label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full rounded-xl px-3 py-2 text-[13px] font-medium border border-white/[0.10] bg-white/[0.04] focus:outline-none focus:border-indigo-500/60 transition-colors"
+              style={{ color: "var(--t-primary)" }}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="mt-3 text-[12px] text-red-400">{error}</p>
+        )}
+
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl py-2 text-[13px] font-semibold border border-white/[0.08] hover:bg-white/[0.04] transition-colors"
+            style={{ color: "var(--t-secondary)" }}
+          >
+            Отмена
+          </button>
+          <button
+            onClick={save}
+            disabled={saving || !date}
+            className="flex-1 rounded-xl py-2 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "..." : "Сохранить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Format ISO date → "Пятница, 20 марта" */
 function formatDayHeader(iso: string): string {
   const d = new Date(iso + "T00:00:00");
@@ -97,11 +208,14 @@ function formatDayHeader(iso: string): string {
 function EntryRow({
   entry,
   onComplete,
+  onReschedule,
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
+  onReschedule: (entry: PlanEntry) => void;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
+  const isTask = entry.kind === "task" || entry.kind === "task_occ";
   const isEvent = entry.kind === "event";
   const isOp = entry.kind === "planned_op";
   const opKind = entry.meta.op_kind as string | undefined;
@@ -109,7 +223,7 @@ function EntryRow({
 
   return (
     <div className={clsx(
-      "flex items-start gap-3 py-2.5 border-b last:border-0 rounded-lg px-2 -mx-2 transition-colors cursor-default",
+      "flex items-start gap-3 py-2.5 border-b last:border-0 rounded-lg px-2 -mx-2 transition-colors cursor-default group/row",
       "border-white/[0.06] hover:bg-white/[0.03]",
       entry.is_done && "opacity-40"
     )}>
@@ -186,11 +300,23 @@ function EntryRow({
         </div>
       </div>
 
-      {entry.is_overdue && !entry.is_done && (
-        <span className="text-[10px] font-semibold text-red-400 bg-red-500/[0.12] border border-red-500/20 px-1.5 py-0.5 rounded-md shrink-0 mt-0.5">
-          просрочено
-        </span>
-      )}
+      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+        {entry.is_overdue && !entry.is_done && (
+          <span className="text-[10px] font-semibold text-red-400 bg-red-500/[0.12] border border-red-500/20 px-1.5 py-0.5 rounded-md">
+            просрочено
+          </span>
+        )}
+        {isTask && !entry.is_done && (
+          <button
+            onClick={() => onReschedule(entry)}
+            className="opacity-0 group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-indigo-500/20"
+            style={{ color: "var(--t-faint)" }}
+            title="Перенести"
+          >
+            <CalendarDays size={13} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -198,10 +324,12 @@ function EntryRow({
 function DayGroupCard({
   group,
   onComplete,
+  onReschedule,
   onAddTask,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
+  onReschedule: (entry: PlanEntry) => void;
   onAddTask: () => void;
 }) {
   const label = group.date && !group.is_overdue_group
@@ -241,7 +369,7 @@ function DayGroupCard({
 
       {/* Entries */}
       {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} />
+        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} />
       ))}
 
       {/* Per-day quick-add */}
@@ -259,11 +387,46 @@ function DayGroupCard({
   );
 }
 
+function DoneTodayBlock({
+  entries,
+  onComplete,
+  onReschedule,
+}: {
+  entries: PlanEntry[];
+  onComplete: (entry: PlanEntry) => void;
+  onReschedule: (entry: PlanEntry) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const LIMIT = 3;
+  const visible = showAll ? entries : entries.slice(0, LIMIT);
+
+  return (
+    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4 mb-4">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
+        ✓ Выполнено сегодня · {entries.length}
+      </h3>
+      {visible.map((e) => (
+        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} />
+      ))}
+      {entries.length > LIMIT && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-2 text-[12px] font-medium px-2 py-1 rounded-lg transition-colors hover:bg-white/[0.04]"
+          style={{ color: "var(--t-faint)" }}
+        >
+          {showAll ? "Скрыть" : `Показать все (${entries.length})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done" | "archive">("active");
   const [range, setRange] = useState(7);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
+  const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<PlanData>({
@@ -278,6 +441,9 @@ export default function PlanPage() {
   return (
     <>
       {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
+      {rescheduleEntry && (
+        <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
+      )}
       {confirmEntry && isCompletable(confirmEntry.kind) && (
         <ConfirmCompleteModal
           kind={confirmEntry.kind as CompletableKind}
@@ -436,25 +602,20 @@ export default function PlanPage() {
             </div>
           )}
 
+          {/* ── Done today (collapsible) ──────────────────────────────── */}
+          {data && tab === "active" && data.done_today.length > 0 && (
+            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} />
+          )}
+
           {/* ── Day groups ────────────────────────────────────────────── */}
           {data && (
             <div className="space-y-4">
-              {tab === "active" && data.done_today.length > 0 && (
-                <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
-                    ✓ Выполнено сегодня · {data.done_today.length}
-                  </h3>
-                  {data.done_today.map((e) => (
-                    <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={setConfirmEntry} />
-                  ))}
-                </div>
-              )}
-
               {data.day_groups.map((g, i) => (
                 <DayGroupCard
                   key={i}
                   group={g}
                   onComplete={setConfirmEntry}
+                  onReschedule={setRescheduleEntry}
                   onAddTask={() => setShowCreateTask(true)}
                 />
               ))}
