@@ -112,11 +112,15 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const [showOpModal, setShowOpModal] = useState(false);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
 
-  const taskItems = [
+  const [showAllDone, setShowAllDone] = useState(false);
+
+  const activeTasks = [
     ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
     ...(active ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
-    ...(done ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
   ];
+  const doneTasks = (done ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ");
+  const taskItems = [...activeTasks, ...doneTasks];
+  const visibleDone = showAllDone ? doneTasks : doneTasks.slice(0, 2);
 
   const habitItems = [
     ...(overdue ?? []).filter((i) => i.kind === "habit"),
@@ -192,9 +196,21 @@ export function TodayBlock({ today, plannedOps }: Props) {
         {taskItems.length > 0 && (
           <div className="mb-2 md:mb-3">
             <SectionLabel label="Задачи" count={taskItems.length} />
-            {taskItems.map((item) => (
+            {activeTasks.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
             ))}
+            {visibleDone.map((item) => (
+              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+            ))}
+            {doneTasks.length > 2 && (
+              <button
+                onClick={() => setShowAllDone(v => !v)}
+                className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-400"
+                style={{ color: "var(--t-faint)" }}
+              >
+                {showAllDone ? "Скрыть" : `Ещё ${doneTasks.length - 2} выполненных`}
+              </button>
+            )}
           </div>
         )}
 
