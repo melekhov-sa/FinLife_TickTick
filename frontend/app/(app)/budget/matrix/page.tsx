@@ -39,11 +39,11 @@ function periodColCount(kind: PeriodKind): number {
   return kind === "current" ? 3 : kind === "past" ? 2 : 1;
 }
 
-// Heatmap background for plan cells — subtle, max 8%
+// Heatmap background for plan cells — subtle indigo tint
 function planHeatBg(value: number, maxVal: number): string | undefined {
   if (!value || !maxVal || value <= 0) return undefined;
   const intensity = Math.min(value / maxVal, 1);
-  const alpha = Math.round(intensity * 6 + 2); // 2-8%
+  const alpha = Math.round(intensity * 10 + 3); // 3-13%
   return `rgba(99, 102, 241, ${alpha / 100})`;
 }
 
@@ -339,7 +339,7 @@ function EditablePlanTd({
         title={cell.note || undefined}
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
-        {hasNote && <span className="text-[8px] text-amber-400 ml-0.5 align-super font-bold">●</span>}
+        {hasNote && <span className="text-[9px] text-amber-400 ml-0.5 align-super font-bold drop-shadow-[0_0_3px_rgba(251,191,36,0.6)]">●</span>}
       </span>
     </td>
   );
