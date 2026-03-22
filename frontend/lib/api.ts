@@ -2,21 +2,33 @@
  * API client for FinLife backend (v2 JSON API).
  *
  * In development, Next.js proxies /api/v2/* → http://localhost:8000/api/v2/*
- * so session cookies work on the same origin (no CORS complexity).
- * See next.config.ts rewrites.
+ * Auth: Supabase JWT sent as Authorization: Bearer <token> header.
  */
+import { supabase } from "@/lib/supabase";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return {};
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const authHeader = await getAuthHeader();
+
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader,
+      ...init?.headers,
+    },
     ...init,
   });
 
   if (res.status === 401) {
-    // Redirect to login if not authenticated
+    await supabase.auth.signOut();
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }

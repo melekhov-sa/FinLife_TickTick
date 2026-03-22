@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     EMAIL_SMTP_USER: str = ""
     EMAIL_SMTP_PASSWORD: str = ""
 
+    # Supabase Auth
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

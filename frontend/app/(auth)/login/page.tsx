@@ -1,39 +1,45 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    try {
-      const formData = new FormData();
-      formData.append("email", email);
-      formData.append("password", password);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-      const res = await fetch("/api/v2/auth/login", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        window.location.href = "/";
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Неверный email или пароль");
-      }
-    } catch {
-      setError("Ошибка соединения");
-    } finally {
+    if (error) {
+      setError("Неверный email или пароль");
       setLoading(false);
+    } else {
+      window.location.href = "/";
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email) {
+      setError("Введите email для сброса пароля");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      setError("Ошибка отправки письма. Проверьте email.");
+    } else {
+      setResetSent(true);
     }
   }
 
@@ -48,44 +54,65 @@ export default function LoginPage() {
           <span className="text-white/80 font-semibold text-lg">FinLife</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs text-white/68 mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
-              placeholder="you@example.com"
-            />
+        {resetSent ? (
+          <div className="text-center space-y-3">
+            <p className="text-white/80 text-sm">Письмо со ссылкой для сброса пароля отправлено на {email}</p>
+            <button
+              onClick={() => setResetSent(false)}
+              className="text-indigo-400 text-xs hover:underline"
+            >
+              Вернуться ко входу
+            </button>
           </div>
-          <div>
-            <label className="block text-xs text-white/68 mb-1.5">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
-              placeholder="••••••••"
-            />
-          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs text-white/68 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-white/68 mb-1.5">Пароль</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
+                placeholder="••••••••"
+              />
+            </div>
 
-          {error && (
-            <p className="text-red-400/80 text-xs">{error}</p>
-          )}
+            {error && (
+              <p className="text-red-400/80 text-xs">{error}</p>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-sm rounded-lg py-2.5 transition-colors mt-2"
-          >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-sm rounded-lg py-2.5 transition-colors mt-2"
+            >
+              {loading ? "Вход…" : "Войти"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+              className="w-full text-white/40 hover:text-white/60 text-xs transition-colors pt-1"
+            >
+              Забыли пароль?
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

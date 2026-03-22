@@ -1,24 +1,45 @@
 """
 Shared dependencies for v2 API routes.
+Auth via Supabase JWT (Bearer token in Authorization header).
 """
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import User
+from app.infrastructure.supabase_client import get_supabase
+from app.api.deps import get_db
 
 
-def get_user_id(request: Request) -> int:
-    """Extract user_id from session or raise 401."""
-    user_id = request.session.get("user_id")
-    if not user_id:
+def _get_token(request: Request) -> str:
+    """Extract Bearer token from Authorization header."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return int(user_id)
+    return auth[7:]
 
 
-def get_current_user(request: Request, db: Session) -> User:
-    """Return User ORM object or raise 401."""
-    user_id = get_user_id(request)
-    user = db.query(User).filter(User.id == user_id).first()
+def _get_email_from_token(token: str) -> str:
+    """Validate Supabase JWT and return the user's email."""
+    try:
+        response = get_supabase().auth.get_user(token)
+        return response.user.email
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def get_user_id(request: Request, db: Session = Depends(get_db)) -> int:
+    """Validate JWT and return local user_id."""
+    email = _get_email_from_token(_get_token(request))
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user.id
+
+
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    """Validate JWT and return User ORM object."""
+    email = _get_email_from_token(_get_token(request))
+    user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
