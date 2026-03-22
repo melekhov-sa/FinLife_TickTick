@@ -36,18 +36,56 @@ services:
     command: >
       sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     networks:
-     - shared
-     - default    
+      - shared
+      - default
 
-  
+  app_test:
+    build: .
+    container_name: centricore_app_test
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:testpass123@centricore_db_test:5432/centricore_test
+      - CLARITY_PROJECT_ID=${CLARITY_PROJECT_ID:-}
+      - CLARITY_ENABLED=${CLARITY_ENABLED:-false}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_MAILTO=${VAPID_MAILTO:-mailto:admin@finlife.app}
+    command: >
+      sh -lc "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - shared
+      - default
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        BACKEND_URL: http://centricore_app:8000
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
     container_name: centricore_frontend
     restart: unless-stopped
     depends_on:
       - app
+    networks:
+      - shared
+      - default
+
+  frontend_test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        BACKEND_URL: http://centricore_app_test:8000
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    container_name: centricore_frontend_test
+    restart: unless-stopped
+    depends_on:
+      - app_test
     networks:
       - shared
       - default
