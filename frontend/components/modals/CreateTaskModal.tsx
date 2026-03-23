@@ -323,24 +323,22 @@ export function CreateTaskModal({ onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v2/tasks", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const parsed = parseBackendErrors(res.status, data);
-        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
-        else setError(parsed.message ?? "Ошибка при создании задачи");
-        return;
-      }
+      await api.post("/api/v2/tasks", buildPayload());
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       onClose();
-    } catch {
-      setError("Не удалось подключиться к серверу");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      const match = msg.match(/API error (\d+): ([\s\S]*)/);
+      if (match) {
+        try {
+          const parsed = parseBackendErrors(parseInt(match[1]), JSON.parse(match[2]));
+          if (parsed.fieldErrors) { setFieldErrors(parsed.fieldErrors); return; }
+          setError(parsed.message ?? "Ошибка при создании задачи");
+        } catch { setError("Ошибка при создании задачи"); }
+      } else {
+        setError("Не удалось подключиться к серверу");
+      }
     } finally {
       setSaving(false);
     }

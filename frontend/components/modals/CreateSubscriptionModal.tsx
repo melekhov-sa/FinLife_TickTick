@@ -61,28 +61,26 @@ export function CreateSubscriptionModal({ onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v2/subscriptions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          expense_category_id: expenseCategoryId,
-          income_category_id: incomeCategoryId,
-        }),
+      await api.post("/api/v2/subscriptions", {
+        name: name.trim(),
+        expense_category_id: expenseCategoryId,
+        income_category_id: incomeCategoryId,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const parsed = parseBackendErrors(res.status, data);
-        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
-        else setError(parsed.message ?? "Ошибка при создании подписки");
-        return;
-      }
       qc.invalidateQueries({ queryKey: ["subscriptions"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       onClose();
-    } catch {
-      setError("Не удалось подключиться к серверу");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      const match = msg.match(/API error (\d+): ([\s\S]*)/);
+      if (match) {
+        try {
+          const parsed = parseBackendErrors(parseInt(match[1]), JSON.parse(match[2]));
+          if (parsed.fieldErrors) { setFieldErrors(parsed.fieldErrors); return; }
+          setError(parsed.message ?? "Ошибка при создании подписки");
+        } catch { setError("Ошибка при создании подписки"); }
+      } else {
+        setError("Не удалось подключиться к серверу");
+      }
     } finally {
       setSaving(false);
     }

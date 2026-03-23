@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import { FolderPlus } from "lucide-react";
 
@@ -29,24 +30,13 @@ export default function NewProjectPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v2/projects", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          status,
-          start_date: startDate || null,
-          due_date: dueDate || null,
-        }),
+      const { id } = await api.post<{ id: number }>("/api/v2/projects", {
+        title: title.trim(),
+        description: description.trim() || null,
+        status,
+        start_date: startDate || null,
+        due_date: dueDate || null,
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail ?? "Ошибка при создании проекта");
-        return;
-      }
-      const { id } = await res.json();
       router.push(`/projects/${id}`);
     } catch {
       setError("Не удалось подключиться к серверу");

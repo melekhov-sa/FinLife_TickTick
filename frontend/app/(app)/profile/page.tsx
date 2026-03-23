@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { clsx } from "clsx";
 import { ArrowRight, Star, Zap, TrendingUp, Settings, Bell, Wallet, Lock } from "lucide-react";
@@ -57,9 +58,7 @@ export default function ProfilePage() {
 
   const { data: rawData, isPending, isError } = useQuery<ProfileData>({
     queryKey: ["profile"],
-    queryFn: () =>
-      fetch("/api/v2/profile", { credentials: "include" })
-        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
+    queryFn: () => api.get<ProfileData>("/api/v2/profile"),
     staleTime: 60_000,
   });
 

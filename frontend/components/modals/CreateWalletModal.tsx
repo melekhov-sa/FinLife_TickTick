@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Select } from "@/components/ui/Select";
 
@@ -46,27 +47,20 @@ export function CreateWalletModal({ onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v2/wallets", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: t,
-          wallet_type: walletType,
-          currency: cur,
-          initial_balance: initialBalance || "0",
-        }),
+      await api.post("/api/v2/wallets", {
+        title: t,
+        wallet_type: walletType,
+        currency: cur,
+        initial_balance: initialBalance || "0",
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.detail ?? "Ошибка при создании кошелька");
-        return;
-      }
       qc.invalidateQueries({ queryKey: ["wallets"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       onClose();
-    } catch {
-      setError("Не удалось подключиться к серверу");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      const match = msg.match(/API error \d+: ([\s\S]*)/);
+      if (match) { try { setError(JSON.parse(match[1])?.detail ?? "Ошибка"); } catch { setError("Ошибка при создании кошелька"); } }
+      else setError("Не удалось подключиться к серверу");
     } finally {
       setSaving(false);
     }

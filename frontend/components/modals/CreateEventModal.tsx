@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { api } from "@/lib/api";
 import { CreateEventRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
@@ -89,10 +90,7 @@ export function CreateEventModal({ onClose }: Props) {
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
     queryKey: ["work-categories"],
-    queryFn: () =>
-      fetch("/api/v2/work-categories", { credentials: "include" }).then((r) =>
-        r.json(),
-      ),
+    queryFn: () => api.get<WorkCategoryItem[]>("/api/v2/work-categories"),
     staleTime: 5 * 60_000,
   });
 
@@ -164,25 +162,23 @@ export function CreateEventModal({ onClose }: Props) {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/v2/events", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const parsed = parseBackendErrors(res.status, data);
-        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
-        else setError(parsed.message ?? "Ошибка при создании события");
-        return;
-      }
+      await api.post("/api/v2/events", buildPayload());
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       onClose();
-    } catch {
-      setError("Не удалось подключиться к серверу");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      const match = msg.match(/API error (\d+): ([\s\S]*)/);
+      if (match) {
+        try {
+          const parsed = parseBackendErrors(parseInt(match[1]), JSON.parse(match[2]));
+          if (parsed.fieldErrors) { setFieldErrors(parsed.fieldErrors); return; }
+          setError(parsed.message ?? "Ошибка при создании события");
+        } catch { setError("Ошибка при создании события"); }
+      } else {
+        setError("Не удалось подключиться к серверу");
+      }
     } finally {
       setSaving(false);
     }
