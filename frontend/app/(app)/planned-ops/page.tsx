@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
-import { CalendarClock, LayoutList } from "lucide-react";
+import { CalendarClock, LayoutList, Play } from "lucide-react";
+import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,9 @@ interface UpcomingOccurrence {
   scheduled_date: string;
   status: string;
   is_overdue: boolean;
+  wallet_id: number | null;
+  destination_wallet_id: number | null;
+  category_id: number | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -161,7 +165,13 @@ function TemplateRow({ item }: { item: PlannedOpItem }) {
 
 // ── OccurrenceRow ─────────────────────────────────────────────────────────────
 
-function OccurrenceRow({ occ }: { occ: UpcomingOccurrence }) {
+function OccurrenceRow({
+  occ,
+  onExecute,
+}: {
+  occ: UpcomingOccurrence;
+  onExecute: (occ: UpcomingOccurrence) => void;
+}) {
   const today = isToday(occ.scheduled_date);
   const s = kindStyle(occ.kind);
   const amountSign = occ.kind === "INCOME" ? "+" : occ.kind === "EXPENSE" ? "\u2212" : "\u2194";
@@ -173,7 +183,7 @@ function OccurrenceRow({ occ }: { occ: UpcomingOccurrence }) {
     : "bg-white/[0.06] border-white/10";
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors">
+    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/occ">
       {/* Date badge */}
       <div className={clsx("shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border text-center gap-0.5", dateCls)}>
         <span className="text-[18px] font-bold leading-none tabular-nums">
@@ -211,11 +221,19 @@ function OccurrenceRow({ occ }: { occ: UpcomingOccurrence }) {
         </div>
       </div>
 
-      {/* Amount */}
-      <div className="shrink-0 text-right">
+      {/* Amount + Execute */}
+      <div className="shrink-0 flex items-center gap-2">
         <span className={clsx("text-[15px] font-semibold tabular-nums", s.text)}>
           {amountSign}{formatAmount(occ.amount)} ₽
         </span>
+        <button
+          onClick={() => onExecute(occ)}
+          className="opacity-0 group-hover/occ:opacity-100 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[11px] font-semibold transition-all"
+          title="Выполнить операцию"
+        >
+          <Play size={10} className="fill-current" />
+          Выполнить
+        </button>
       </div>
     </div>
   );
@@ -299,12 +317,32 @@ function TemplatesTab() {
 
 function UpcomingTab() {
   const { data, isLoading, isError } = useUpcoming();
+  const [executeOcc, setExecuteOcc] = useState<UpcomingOccurrence | null>(null);
 
   const overdueCount = data?.filter((o) => o.is_overdue).length ?? 0;
   const todayCount = data?.filter((o) => isToday(o.scheduled_date)).length ?? 0;
 
+  const initialValues: CreateOperationInitialValues | undefined = executeOcc
+    ? {
+        opType: executeOcc.kind as "INCOME" | "EXPENSE" | "TRANSFER",
+        amount: executeOcc.amount,
+        walletId: executeOcc.wallet_id ?? undefined,
+        fromWalletId: executeOcc.wallet_id ?? undefined,
+        toWalletId: executeOcc.destination_wallet_id ?? undefined,
+        categoryId: executeOcc.category_id ?? undefined,
+      }
+    : undefined;
+
   return (
     <div className="space-y-5">
+      {executeOcc && (
+        <CreateOperationModal
+          initialValues={initialValues}
+          occurrenceId={executeOcc.id}
+          onClose={() => setExecuteOcc(null)}
+        />
+      )}
+
       {/* KPI */}
       {data && (
         <div className="grid grid-cols-3 gap-3">
@@ -381,7 +419,7 @@ function UpcomingTab() {
       {data && data.length > 0 && (
         <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.03] px-5 py-1">
           {data.map((occ) => (
-            <OccurrenceRow key={occ.id} occ={occ} />
+            <OccurrenceRow key={occ.id} occ={occ} onExecute={setExecuteOcc} />
           ))}
         </div>
       )}

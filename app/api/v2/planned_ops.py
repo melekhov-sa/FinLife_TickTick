@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -31,6 +31,9 @@ class UpcomingOccurrence(BaseModel):
     scheduled_date: str
     status: str
     is_overdue: bool
+    wallet_id: int | None = None
+    destination_wallet_id: int | None = None
+    category_id: int | None = None
 
 
 @router.get("/planned-ops", response_model=list[PlannedOpItem])
@@ -39,7 +42,7 @@ def list_planned_ops(
     db: Session = Depends(get_db),
     archived: bool = Query(False),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     q = db.query(OperationTemplateModel).filter(
         OperationTemplateModel.account_id == user_id
     )
@@ -81,7 +84,7 @@ def list_planned_ops(
 
 @router.get("/planned-ops/upcoming", response_model=list[UpcomingOccurrence])
 def list_upcoming(request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date.today()
     horizon = today + timedelta(days=90)
 
@@ -112,6 +115,26 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
             scheduled_date=occ.scheduled_date.isoformat(),
             status=occ.status,
             is_overdue=occ.scheduled_date < today,
+            wallet_id=tmpl.wallet_id,
+            destination_wallet_id=tmpl.destination_wallet_id,
+            category_id=tmpl.category_id,
         )
         for occ, tmpl in rows
     ]
+
+
+@router.post("/planned-ops/occurrences/{occurrence_id}/done", status_code=200)
+def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    """Mark a planned operation occurrence as DONE (called after creating the transaction)."""
+    user_id = get_user_id(request, db)
+    from datetime import datetime, timezone
+    occ = db.query(OperationOccurrence).filter(
+        OperationOccurrence.id == occurrence_id,
+        OperationOccurrence.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    occ.status = "DONE"
+    occ.completed_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"ok": True}

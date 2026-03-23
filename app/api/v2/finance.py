@@ -39,7 +39,7 @@ def list_wallets(
     db: Session = Depends(get_db),
     include_archived: bool = Query(False),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     q = db.query(WalletBalance).filter(WalletBalance.account_id == user_id)
     if not include_archived:
         q = q.filter(WalletBalance.is_archived == False)
@@ -70,7 +70,7 @@ class CreateWalletRequest(BaseModel):
 @router.post("/wallets", status_code=201)
 def create_wallet(body: CreateWalletRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.wallets import CreateWalletUseCase, WalletValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     title = body.title.strip()
     if not title:
         raise HTTPException(status_code=400, detail="Название не может быть пустым")
@@ -94,7 +94,7 @@ class RenameWalletRequest(BaseModel):
 
 @router.patch("/wallets/{wallet_id}")
 def rename_wallet(wallet_id: int, body: RenameWalletRequest, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     wallet = db.query(WalletBalance).filter(
         WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
     ).first()
@@ -112,7 +112,7 @@ class ActualizeBalanceRequest(BaseModel):
 @router.post("/wallets/{wallet_id}/actualize-balance")
 def actualize_balance(wallet_id: int, body: ActualizeBalanceRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.transactions import CreateTransactionUseCase
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         target = Decimal(body.target_balance)
         result = CreateTransactionUseCase(db).actualize_balance(
@@ -132,7 +132,7 @@ def actualize_balance(wallet_id: int, body: ActualizeBalanceRequest, request: Re
 
 @router.delete("/wallets/{wallet_id}", status_code=204)
 def archive_wallet(wallet_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     wallet = db.query(WalletBalance).filter(
         WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
     ).first()
@@ -144,7 +144,7 @@ def archive_wallet(wallet_id: int, request: Request, db: Session = Depends(get_d
 
 @router.post("/wallets/{wallet_id}/restore", status_code=200)
 def restore_wallet(wallet_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     wallet = db.query(WalletBalance).filter(
         WalletBalance.wallet_id == wallet_id, WalletBalance.account_id == user_id,
     ).first()
@@ -181,7 +181,7 @@ def list_fin_categories(
     db: Session = Depends(get_db),
     include_archived: bool = Query(False),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     q = db.query(CategoryInfo).filter(CategoryInfo.account_id == user_id)
     if not include_archived:
         q = q.filter(CategoryInfo.is_archived == False)
@@ -236,7 +236,7 @@ def create_fin_category(
 ):
     from app.application.categories import CreateCategoryUseCase, CategoryValidationError
     from app.domain.category import CATEGORY_TYPE_INCOME, CATEGORY_TYPE_EXPENSE
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     if body.category_type not in (CATEGORY_TYPE_INCOME, CATEGORY_TYPE_EXPENSE):
         raise HTTPException(status_code=400, detail="category_type должен быть INCOME или EXPENSE")
     title = body.title.strip()
@@ -279,7 +279,7 @@ def update_fin_category(
     db: Session = Depends(get_db),
 ):
     from app.application.categories import UpdateCategoryUseCase, CategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     cat = db.query(CategoryInfo).filter(
         CategoryInfo.category_id == category_id,
         CategoryInfo.account_id == user_id,
@@ -308,7 +308,7 @@ def archive_fin_category(
     db: Session = Depends(get_db),
 ):
     from app.application.categories import ArchiveCategoryUseCase, CategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         ArchiveCategoryUseCase(db).execute(
             category_id=category_id,
@@ -327,7 +327,7 @@ def restore_fin_category(
     db: Session = Depends(get_db),
 ):
     from app.application.categories import UnarchiveCategoryUseCase, CategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         UnarchiveCategoryUseCase(db).execute(
             category_id=category_id,
@@ -368,7 +368,7 @@ def list_transactions(
     per_page: int = Query(50, le=200),
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     q = db.query(TransactionFeed).filter(TransactionFeed.account_id == user_id)
 
@@ -462,7 +462,7 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
         SubscriptionValidationError,
         validate_coverage_before_transaction,
     )
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     try:
         amount = Decimal(body.amount)
@@ -569,3 +569,51 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
             raise HTTPException(status_code=400, detail=str(e))
 
     return {"id": tx_id}
+
+
+# ── Update transaction ──────────────────────────────────────────────────────
+
+class UpdateTransactionRequest(BaseModel):
+    amount: str | None = None
+    wallet_id: int | None = None
+    category_id: int | None = None
+    description: str | None = None
+
+
+@router.patch("/transactions/{transaction_id}")
+def update_transaction(
+    transaction_id: int,
+    body: UpdateTransactionRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.application.transactions import UpdateTransactionUseCase, TransactionValidationError
+    user_id = get_user_id(request, db)
+
+    changes: dict = {}
+    if body.amount is not None:
+        try:
+            changes["amount"] = Decimal(body.amount)
+        except InvalidOperation:
+            raise HTTPException(status_code=400, detail="Некорректная сумма")
+    if body.wallet_id is not None:
+        changes["wallet_id"] = body.wallet_id
+    if "category_id" in body.model_fields_set:
+        changes["category_id"] = body.category_id  # None = clear category
+    if body.description is not None:
+        changes["description"] = body.description
+
+    if not changes:
+        raise HTTPException(status_code=400, detail="Нет изменений")
+
+    try:
+        UpdateTransactionUseCase(db).execute(
+            transaction_id=transaction_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+            **changes,
+        )
+    except TransactionValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"ok": True}

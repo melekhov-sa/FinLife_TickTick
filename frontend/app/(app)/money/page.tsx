@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { Select } from "@/components/ui/Select";
+import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, Pencil } from "lucide-react";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
+import { api } from "@/lib/api";
 
 interface TransactionItem {
   transaction_id: number;
@@ -49,6 +51,132 @@ const OP_ACCENT: Record<string, string> = {
   TRANSFER: "bg-blue-400",
 };
 
+// ── Edit Transaction Modal ─────────────────────────────────────────────────────
+
+function EditTransactionModal({
+  tx,
+  wallets,
+  finCats,
+  onClose,
+  onSaved,
+}: {
+  tx: TransactionItem;
+  wallets: WalletItem[];
+  finCats: FinCategoryItem[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [amount, setAmount] = useState(tx.amount);
+  const [walletId, setWalletId] = useState<string>(String(tx.wallet_id ?? ""));
+  const [categoryId, setCategoryId] = useState<string>(String(tx.category_id ?? ""));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isTransfer = tx.operation_type === "TRANSFER";
+
+  const walletOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— кошелёк —" },
+    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
+  ], [wallets]);
+
+  const categoryOptions: SelectOption[] = useMemo(() => {
+    const cats = (finCats ?? []).filter(
+      (c) => c.category_type === tx.operation_type && c.parent_id !== null
+    );
+    return [
+      { value: "", label: "— без категории —" },
+      ...cats.map((c) => ({ value: String(c.category_id), label: c.title })),
+    ];
+  }, [finCats, tx.operation_type]);
+
+  const inputCls = "w-full px-3 h-9 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
+  const labelCls = "block text-[11px] font-medium text-white/55 uppercase tracking-wider mb-1.5";
+
+  async function handleSave() {
+    const n = parseFloat(amount);
+    if (!amount || isNaN(n) || n <= 0) { setError("Введите корректную сумму"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await api.patch(`/api/v2/transactions/${tx.transaction_id}`, {
+        amount,
+        ...(isTransfer ? {} : { wallet_id: walletId ? Number(walletId) : undefined }),
+        ...(isTransfer ? {} : { category_id: categoryId ? Number(categoryId) : null }),
+      });
+      onSaved();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message.replace(/^API error \d+: /, "") : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative bg-[#131b2e] border border-white/[0.10] rounded-2xl shadow-2xl p-5 w-[340px] space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-white/90">Редактировать операцию</h3>
+          <button
+            onClick={onClose}
+            className="text-[18px] leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-white/50 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+
+        <div>
+          <label className={labelCls}>Сумма</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={inputCls}
+            autoFocus
+          />
+        </div>
+
+        {!isTransfer && (
+          <div>
+            <label className={labelCls}>Кошелёк</label>
+            <Select value={walletId} onChange={setWalletId} options={walletOptions} />
+          </div>
+        )}
+
+        {(tx.operation_type === "INCOME" || tx.operation_type === "EXPENSE") && (
+          <div>
+            <label className={labelCls}>Категория</label>
+            <Select value={categoryId} onChange={setCategoryId} options={categoryOptions} searchable />
+          </div>
+        )}
+
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl py-2 text-[13px] font-semibold border border-white/[0.08] hover:bg-white/[0.04] text-white/60 transition-colors"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 rounded-xl py-2 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+          >
+            {saving ? "..." : "Сохранить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatAmount(amount: string, type: string, currency: string) {
   const num = parseFloat(amount);
   const sign = type === "INCOME" ? "+" : type === "EXPENSE" ? "\u2212" : "\u2194";
@@ -68,6 +196,7 @@ function formatTime(iso: string) {
 
 export default function MoneyPage() {
   const [showOpModal, setShowOpModal] = useState(false);
+  const [editTx, setEditTx] = useState<TransactionItem | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [opTypeFilter, setOpTypeFilter] = useState("");
   const [walletFilter, setWalletFilter] = useState("");
@@ -76,6 +205,7 @@ export default function MoneyPage() {
   const [dateTo, setDateTo] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const qc = useQueryClient();
 
   const params = new URLSearchParams();
   if (opTypeFilter) params.set("operation_type", opTypeFilter);
@@ -88,20 +218,19 @@ export default function MoneyPage() {
 
   const { data, isLoading, isError } = useQuery<TransactionsResponse>({
     queryKey: ["transactions", opTypeFilter, walletFilter, categoryFilter, dateFrom, dateTo, search, page],
-    queryFn: () =>
-      fetch(`/api/v2/transactions?${params}`, { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<TransactionsResponse>(`/api/v2/transactions?${params}`),
     staleTime: 30_000,
   });
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
-    queryFn: () => fetch("/api/v2/wallets", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<WalletItem[]>("/api/v2/wallets"),
     staleTime: 60_000,
   });
 
   const { data: finCats } = useQuery<FinCategoryItem[]>({
     queryKey: ["fin-categories"],
-    queryFn: () => fetch("/api/v2/fin-categories", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<FinCategoryItem[]>("/api/v2/fin-categories"),
     staleTime: 5 * 60_000,
   });
 
@@ -137,6 +266,19 @@ export default function MoneyPage() {
   return (
     <>
       {showOpModal && <CreateOperationModal onClose={() => { setShowOpModal(false); }} />}
+      {editTx && (
+        <EditTransactionModal
+          tx={editTx}
+          wallets={wallets ?? []}
+          finCats={finCats ?? []}
+          onClose={() => setEditTx(null)}
+          onSaved={() => {
+            setEditTx(null);
+            qc.invalidateQueries({ queryKey: ["transactions"] });
+            qc.invalidateQueries({ queryKey: ["wallets"] });
+          }}
+        />
+      )}
       <AppTopbar title="Финансы" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl">
@@ -265,7 +407,7 @@ export default function MoneyPage() {
                 <div
                   key={tx.transaction_id}
                   className={clsx(
-                    "flex items-center gap-2.5 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 hover:bg-white/[0.03] transition-colors",
+                    "flex items-center gap-2.5 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 hover:bg-white/[0.03] transition-colors group/tx",
                     i < data.items.length - 1 && "border-b border-white/[0.04]"
                   )}
                 >
@@ -283,13 +425,22 @@ export default function MoneyPage() {
                       {tx.category_title && tx.description && ` · ${tx.category_title}`}
                     </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className={clsx("text-[13px] md:text-sm font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
-                      {formatAmount(tx.amount, tx.operation_type, tx.currency)}
-                    </p>
-                    <p className="text-[9px] md:text-[11px] text-white/45 mt-0.5 tabular-nums">
-                      {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
-                    </p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setEditTx(tx)}
+                      className="opacity-0 group-hover/tx:opacity-100 w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all"
+                      title="Редактировать"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <div className="text-right">
+                      <p className={clsx("text-[13px] md:text-sm font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
+                        {formatAmount(tx.amount, tx.operation_type, tx.currency)}
+                      </p>
+                      <p className="text-[9px] md:text-[11px] text-white/45 mt-0.5 tabular-nums">
+                        {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}

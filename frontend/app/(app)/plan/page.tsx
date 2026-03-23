@@ -5,8 +5,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
+import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { clsx } from "clsx";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Play } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -209,10 +210,12 @@ function EntryRow({
   entry,
   onComplete,
   onReschedule,
+  onExecuteOp,
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
+  onExecuteOp: (entry: PlanEntry) => void;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
@@ -316,6 +319,16 @@ function EntryRow({
             <CalendarDays size={13} />
           </button>
         )}
+        {isOp && !entry.is_done && (
+          <button
+            onClick={() => onExecuteOp(entry)}
+            className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
+            title="Выполнить операцию"
+          >
+            <Play size={9} className="fill-current" />
+            Выполнить
+          </button>
+        )}
       </div>
     </div>
   );
@@ -325,11 +338,13 @@ function DayGroupCard({
   group,
   onComplete,
   onReschedule,
+  onExecuteOp,
   onAddTask,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
+  onExecuteOp: (entry: PlanEntry) => void;
   onAddTask: () => void;
 }) {
   const label = group.date && !group.is_overdue_group
@@ -369,7 +384,7 @@ function DayGroupCard({
 
       {/* Entries */}
       {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} />
+        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} />
       ))}
 
       {/* Per-day quick-add */}
@@ -391,10 +406,12 @@ function DoneTodayBlock({
   entries,
   onComplete,
   onReschedule,
+  onExecuteOp,
 }: {
   entries: PlanEntry[];
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
+  onExecuteOp: (entry: PlanEntry) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const LIMIT = 3;
@@ -406,7 +423,7 @@ function DoneTodayBlock({
         ✓ Выполнено сегодня · {entries.length}
       </h3>
       {visible.map((e) => (
-        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} />
+        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} />
       ))}
       {entries.length > LIMIT && (
         <button
@@ -427,22 +444,40 @@ export default function PlanPage() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
+  const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading, isError } = useQuery<PlanData>({
     queryKey: ["plan", tab, range],
-    queryFn: () =>
-      fetch(`/api/v2/plan?tab=${tab}&range=${range}`, { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<PlanData>(`/api/v2/plan?tab=${tab}&range=${range}`),
     staleTime: 30_000,
   });
 
   const summary = data?.summary;
+
+  const executeInitialValues: CreateOperationInitialValues | undefined = executeEntry
+    ? {
+        opType: executeEntry.meta.op_kind as "INCOME" | "EXPENSE" | "TRANSFER" | undefined,
+        amount: executeEntry.meta.amount as string | undefined,
+        walletId: executeEntry.meta.wallet_id as number | undefined,
+        fromWalletId: executeEntry.meta.wallet_id as number | undefined,
+        toWalletId: executeEntry.meta.destination_wallet_id as number | undefined,
+        categoryId: executeEntry.meta.category_id as number | undefined,
+      }
+    : undefined;
 
   return (
     <>
       {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
       {rescheduleEntry && (
         <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
+      )}
+      {executeEntry && (
+        <CreateOperationModal
+          initialValues={executeInitialValues}
+          occurrenceId={executeEntry.meta.occurrence_id as number | undefined}
+          onClose={() => setExecuteEntry(null)}
+        />
       )}
       {confirmEntry && isCompletable(confirmEntry.kind) && (
         <ConfirmCompleteModal
@@ -604,7 +639,7 @@ export default function PlanPage() {
 
           {/* ── Done today (collapsible) ──────────────────────────────── */}
           {data && tab === "active" && data.done_today.length > 0 && (
-            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} />
+            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} />
           )}
 
           {/* ── Day groups ────────────────────────────────────────────── */}
@@ -616,6 +651,7 @@ export default function PlanPage() {
                   group={g}
                   onComplete={setConfirmEntry}
                   onReschedule={setRescheduleEntry}
+                  onExecuteOp={setExecuteEntry}
                   onAddTask={() => setShowCreateTask(true)}
                 />
               ))}

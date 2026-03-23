@@ -11,11 +11,29 @@ import {
   validateWithSchema, mergeErrors, parseBackendErrors,
   inputErrorBorder, errTextCls, type FieldErrors,
 } from "@/lib/formErrors";
+import { api } from "@/lib/api";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
+interface GoalItem {
+  goal_id: number;
+  title: string;
+  currency: string;
+}
+
+export interface CreateOperationInitialValues {
+  opType?: OpType;
+  amount?: string;
+  walletId?: number;
+  fromWalletId?: number;
+  toWalletId?: number;
+  categoryId?: number;
+}
+
 interface Props {
   onClose: () => void;
+  initialValues?: CreateOperationInitialValues;
+  occurrenceId?: number;
 }
 
 const inputCls =
@@ -31,15 +49,15 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
   { value: "TRANSFER", label: "Перемещение",  activeColor: "bg-blue-600 border-blue-500 text-white" },
 ];
 
-export function CreateOperationModal({ onClose }: Props) {
+export function CreateOperationModal({ onClose, initialValues, occurrenceId }: Props) {
   const qc = useQueryClient();
 
-  const [opType, setOpType] = useState<OpType | null>(null);
-  const [amount, setAmount] = useState("");
-  const [walletId, setWalletId] = useState<number | "">("");
-  const [fromWalletId, setFromWalletId] = useState<number | "">("");
-  const [toWalletId, setToWalletId] = useState<number | "">("");
-  const [categoryId, setCategoryId] = useState<number | "">("");
+  const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? null);
+  const [amount, setAmount] = useState(initialValues?.amount ?? "");
+  const [walletId, setWalletId] = useState<number | "">(initialValues?.walletId ?? "");
+  const [fromWalletId, setFromWalletId] = useState<number | "">(initialValues?.fromWalletId ?? "");
+  const [toWalletId, setToWalletId] = useState<number | "">(initialValues?.toWalletId ?? "");
+  const [categoryId, setCategoryId] = useState<number | "">(initialValues?.categoryId ?? "");
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
 
@@ -61,23 +79,30 @@ export function CreateOperationModal({ onClose }: Props) {
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
-    queryFn: () => fetch("/api/v2/wallets", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<WalletItem[]>("/api/v2/wallets"),
     staleTime: 60_000,
     enabled: opType !== null,
   });
 
   const { data: finCats } = useQuery<FinCategoryItem[]>({
     queryKey: ["fin-categories"],
-    queryFn: () => fetch("/api/v2/fin-categories", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<FinCategoryItem[]>("/api/v2/fin-categories"),
     staleTime: 5 * 60_000,
     enabled: opType === "INCOME" || opType === "EXPENSE",
   });
 
   const { data: subscriptions } = useQuery<SubscriptionItem[]>({
     queryKey: ["subscriptions"],
-    queryFn: () => fetch("/api/v2/subscriptions", { credentials: "include" }).then((r) => r.json()),
+    queryFn: () => api.get<SubscriptionItem[]>("/api/v2/subscriptions"),
     staleTime: 5 * 60_000,
     enabled: opType === "EXPENSE" && subOpen,
+  });
+
+  const { data: goals } = useQuery<GoalItem[]>({
+    queryKey: ["goals"],
+    queryFn: () => api.get<GoalItem[]>("/api/v2/goals"),
+    staleTime: 5 * 60_000,
+    enabled: opType === "TRANSFER",
   });
 
   const relevantCats = finCats?.filter((c) => c.category_type === opType && c.parent_id !== null) ?? [];
@@ -140,7 +165,14 @@ export function CreateOperationModal({ onClose }: Props) {
     ...(selectedSub?.members ?? []).map((m) => ({ value: String(m.member_id), label: m.contact_name })),
   ], [selectedSub]);
 
-  useEffect(() => { setCategoryId(""); }, [opType]);
+  const goalOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "— без цели —" },
+    ...(goals ?? []).map((g) => ({ value: String(g.goal_id), label: g.title })),
+  ], [goals]);
+
+  useEffect(() => {
+    if (!initialValues?.categoryId) setCategoryId("");
+  }, [opType]);
 
   // Reset subscription section when opType changes away from EXPENSE
   useEffect(() => {
@@ -220,24 +252,34 @@ export function CreateOperationModal({ onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/v2/transactions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const parsed = parseBackendErrors(res.status, data);
-        if (parsed.fieldErrors) setFieldErrors(parsed.fieldErrors);
-        else setError(parsed.message ?? "Ошибка при создании операции");
-        return;
+      await api.post<{ id: number }>("/api/v2/transactions", buildPayload());
+
+      // If this was a planned occurrence execution, mark it as done
+      if (occurrenceId) {
+        await api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/done`);
       }
+
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
       onClose();
-    } catch {
-      setError("Не удалось подключиться к серверу");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      // Try to parse backend validation errors from the message
+      const match = msg.match(/API error (\d+): ([\s\S]*)/);
+      if (match) {
+        try {
+          const data = JSON.parse(match[2]);
+          const parsed = parseBackendErrors(parseInt(match[1]), data);
+          if (parsed.fieldErrors) { setFieldErrors(parsed.fieldErrors); return; }
+          setError(parsed.message ?? "Ошибка при создании операции");
+        } catch {
+          setError("Ошибка при создании операции");
+        }
+      } else {
+        setError("Не удалось подключиться к серверу");
+      }
     } finally {
       setSaving(false);
     }
@@ -254,7 +296,7 @@ export function CreateOperationModal({ onClose }: Props) {
         disabled={saving}
         className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
       >
-        {saving ? "Сохраняем…" : "Создать операцию"}
+        {saving ? "Сохраняем…" : occurrenceId ? "Выполнить операцию" : "Создать операцию"}
       </button>
       <button
         type="button"
@@ -307,7 +349,7 @@ export function CreateOperationModal({ onClose }: Props) {
               onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
               placeholder="0.00"
               className={`${inputCls} h-10 text-base font-semibold ${fieldErrors.amount ? inputErrorBorder : ""}`}
-              autoFocus
+              autoFocus={!initialValues?.amount}
             />
             {fieldErrors.amount && <p className={errTextCls}>{fieldErrors.amount}</p>}
           </div>
@@ -355,24 +397,22 @@ export function CreateOperationModal({ onClose }: Props) {
               {showFromGoal && (
                 <div>
                   <label className={labelCls}>Цель (откуда)</label>
-                  <input
-                    type="number"
+                  <Select
                     value={fromGoalId}
-                    onChange={(e) => setFromGoalId(e.target.value ? Number(e.target.value) : "")}
-                    placeholder="ID цели"
-                    className={inputCls}
+                    onChange={(v) => setFromGoalId(v ? Number(v) : "")}
+                    options={goalOptions}
+                    placeholder="— без цели —"
                   />
                 </div>
               )}
               {showToGoal && (
                 <div>
                   <label className={labelCls}>Цель (куда)</label>
-                  <input
-                    type="number"
+                  <Select
                     value={toGoalId}
-                    onChange={(e) => setToGoalId(e.target.value ? Number(e.target.value) : "")}
-                    placeholder="ID цели"
-                    className={inputCls}
+                    onChange={(v) => setToGoalId(v ? Number(v) : "")}
+                    options={goalOptions}
+                    placeholder="— без цели —"
                   />
                 </div>
               )}

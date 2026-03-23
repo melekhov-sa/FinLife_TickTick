@@ -445,6 +445,9 @@ def _op_occ_to_item(occ: OperationOccurrence, tmpl: OperationTemplateModel, toda
             "op_kind_label": OP_KIND_LABEL.get(tmpl.kind, tmpl.kind),
             "amount": tmpl.amount,
             "amount_formatted": "{:,.2f}".format(tmpl.amount).replace(",", " "),
+            "wallet_id": tmpl.wallet_id,
+            "destination_wallet_id": tmpl.destination_wallet_id,
+            "category_id": tmpl.category_id,
         },
     }
 
