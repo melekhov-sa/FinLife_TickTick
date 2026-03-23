@@ -184,7 +184,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
     )
     from app.application.xp import XpService
 
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     svc = DashboardService(db)
     today = date.today()
 

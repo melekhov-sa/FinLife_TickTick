@@ -142,7 +142,7 @@ def _get_or_create_today_occurrence(
 @router.post("/habits/{habit_id}/complete-today")
 def complete_habit_today(habit_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.habits import CompleteHabitOccurrenceUseCase, HabitValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     # Verify habit belongs to user
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
@@ -161,7 +161,7 @@ def complete_habit_today(habit_id: int, request: Request, db: Session = Depends(
 
 @router.post("/habits/{habit_id}/skip-today")
 def skip_habit_today(habit_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
     ).first()
@@ -185,7 +185,7 @@ class UpdateHabitRequest(BaseModel):
 @router.patch("/habits/{habit_id}")
 def update_habit(habit_id: int, body: UpdateHabitRequest, request: Request, db: Session = Depends(get_db)):
     from datetime import time as t_time
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
     ).first()
@@ -210,7 +210,7 @@ def update_habit(habit_id: int, body: UpdateHabitRequest, request: Request, db: 
 
 @router.delete("/habits/{habit_id}", status_code=204)
 def archive_habit(habit_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
     ).first()
@@ -222,7 +222,7 @@ def archive_habit(habit_id: int, request: Request, db: Session = Depends(get_db)
 
 @router.post("/habits/{habit_id}/restore")
 def restore_habit(habit_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
     ).first()
@@ -250,7 +250,7 @@ class CreateHabitRequest(BaseModel):
 @router.post("/habits", status_code=201)
 def create_habit(body: CreateHabitRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.habits import CreateHabitUseCase, HabitValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     start = body.start_date or date.today().isoformat()
     try:
         habit_id = CreateHabitUseCase(db).execute(
@@ -276,7 +276,7 @@ def create_habit(body: CreateHabitRequest, request: Request, db: Session = Depen
 @router.post("/habits/occurrences/{occurrence_id}/complete")
 def complete_habit_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.habits import CompleteHabitOccurrenceUseCase, HabitValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         CompleteHabitOccurrenceUseCase(db).execute(occurrence_id, user_id, actor_user_id=user_id)
     except (HabitValidationError, Exception) as e:
@@ -287,7 +287,7 @@ def complete_habit_occurrence(occurrence_id: int, request: Request, db: Session 
 @router.post("/task-occurrences/{occurrence_id}/complete")
 def complete_task_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.task_templates import CompleteTaskOccurrenceUseCase, TaskTemplateValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         CompleteTaskOccurrenceUseCase(db).execute(
             occurrence_id=occurrence_id, account_id=user_id, actor_user_id=user_id

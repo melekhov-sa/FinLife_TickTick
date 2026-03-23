@@ -132,7 +132,7 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
     from app.application.events import (
         CreateEventUseCase, CreateDefaultReminderUseCase, EventValidationError,
     )
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     if not body.title.strip():
         raise HTTPException(status_code=400, detail="Название не может быть пустым")
 
@@ -253,7 +253,7 @@ def update_occurrence(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     occ = db.query(EventOccurrenceModel).filter(
         EventOccurrenceModel.id == occurrence_id,
         EventOccurrenceModel.account_id == user_id,
@@ -290,7 +290,7 @@ def delete_occurrence(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     occ = db.query(EventOccurrenceModel).filter(
         EventOccurrenceModel.id == occurrence_id,
         EventOccurrenceModel.account_id == user_id,
@@ -307,7 +307,7 @@ def duplicate_occurrence(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     occ = db.query(EventOccurrenceModel).filter(
         EventOccurrenceModel.id == occurrence_id,
         EventOccurrenceModel.account_id == user_id,
@@ -333,7 +333,7 @@ def duplicate_occurrence(
 @router.get("/event-templates")
 def list_event_templates(request: Request, db: Session = Depends(get_db)):
     from datetime import date as date_type
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     events = (
         db.query(CalendarEventModel)
         .filter(CalendarEventModel.account_id == user_id)
@@ -410,7 +410,7 @@ class UpdateEventRequest(BaseModel):
 
 @router.patch("/events/{event_id}")
 def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
@@ -426,7 +426,7 @@ def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: 
 
 @router.post("/events/{event_id}/archive")
 def archive_event(event_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
@@ -437,7 +437,7 @@ def archive_event(event_id: int, request: Request, db: Session = Depends(get_db)
 
 @router.post("/events/{event_id}/restore")
 def restore_event(event_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
@@ -449,7 +449,7 @@ def restore_event(event_id: int, request: Request, db: Session = Depends(get_db)
 @router.post("/events/rebuild-projector")
 def rebuild_projector(request: Request, db: Session = Depends(get_db)):
     """Re-run the events projector to fix missing occurrences."""
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     from app.readmodels.projectors.events import EventsProjector
     from app.infrastructure.db.models import ProjectorCheckpoint
     # Reset checkpoint to 0 so projector reprocesses all events

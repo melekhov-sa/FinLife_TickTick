@@ -42,7 +42,7 @@ def list_notifications(
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     rows = (
         db.query(NotificationModel)
         .filter(NotificationModel.user_id == user_id)
@@ -68,7 +68,7 @@ def list_notifications(
 
 @router.get("/notifications/badge", response_model=BadgeResponse)
 def notifications_badge(request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     count = (
         db.query(NotificationModel)
         .filter(NotificationModel.user_id == user_id, NotificationModel.is_read == False)  # noqa: E712
@@ -80,7 +80,7 @@ def notifications_badge(request: Request, db: Session = Depends(get_db)):
 @router.post("/notifications/{notification_id}/read")
 def mark_read(notification_id: int, request: Request, db: Session = Depends(get_db)):
     from fastapi import HTTPException
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     n = db.query(NotificationModel).filter(
         NotificationModel.id == notification_id,
         NotificationModel.user_id == user_id,
@@ -94,7 +94,7 @@ def mark_read(notification_id: int, request: Request, db: Session = Depends(get_
 
 @router.post("/notifications/mark-all-read")
 def mark_all_read(request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     db.query(NotificationModel).filter(
         NotificationModel.user_id == user_id,
         NotificationModel.is_read == False,  # noqa: E712

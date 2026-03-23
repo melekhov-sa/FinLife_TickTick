@@ -102,7 +102,7 @@ def list_projects(
     status: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     svc = ProjectReadService(db)
     return svc.list_projects(user_id, status_filter=status)
 
@@ -115,7 +115,7 @@ def get_project(
     db: Session = Depends(get_db),
 ):
     from fastapi import HTTPException
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     svc = ProjectReadService(db)
     data = svc.get_project_detail(project_id, user_id, tag_filter=tag_filter)
     if data is None:
@@ -200,7 +200,7 @@ def create_project_task(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         task_id = CreateTaskInProjectUseCase(db).execute(
             account_id=user_id,

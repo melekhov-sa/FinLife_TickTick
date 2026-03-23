@@ -53,7 +53,7 @@ def list_tasks(
     limit: int = Query(100, le=500),
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date.today()
 
     q = db.query(TaskModel).filter(TaskModel.account_id == user_id)
@@ -176,7 +176,7 @@ class WorkCategoryFullItem(BaseModel):
 
 @router.get("/work-categories")
 def list_work_categories(request: Request, db: Session = Depends(get_db), include_archived: bool = Query(False)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     q = db.query(WorkCategory).filter(WorkCategory.account_id == user_id)
     if not include_archived:
         q = q.filter(WorkCategory.is_archived == False)  # noqa: E712
@@ -199,7 +199,7 @@ def create_work_category(
     body: CreateWorkCategoryRequest, request: Request, db: Session = Depends(get_db)
 ):
     from app.application.work_categories import CreateWorkCategoryUseCase, WorkCategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         category_id = CreateWorkCategoryUseCase(db).execute(
             account_id=user_id,
@@ -225,7 +225,7 @@ def update_work_category(
     db: Session = Depends(get_db),
 ):
     from app.application.work_categories import UpdateWorkCategoryUseCase, WorkCategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         kwargs: dict = dict(category_id=category_id, account_id=user_id, actor_user_id=user_id)
         if "title" in body.model_fields_set:
@@ -241,7 +241,7 @@ def update_work_category(
 @router.post("/work-categories/{category_id}/archive")
 def archive_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.work_categories import ArchiveWorkCategoryUseCase, WorkCategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         ArchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
     except WorkCategoryValidationError as e:
@@ -252,7 +252,7 @@ def archive_work_category(category_id: int, request: Request, db: Session = Depe
 @router.post("/work-categories/{category_id}/restore")
 def restore_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.work_categories import UnarchiveWorkCategoryUseCase, WorkCategoryValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         UnarchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
     except WorkCategoryValidationError as e:
@@ -293,7 +293,7 @@ class CreateTaskRequest(BaseModel):
 @router.post("/tasks", status_code=201)
 def create_task(body: CreateTaskRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.tasks_usecases import CreateTaskUseCase, TaskValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     if body.mode == "recurring":
         from app.application.task_templates import CreateTaskTemplateUseCase, TaskTemplateValidationError
@@ -363,7 +363,7 @@ def create_task(body: CreateTaskRequest, request: Request, db: Session = Depends
 def complete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     from fastapi import HTTPException
     from app.application.tasks_usecases import CompleteTaskUseCase, TaskValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         CompleteTaskUseCase(db).execute(task_id=task_id, account_id=user_id, actor_user_id=user_id)
     except TaskValidationError as e:
@@ -375,7 +375,7 @@ def complete_task(task_id: int, request: Request, db: Session = Depends(get_db))
 def archive_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     from fastapi import HTTPException
     from app.application.tasks_usecases import ArchiveTaskUseCase, TaskValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         ArchiveTaskUseCase(db).execute(task_id=task_id, account_id=user_id, actor_user_id=user_id)
     except TaskValidationError as e:
@@ -385,7 +385,7 @@ def archive_task(task_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/tasks/{task_id}", response_model=TaskItem)
 def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date.today()
     task = db.query(TaskModel).filter(
         TaskModel.task_id == task_id,
@@ -422,7 +422,7 @@ class UpdateTaskRequest(BaseModel):
 @router.patch("/tasks/{task_id}")
 def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Session = Depends(get_db)):
     from datetime import time as time_type
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     task = db.query(TaskModel).filter(
         TaskModel.task_id == task_id,
         TaskModel.account_id == user_id,
@@ -462,7 +462,7 @@ def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Ses
 
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     task = db.query(TaskModel).filter(
         TaskModel.task_id == task_id,
         TaskModel.account_id == user_id,
@@ -476,7 +476,7 @@ def delete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.post("/tasks/{task_id}/duplicate")
 def duplicate_task(task_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     task = db.query(TaskModel).filter(
         TaskModel.task_id == task_id,
         TaskModel.account_id == user_id,
@@ -512,7 +512,7 @@ def update_board_status(
 ):
     from fastapi import HTTPException
     from app.application.projects import ChangeTaskBoardStatusUseCase, ProjectValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         ChangeTaskBoardStatusUseCase(db).execute(task_id, user_id, body.board_status)
     except ProjectValidationError as e:
@@ -535,7 +535,7 @@ class TaskPresetItem(BaseModel):
 @router.get("/task-presets")
 def list_task_presets(request: Request, db: Session = Depends(get_db), include_inactive: bool = Query(False)):
     from app.infrastructure.db.models import TaskPresetModel
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     q = db.query(TaskPresetModel).filter(TaskPresetModel.account_id == user_id)
     if not include_inactive:
         q = q.filter(TaskPresetModel.is_active == True)  # noqa: E712
@@ -558,7 +558,7 @@ class CreateTaskPresetRequest(BaseModel):
 @router.post("/task-presets", status_code=201)
 def create_task_preset(body: CreateTaskPresetRequest, request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import TaskPresetModel
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Название шаблона не может быть пустым")
     if not body.title_template.strip():
@@ -590,7 +590,7 @@ class UpdateTaskPresetRequest(BaseModel):
 @router.patch("/task-presets/{preset_id}")
 def update_task_preset(preset_id: int, body: UpdateTaskPresetRequest, request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import TaskPresetModel
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     preset = db.query(TaskPresetModel).filter(TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id).first()
     if not preset:
         raise HTTPException(status_code=404, detail="Шаблон не найден")
@@ -616,7 +616,7 @@ class MovePresetRequest(BaseModel):
 @router.post("/task-presets/{preset_id}/move")
 def move_task_preset(preset_id: int, body: MovePresetRequest, request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import TaskPresetModel
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     preset = db.query(TaskPresetModel).filter(TaskPresetModel.id == preset_id, TaskPresetModel.account_id == user_id).first()
     if not preset:
         raise HTTPException(status_code=404, detail="Шаблон не найден")
@@ -647,7 +647,7 @@ class ReminderPresetItem(BaseModel):
 @router.get("/reminder-presets", response_model=list[ReminderPresetItem])
 def list_reminder_presets(request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import UserReminderTimePreset
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     presets = (
         db.query(UserReminderTimePreset)
         .filter(UserReminderTimePreset.account_id == user_id)
@@ -680,7 +680,7 @@ class TaskTemplateItem(BaseModel):
 @router.get("/task-templates", response_model=list[TaskTemplateItem])
 def list_task_templates(request: Request, db: Session = Depends(get_db), archived: bool = Query(False)):
     from app.infrastructure.db.models import RecurrenceRuleModel
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     q = db.query(TaskTemplateModel).filter(TaskTemplateModel.account_id == user_id)
     if not archived:

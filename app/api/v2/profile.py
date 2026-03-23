@@ -20,7 +20,7 @@ class ChangePasswordRequest(BaseModel):
 def change_password(body: ChangePasswordRequest, request: Request, db: Session = Depends(get_db)):
     from app.auth import verify_password, hash_password
 
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -39,7 +39,7 @@ def change_password(body: ChangePasswordRequest, request: Request, db: Session =
 
 @router.get("/profile")
 def get_profile(request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     data = ProfileService(db).get_profile_data(user_id)
     user = db.query(User).filter(User.id == user_id).first()
 

@@ -60,7 +60,7 @@ def get_plan(
     range: int = Query(7),
     db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date.today()
     range_days = max(1, min(range, 90))
 

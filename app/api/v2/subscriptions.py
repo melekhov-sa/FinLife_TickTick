@@ -122,7 +122,7 @@ def create_subscription(
     db: Session = Depends(get_db),
 ):
     from app.application.subscriptions import CreateSubscriptionUseCase, SubscriptionValidationError
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     try:
         sub_id = CreateSubscriptionUseCase(db).execute(
             account_id=user_id,
@@ -147,7 +147,7 @@ def update_subscription(
     sub_id: int, body: UpdateSubscriptionRequest,
     request: Request, db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     sub = db.query(SubscriptionModel).filter(
         SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
     ).first()
@@ -167,7 +167,7 @@ def update_subscription(
 
 @router.delete("/subscriptions/{sub_id}", status_code=204)
 def archive_subscription(sub_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     sub = db.query(SubscriptionModel).filter(
         SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
     ).first()
@@ -179,7 +179,7 @@ def archive_subscription(sub_id: int, request: Request, db: Session = Depends(ge
 
 @router.post("/subscriptions/{sub_id}/restore")
 def restore_subscription(sub_id: int, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     sub = db.query(SubscriptionModel).filter(
         SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
     ).first()
@@ -202,7 +202,7 @@ def update_member(
     sub_id: int, member_id: int, body: UpdateMemberRequest,
     request: Request, db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     member = db.query(SubscriptionMemberModel).filter(
         SubscriptionMemberModel.id == member_id,
         SubscriptionMemberModel.subscription_id == sub_id,
@@ -229,7 +229,7 @@ class CompensateRequest(BaseModel):
 @router.post("/subscriptions/{sub_id}/compensate")
 def compensate_subscription(sub_id: int, body: CompensateRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.subscriptions import CompensateSubscriptionUseCase
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     from decimal import Decimal
     from datetime import date as date_type
@@ -258,7 +258,7 @@ def archive_member(
     sub_id: int, member_id: int,
     request: Request, db: Session = Depends(get_db),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     member = db.query(SubscriptionMemberModel).filter(
         SubscriptionMemberModel.id == member_id,
         SubscriptionMemberModel.subscription_id == sub_id,

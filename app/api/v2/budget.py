@@ -30,7 +30,7 @@ def budget_summary(
 ):
     from app.application.budget_matrix import BudgetMatrixService
 
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date.today()
     year = year or today.year
     month = month or today.month
@@ -111,7 +111,7 @@ def budget_matrix(
     )
     from datetime import date as date_type
 
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
     today = date_type.today()
 
     if year is None:
@@ -187,7 +187,7 @@ class SaveBudgetPlanRequest(BaseModel):
 @router.post("/budget/plan")
 def save_budget_plan(body: SaveBudgetPlanRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.budget import SaveBudgetPlanUseCase, get_active_variant
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     variant = get_active_variant(db, user_id, body.variant_id)
     variant_id = variant.id if variant else None
@@ -220,7 +220,7 @@ class ReorderRequest(BaseModel):
 @router.post("/categories/reorder")
 def reorder_categories(body: ReorderRequest, request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import CategoryInfo
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     for item in body.items:
         db.query(CategoryInfo).filter(
@@ -249,7 +249,7 @@ class SaveGoalPlanRequest(BaseModel):
 @router.post("/budget/goal-plan")
 def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.budget import SaveGoalPlansUseCase, SaveWithdrawalPlansUseCase, get_active_variant
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     variant = get_active_variant(db, user_id, body.variant_id)
     variant_id = variant.id if variant else None

@@ -30,7 +30,7 @@ def list_goals(
     db: Session = Depends(get_db),
     include_archived: bool = Query(False),
 ):
-    user_id = get_user_id(request)
+    user_id = get_user_id(request, db)
 
     q = db.query(GoalInfo).filter(GoalInfo.account_id == user_id)
     if not include_archived:
