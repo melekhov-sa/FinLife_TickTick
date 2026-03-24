@@ -16,7 +16,7 @@ from app.infrastructure.db.models import (
     HabitModel, HabitOccurrence,
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
-    WorkCategory, WishModel,
+    WorkCategory, WishModel, ProjectModel,
 )
 
 
@@ -55,10 +55,18 @@ def build_plan_view(
     # Pre-fetch work categories map
     wc_map = _load_wc_map(db, account_id)
 
+    # IDs of projects the user wants to hide from plan/dashboard
+    hidden_project_ids: set[int] = {
+        p.id for p in db.query(ProjectModel.id).filter(
+            ProjectModel.account_id == account_id,
+            ProjectModel.hide_from_plan == True,  # noqa: E712
+        ).all()
+    }
+
     # Collect all items
     items: list[dict] = []
 
-    items.extend(_query_oneoff_tasks(db, account_id, today, tab, date_from, date_to, wc_map))
+    items.extend(_query_oneoff_tasks(db, account_id, today, tab, date_from, date_to, wc_map, hidden_project_ids))
     items.extend(_query_task_occurrences(db, account_id, today, tab, date_from, date_to, wc_map))
     items.extend(_query_event_occurrences(db, account_id, today, tab, date_from, date_to, wc_map))
     items.extend(_query_operation_occurrences(db, account_id, today, tab, date_from, date_to, wc_map))
@@ -117,35 +125,44 @@ def _query_oneoff_tasks(
     db: Session, account_id: int, today: date,
     tab: str, date_from: date, date_to: date,
     wc_map: dict,
+    hidden_project_ids: set[int] | None = None,
 ) -> list[dict]:
     items: list[dict] = []
 
+    def _exclude_hidden(q):
+        if hidden_project_ids:
+            q = q.filter(
+                (TaskModel.project_id == None) |  # noqa: E711
+                (~TaskModel.project_id.in_(hidden_project_ids))
+            )
+        return q
+
     if tab == "active":
         # In-range: due_date between date_from and date_to (tasks without due_date excluded)
-        rows = db.query(TaskModel).filter(
+        rows = _exclude_hidden(db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date >= date_from,
             TaskModel.due_date <= date_to,
-        ).all()
+        )).all()
         for t in rows:
             items.append(_task_to_item(t, today, wc_map))
 
         # Overdue: due_date < today
-        overdue = db.query(TaskModel).filter(
+        overdue = _exclude_hidden(db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date != None,  # noqa: E711
             TaskModel.due_date < today,
-        ).all()
+        )).all()
         for t in overdue:
             items.append(_task_to_item(t, today, wc_map))
 
     elif tab == "done":
-        rows = db.query(TaskModel).filter(
+        rows = _exclude_hidden(db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "DONE",
-        ).all()
+        )).all()
         # Filter by completed_at date if available, else show all
         for t in rows:
             cdate = t.completed_at.date() if t.completed_at else None
@@ -155,10 +172,10 @@ def _query_oneoff_tasks(
                 items.append(_task_to_item(t, today, wc_map))
 
     elif tab == "archive":
-        rows = db.query(TaskModel).filter(
+        rows = _exclude_hidden(db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ARCHIVED",
-        ).all()
+        )).all()
         for t in rows:
             items.append(_task_to_item(t, today, wc_map))
 

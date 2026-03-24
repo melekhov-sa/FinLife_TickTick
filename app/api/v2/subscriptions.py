@@ -253,6 +253,65 @@ def compensate_subscription(sub_id: int, body: CompensateRequest, request: Reque
     return {"ok": True}
 
 
+# ── Add member ───────────────────────────────────────────────────────────────
+
+class AddMemberRequest(BaseModel):
+    contact_id: int
+    payment_per_month: float | None = None
+    paid_until: str | None = None   # "YYYY-MM-DD"
+
+
+@router.post("/subscriptions/{sub_id}/members", status_code=201)
+def add_member(
+    sub_id: int, body: AddMemberRequest,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    sub = db.query(SubscriptionModel).filter(
+        SubscriptionModel.id == sub_id, SubscriptionModel.account_id == user_id,
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    contact = db.query(ContactModel).filter(
+        ContactModel.id == body.contact_id, ContactModel.account_id == user_id,
+    ).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    member = SubscriptionMemberModel(
+        subscription_id=sub_id,
+        account_id=user_id,
+        contact_id=body.contact_id,
+        payment_per_month=body.payment_per_month,
+        paid_until=date.fromisoformat(body.paid_until) if body.paid_until else None,
+        is_archived=False,
+    )
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return {"id": member.id}
+
+
+# ── List contacts (for add-member dropdown) ──────────────────────────────────
+
+class ContactItem(BaseModel):
+    id: int
+    name: str
+
+
+@router.get("/contacts", response_model=list[ContactItem])
+def list_contacts(
+    user_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(ContactModel)
+        .filter(ContactModel.account_id == user_id, ContactModel.is_archived == False)
+        .order_by(ContactModel.name)
+        .all()
+    )
+    return [ContactItem(id=c.id, name=c.name) for c in rows]
+
+
 @router.delete("/subscriptions/{sub_id}/members/{member_id}", status_code=204)
 def archive_member(
     sub_id: int, member_id: int,

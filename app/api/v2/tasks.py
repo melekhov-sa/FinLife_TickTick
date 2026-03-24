@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence
+from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence, RecurrenceRuleModel
 
 router = APIRouter()
 
@@ -730,3 +730,70 @@ def list_task_templates(request: Request, db: Session = Depends(get_db), archive
             next_occurrence=next_map.get(t.template_id),
         ))
     return items
+
+
+# ── PATCH task template ──────────────────────────────────────────────────────
+
+class UpdateTaskTemplateRequest(BaseModel):
+    title: str | None = None
+    note: str | None = None           # "" to clear
+    category_id: int | None = None    # 0 to clear
+    active_until: str | None = None   # "YYYY-MM-DD" or "" to clear
+    freq: str | None = None
+    interval: int | None = None
+
+
+@router.patch("/task-templates/{template_id}")
+def update_task_template(
+    template_id: int,
+    body: UpdateTaskTemplateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    template = db.query(TaskTemplateModel).filter(
+        TaskTemplateModel.template_id == template_id,
+        TaskTemplateModel.account_id == user_id,
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    fields = body.model_fields_set
+    if "title" in fields and body.title:
+        template.title = body.title.strip()
+    if "note" in fields:
+        template.note = body.note.strip() if body.note else None
+    if "category_id" in fields:
+        template.category_id = body.category_id if body.category_id else None
+    if "active_until" in fields:
+        template.active_until = date.fromisoformat(body.active_until) if body.active_until else None
+
+    if ("freq" in fields or "interval" in fields) and template.rule_id:
+        rule = db.query(RecurrenceRuleModel).filter(
+            RecurrenceRuleModel.rule_id == template.rule_id
+        ).first()
+        if rule:
+            if "freq" in fields and body.freq:
+                rule.freq = body.freq
+            if "interval" in fields and body.interval is not None:
+                rule.interval = max(1, body.interval)
+
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/task-templates/{template_id}", status_code=204)
+def archive_task_template(
+    template_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    template = db.query(TaskTemplateModel).filter(
+        TaskTemplateModel.template_id == template_id,
+        TaskTemplateModel.account_id == user_id,
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    template.is_archived = True
+    db.commit()

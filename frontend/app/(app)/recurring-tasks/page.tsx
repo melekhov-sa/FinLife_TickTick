@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { RefreshCw, Pencil, Check, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import type { TaskTemplateItem } from "@/types/api";
@@ -31,6 +31,20 @@ const TABS = [
 
 type TabArchived = (typeof TABS)[number]["value"];
 
+const FREQ_OPTIONS = [
+  { value: "DAILY",   label: "Ежедневно" },
+  { value: "WEEKLY",  label: "Еженедельно" },
+  { value: "MONTHLY", label: "Ежемесячно" },
+  { value: "YEARLY",  label: "Ежегодно" },
+];
+
+interface WorkCategory {
+  category_id: number;
+  title: string;
+  emoji: string | null;
+  is_archived: boolean;
+}
+
 function useTaskTemplates(archived: boolean) {
   return useQuery<TaskTemplateItem[]>({
     queryKey: ["task-templates", archived],
@@ -39,9 +53,217 @@ function useTaskTemplates(archived: boolean) {
   });
 }
 
+function useWorkCategories() {
+  return useQuery<WorkCategory[]>({
+    queryKey: ["work-categories"],
+    queryFn: () => api.get<WorkCategory[]>("/api/v2/work-categories"),
+    staleTime: 60_000,
+  });
+}
+
+function useUpdateTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; [k: string]: unknown }) =>
+      api.patch(`/api/v2/task-templates/${id}`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task-templates"] });
+    },
+  });
+}
+
+// ── TemplateRow ───────────────────────────────────────────────────────────────
+
+function TemplateRow({
+  item,
+  isLast,
+  categories,
+}: {
+  item: TaskTemplateItem;
+  isLast: boolean;
+  categories: WorkCategory[];
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(item.title);
+  const [editNote, setEditNote] = useState(item.note ?? "");
+  const [editCatId, setEditCatId] = useState<string>(String(item.category_id ?? ""));
+  const [editFreq, setEditFreq] = useState(item.freq);
+  const [editInterval, setEditInterval] = useState(String(item.interval));
+  const [editActiveUntil, setEditActiveUntil] = useState(item.active_until ?? "");
+
+  const { mutate: update, isPending } = useUpdateTemplate();
+
+  function startEdit() {
+    setEditTitle(item.title);
+    setEditNote(item.note ?? "");
+    setEditCatId(String(item.category_id ?? ""));
+    setEditFreq(item.freq);
+    setEditInterval(String(item.interval));
+    setEditActiveUntil(item.active_until ?? "");
+    setEditing(true);
+  }
+
+  function save() {
+    const t = editTitle.trim();
+    if (!t) return;
+    update({
+      id: item.template_id,
+      title: t,
+      note: editNote || null,
+      category_id: editCatId ? Number(editCatId) : 0,
+      freq: editFreq,
+      interval: Number(editInterval) || 1,
+      active_until: editActiveUntil || null,
+    });
+    setEditing(false);
+  }
+
+  const inputCls = "w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40";
+
+  if (editing) {
+    return (
+      <div className={`px-4 py-3 space-y-2 ${!isLast ? "border-b border-white/[0.05]" : ""}`}>
+        <div className="flex gap-2">
+          <input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            placeholder="Название шаблона"
+            className="flex-1 text-[13px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2.5 py-1.5 outline-none"
+            style={{ color: "var(--t-primary)" }}
+            autoFocus
+          />
+          <button
+            onClick={save}
+            disabled={isPending || !editTitle.trim()}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40 shrink-0"
+          >
+            <Check size={12} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0"
+            style={{ color: "var(--t-faint)" }}
+          >
+            <X size={12} />
+          </button>
+        </div>
+
+        <input
+          value={editNote}
+          onChange={(e) => setEditNote(e.target.value)}
+          placeholder="Заметка (необязательно)"
+          className={inputCls}
+          style={{ color: "var(--t-secondary)" }}
+        />
+
+        <div className="flex gap-2">
+          <select
+            value={editFreq}
+            onChange={(e) => setEditFreq(e.target.value)}
+            className={`flex-1 ${inputCls}`}
+            style={{ color: "var(--t-secondary)" }}
+          >
+            {FREQ_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="1"
+            value={editInterval}
+            onChange={(e) => setEditInterval(e.target.value)}
+            placeholder="Интервал"
+            className="w-20 text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40 text-center"
+            style={{ color: "var(--t-secondary)" }}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <select
+            value={editCatId}
+            onChange={(e) => setEditCatId(e.target.value)}
+            className={`flex-1 ${inputCls}`}
+            style={{ color: "var(--t-secondary)" }}
+          >
+            <option value="">— Без категории —</option>
+            {categories.filter((c) => !c.is_archived).map((c) => (
+              <option key={c.category_id} value={c.category_id}>
+                {c.emoji ? `${c.emoji} ` : ""}{c.title}
+              </option>
+            ))}
+          </select>
+          <div className="flex-1">
+            <input
+              type="date"
+              value={editActiveUntil}
+              onChange={(e) => setEditActiveUntil(e.target.value)}
+              className={inputCls}
+              style={{ color: "var(--t-secondary)" }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors group/row ${
+        !isLast ? "border-b border-white/[0.05]" : ""
+      }`}
+    >
+      <span className="text-base shrink-0">
+        {item.category_emoji ?? "🔄"}
+      </span>
+
+      <div className="flex-1 min-w-0">
+        <p
+          className="text-[14px] font-medium truncate"
+          style={{ color: "var(--t-primary)" }}
+        >
+          {item.title}
+        </p>
+        <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+          {item.interval > 1
+            ? `Каждые ${item.interval} (${freqLabel(item.freq).toLowerCase()})`
+            : freqLabel(item.freq)}
+          {" · "}
+          {item.next_occurrence
+            ? `Следующий: ${formatDate(item.next_occurrence)}`
+            : "Нет запланированных"}
+        </p>
+        {(item.active_until || item.note) && (
+          <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
+            {item.active_until && `до ${formatDate(item.active_until)}`}
+            {item.active_until && item.note && " · "}
+            {item.note}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-medium">
+          {freqLabel(item.freq)}
+        </span>
+        <button
+          onClick={startEdit}
+          className="w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+          style={{ color: "var(--t-faint)" }}
+          title="Редактировать"
+        >
+          <Pencil size={11} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function RecurringTasksPage() {
   const [archived, setArchived] = useState<TabArchived>(false);
   const { data: templates, isLoading, isError } = useTaskTemplates(archived);
+  const { data: categories = [] } = useWorkCategories();
 
   return (
     <>
@@ -117,45 +339,12 @@ export default function RecurringTasksPage() {
 
             {/* Rows */}
             {templates && templates.map((item, i) => (
-              <div
+              <TemplateRow
                 key={item.template_id}
-                className={`flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors ${
-                  i < templates.length - 1 ? "border-b border-white/[0.05]" : ""
-                }`}
-              >
-                <span className="text-base shrink-0">
-                  {item.category_emoji ?? "🔄"}
-                </span>
-
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-[14px] font-medium truncate"
-                    style={{ color: "var(--t-primary)" }}
-                  >
-                    {item.title}
-                  </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
-                    {item.interval > 1
-                      ? `Каждые ${item.interval} (${freqLabel(item.freq).toLowerCase()})`
-                      : freqLabel(item.freq)}
-                    {" · "}
-                    {item.next_occurrence
-                      ? `Следующий: ${formatDate(item.next_occurrence)}`
-                      : "Нет запланированных"}
-                  </p>
-                  {(item.active_until || item.note) && (
-                    <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
-                      {item.active_until && `до ${formatDate(item.active_until)}`}
-                      {item.active_until && item.note && " · "}
-                      {item.note}
-                    </p>
-                  )}
-                </div>
-
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-medium shrink-0">
-                  {freqLabel(item.freq)}
-                </span>
-              </div>
+                item={item}
+                isLast={i === templates.length - 1}
+                categories={categories}
+              />
             ))}
           </div>
         )}

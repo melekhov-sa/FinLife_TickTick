@@ -22,7 +22,7 @@ from app.infrastructure.db.models import (
     CalendarEventModel, EventOccurrenceModel,
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
-    EventLog, CategoryInfo,
+    EventLog, CategoryInfo, ProjectModel,
 )
 from app.utils.money import format_money
 
@@ -61,8 +61,16 @@ class DashboardService:
         done: list[dict] = []
         events: list[dict] = []
 
+        # IDs of projects hidden from plan/dashboard
+        hidden_project_ids: set[int] = {
+            p.id for p in self.db.query(ProjectModel.id).filter(
+                ProjectModel.account_id == account_id,
+                ProjectModel.hide_from_plan == True,  # noqa: E712
+            ).all()
+        }
+
         # --- One-off tasks ---
-        self._collect_oneoff_tasks(account_id, today, wc_map, overdue, active, done)
+        self._collect_oneoff_tasks(account_id, today, wc_map, overdue, active, done, hidden_project_ids)
 
         # --- Recurring task occurrences ---
         self._collect_task_occurrences(account_id, today, wc_map, overdue, active, done)
@@ -103,32 +111,41 @@ class DashboardService:
     def _collect_oneoff_tasks(
         self, account_id: int, today: date, wc_map: dict,
         overdue: list, active: list, done: list,
+        hidden_project_ids: set[int] | None = None,
     ):
+        def _exclude(q):
+            if hidden_project_ids:
+                q = q.filter(
+                    (TaskModel.project_id == None) |  # noqa: E711
+                    (~TaskModel.project_id.in_(hidden_project_ids))
+                )
+            return q
+
         # Overdue: active, due_date < today
-        rows = self.db.query(TaskModel).filter(
+        rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date != None,  # noqa: E711
             TaskModel.due_date < today,
-        ).all()
+        )).all()
         for t in rows:
             overdue.append(self._task_item(t, today, wc_map, is_overdue=True))
 
         # Active today: due_date == today only (tasks without due_date excluded)
-        rows = self.db.query(TaskModel).filter(
+        rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date == today,
-        ).all()
+        )).all()
         for t in rows:
             active.append(self._task_item(t, today, wc_map, is_overdue=False))
 
         # Done today
-        rows = self.db.query(TaskModel).filter(
+        rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "DONE",
             func.date(TaskModel.completed_at) == today,
-        ).all()
+        )).all()
         for t in rows:
             done.append(self._task_item(t, today, wc_map, is_overdue=False, is_done=True))
 

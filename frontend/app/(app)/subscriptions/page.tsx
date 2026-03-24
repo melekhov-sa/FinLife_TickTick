@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
-import { useSubscriptions, useRestoreSubscription } from "@/hooks/useSubscriptions";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
 import { CreateSubscriptionModal } from "@/components/modals/CreateSubscriptionModal";
+import { AddMemberModal } from "@/components/modals/AddMemberModal";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
 import { CreditCard, MoreHorizontal } from "lucide-react";
 import { Select } from "@/components/ui/Select";
@@ -100,7 +101,7 @@ function MemberRow({ member }: { member: SubscriptionMember }) {
 
 // ── Quick Actions Menu ────────────────────────────────────────────────────────
 
-function QuickMenu({ subId, onOpen }: { subId: number; onOpen: () => void }) {
+function QuickMenu({ onOpen, onAddMember }: { onOpen: () => void; onAddMember: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -128,28 +129,16 @@ function QuickMenu({ subId, onOpen }: { subId: number; onOpen: () => void }) {
         <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[160px]">
           {[
             { label: "Открыть", action: () => { onOpen(); setOpen(false); } },
-            { label: "Добавить участника", href: `/legacy/subscriptions/${subId}/members/add` },
+            { label: "Добавить участника", action: () => { onAddMember(); setOpen(false); } },
           ].map((item) => (
-            "href" in item ? (
-              <a
-                key={item.label}
-                href={item.href}
-                onClick={(e) => e.stopPropagation()}
-                className="block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
-                style={{ color: "var(--t-secondary)" }}
-              >
-                {item.label}
-              </a>
-            ) : (
-              <button
-                key={item.label}
-                onClick={(e) => { e.stopPropagation(); item.action(); }}
-                className="w-full text-left block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
-                style={{ color: "var(--t-secondary)" }}
-              >
-                {item.label}
-              </button>
-            )
+            <button
+              key={item.label}
+              onClick={(e) => { e.stopPropagation(); item.action(); }}
+              className="w-full text-left block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
+              style={{ color: "var(--t-secondary)" }}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
       )}
@@ -159,7 +148,7 @@ function QuickMenu({ subId, onOpen }: { subId: number; onOpen: () => void }) {
 
 // ── SubCard ───────────────────────────────────────────────────────────────────
 
-function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void }) {
+function SubCard({ sub, onOpen, onAddMember }: { sub: SubscriptionItem; onOpen: () => void; onAddMember: () => void }) {
   const minDays = getMinDaysLeft(sub);
   const monthlyTotal = getMonthlyTotal(sub);
   const [membersExpanded, setMembersExpanded] = useState(false);
@@ -252,9 +241,12 @@ function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void })
             )}
             <div className="flex items-center justify-between py-1">
               <span className="text-[13px]" style={{ color: "var(--t-faint)" }}>Нет участников</span>
-              <span className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors">
+              <button
+                onClick={(e) => { e.stopPropagation(); onAddMember(); }}
+                className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
+              >
                 + Добавить участника
-              </span>
+              </button>
             </div>
           </div>
         )}
@@ -262,7 +254,7 @@ function SubCard({ sub, onOpen }: { sub: SubscriptionItem; onOpen: () => void })
 
       {/* Quick menu — overlaid so it doesn't trigger card navigation */}
       <div className="absolute top-3.5 right-3.5 z-10" onClick={(e) => e.stopPropagation()}>
-        <QuickMenu subId={sub.id} onOpen={onOpen} />
+        <QuickMenu onOpen={onOpen} onAddMember={onAddMember} />
       </div>
     </div>
   );
@@ -320,8 +312,7 @@ export default function SubscriptionsPage() {
   const [sort, setSort]             = useState<SortKind>("expiry");
   const [selectedSub, setSelectedSub] = useState<SubscriptionItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-
-  const { mutate: restoreSub } = useRestoreSubscription();
+  const [addMemberSubId, setAddMemberSubId] = useState<number | null>(null);
 
   // When showArchived is true, show only archived; when false, show only active
   const visibleData = data
@@ -346,6 +337,9 @@ export default function SubscriptionsPage() {
       )}
       {showCreate && (
         <CreateSubscriptionModal onClose={() => setShowCreate(false)} />
+      )}
+      {addMemberSubId !== null && (
+        <AddMemberModal subId={addMemberSubId} onClose={() => setAddMemberSubId(null)} />
       )}
       <AppTopbar title="Подписки" />
       <main className="flex-1 overflow-auto p-6">
@@ -495,7 +489,7 @@ export default function SubscriptionsPage() {
               ) : (
                 <div className="space-y-3">
                   {filtered.map((s) => (
-                    <SubCard key={s.id} sub={s} onOpen={() => setSelectedSub(s)} />
+                    <SubCard key={s.id} sub={s} onOpen={() => setSelectedSub(s)} onAddMember={() => setAddMemberSubId(s.id)} />
                   ))}
                 </div>
               )}

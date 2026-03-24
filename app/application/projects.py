@@ -515,6 +515,7 @@ class ProjectReadService:
                 "total_tasks": total,
                 "done_tasks": done,
                 "progress": round(done / total * 100) if total else 0,
+                "hide_from_plan": p.hide_from_plan,
             })
         return result
 

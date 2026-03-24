@@ -14,6 +14,8 @@ import {
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -121,6 +123,14 @@ function PresetRow({
 
   const { data: categories = [] } = useWorkCategories();
 
+  const catOptions: SelectOption[] = [
+    { value: "", label: "— Без категории —" },
+    ...categories.filter((c) => !c.is_archived).map((c) => ({
+      value: String(c.category_id),
+      label: `${c.emoji ? c.emoji + " " : ""}${c.title}`,
+    })),
+  ];
+
   function startEdit() {
     setEditName(preset.name);
     setEditTitle(preset.title_template);
@@ -198,24 +208,11 @@ function PresetRow({
           className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40 resize-none"
           style={{ color: "var(--t-secondary)" }}
         />
-        <select
+        <Select
           value={editCatId ?? ""}
-          onChange={(e) =>
-            setEditCatId(e.target.value ? Number(e.target.value) : null)
-          }
-          className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40"
-          style={{ color: "var(--t-secondary)" }}
-        >
-          <option value="">— Без категории —</option>
-          {categories
-            .filter((c) => !c.is_archived)
-            .map((c) => (
-              <option key={c.category_id} value={c.category_id}>
-                {c.emoji ? `${c.emoji} ` : ""}
-                {c.title}
-              </option>
-            ))}
-        </select>
+          onChange={(v) => setEditCatId(v ? Number(v) : null)}
+          options={catOptions}
+        />
       </div>
     );
   }
@@ -319,6 +316,14 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
   const { mutate: create, isPending } = useCreatePreset();
   const { data: categories = [] } = useWorkCategories();
 
+  const catOptions: SelectOption[] = [
+    { value: "", label: "— Без категории —" },
+    ...categories.filter((c) => !c.is_archived).map((c) => ({
+      value: String(c.category_id),
+      label: `${c.emoji ? c.emoji + " " : ""}${c.title}`,
+    })),
+  ];
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const n = name.trim();
@@ -388,24 +393,11 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
         className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50 resize-none"
         style={{ color: "var(--t-secondary)" }}
       />
-      <select
+      <Select
         value={catId ?? ""}
-        onChange={(e) =>
-          setCatId(e.target.value ? Number(e.target.value) : null)
-        }
-        className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50"
-        style={{ color: "var(--t-secondary)" }}
-      >
-        <option value="">— Без категории —</option>
-        {categories
-          .filter((c) => !c.is_archived)
-          .map((c) => (
-            <option key={c.category_id} value={c.category_id}>
-              {c.emoji ? `${c.emoji} ` : ""}
-              {c.title}
-            </option>
-          ))}
-      </select>
+        onChange={(v) => setCatId(v ? Number(v) : null)}
+        options={catOptions}
+      />
     </form>
   );
 }

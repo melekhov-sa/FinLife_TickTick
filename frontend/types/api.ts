@@ -147,6 +147,7 @@ export interface ProjectSummary {
   total_tasks: number;
   done_tasks: number;
   progress: number;
+  hide_from_plan: boolean;
 }
 
 export interface ProjectTag {

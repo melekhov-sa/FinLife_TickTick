@@ -1129,6 +1129,7 @@ class ProjectModel(Base):
     due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
 
     board_columns: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hide_from_plan: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

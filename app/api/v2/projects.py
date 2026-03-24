@@ -29,6 +29,7 @@ class ProjectSummary(BaseModel):
     total_tasks: int
     done_tasks: int
     progress: int
+    hide_from_plan: bool = False
 
     @field_serializer("start_date", "due_date")
     def _date(self, v: date | None) -> str | None:
@@ -177,6 +178,42 @@ def create_project(
     except ProjectValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return CreateProjectResponse(id=project_id)
+
+
+# ── Update project settings ────────────────────────────────────────────────────
+
+class UpdateProjectSettingsRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    hide_from_plan: bool | None = None
+
+
+@router.patch("/projects/{project_id}")
+def update_project(
+    project_id: int,
+    body: UpdateProjectSettingsRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from app.infrastructure.db.models import ProjectModel
+    user_id = get_user_id(request, db)
+    project = db.query(ProjectModel).filter(
+        ProjectModel.id == project_id, ProjectModel.account_id == user_id,
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    fields = body.model_fields_set
+    if "title" in fields and body.title:
+        project.title = body.title.strip()
+    if "description" in fields:
+        project.description = body.description
+    if "status" in fields and body.status:
+        project.status = body.status
+    if "hide_from_plan" in fields and body.hide_from_plan is not None:
+        project.hide_from_plan = body.hide_from_plan
+    db.commit()
+    return {"ok": True}
 
 
 # ── Create task in project ─────────────────────────────────────────────────────

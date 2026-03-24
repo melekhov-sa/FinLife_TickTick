@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 interface Props {
   kind: "task" | "habit" | "task_occ";
@@ -17,15 +18,9 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 async function completeItem(kind: Props["kind"], id: number) {
-  if (kind === "task") {
-    return fetch(`/api/v2/tasks/${id}/complete`, { method: "POST", credentials: "include" });
-  }
-  if (kind === "habit") {
-    return fetch(`/api/v2/habits/occurrences/${id}/complete`, { method: "POST", credentials: "include" });
-  }
-  if (kind === "task_occ") {
-    return fetch(`/api/v2/task-occurrences/${id}/complete`, { method: "POST", credentials: "include" });
-  }
+  if (kind === "task") return api.post(`/api/v2/tasks/${id}/complete`);
+  if (kind === "habit") return api.post(`/api/v2/habits/occurrences/${id}/complete`);
+  if (kind === "task_occ") return api.post(`/api/v2/task-occurrences/${id}/complete`);
 }
 
 export function ConfirmCompleteModal({ kind, id, title, onClose }: Props) {
@@ -38,13 +33,9 @@ export function ConfirmCompleteModal({ kind, id, title, onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await completeItem(kind, id);
-      if (!res || !res.ok) {
-        const data = await res?.json().catch(() => ({}));
-        setError(data?.detail ?? "Ошибка при выполнении");
-        return;
-      }
+      await completeItem(kind, id);
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
       onClose();
     } catch {
       setError("Не удалось подключиться к серверу");
