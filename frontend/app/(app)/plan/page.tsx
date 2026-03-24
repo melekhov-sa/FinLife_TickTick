@@ -7,7 +7,8 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { clsx } from "clsx";
-import { CalendarDays, Play } from "lucide-react";
+import { CalendarDays, Play, SkipForward } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -211,11 +212,13 @@ function EntryRow({
   onComplete,
   onReschedule,
   onExecuteOp,
+  onSkipOp,
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
+  onSkipOp: (entry: PlanEntry) => void;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
@@ -320,14 +323,24 @@ function EntryRow({
           </button>
         )}
         {isOp && !entry.is_done && (
-          <button
-            onClick={() => onExecuteOp(entry)}
-            className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
-            title="Выполнить операцию"
-          >
-            <Play size={9} className="fill-current" />
-            Выполнить
-          </button>
+          <>
+            <button
+              onClick={() => onExecuteOp(entry)}
+              className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
+              title="Выполнить операцию"
+            >
+              <Play size={9} className="fill-current" />
+              Выполнить
+            </button>
+            <button
+              onClick={() => onSkipOp(entry)}
+              className="opacity-0 group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400"
+              style={{ color: "var(--t-faint)" }}
+              title="Пропустить операцию"
+            >
+              <SkipForward size={12} />
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -339,12 +352,14 @@ function DayGroupCard({
   onComplete,
   onReschedule,
   onExecuteOp,
+  onSkipOp,
   onAddTask,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
+  onSkipOp: (entry: PlanEntry) => void;
   onAddTask: () => void;
 }) {
   const label = group.date && !group.is_overdue_group
@@ -384,7 +399,7 @@ function DayGroupCard({
 
       {/* Entries */}
       {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} />
+        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
       ))}
 
       {/* Per-day quick-add */}
@@ -407,11 +422,13 @@ function DoneTodayBlock({
   onComplete,
   onReschedule,
   onExecuteOp,
+  onSkipOp,
 }: {
   entries: PlanEntry[];
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
+  onSkipOp: (entry: PlanEntry) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const LIMIT = 3;
@@ -423,7 +440,7 @@ function DoneTodayBlock({
         ✓ Выполнено сегодня · {entries.length}
       </h3>
       {visible.map((e) => (
-        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} />
+        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
       ))}
       {entries.length > LIMIT && (
         <button
@@ -446,6 +463,17 @@ export default function PlanPage() {
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
   const qc = useQueryClient();
+
+  const { mutate: skipOp } = useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+  });
+
+  function handleSkipOp(entry: PlanEntry) {
+    const occurrenceId = entry.meta.occurrence_id as number | undefined;
+    if (occurrenceId) skipOp(occurrenceId);
+  }
 
   const { data, isLoading, isError } = useQuery<PlanData>({
     queryKey: ["plan", tab, range],
@@ -639,7 +667,7 @@ export default function PlanPage() {
 
           {/* ── Done today (collapsible) ──────────────────────────────── */}
           {data && tab === "active" && data.done_today.length > 0 && (
-            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} />
+            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} onSkipOp={handleSkipOp} />
           )}
 
           {/* ── Day groups ────────────────────────────────────────────── */}
@@ -652,6 +680,7 @@ export default function PlanPage() {
                   onComplete={setConfirmEntry}
                   onReschedule={setRescheduleEntry}
                   onExecuteOp={setExecuteEntry}
+                  onSkipOp={handleSkipOp}
                   onAddTask={() => setShowCreateTask(true)}
                 />
               ))}

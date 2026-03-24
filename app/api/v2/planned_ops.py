@@ -123,6 +123,21 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
     ]
 
 
+@router.post("/planned-ops/occurrences/{occurrence_id}/skip", status_code=200)
+def skip_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    """Mark a planned operation occurrence as SKIPPED."""
+    user_id = get_user_id(request, db)
+    occ = db.query(OperationOccurrence).filter(
+        OperationOccurrence.id == occurrence_id,
+        OperationOccurrence.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    occ.status = "SKIPPED"
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/planned-ops/occurrences/{occurrence_id}/done", status_code=200)
 def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
     """Mark a planned operation occurrence as DONE (called after creating the transaction)."""

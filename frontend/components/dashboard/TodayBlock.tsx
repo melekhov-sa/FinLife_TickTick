@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, SkipForward } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -79,20 +81,30 @@ function Item({
   );
 }
 
-function FinanceItem({ op, onClick }: { op: UpcomingPayment; onClick: () => void }) {
+function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: () => void; onSkip: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-2.5 py-2 md:py-2.5 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors text-left"
-    >
+    <div className="group/fi flex items-center gap-2.5 py-2 md:py-2.5 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
       <div className="w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] border-white/20 shrink-0" />
-      <span className="flex-1 min-w-0 text-[13px] md:text-[14px] font-[500] truncate" style={{ color: "var(--t-primary)" }}>
-        {op.title}
-      </span>
+      <button
+        onClick={onClick}
+        className="flex-1 min-w-0 text-left"
+      >
+        <span className="text-[13px] md:text-[14px] font-[500] truncate block" style={{ color: "var(--t-primary)" }}>
+          {op.title}
+        </span>
+      </button>
       <span className="text-[11px] md:text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
         {op.kind_label} · {op.amount_formatted}
       </span>
-    </button>
+      <button
+        onClick={onSkip}
+        className="opacity-0 group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 shrink-0"
+        style={{ color: "var(--t-faint)" }}
+        title="Пропустить операцию"
+      >
+        <SkipForward size={12} />
+      </button>
+    </div>
   );
 }
 
@@ -133,6 +145,13 @@ export function TodayBlock({ today, plannedOps }: Props) {
     habitItems.length === 0 &&
     (events ?? []).length === 0 &&
     (plannedOps ?? []).length === 0;
+
+  const qc = useQueryClient();
+  const { mutate: skipOp } = useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard"] }),
+  });
 
   return (
     <>
@@ -239,7 +258,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
           <div className="mb-2 md:mb-3">
             <SectionLabel label="Финансы" count={plannedOps.length} />
             {plannedOps.map((op) => (
-              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setShowOpModal(true)} />
+              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setShowOpModal(true)} onSkip={() => skipOp(op.occurrence_id)} />
             ))}
           </div>
         )}
