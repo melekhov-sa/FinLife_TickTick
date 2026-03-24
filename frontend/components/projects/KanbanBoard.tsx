@@ -180,6 +180,7 @@ export function KanbanBoard({ project }: Props) {
       {selectedTaskId !== null && selectedTask && (
         <TaskDetailPanel
           task={selectedTask}
+          projectTags={project.tags}
           onClose={() => {
             setSelectedTaskId(null);
             qc.invalidateQueries({ queryKey: ["project", project.id] });

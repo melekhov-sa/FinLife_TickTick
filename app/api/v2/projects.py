@@ -11,7 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.application.projects import ProjectReadService, CreateProjectUseCase, CreateTaskInProjectUseCase, ProjectValidationError
+from app.application.projects import (
+    ProjectReadService, CreateProjectUseCase, CreateTaskInProjectUseCase, ProjectValidationError,
+    CreateProjectTagUseCase, UpdateProjectTagUseCase, DeleteProjectTagUseCase,
+    AddTagToTaskUseCase, RemoveTagFromTaskUseCase,
+)
 
 router = APIRouter()
 
@@ -251,3 +255,90 @@ def create_project_task(
     except ProjectValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return CreateProjectTaskResponse(id=task_id)
+
+
+# ── Project Tags ──────────────────────────────────────────────────────────────
+
+class CreateTagRequest(BaseModel):
+    name: str
+    color: str | None = "gray"
+
+
+class UpdateTagRequest(BaseModel):
+    name: str | None = None
+    color: str | None = None
+
+
+@router.post("/projects/{project_id}/tags", status_code=201)
+def create_project_tag(
+    project_id: int, body: CreateTagRequest,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    try:
+        tag_id = CreateProjectTagUseCase(db).execute(
+            project_id=project_id, account_id=user_id,
+            name=body.name, color=body.color,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"id": tag_id}
+
+
+@router.patch("/projects/{project_id}/tags/{tag_id}")
+def update_project_tag(
+    project_id: int, tag_id: int, body: UpdateTagRequest,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    fields = body.model_fields_set
+    try:
+        UpdateProjectTagUseCase(db).execute(
+            tag_id=tag_id, project_id=project_id, account_id=user_id,
+            name=body.name if "name" in fields else None,
+            color=body.color if "color" in fields else ...,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@router.delete("/projects/{project_id}/tags/{tag_id}", status_code=204)
+def delete_project_tag(
+    project_id: int, tag_id: int,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    DeleteProjectTagUseCase(db).execute(
+        tag_id=tag_id, project_id=project_id, account_id=user_id,
+    )
+
+
+# ── Task ↔ Tag assignment ─────────────────────────────────────────────────────
+
+@router.post("/projects/{project_id}/tasks/{task_id}/tags/{tag_id}", status_code=201)
+def add_tag_to_task(
+    project_id: int, task_id: int, tag_id: int,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    try:
+        AddTagToTaskUseCase(db).execute(
+            task_id=task_id, project_tag_id=tag_id,
+            project_id=project_id, account_id=user_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
+@router.delete("/projects/{project_id}/tasks/{task_id}/tags/{tag_id}", status_code=204)
+def remove_tag_from_task(
+    project_id: int, task_id: int, tag_id: int,
+    request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    RemoveTagFromTaskUseCase(db).execute(
+        task_id=task_id, project_tag_id=tag_id,
+        project_id=project_id, account_id=user_id,
+    )

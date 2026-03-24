@@ -4,14 +4,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Calendar, Tag, CheckCircle2, Archive, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
-import type { TaskItem, WorkCategoryItem } from "@/types/api";
+import type { TaskItem, WorkCategoryItem, ProjectTag } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 
 interface Props {
   task: TaskItem;
   onClose: () => void;
+  projectTags?: ProjectTag[];
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -35,7 +37,15 @@ function formatDisplayDate(iso: string | null): string | null {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TaskDetailPanel({ task, onClose }: Props) {
+const TAG_COLOR_CLASSES: Record<string, string> = {
+  gray:   "bg-white/10 text-white/50 border-white/15",
+  blue:   "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  green:  "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+  orange: "bg-orange-500/15 text-orange-400 border-orange-500/20",
+  purple: "bg-purple-500/15 text-purple-400 border-purple-500/20",
+};
+
+export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
   const [title, setTitle]     = useState(task.title);
   const [note, setNote]       = useState(task.note ?? "");
   const [dueDate, setDueDate] = useState(isoToInputDate(task.due_date));
@@ -51,6 +61,21 @@ export function TaskDetailPanel({ task, onClose }: Props) {
   const { mutate: archive }  = useArchiveTask();
   const { mutate: update }   = useUpdateTask();
   const { mutate: del }      = useDeleteTask();
+
+  const qc = useQueryClient();
+  const { mutate: addTag } = useMutation({
+    mutationFn: ({ tagId }: { tagId: number }) =>
+      api.post(`/api/v2/projects/${task.project_id}/tasks/${task.task_id}/tags/${tagId}`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task", task.task_id] }),
+  });
+  const { mutate: removeTag } = useMutation({
+    mutationFn: ({ tagId }: { tagId: number }) =>
+      api.delete(`/api/v2/projects/${task.project_id}/tasks/${task.task_id}/tags/${tagId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["task", task.task_id] });
+      qc.invalidateQueries({ queryKey: ["project", task.project_id] });
+    },
+  });
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
     queryKey: ["work-categories"],
@@ -224,6 +249,35 @@ export function TaskDetailPanel({ task, onClose }: Props) {
               />
             </div>
           </div>
+
+          {/* Project tags */}
+          {projectTags && projectTags.length > 0 && (
+            <div className="flex items-start gap-3">
+              <Tag size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
+              <div className="flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Теги</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {projectTags.map((tag) => {
+                    const isActive = (task.tag_ids ?? []).includes(tag.id);
+                    const colorCls = TAG_COLOR_CLASSES[tag.color ?? "gray"] ?? TAG_COLOR_CLASSES.gray;
+                    return (
+                      <button
+                        key={tag.id}
+                        onClick={() => isActive ? removeTag({ tagId: tag.id }) : addTag({ tagId: tag.id })}
+                        disabled={isDone || isArchived}
+                        className={clsx(
+                          "text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:opacity-50",
+                          isActive ? colorCls : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60"
+                        )}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Note */}
           <div>

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence, RecurrenceRuleModel
+from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence, RecurrenceRuleModel, TaskProjectTagModel
 
 router = APIRouter()
 
@@ -35,6 +35,7 @@ class TaskItem(BaseModel):
     is_overdue: bool
     is_recurring: bool = False
     occurrence_id: int | None = None
+    tag_ids: list[int] = []
 
     @field_serializer("due_date")
     def _date(self, v: date | None) -> str | None:
@@ -397,6 +398,10 @@ def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     if task.category_id:
         cat = db.query(WorkCategory).filter(WorkCategory.category_id == task.category_id).first()
         emoji = cat.emoji if cat else None
+    tag_ids = [
+        row.project_tag_id for row in
+        db.query(TaskProjectTagModel).filter(TaskProjectTagModel.task_id == task.task_id).all()
+    ]
     return TaskItem(
         task_id=task.task_id,
         title=task.title,
@@ -408,6 +413,7 @@ def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
         category_id=task.category_id,
         category_emoji=emoji,
         is_overdue=(task.due_date is not None and task.due_date < today and task.status == "ACTIVE"),
+        tag_ids=tag_ids,
     )
 
 

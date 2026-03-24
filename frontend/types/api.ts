@@ -194,6 +194,7 @@ export interface TaskItem {
   is_overdue: boolean;
   is_recurring: boolean;
   occurrence_id: number | null;
+  tag_ids: number[];
 }
 
 // ── /api/v2/habits ────────────────────────────────────────────────────────────
