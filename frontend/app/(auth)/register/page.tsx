@@ -29,9 +29,13 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (error) {
-      setError(error.message === "User already registered"
-        ? "Пользователь с таким email уже существует"
-        : "Ошибка регистрации. Попробуйте позже.");
+      if (error.message === "User already registered") {
+        setError("Пользователь с таким email уже существует");
+      } else if (error.message === "Signups not allowed for this instance") {
+        setError("Регистрация временно отключена. Обратитесь к администратору.");
+      } else {
+        setError(`Ошибка регистрации: ${error.message}`);
+      }
     } else {
       setDone(true);
     }
