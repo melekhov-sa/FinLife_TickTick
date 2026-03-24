@@ -200,22 +200,50 @@ tr.row-over .bgt-focus-delta { color: #dc3545 !important; font-weight: 600; }
   .bgt-row-2 { border-left: 1px solid #ddd; padding-left: 10px; }
 }
 
-/* ── Dark mode overrides for new budget elements ── */
-[data-theme$="-dark"] .bgt-section-hdr td { background: #1c2128 !important; color: #8b949e !important; }
-[data-theme$="-dark"] .bgt-section-hdr .bgt-section-summary { color: #6e7681; }
-[data-theme$="-dark"] .bgt-section-hdr.bgt-expense td { background: #1a1f2e !important; color: #c9d1d9 !important; }
-[data-theme$="-dark"] .bgt-section-total-expense td { background: #1a1f2e !important; }
-[data-theme$="-dark"] .bgt-section-hdr.bgt-goals td { background: #1e1d17 !important; border-top-color: #30363d; }
-[data-theme$="-dark"] .bgt-section-hdr.bgt-withdrawal td { background: #1e1d17 !important; border-top-color: #30363d; }
-[data-theme$="-dark"] .zero-val { color: #484f58; }
-[data-theme$="-dark"] tr.row-plan-no-fact { background: rgba(255, 193, 7, 0.05); }
-[data-theme$="-dark"] tr.row-over { background: rgba(220, 53, 69, 0.05); }
-[data-theme$="-dark"] tr.row-unplanned { background: rgba(13, 110, 253, 0.04); }
-[data-theme$="-dark"] tr.row-over .bgt-focus-delta { color: #f87171 !important; }
+/* ── Dark mode: lighter base ── */
+[data-theme$="-dark"] .budget-table.bgt-compact tbody td { background-color: #141e30; }
+[data-theme$="-dark"] .budget-table.bgt-compact thead th { background-color: #0d1624 !important; color: #7a92b5 !important; }
 
-/* ── Future period heat-map + readable text ── */
-td[data-val] { transition: background-color 0.15s; color: var(--text-primary, #111) !important; }
-[data-theme$="-dark"] td[data-val] { color: #e6edf3 !important; filter: brightness(1.15); }
+/* ── Dark mode: section headers ── */
+[data-theme$="-dark"] .bgt-section-hdr td { background: #0c1420 !important; color: #5e78a5 !important; border-top: 1px solid #1c2c42 !important; }
+[data-theme$="-dark"] .bgt-section-hdr .bgt-section-summary { color: #3c5270; }
+[data-theme$="-dark"] .bgt-section-hdr.bgt-expense td { background: #0f0c1c !important; color: #8870b8 !important; }
+[data-theme$="-dark"] .bgt-section-total-expense td { background: #130e24 !important; border-top: 2px solid #241a44 !important; }
+[data-theme$="-dark"] .bgt-section-hdr.bgt-goals td { background: #0c1a0e !important; border-top-color: #1a2e1c !important; color: #568060 !important; }
+[data-theme$="-dark"] .bgt-section-hdr.bgt-withdrawal td { background: #0c1a0e !important; border-top-color: #1a2e1c !important; color: #568060 !important; }
+
+/* ── Dark mode: zero + status rows ── */
+[data-theme$="-dark"] .zero-val { color: #283850; }
+[data-theme$="-dark"] tr.row-plan-no-fact td { background-color: rgba(255,193,7,0.06) !important; }
+[data-theme$="-dark"] tr.row-over td { background-color: rgba(220,53,69,0.08) !important; }
+[data-theme$="-dark"] tr.row-unplanned td { background-color: rgba(13,110,253,0.07) !important; }
+[data-theme$="-dark"] tr.row-over .bgt-focus-delta { color: #f87171 !important; }
+[data-theme$="-dark"] tr.row-ok > td { color: #3c5270 !important; }
+
+/* ── Total rows ── */
+tr.budget-total-row > td { background: #e8eeff !important; font-weight: 700; border-top: 1px solid #bfcce8 !important; }
+[data-theme$="-dark"] tr.budget-total-row > td { background: #172c46 !important; font-weight: 700; border-top: 1px solid #22405e !important; }
+
+/* ── Group / parent category rows ── */
+tr.bgt-group-row > td { background-color: #eef2ff !important; }
+[data-theme$="-dark"] tr.bgt-group-row > td { background-color: #1c2b44 !important; }
+
+/* ── Row hover ── */
+tr.bgt-section-body:hover > td { background-color: rgba(80,100,200,0.06) !important; }
+[data-theme$="-dark"] tr.bgt-section-body:hover > td { background-color: rgba(80,125,255,0.13) !important; }
+
+/* ── Zebra rows (applied via JS, no !important — overridden by heatmap) ── */
+tr.bgt-row-alt > td { background-color: rgba(0,0,40,0.022); }
+[data-theme$="-dark"] tr.bgt-row-alt > td { background-color: #182236; }
+
+/* ── Month column separators stronger ── */
+td.period-border, th.period-border { border-left: 2px solid #b0bdd5 !important; }
+[data-theme$="-dark"] td.period-border, [data-theme$="-dark"] th.period-border { border-left: 2px solid #243650 !important; }
+
+/* ── Heat-map base (color set by JS) ── */
+td[data-val] { transition: background-color 0.15s; }
+td.bgt-heat { transition: background-color 0.15s; }
+[data-theme$="-dark"] td[data-val], [data-theme$="-dark"] td.bgt-heat { color: #d0e2f8 !important; }
 
 /* ── Drag & drop category reorder ── */
 .drag-handle {
@@ -517,7 +545,7 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           </td>
         </tr>
         {% for row in view.income_rows %}
-        <tr class="bgt-section-body bgt-hidden" data-section="income" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
+        <tr class="bgt-section-body bgt-hidden{% if row.is_group %} bgt-group-row{% endif %}" data-section="income" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
           <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
@@ -691,7 +719,7 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           </td>
         </tr>
         {% for row in view.expense_rows %}
-        <tr class="bgt-section-body{% if show_plan %} {{ _hint_cls(row.cells[0]) }}{% endif %}" data-section="expense" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
+        <tr class="bgt-section-body{% if show_plan %} {{ _hint_cls(row.cells[0]) }}{% endif %}{% if row.is_group %} bgt-group-row{% endif %}" data-section="expense" data-cat-id="{{ row.category_id }}" data-par-id="{{ row.parent_id or '' }}"{% if row.is_group %} style="font-weight: 600;"{% endif %}>
           <td class="sticky-col"><span class="drag-handle" title="Перетащить">⠿</span>{% if row.depth > 0 %}<span class="bgt-child-indent">&hairsp;└</span>{% endif %}{{ row.title }}</td>
           {% for cell in row.cells %}
           {% set _p = view.periods[loop.index0] %}
@@ -1067,20 +1095,68 @@ function toggleAllVisibility(checked) {
   form.addEventListener('submit', lockMobile);
 })();
 
+// ── Heatmap: чем больше сумма — тем ярче фон ──────────────────────────────
 (function applyHeatmap() {
-  var cells = document.querySelectorAll('td[data-val]');
-  for (var i = 0; i < cells.length; i++) {
-    var val = parseFloat(cells[i].getAttribute('data-val')) || 0;
-    val = Math.abs(val);
-    var opacity = 0;
-    if      (val >= 50000) opacity = 0.40;
-    else if (val >= 15000) opacity = 0.26;
-    else if (val >=  5000) opacity = 0.14;
-    else if (val >=  1000) opacity = 0.07;
-    if (opacity > 0) {
-      cells[i].style.backgroundColor = 'rgba(251,191,36,' + opacity + ')';
+  var isDark = (document.documentElement.getAttribute('data-theme') || '').indexOf('-dark') >= 0;
+
+  function parseNum(txt) {
+    if (!txt) return 0;
+    var s = txt.trim().replace(/[\s\u00a0\u202f\u2009]/g, '');
+    if (s === '—' || s === '' || s === '0') return 0;
+    s = s.replace(/^[+]/, '');
+    return Math.abs(parseFloat(s)) || 0;
+  }
+
+  function mkColor(ratio) {
+    var r = Math.min(1, Math.max(0, ratio));
+    r = Math.pow(r, 0.55); // sqrt-like curve for better distribution
+    if (r < 0.035) return null;
+    if (isDark) {
+      return 'rgba(75,125,255,' + (0.07 + r * 0.45).toFixed(2) + ')';
+    } else {
+      return 'rgba(251,191,36,' + (0.05 + r * 0.32).toFixed(2) + ')';
     }
   }
+
+  // Collect all value + plan cells (skip delta/deviation columns)
+  var cells = document.querySelectorAll(
+    'td.compact-cell:not(.positive):not(.negative),' +
+    'td.total-cell:not(.positive):not(.negative)'
+  );
+
+  var pairs = [], allVals = [];
+  for (var i = 0; i < cells.length; i++) {
+    var td = cells[i];
+    if (td.classList.contains('bgt-col-remain')) continue;
+    var v = td.hasAttribute('data-val')
+      ? Math.abs(parseFloat(td.getAttribute('data-val'))) || 0
+      : parseNum(td.textContent);
+    if (v > 50) { pairs.push({td: td, v: v}); allVals.push(v); }
+  }
+
+  if (allVals.length === 0) return;
+
+  allVals.sort(function(a, b) { return a - b; });
+  // Use 92nd percentile as cap so a few huge outliers don't wash out everything
+  var cap = allVals[Math.min(allVals.length - 1, Math.floor(allVals.length * 0.92))];
+
+  for (var i = 0; i < pairs.length; i++) {
+    var color = mkColor(pairs[i].v / cap);
+    if (color) {
+      pairs[i].td.style.backgroundColor = color;
+      pairs[i].td.classList.add('bgt-heat');
+    }
+  }
+})();
+
+// ── Zebra: чередование строк внутри каждой секции ─────────────────────────
+(function applyZebra() {
+  ['income', 'expense', 'goals', 'withdrawal'].forEach(function(sec) {
+    var rows = document.querySelectorAll('tr.bgt-section-body[data-section="' + sec + '"]');
+    for (var i = 0; i < rows.length; i++) {
+      if (i % 2 === 1) rows[i].classList.add('bgt-row-alt');
+    }
+  });
 })();
 </script>
 {% endif %}
