@@ -357,6 +357,18 @@ class CreateSubscriptionCoverageUseCase:
         )
         self.db.add(cov)
         self.db.flush()
+
+        # 9. Update paid_until on subscription / member
+        if payer_type == "SELF":
+            if sub.paid_until_self is None or end_date > sub.paid_until_self:
+                sub.paid_until_self = end_date
+        else:
+            m = self.db.query(SubscriptionMemberModel).filter(
+                SubscriptionMemberModel.id == member_id,
+            ).first()
+            if m and (m.paid_until is None or end_date > m.paid_until):
+                m.paid_until = end_date
+
         self.db.commit()
         return cov.id
 
