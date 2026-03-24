@@ -13,12 +13,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!data.session) window.location.href = "/login";
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // TOKEN_REFRESHED fires automatically when Supabase refreshes the JWT
+      if (event === "TOKEN_REFRESHED") {
+        setSession(s);
+        return;
+      }
       setSession(s);
       if (!s) window.location.href = "/login";
     });
 
-    return () => subscription.unsubscribe();
+    // Proactively refresh the session every 45 minutes
+    // (access tokens expire after 1 hour, refresh before that)
+    const interval = setInterval(async () => {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error || !data.session) {
+        window.location.href = "/login";
+      }
+    }, 45 * 60 * 1000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   if (session === undefined) {

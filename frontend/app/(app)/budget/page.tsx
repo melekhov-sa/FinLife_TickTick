@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
+import { api } from "@/lib/api";
 
 interface BudgetRow {
   category_id: number | null;
@@ -168,9 +169,7 @@ export default function BudgetPage() {
 
   const { data, isPending, isError } = useQuery<BudgetData>({
     queryKey: ["budget", year, month],
-    queryFn: () =>
-      fetch(`/api/v2/budget?year=${year}&month=${month}`, { credentials: "include" })
-        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
+    queryFn: () => api.get<BudgetData>(`/api/v2/budget?year=${year}&month=${month}`),
     staleTime: 60_000,
   });
   const isLoading = isPending;

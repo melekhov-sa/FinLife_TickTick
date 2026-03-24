@@ -1,16 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import type { EfficiencyData } from "@/types/api";
-
-async function fetchEfficiency(): Promise<EfficiencyData> {
-  const res = await fetch("/api/v2/efficiency", { credentials: "include" });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
-}
+import { api } from "@/lib/api";
 
 export function useEfficiency() {
   return useQuery<EfficiencyData, Error>({
     queryKey: ["efficiency"],
-    queryFn: fetchEfficiency,
+    queryFn: () => api.get<EfficiencyData>("/api/v2/efficiency"),
     staleTime: 60 * 1000,
   });
 }
