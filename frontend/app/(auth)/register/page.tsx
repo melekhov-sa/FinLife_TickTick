@@ -33,6 +33,8 @@ export default function RegisterPage() {
         setError("Пользователь с таким email уже существует");
       } else if (error.message === "Signups not allowed for this instance") {
         setError("Регистрация временно отключена. Обратитесь к администратору.");
+      } else if (error.message.includes("sending confirmation email") || error.message.includes("email")) {
+        setError("Не удалось отправить письмо подтверждения. Попробуйте позже или обратитесь к администратору.");
       } else {
         setError(`Ошибка регистрации: ${error.message}`);
       }
