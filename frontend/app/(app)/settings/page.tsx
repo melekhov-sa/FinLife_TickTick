@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { api } from "@/lib/api";
 import Link from "next/link";
 import {
   User, Bell, Database, Shield,
@@ -80,10 +82,23 @@ const SETTINGS_ITEMS = [
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+interface NotifSettings {
+  telegram_connected: boolean;
+  telegram_chat_id: string | null;
+}
+
 export default function SettingsPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const pwa = usePwaInstall();
+
+  const { data: notifSettings } = useQuery<NotifSettings>({
+    queryKey: ["notification-settings"],
+    queryFn: () => api.get("/api/v2/notification-settings"),
+    staleTime: 30_000,
+  });
+
+  const tgConnected = notifSettings?.telegram_connected ?? false;
 
   const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const cardBg = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
@@ -166,23 +181,30 @@ export default function SettingsPage() {
                 <Send size={18} className="text-sky-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
-                  Telegram-бот
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+                    Telegram-бот
+                  </p>
+                  {tgConnected && (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                      <CheckCircle2 size={10} /> Подключён
+                    </span>
+                  )}
+                </div>
                 <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
-                  Получайте уведомления прямо в Telegram: напоминания о задачах, истечение подписок, предстоящие платежи.
+                  {tgConnected
+                    ? `Уведомления отправляются в чат ${notifSettings?.telegram_chat_id}`
+                    : "Получайте уведомления прямо в Telegram: задачи, подписки, платежи."
+                  }
                 </p>
-                <div className="mt-3 space-y-2">
+                <div className="mt-3">
                   <Link
                     href="/settings/notifications"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
-                    style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
+                    style={{ background: tgConnected ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
                   >
-                    <Send size={14} /> Подключить Telegram
+                    <Send size={14} /> {tgConnected ? "Настройки" : "Подключить Telegram"}
                   </Link>
-                  <p className="text-[10px]" style={{ color: "var(--t-faint)" }}>
-                    Настройка бота и push-уведомлений
-                  </p>
                 </div>
               </div>
             </div>
