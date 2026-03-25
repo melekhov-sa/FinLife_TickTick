@@ -5,8 +5,11 @@ GET    /api/v2/tasks/{task_id}/attachments              — list attachments
 POST   /api/v2/tasks/{task_id}/attachments              — upload file
 DELETE /api/v2/tasks/{task_id}/attachments/{att_id}     — delete attachment
 """
+import os
 import pathlib
 import uuid
+
+_PROJECT_ROOT = pathlib.Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
@@ -16,6 +19,13 @@ from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import TaskModel, TaskAttachmentModel
 from app.config import get_settings
+
+
+def _uploads_dir() -> pathlib.Path:
+    p = pathlib.Path(get_settings().UPLOADS_DIR)
+    if not p.is_absolute():
+        p = _PROJECT_ROOT / p
+    return p
 
 router = APIRouter()
 
@@ -143,9 +153,8 @@ async def upload_attachment(
         )
 
     # Save to disk
-    settings = get_settings()
     rel_dir = pathlib.Path(str(user_id)) / "tasks" / str(task_id)
-    abs_dir = pathlib.Path(settings.UPLOADS_DIR) / rel_dir
+    abs_dir = _uploads_dir() / rel_dir
     abs_dir.mkdir(parents=True, exist_ok=True)
 
     stored_name = f"{uuid.uuid4().hex}_{safe_name}"
@@ -189,8 +198,7 @@ def delete_attachment(
         raise HTTPException(status_code=404, detail="Вложение не найдено")
 
     # Delete file from disk
-    settings = get_settings()
-    file_path = pathlib.Path(settings.UPLOADS_DIR) / att.stored_filename
+    file_path = _uploads_dir() / att.stored_filename
     file_path.unlink(missing_ok=True)
 
     db.delete(att)

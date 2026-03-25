@@ -4279,10 +4279,9 @@ async def task_attachment_upload(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         return RedirectResponse(redir, status_code=302)
-    from app.config import get_settings
-    settings = get_settings()
+    from app.api.v2.task_attachments import _uploads_dir
     rel_dir = pathlib.Path(str(user_id)) / "tasks" / str(task_id)
-    abs_dir = pathlib.Path(settings.UPLOADS_DIR) / rel_dir
+    abs_dir = _uploads_dir() / rel_dir
     abs_dir.mkdir(parents=True, exist_ok=True)
     stored_name = f"{uuid.uuid4().hex}_{safe_name}"
     (abs_dir / stored_name).write_bytes(data)
@@ -4315,9 +4314,8 @@ def task_attachment_delete(
         TaskAttachmentModel.account_id == user_id,
     ).first()
     if att:
-        import pathlib
-        from app.config import get_settings
-        file_path = pathlib.Path(get_settings().UPLOADS_DIR) / att.stored_filename
+        from app.api.v2.task_attachments import _uploads_dir
+        file_path = _uploads_dir() / att.stored_filename
         file_path.unlink(missing_ok=True)
         db.delete(att)
         db.commit()

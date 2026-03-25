@@ -85,9 +85,15 @@ def create_app() -> FastAPI:
 
     # Uploaded files (task attachments etc.)
     import pathlib as _pathlib
+    _project_root = _pathlib.Path(_os.path.dirname(_os.path.dirname(__file__)))
     _uploads_dir = _pathlib.Path(settings.UPLOADS_DIR)
-    _uploads_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+    if not _uploads_dir.is_absolute():
+        _uploads_dir = _project_root / _uploads_dir
+    try:
+        _uploads_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+    except Exception:
+        pass  # uploads mount is optional; app works without it
 
     # Routers - v2 JSON API, then v1 API, then SSR pages
     app.include_router(v2_router)
