@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const refreshFailures = useRef(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -14,23 +15,32 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      // TOKEN_REFRESHED fires automatically when Supabase refreshes the JWT
       if (event === "TOKEN_REFRESHED") {
+        refreshFailures.current = 0;
         setSession(s);
         return;
       }
+      if (event === "SIGNED_OUT") {
+        window.location.href = "/login";
+        return;
+      }
       setSession(s);
-      if (!s) window.location.href = "/login";
     });
 
-    // Proactively refresh the session every 45 minutes
-    // (access tokens expire after 1 hour, refresh before that)
+    // Proactively refresh the session every 50 minutes
+    // (access tokens expire after 1 hour)
     const interval = setInterval(async () => {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
-        window.location.href = "/login";
+        refreshFailures.current += 1;
+        // Only redirect after 3 consecutive failures (allows for temporary network issues)
+        if (refreshFailures.current >= 3) {
+          window.location.href = "/login";
+        }
+      } else {
+        refreshFailures.current = 0;
       }
-    }, 45 * 60 * 1000);
+    }, 50 * 60 * 1000);
 
     return () => {
       subscription.unsubscribe();

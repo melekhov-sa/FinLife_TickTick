@@ -9,7 +9,14 @@ import { supabase } from "@/lib/supabase";
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 async function getAuthHeader(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
+  let { data: { session } } = await supabase.auth.getSession();
+
+  // If the access token is expired or missing, try refreshing once
+  if (!session?.access_token) {
+    const { data } = await supabase.auth.refreshSession();
+    session = data.session;
+  }
+
   if (!session?.access_token) return {};
   return { Authorization: `Bearer ${session.access_token}` };
 }
@@ -28,6 +35,27 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
+    // Try refreshing the token once before giving up
+    const { data } = await supabase.auth.refreshSession();
+    if (data.session?.access_token) {
+      // Retry the request with the new token
+      const retryRes = await fetch(`${BASE}${path}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${data.session.access_token}`,
+          ...init?.headers,
+        },
+        ...init,
+      });
+      if (retryRes.ok) {
+        if (retryRes.status === 204 || retryRes.headers.get("content-length") === "0") {
+          return undefined as T;
+        }
+        return retryRes.json() as Promise<T>;
+      }
+    }
+    // Refresh failed — only now sign out
     await supabase.auth.signOut();
     if (typeof window !== "undefined") {
       window.location.href = "/login";
