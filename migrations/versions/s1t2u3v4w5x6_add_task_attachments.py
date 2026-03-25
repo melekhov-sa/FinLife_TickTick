@@ -1,14 +1,20 @@
-"""add task_attachments table
+"""add task_attachments table (merge all heads)
 
 Revision ID: s1t2u3v4w5x6
-Revises: r0s1t2u3v4w5
+Revises: f1b2c3d4e5f6, i4j5k6l7m8n9, o0p1q2r3s4t5, r0s1t2u3v4w5
 Create Date: 2026-03-25
 """
+from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
 revision = "s1t2u3v4w5x6"
-down_revision = "r0s1t2u3v4w5"
+down_revision: Union[str, Sequence[str]] = (
+    "f1b2c3d4e5f6",  # add_habit_level
+    "i4j5k6l7m8n9",  # create_subscriptions_tables
+    "o0p1q2r3s4t5",  # create_wishes_table
+    "r0s1t2u3v4w5",  # add_hide_from_plan_to_projects
+)
 branch_labels = None
 depends_on = None
 
