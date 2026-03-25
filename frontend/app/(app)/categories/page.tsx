@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { Pencil, Check, X, Archive, ArchiveRestore, Plus, ChevronDown } from "lucide-react";
@@ -347,9 +348,15 @@ export default function CategoriesPage() {
   return (
     <>
       <AppTopbar
-        title="Статьи"
+        title="Деньги"
         subtitle="Категории доходов и расходов"
       />
+      <PageTabs tabs={[
+        { href: "/money", label: "Операции" },
+        { href: "/wallets", label: "Кошельки" },
+        { href: "/subscriptions", label: "Подписки" },
+        { href: "/categories", label: "Категории" },
+      ]} />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
 

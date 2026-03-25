@@ -1,6 +1,7 @@
 "use client";
 
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { useEfficiency } from "@/hooks/useEfficiency";
 import type { MetricCard } from "@/types/api";
 
@@ -134,7 +135,13 @@ export default function EfficiencyPage() {
 
   return (
     <>
-      <AppTopbar title="Эффективность" subtitle={dateSubtitle} />
+      <AppTopbar title="Аналитика" subtitle={dateSubtitle} />
+      <PageTabs tabs={[
+        { href: "/analytics", label: "Обзор" },
+        { href: "/efficiency", label: "Эффективность" },
+        { href: "/strategy", label: "Стратегия" },
+        { href: "/goals", label: "Цели" },
+      ]} />
       <main className="flex-1 overflow-auto p-6 max-w-2xl mx-auto w-full">
         {isLoading && (
           <div className="flex items-center justify-center h-48">

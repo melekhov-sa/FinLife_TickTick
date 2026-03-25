@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
@@ -279,7 +280,13 @@ export default function MoneyPage() {
           }}
         />
       )}
-      <AppTopbar title="Финансы" />
+      <AppTopbar title="Деньги" />
+      <PageTabs tabs={[
+        { href: "/money", label: "Операции" },
+        { href: "/wallets", label: "Кошельки" },
+        { href: "/subscriptions", label: "Подписки" },
+        { href: "/categories", label: "Категории" },
+      ]} />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl">
         {/* Header actions */}

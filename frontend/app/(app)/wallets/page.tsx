@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { api } from "@/lib/api";
 import type { WalletItem } from "@/types/api";
 import { CreateWalletModal } from "@/components/modals/CreateWalletModal";
@@ -242,10 +243,13 @@ export default function WalletsPage() {
       {showCreateModal && (
         <CreateWalletModal onClose={() => setShowCreateModal(false)} />
       )}
-      <AppTopbar
-        title="Кошельки"
-        subtitle={showArchived ? "Архивные" : `${wallets.length} активных`}
-      />
+      <AppTopbar title="Деньги" />
+      <PageTabs tabs={[
+        { href: "/money", label: "Операции" },
+        { href: "/wallets", label: "Кошельки" },
+        { href: "/subscriptions", label: "Подписки" },
+        { href: "/categories", label: "Категории" },
+      ]} />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
 

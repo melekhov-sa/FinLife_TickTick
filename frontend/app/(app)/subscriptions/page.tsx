@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
 import { CreateSubscriptionModal } from "@/components/modals/CreateSubscriptionModal";
@@ -231,7 +232,13 @@ export default function SubscriptionsPage() {
       {addMemberSubId !== null && (
         <AddMemberModal subId={addMemberSubId} onClose={() => setAddMemberSubId(null)} />
       )}
-      <AppTopbar title="Подписки" />
+      <AppTopbar title="Деньги" />
+      <PageTabs tabs={[
+        { href: "/money", label: "Операции" },
+        { href: "/wallets", label: "Кошельки" },
+        { href: "/subscriptions", label: "Подписки" },
+        { href: "/categories", label: "Категории" },
+      ]} />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[960px]">
 

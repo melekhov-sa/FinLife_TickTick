@@ -1,8 +1,27 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
+import { OnboardingModal } from "@/components/layout/OnboardingModal";
+
+const ONBOARDING_KEY = "finlife_onboarding_done";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem(ONBOARDING_KEY)) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  function handleOnboardingComplete(scenario: string) {
+    localStorage.setItem(ONBOARDING_KEY, scenario);
+    setShowOnboarding(false);
+  }
+
   return (
     <AuthGuard>
       <div className="flex h-screen overflow-hidden" style={{ background: "var(--app-bg)" }}>
@@ -24,6 +43,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="md:hidden">
         <MobileNav />
       </div>
+
+      {/* Onboarding — first visit */}
+      {showOnboarding && (
+        <OnboardingModal onComplete={handleOnboardingComplete} />
+      )}
     </AuthGuard>
   );
 }

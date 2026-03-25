@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import {
@@ -198,6 +199,12 @@ export default function AnalyticsPage() {
   return (
     <>
       <AppTopbar title="Аналитика" />
+      <PageTabs tabs={[
+        { href: "/analytics", label: "Обзор" },
+        { href: "/efficiency", label: "Эффективность" },
+        { href: "/strategy", label: "Стратегия" },
+        { href: "/goals", label: "Цели" },
+      ]} />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[1100px] space-y-6">
 
