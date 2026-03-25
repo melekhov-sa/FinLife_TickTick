@@ -17,8 +17,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  function handleOnboardingComplete(scenario: string) {
-    localStorage.setItem(ONBOARDING_KEY, scenario);
+  function handleOnboardingComplete() {
+    localStorage.setItem(ONBOARDING_KEY, "done");
     setShowOnboarding(false);
   }
 
