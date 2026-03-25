@@ -132,22 +132,19 @@ function setDueKind(kind) {
 function toggleTag(el, tagId) {
   var isActive = el.dataset.active === 'true';
   var action = isActive ? 'remove' : 'add';
-  var form = document.createElement('form');
-  form.method = 'POST';
-  form.action = '/projects/{{ project.id }}/tasks/{{ task.task_id }}/tags/' + action;
-  var input = document.createElement('input');
-  input.type = 'hidden';
-  input.name = 'project_tag_id';
-  input.value = tagId;
-  form.appendChild(input);
-  // Add redirect back to edit page
-  var redir = document.createElement('input');
-  redir.type = 'hidden';
-  redir.name = 'redirect';
-  redir.value = '/projects/{{ project.id }}/tasks/{{ task.task_id }}/edit';
-  form.appendChild(redir);
-  document.body.appendChild(form);
-  form.submit();
+  var body = new URLSearchParams();
+  body.append('project_tag_id', tagId);
+  body.append('redirect', '');
+  fetch('/projects/{{ project.id }}/tasks/{{ task.task_id }}/tags/' + action, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: body,
+    redirect: 'manual'
+  }).then(function() {
+    var newActive = !isActive;
+    el.dataset.active = newActive ? 'true' : 'false';
+    el.style.opacity = newActive ? '1' : '0.35';
+  });
 }
 </script>
 {% endblock %}

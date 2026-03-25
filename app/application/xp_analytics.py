@@ -103,7 +103,7 @@ class XpAnalyticsService:
                 "month_name": _MONTH_NAMES_RU[mo],
                 "xp": month_totals.get((yr, mo), 0),
             }
-            for yr, mo in months
+            for yr, mo in reversed(months)
         ]
 
     def get_current_month_label(self, today: date | None = None) -> str:

@@ -6,6 +6,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { clsx } from "clsx";
 import { ArrowLeft, Pencil, Pin, Calendar } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 interface ArticleDetail {
   id: number;
@@ -54,11 +55,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
 
   const { data, isLoading, isError } = useQuery<ArticleDetail>({
     queryKey: ["knowledge-article", id],
-    queryFn: () =>
-      fetch(`/api/v2/knowledge/${id}`, { credentials: "include" }).then((r) => {
-        if (!r.ok) throw new Error("not found");
-        return r.json();
-      }),
+    queryFn: () => api.get<ArticleDetail>(`/api/v2/knowledge/${id}`),
     staleTime: 60_000,
     retry: false,
   });

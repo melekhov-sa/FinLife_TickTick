@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Target } from "lucide-react";
+import { api } from "@/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -110,11 +111,7 @@ export default function GoalsPage() {
 
   const { data: allGoals, isLoading, isError } = useQuery<GoalItem[]>({
     queryKey: ["goals", showArchived],
-    queryFn: () =>
-      fetch(`/api/v2/goals?include_archived=${showArchived}`, { credentials: "include" }).then((r) => {
-        if (!r.ok) throw new Error("fetch failed");
-        return r.json();
-      }),
+    queryFn: () => api.get<GoalItem[]>(`/api/v2/goals?include_archived=${showArchived}`),
     staleTime: 60_000,
   });
 

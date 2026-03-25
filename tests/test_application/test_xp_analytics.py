@@ -134,13 +134,13 @@ class TestGetMonthlyXpLastNMonths:
         result = XpAnalyticsService(db_session).get_monthly_xp_last_n_months(uid, n=6, today=date(2026, 2, 15))
         assert len(result) == 6
 
-    def test_newest_month_first(self, db_session, sample_account_id):
+    def test_oldest_month_first(self, db_session, sample_account_id):
         uid = sample_account_id
         result = XpAnalyticsService(db_session).get_monthly_xp_last_n_months(uid, n=3, today=date(2026, 2, 15))
-        # Order: Feb, Jan, Dec (2025)
-        assert result[0] == {"year": 2026, "month": 2, "month_name": "Февраль", "xp": 0}
+        # Order: Dec (2025), Jan, Feb (oldest → newest)
+        assert result[0] == {"year": 2025, "month": 12, "month_name": "Декабрь", "xp": 0}
         assert result[1] == {"year": 2026, "month": 1, "month_name": "Январь",  "xp": 0}
-        assert result[2] == {"year": 2025, "month": 12, "month_name": "Декабрь", "xp": 0}
+        assert result[2] == {"year": 2026, "month": 2, "month_name": "Февраль", "xp": 0}
 
     def test_empty_months_are_zero(self, db_session, sample_account_id):
         uid = sample_account_id
@@ -173,11 +173,11 @@ class TestGetMonthlyXpLastNMonths:
         result = XpAnalyticsService(db_session).get_monthly_xp_last_n_months(
             uid, n=3, today=date(2026, 2, 1)
         )
-        # Entries: Feb 2026, Jan 2026, Dec 2025
-        feb = result[0]; jan = result[1]; dec = result[2]
-        assert feb["year"] == 2026 and feb["month"] == 2 and feb["xp"] == 0
-        assert jan["year"] == 2026 and jan["month"] == 1 and jan["xp"] == 10
+        # Entries: Dec 2025, Jan 2026, Feb 2026 (oldest → newest)
+        dec = result[0]; jan = result[1]; feb = result[2]
         assert dec["year"] == 2025 and dec["month"] == 12 and dec["xp"] == 20
+        assert jan["year"] == 2026 and jan["month"] == 1 and jan["xp"] == 10
+        assert feb["year"] == 2026 and feb["month"] == 2 and feb["xp"] == 0
 
     def test_events_before_window_excluded(self, db_session, sample_account_id):
         uid = sample_account_id
@@ -198,6 +198,6 @@ class TestGetMonthlyXpLastNMonths:
         # Get 12 months from December
         result = svc.get_monthly_xp_last_n_months(uid, n=12, today=date(2026, 12, 1))
         names = [mo["month_name"] for mo in result]
-        assert names[0] == "Декабрь"
-        assert names[1] == "Ноябрь"
-        assert names[-1] == "Январь"
+        assert names[0] == "Январь"
+        assert names[-2] == "Ноябрь"
+        assert names[-1] == "Декабрь"
