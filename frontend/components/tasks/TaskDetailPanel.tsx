@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Calendar, Tag, CheckCircle2, Archive, Trash2 } from "lucide-react";
+import { X, Calendar, Tag, CheckCircle2, Archive, Trash2, Paperclip } from "lucide-react";
+import { TaskAttachments } from "./TaskAttachments";
 import { clsx } from "clsx";
 import type { TaskItem, WorkCategoryItem, ProjectTag } from "@/types/api";
 import { Select } from "@/components/ui/Select";
@@ -292,6 +293,16 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
               style={{ color: "var(--t-secondary)" }}
             />
           </div>
+
+          {/* Attachments — only for non-recurring tasks */}
+          {!task.is_recurring && (
+            <div className="flex items-start gap-3">
+              <Paperclip size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
+              <div className="flex-1">
+                <TaskAttachments taskId={task.task_id} disabled={isDone || isArchived} />
+              </div>
+            </div>
+          )}
 
           {/* Metadata */}
           {task.completed_at && (

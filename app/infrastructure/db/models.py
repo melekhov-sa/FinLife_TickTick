@@ -353,6 +353,28 @@ class UserReminderTimePreset(Base):
     )
 
 
+class TaskAttachmentModel(Base):
+    """File attachments for tasks"""
+    __tablename__ = "task_attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tasks.task_id", ondelete="CASCADE"), nullable=False
+    )
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_task_attachments_task", "account_id", "task_id"),
+    )
+
+
 class TaskPresetModel(Base):
     """Task presets for quick form pre-filling"""
     __tablename__ = "task_presets"

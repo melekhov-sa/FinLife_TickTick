@@ -197,6 +197,15 @@ export interface TaskItem {
   tag_ids: number[];
 }
 
+export interface TaskAttachment {
+  id: number;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  url: string;
+  uploaded_at: string;
+}
+
 // ── /api/v2/habits ────────────────────────────────────────────────────────────
 
 export interface HabitItem {

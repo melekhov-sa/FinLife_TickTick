@@ -5,7 +5,7 @@ from pathlib import Path
 from decimal import Decimal
 from datetime import datetime, date, timedelta, timezone
 from urllib.parse import quote
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -3988,6 +3988,14 @@ def project_task_edit_form(
         .all()
     )
     task_tag_ids = {r.project_tag_id for r in task_tag_rows}
+    # Load attachments
+    from app.infrastructure.db.models import TaskAttachmentModel
+    attachments = (
+        db.query(TaskAttachmentModel)
+        .filter(TaskAttachmentModel.task_id == task_id, TaskAttachmentModel.account_id == user_id)
+        .order_by(TaskAttachmentModel.uploaded_at.desc())
+        .all()
+    )
     return templates.TemplateResponse("project_task_edit.html", {
         "request": request,
         "project": detail,
@@ -3995,6 +4003,7 @@ def project_task_edit_form(
         "work_categories": work_categories,
         "board_columns": columns,
         "task_tag_ids": task_tag_ids,
+        "attachments": attachments,
         "error": None,
     })
 
@@ -4228,6 +4237,91 @@ def task_tag_remove(
         except ProjectValidationError:
             pass
     return RedirectResponse(redirect or f"/projects/{project_id}", status_code=302)
+
+
+# === Task Attachments (SSR) ===
+
+@router.post("/projects/{project_id}/tasks/{task_id}/attachments/upload")
+async def task_attachment_upload(
+    request: Request,
+    project_id: int,
+    task_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    from app.api.v2.task_attachments import (
+        _get_task, MAX_FILES_PER_TASK, MAX_FILE_SIZE,
+        ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, EXTENSIONS_LABEL,
+    )
+    import pathlib, uuid
+    redir = f"/projects/{project_id}/tasks/{task_id}/edit"
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id, TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        return RedirectResponse(f"/projects/{project_id}", status_code=302)
+    from app.infrastructure.db.models import TaskAttachmentModel
+    count = db.query(TaskAttachmentModel).filter(
+        TaskAttachmentModel.task_id == task_id, TaskAttachmentModel.account_id == user_id,
+    ).count()
+    if count >= MAX_FILES_PER_TASK:
+        return RedirectResponse(redir, status_code=302)
+    if not file.filename:
+        return RedirectResponse(redir, status_code=302)
+    safe_name = pathlib.PurePosixPath(file.filename).name
+    ext = pathlib.Path(safe_name).suffix.lower()
+    content_type = (file.content_type or "").lower()
+    if ext not in ALLOWED_EXTENSIONS or content_type not in ALLOWED_MIME_TYPES:
+        return RedirectResponse(redir, status_code=302)
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        return RedirectResponse(redir, status_code=302)
+    from app.config import get_settings
+    settings = get_settings()
+    rel_dir = pathlib.Path(str(user_id)) / "tasks" / str(task_id)
+    abs_dir = pathlib.Path(settings.UPLOADS_DIR) / rel_dir
+    abs_dir.mkdir(parents=True, exist_ok=True)
+    stored_name = f"{uuid.uuid4().hex}_{safe_name}"
+    (abs_dir / stored_name).write_bytes(data)
+    att = TaskAttachmentModel(
+        task_id=task_id, account_id=user_id,
+        original_filename=safe_name,
+        stored_filename=str(rel_dir / stored_name),
+        mime_type=content_type, file_size=len(data),
+    )
+    db.add(att)
+    db.commit()
+    return RedirectResponse(redir, status_code=302)
+
+
+@router.post("/projects/{project_id}/tasks/{task_id}/attachments/{attachment_id}/delete")
+def task_attachment_delete(
+    request: Request,
+    project_id: int,
+    task_id: int,
+    attachment_id: int,
+    db: Session = Depends(get_db),
+):
+    if not require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    user_id = request.session["user_id"]
+    from app.infrastructure.db.models import TaskAttachmentModel
+    att = db.query(TaskAttachmentModel).filter(
+        TaskAttachmentModel.id == attachment_id,
+        TaskAttachmentModel.task_id == task_id,
+        TaskAttachmentModel.account_id == user_id,
+    ).first()
+    if att:
+        import pathlib
+        from app.config import get_settings
+        file_path = pathlib.Path(get_settings().UPLOADS_DIR) / att.stored_filename
+        file_path.unlink(missing_ok=True)
+        db.delete(att)
+        db.commit()
+    return RedirectResponse(f"/projects/{project_id}/tasks/{task_id}/edit", status_code=302)
 
 
 # === Knowledge Base ===

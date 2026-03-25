@@ -83,6 +83,12 @@ def create_app() -> FastAPI:
     _static_dir = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "static")
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
+    # Uploaded files (task attachments etc.)
+    import pathlib as _pathlib
+    _uploads_dir = _pathlib.Path(settings.UPLOADS_DIR)
+    _uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+
     # Routers - v2 JSON API, then v1 API, then SSR pages
     app.include_router(v2_router)
     app.include_router(wallets.router)

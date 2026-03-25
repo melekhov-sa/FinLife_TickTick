@@ -122,6 +122,33 @@
   </div>
 </form>
 
+{# ── File Attachments ── #}
+<div style="margin-top: 24px;">
+  <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">📎 Файлы {% if attachments %}({{ attachments|length }}/10){% endif %}</label>
+
+  {% if attachments %}
+  <div style="margin-bottom: 12px;">
+    {% for att in attachments %}
+    <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; background: var(--bg-input, rgba(0,0,0,0.03));">
+      <span style="font-size: 13px;">{% if att.mime_type.startswith('image/') %}🖼{% elif 'spreadsheet' in att.mime_type or 'excel' in att.mime_type %}📊{% elif att.mime_type == 'application/pdf' %}📄{% else %}📁{% endif %}</span>
+      <a href="/uploads/{{ att.stored_filename }}" target="_blank" style="flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ att.original_filename }}">{{ att.original_filename }}</a>
+      <span style="font-size: 11px; color: var(--text-secondary, #888); white-space: nowrap;">{{ (att.file_size / 1024)|round|int }} КБ</span>
+      <form method="POST" action="/projects/{{ project.id }}/tasks/{{ task.task_id }}/attachments/{{ att.id }}/delete" style="margin: 0;">
+        <button type="submit" style="background: none; border: none; cursor: pointer; color: var(--text-secondary, #888); font-size: 14px; padding: 2px 4px;" title="Удалить" onclick="return confirm('Удалить файл?')">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not attachments or attachments|length < 10 %}
+  <form method="POST" action="/projects/{{ project.id }}/tasks/{{ task.task_id }}/attachments/upload" enctype="multipart/form-data" style="margin: 0;">
+    <input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.zip" required style="font-size: 13px;" />
+    <button type="submit" style="margin-left: 8px; padding: 4px 14px; background: #007AFF; color: #fff; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">Загрузить</button>
+  </form>
+  {% endif %}
+</div>
+
 <script>
 function setDueKind(kind) {
   document.getElementById('dueKindInput').value = kind;

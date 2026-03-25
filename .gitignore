@@ -223,3 +223,6 @@ frontend/out/
 
 # Unignore frontend/lib (root gitignore has lib/ for Python venv)
 !frontend/lib/
+
+# Uploaded files
+uploads/

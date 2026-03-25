@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { TaskItem } from "@/types/api";
+import { supabase } from "@/lib/supabase";
+import type { TaskItem, TaskAttachment } from "@/types/api";
 
 export function useTasks(status = "ACTIVE") {
   return useQuery<TaskItem[]>({
@@ -84,6 +85,58 @@ export function useDuplicateTask() {
     mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/duplicate`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+// ── Attachments ──────────────────────────────────────────────────────────────
+
+export function useTaskAttachments(taskId: number) {
+  return useQuery<TaskAttachment[]>({
+    queryKey: ["task-attachments", taskId],
+    queryFn: () => api.get<TaskAttachment[]>(`/api/v2/tasks/${taskId}/attachments`),
+    staleTime: 30_000,
+  });
+}
+
+export function useUploadAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, file }: { taskId: number; file: File }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/v2/tasks/${taskId}/attachments`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let detail = text;
+        try { detail = JSON.parse(text).detail; } catch {}
+        throw new Error(detail);
+      }
+      return res.json() as Promise<TaskAttachment>;
+    },
+    onSuccess: (_data, { taskId }) => {
+      qc.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+    },
+  });
+}
+
+export function useDeleteAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, attachmentId }: { taskId: number; attachmentId: number }) =>
+      api.delete(`/api/v2/tasks/${taskId}/attachments/${attachmentId}`),
+    onSuccess: (_data, { taskId }) => {
+      qc.invalidateQueries({ queryKey: ["task-attachments", taskId] });
     },
   });
 }

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     EMAIL_SMTP_USER: str = ""
     EMAIL_SMTP_PASSWORD: str = ""
 
+    # File uploads
+    UPLOADS_DIR: str = "uploads"
+
     # Supabase Auth
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
