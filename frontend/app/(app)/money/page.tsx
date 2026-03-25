@@ -298,7 +298,7 @@ export default function MoneyPage() {
             Кошельки
           </a>
           <a
-            href="/legacy/budget"
+            href="/budget"
             className="text-[11px] md:text-xs font-medium px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/75 hover:bg-white/[0.08] transition-colors"
           >
             Бюджет

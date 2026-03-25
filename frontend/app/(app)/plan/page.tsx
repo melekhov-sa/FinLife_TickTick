@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
+import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward } from "lucide-react";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -459,6 +460,8 @@ export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done" | "archive">("active");
   const [range, setRange] = useState(7);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
@@ -497,6 +500,7 @@ export default function PlanPage() {
   return (
     <>
       {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
+      {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} />}
       {rescheduleEntry && (
         <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
       )}
@@ -573,14 +577,42 @@ export default function PlanPage() {
               </div>
             </div>
 
-            {/* Add task button */}
-            <button
-              onClick={() => setShowCreateTask(true)}
-              className="ml-auto flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
-            >
-              <span className="text-[16px] leading-none">+</span>
-              Задача
-            </button>
+            {/* Add button with dropdown */}
+            <div className="ml-auto relative">
+              <button
+                onClick={() => setShowAddMenu((v) => !v)}
+                onBlur={() => setTimeout(() => setShowAddMenu(false), 150)}
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
+              >
+                <Plus size={15} />
+                Добавить
+                <ChevronDown size={13} className={clsx("transition-transform", showAddMenu && "rotate-180")} />
+              </button>
+              {showAddMenu && (
+                <div
+                  className="absolute right-0 top-full mt-1.5 w-44 rounded-xl border shadow-xl z-20 overflow-hidden"
+                  style={{
+                    background: "var(--app-bg, #0f1221)",
+                    borderColor: "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <button
+                    onMouseDown={() => { setShowAddMenu(false); setShowCreateTask(true); }}
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-white/[0.06] transition-colors"
+                    style={{ color: "var(--t-primary)" }}
+                  >
+                    Задача
+                  </button>
+                  <button
+                    onMouseDown={() => { setShowAddMenu(false); setShowCreateEvent(true); }}
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-white/[0.06] transition-colors"
+                    style={{ color: "var(--t-primary)" }}
+                  >
+                    Событие
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── KPI Summary ───────────────────────────────────────────── */}
