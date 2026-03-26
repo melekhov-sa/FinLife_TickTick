@@ -11,10 +11,6 @@ import {
   BarChart3,
   FolderKanban,
   Heart,
-  Settings,
-  Sun,
-  Moon,
-  LogOut,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -26,7 +22,6 @@ const NAV_ITEMS = [
   { href: "/analytics",  label: "Аналитика",   icon: BarChart3 },
   { href: "/projects",   label: "Проекты",     icon: FolderKanban },
   { href: "/habits",     label: "Привычки",    icon: Heart },
-  { href: "/settings",   label: "Настройки",   icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -46,10 +41,6 @@ export function AppSidebar() {
     if (href === "/analytics") {
       return pathname.startsWith("/analytics") || pathname.startsWith("/efficiency")
         || pathname.startsWith("/strategy") || pathname.startsWith("/goals");
-    }
-    if (href === "/settings") {
-      return pathname.startsWith("/settings") || pathname.startsWith("/profile")
-        || pathname.startsWith("/notifications");
     }
     return pathname.startsWith(href);
   }
@@ -118,33 +109,7 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Bottom */}
-      <div
-        className="px-2.5 pb-3 pt-2 space-y-0.5 border-t shrink-0"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <button
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          className={clsx(linkBase, inactiveStyle, "w-full")}
-        >
-          {isDark
-            ? <Sun size={15} className="shrink-0 opacity-50" />
-            : <Moon size={15} className="shrink-0 opacity-50" />}
-          {isDark ? "Светлая тема" : "Тёмная тема"}
-        </button>
-        <a
-          href="/logout"
-          className={clsx(
-            linkBase,
-            isDark
-              ? "text-white/50 hover:text-red-400/70 hover:bg-red-500/[0.07]"
-              : "text-black/30 hover:text-red-600/60 hover:bg-red-50"
-          )}
-        >
-          <LogOut size={15} className="shrink-0 opacity-50" />
-          Выйти
-        </a>
-      </div>
+      <div className="shrink-0 pb-3" />
     </aside>
   );
 }

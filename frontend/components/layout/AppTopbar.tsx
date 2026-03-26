@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { User, Settings, LogOut, Sun, Moon } from "lucide-react";
+import Link from "next/link";
+import { clsx } from "clsx";
 
 interface AppTopbarProps {
   title?: string;
@@ -12,11 +16,16 @@ interface AppTopbarProps {
 
 export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const { data: me } = useMe();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const textPrimary = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
-  const textMuted   = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.35)";
+  const textMuted = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.35)";
+
+  const initial = me?.email?.[0]?.toUpperCase() ?? "?";
+  const email = me?.email ?? "";
+  const name = email.split("@")[0];
 
   return (
     <header
@@ -44,10 +53,86 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
       <div className="flex items-center gap-1.5 md:gap-2 ml-auto shrink-0">
         {actions && <div className="flex items-center gap-1.5 md:gap-2">{actions}</div>}
         <NotificationBell />
-        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-indigo-500/20 flex items-center justify-center">
-          <span className="text-indigo-400 text-[10px] md:text-xs font-medium">
-            {me?.email?.[0]?.toUpperCase() ?? "?"}
-          </span>
+
+        {/* Avatar + Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+            className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-500/20 flex items-center justify-center hover:bg-indigo-500/30 transition-colors"
+          >
+            <span className="text-indigo-400 text-[11px] md:text-xs font-semibold">
+              {initial}
+            </span>
+          </button>
+
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-2xl z-50 overflow-hidden"
+              style={{
+                background: isDark ? "#0f1221" : "#ffffff",
+                borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+              }}
+            >
+              {/* User info */}
+              <div className="px-4 py-3 border-b" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
+                <p className="text-[13px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)" }}>
+                  {name}
+                </p>
+                <p className="text-[11px] truncate mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>
+                  {email}
+                </p>
+              </div>
+
+              {/* Menu items */}
+              <div className="py-1">
+                <Link
+                  href="/profile"
+                  onMouseDown={() => setMenuOpen(false)}
+                  className={clsx(
+                    "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                    isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
+                  )}
+                >
+                  <User size={14} className="opacity-50" /> Мой профиль
+                </Link>
+                <Link
+                  href="/settings"
+                  onMouseDown={() => setMenuOpen(false)}
+                  className={clsx(
+                    "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                    isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
+                  )}
+                >
+                  <Settings size={14} className="opacity-50" /> Настройки
+                </Link>
+                <button
+                  onMouseDown={() => setTheme(isDark ? "light" : "dark")}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                    isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
+                  )}
+                >
+                  {isDark ? <Sun size={14} className="opacity-50" /> : <Moon size={14} className="opacity-50" />}
+                  {isDark ? "Светлая тема" : "Тёмная тема"}
+                </button>
+              </div>
+
+              {/* Logout */}
+              <div className="border-t py-1" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
+                <a
+                  href="/logout"
+                  onMouseDown={() => setMenuOpen(false)}
+                  className={clsx(
+                    "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                    isDark ? "text-white/50 hover:text-red-400 hover:bg-red-500/[0.07]" : "text-black/40 hover:text-red-600 hover:bg-red-50"
+                  )}
+                >
+                  <LogOut size={14} className="opacity-50" /> Выйти
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
