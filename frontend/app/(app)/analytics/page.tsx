@@ -15,6 +15,7 @@ import {
 import {
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight,
   Percent, Receipt, CalendarDays,
+  CheckSquare, Heart, AlertTriangle, Flame, Zap,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -56,6 +57,27 @@ interface CategoryTrend {
   categories: string[];
   months: string[];
   series: Record<string, number[]>;
+}
+
+interface ProductivityData {
+  tasks: {
+    active: number;
+    done_7d: number;
+    done_30d: number;
+    overdue: number;
+    velocity_7d: number;
+    weekly_trend: { week: string; count: number }[];
+  };
+  habits: {
+    total: number;
+    today_done: number;
+    today_total: number;
+    rate_7d: number;
+    rate_30d: number;
+    best_streak: number;
+    daily_chart: { day: string; done: number; total: number }[];
+    top_habits: { title: string; current_streak: number; best_streak: number; done_30d: number }[];
+  };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -180,6 +202,12 @@ export default function AnalyticsPage() {
     queryKey: ["analytics-cat-trend", opType],
     queryFn: () => api.get(`/api/v2/analytics/category-trend?op_type=${opType}&months=6`),
     staleTime: 120_000,
+  });
+
+  const { data: prod } = useQuery<ProductivityData>({
+    queryKey: ["analytics-productivity"],
+    queryFn: () => api.get("/api/v2/analytics/productivity"),
+    staleTime: 60_000,
   });
 
   const trendData = trend?.map((p) => ({ ...p, label: monthLabel(p.month) }));
@@ -410,6 +438,116 @@ export default function AnalyticsPage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          )}
+
+          {/* ══ PRODUCTIVITY SECTION ══════════════════════════════════════════ */}
+          {prod && (
+            <>
+              <div className="border-t border-white/[0.06] pt-6 mt-2">
+                <h2 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                  Продуктивность
+                </h2>
+              </div>
+
+              {/* Task KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <KpiCard label="Активные задачи" value={String(prod.tasks.active)} icon={CheckSquare} color="#3b82f6" />
+                <KpiCard label="Сделано за 7д" value={String(prod.tasks.done_7d)} icon={Zap} color="#10b981" />
+                <KpiCard label="Сделано за 30д" value={String(prod.tasks.done_30d)} icon={TrendingUp} color="#6366f1" />
+                <KpiCard label="Просрочено" value={String(prod.tasks.overdue)} icon={AlertTriangle} color={prod.tasks.overdue > 0 ? "#ef4444" : "#6B7280"} />
+                <KpiCard label="Скорость / день" value={String(prod.tasks.velocity_7d)} icon={Zap} color="#f59e0b" />
+              </div>
+
+              {/* Tasks weekly trend */}
+              {prod.tasks.weekly_trend.length > 0 && (
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                    Завершённые задачи по неделям
+                  </h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={prod.tasks.weekly_trend} barGap={2}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="week" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Bar dataKey="count" name="Задач" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Habits KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <KpiCard
+                  label="Привычки сегодня"
+                  value={`${prod.habits.today_done}/${prod.habits.today_total}`}
+                  icon={Heart}
+                  color="#ec4899"
+                />
+                <KpiCard
+                  label="Выполнение 7д"
+                  value={`${prod.habits.rate_7d}%`}
+                  icon={Percent}
+                  color={prod.habits.rate_7d >= 80 ? "#10b981" : prod.habits.rate_7d >= 50 ? "#f59e0b" : "#ef4444"}
+                />
+                <KpiCard
+                  label="Выполнение 30д"
+                  value={`${prod.habits.rate_30d}%`}
+                  icon={Percent}
+                  color={prod.habits.rate_30d >= 80 ? "#10b981" : prod.habits.rate_30d >= 50 ? "#f59e0b" : "#ef4444"}
+                />
+                <KpiCard label="Лучшая серия" value={`${prod.habits.best_streak} дн.`} icon={Flame} color="#f97316" />
+              </div>
+
+              {/* Habits daily chart */}
+              {prod.habits.daily_chart.length > 0 && (
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                    Привычки за 14 дней
+                  </h3>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={prod.habits.daily_chart} barGap={1}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Bar dataKey="done" name="Выполнено" fill="#ec4899" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                      <Bar dataKey="total" name="Всего" fill="rgba(255,255,255,0.08)" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Top habits by streak */}
+              {prod.habits.top_habits.length > 0 && (
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-faint)" }}>
+                    Топ привычек по серии
+                  </h3>
+                  <div className="space-y-2">
+                    {prod.habits.top_habits.map((h, i) => (
+                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-orange-500/10 shrink-0">
+                          <Flame size={13} className="text-orange-400" />
+                        </div>
+                        <span className="flex-1 text-[13px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+                          {h.title}
+                        </span>
+                        <span className="text-[12px] tabular-nums font-semibold" style={{ color: "var(--t-secondary)" }}>
+                          {h.current_streak} дн.
+                        </span>
+                        <span className="text-[10px] tabular-nums px-1.5 py-0.5 rounded bg-white/[0.05]" style={{ color: "var(--t-faint)" }}>
+                          рек. {h.best_streak}
+                        </span>
+                        <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+                          {h.done_30d}/30д
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
         </div>
