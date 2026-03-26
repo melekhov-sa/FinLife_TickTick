@@ -58,7 +58,6 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         <div className="relative">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
             className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-500/20 flex items-center justify-center hover:bg-indigo-500/30 transition-colors"
           >
             <span className="text-indigo-400 text-[11px] md:text-xs font-semibold">
@@ -67,6 +66,9 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
           </button>
 
           {menuOpen && (
+            <>
+            {/* Invisible overlay to close menu on outside tap */}
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
             <div
               className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-2xl z-50 overflow-hidden"
               style={{
@@ -88,7 +90,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
               <div className="py-1">
                 <Link
                   href="/profile"
-                  onMouseDown={() => setMenuOpen(false)}
+                  onClick={() => setMenuOpen(false)}
                   className={clsx(
                     "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
                     isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
@@ -98,7 +100,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
                 </Link>
                 <Link
                   href="/settings"
-                  onMouseDown={() => setMenuOpen(false)}
+                  onClick={() => setMenuOpen(false)}
                   className={clsx(
                     "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
                     isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
@@ -107,7 +109,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
                   <Settings size={14} className="opacity-50" /> Настройки
                 </Link>
                 <button
-                  onMouseDown={() => setTheme(isDark ? "light" : "dark")}
+                  onClick={() => { setTheme(isDark ? "light" : "dark"); setMenuOpen(false); }}
                   className={clsx(
                     "w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
                     isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
@@ -122,7 +124,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
               <div className="border-t py-1" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
                 <a
                   href="/logout"
-                  onMouseDown={() => setMenuOpen(false)}
+                  onClick={() => setMenuOpen(false)}
                   className={clsx(
                     "flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors",
                     isDark ? "text-white/50 hover:text-red-400 hover:bg-red-500/[0.07]" : "text-black/40 hover:text-red-600 hover:bg-red-50"
@@ -132,6 +134,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
                 </a>
               </div>
             </div>
+            </>
           )}
         </div>
       </div>
