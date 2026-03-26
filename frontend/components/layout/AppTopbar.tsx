@@ -68,9 +68,9 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
           {menuOpen && (
             <>
             {/* Invisible overlay to close menu on outside tap */}
-            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="fixed inset-0 z-[60]" onClick={() => setMenuOpen(false)} />
             <div
-              className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-2xl z-50 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-56 rounded-xl border shadow-2xl z-[70] overflow-hidden"
               style={{
                 background: isDark ? "#0f1221" : "#ffffff",
                 borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
