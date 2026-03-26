@@ -8,10 +8,11 @@ import { clsx } from "clsx";
 import {
   Bell, BellOff, Send, Smartphone, Download,
   CheckCircle2, XCircle, Moon, Zap, ArrowLeft,
-  MessageCircle, AlertTriangle,
+  MessageCircle, AlertTriangle, Volume2, VolumeX,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { getPushState, subscribePush, unsubscribePush, testPush } from "@/lib/push";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,138 @@ function usePwaInstall() {
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
+
+function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
+  cardBorder: string; cardBg: string;
+  pwa: { canInstall: boolean; isInstalled: boolean; install: () => Promise<void> };
+  setSaved: (s: string) => void;
+}) {
+  const [pushState, setPushState] = useState<"subscribed" | "prompt" | "denied" | "unsupported" | "loading">("loading");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getPushState().then(setPushState);
+  }, []);
+
+  async function handleSubscribe() {
+    setBusy(true);
+    try {
+      const ok = await subscribePush();
+      if (ok) { setPushState("subscribed"); setSaved("Push-уведомления включены"); setTimeout(() => setSaved(""), 2000); }
+    } catch { setPushState(Notification.permission === "denied" ? "denied" : "prompt"); }
+    setBusy(false);
+  }
+
+  async function handleUnsubscribe() {
+    setBusy(true);
+    await unsubscribePush();
+    setPushState("prompt");
+    setSaved("Push-уведомления отключены");
+    setTimeout(() => setSaved(""), 2000);
+    setBusy(false);
+  }
+
+  async function handleTest() {
+    setBusy(true);
+    const sent = await testPush();
+    setSaved(sent > 0 ? "Тестовое push отправлено" : "Нет активных подписок");
+    setTimeout(() => setSaved(""), 3000);
+    setBusy(false);
+  }
+
+  return (
+    <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: cardBorder, background: cardBg }}>
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-500/10">
+          <Smartphone size={16} className="text-indigo-400" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>Push-уведомления</h2>
+        </div>
+        {pushState === "subscribed" && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+            <CheckCircle2 size={10} /> Включены
+          </span>
+        )}
+        {pushState === "denied" && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-md">
+            <XCircle size={10} /> Заблокированы
+          </span>
+        )}
+      </div>
+
+      {pushState === "denied" && (
+        <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          Уведомления заблокированы в настройках браузера. Разрешите их в настройках сайта.
+        </p>
+      )}
+
+      {pushState === "unsupported" && (
+        <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          Push не поддерживается в этом браузере. Установите приложение на главный экран.
+        </p>
+      )}
+
+      {pushState === "prompt" && (
+        <>
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
+            Получайте мгновенные уведомления о задачах, подписках и платежах.
+          </p>
+          <button
+            onClick={handleSubscribe}
+            disabled={busy}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+          >
+            <Volume2 size={14} /> {busy ? "..." : "Включить push-уведомления"}
+          </button>
+        </>
+      )}
+
+      {pushState === "subscribed" && (
+        <div className="flex gap-2">
+          <button
+            onClick={handleTest}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04] disabled:opacity-50"
+            style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
+          >
+            <MessageCircle size={13} /> {busy ? "..." : "Тест"}
+          </button>
+          <button
+            onClick={handleUnsubscribe}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-red-500/10 disabled:opacity-50"
+            style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+          >
+            <VolumeX size={13} /> {busy ? "..." : "Отключить"}
+          </button>
+        </div>
+      )}
+
+      {/* PWA install */}
+      {!pwa.isInstalled && (pushState === "unsupported" || pushState === "prompt") && (
+        <div className="border-t pt-3 mt-2" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+          {pwa.canInstall ? (
+            <button
+              onClick={pwa.install}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04]"
+              style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
+            >
+              <Download size={14} /> Установить на главный экран
+            </button>
+          ) : (
+            <div className="space-y-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>
+              <p className="font-medium" style={{ color: "var(--t-secondary)" }}>Установить приложение:</p>
+              <p><span className="font-medium" style={{ color: "var(--t-secondary)" }}>iOS Safari:</span> Поделиться → На экран Домой</p>
+              <p><span className="font-medium" style={{ color: "var(--t-secondary)" }}>Android Chrome:</span> Меню ⋮ → Добавить на главный экран</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NotificationSettingsPage() {
   const { resolvedTheme } = useTheme();
@@ -209,42 +342,8 @@ export default function NotificationSettingsPage() {
             </button>
           </div>
 
-          {/* ── PWA / Push ── */}
-          <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: cardBorder, background: cardBg }}>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-500/10">
-                <Smartphone size={16} className="text-indigo-400" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>Push-уведомления</h2>
-              </div>
-              {pwa.isInstalled && (
-                <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                  <CheckCircle2 size={10} /> Установлено
-                </span>
-              )}
-            </div>
-            <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
-              Добавьте FinLife на главный экран для мгновенных push-уведомлений.
-            </p>
-            {!pwa.isInstalled && (
-              pwa.canInstall ? (
-                <button
-                  onClick={pwa.install}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
-                >
-                  <Download size={14} /> Установить приложение
-                </button>
-              ) : (
-                <div className="space-y-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>
-                  <p><span className="font-medium" style={{ color: "var(--t-secondary)" }}>iOS Safari:</span> Поделиться → На экран Домой</p>
-                  <p><span className="font-medium" style={{ color: "var(--t-secondary)" }}>Android Chrome:</span> Меню ⋮ → Добавить на главный экран</p>
-                  <p><span className="font-medium" style={{ color: "var(--t-secondary)" }}>Desktop:</span> Иконка в адресной строке → Установить</p>
-                </div>
-              )
-            )}
-          </div>
+          {/* ── Push Notifications ── */}
+          <PushSection cardBorder={cardBorder} cardBg={cardBg} pwa={pwa} setSaved={setSaved} />
 
           {/* ── Telegram ── */}
           <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: cardBorder, background: cardBg }}>
