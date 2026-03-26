@@ -19,6 +19,7 @@ from app.infrastructure.db.models import (
     TelegramSettings,
     NotificationRule,
 )
+from app.infrastructure.crypto import encrypt, decrypt
 
 router = APIRouter(prefix="/notification-settings", tags=["notification-settings"])
 
@@ -68,7 +69,7 @@ def get_settings(request: Request, db: Session = Depends(get_db)):
         ch_telegram=channels.get("telegram", False),
         ch_email=channels.get("email", False),
         telegram_connected=tg.connected if tg else False,
-        telegram_chat_id=tg.chat_id if tg else None,
+        telegram_chat_id=decrypt(tg.chat_id) if tg else None,
         telegram_bot_token_set=bool(tg and tg.bot_token),
         rules=[
             {
@@ -127,9 +128,11 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
         tg = TelegramSettings(user_id=user_id)
         db.add(tg)
 
-    tg.bot_token = body.bot_token.strip() or None
-    tg.chat_id = body.chat_id.strip() or None
-    tg.connected = bool(tg.bot_token and tg.chat_id)
+    raw_token = body.bot_token.strip() or None
+    raw_chat_id = body.chat_id.strip() or None
+    tg.bot_token = encrypt(raw_token)
+    tg.chat_id = encrypt(raw_chat_id)
+    tg.connected = bool(raw_token and raw_chat_id)
     tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
     db.commit()
 
@@ -158,11 +161,16 @@ def telegram_test(request: Request, db: Session = Depends(get_db)):
     if not tg or not tg.bot_token or not tg.chat_id:
         raise HTTPException(400, "Telegram не подключён")
 
+    bot_token = decrypt(tg.bot_token)
+    chat_id = decrypt(tg.chat_id)
+    if not bot_token or not chat_id:
+        raise HTTPException(400, "Не удалось расшифровать Telegram токен")
+
     import httpx
     try:
         r = httpx.post(
-            f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
-            json={"chat_id": tg.chat_id, "text": "✅ FinLife: тестовое уведомление работает!"},
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={"chat_id": chat_id, "text": "✅ FinLife: тестовое уведомление работает!"},
             timeout=10,
         )
         if r.status_code != 200:

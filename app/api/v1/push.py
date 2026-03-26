@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_db
 from app.infrastructure.db.models import PushSubscription
+from app.infrastructure.crypto import encrypt
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
@@ -34,14 +35,14 @@ def subscribe(body: SubscribeRequest, request: Request, db: Session = Depends(ge
 
     if existing:
         existing.user_id = user_id
-        existing.p256dh = body.keys.p256dh
-        existing.auth = body.keys.auth
+        existing.p256dh = encrypt(body.keys.p256dh)
+        existing.auth = encrypt(body.keys.auth)
     else:
         sub = PushSubscription(
             user_id=user_id,
             endpoint=body.endpoint,
-            p256dh=body.keys.p256dh,
-            auth=body.keys.auth,
+            p256dh=encrypt(body.keys.p256dh),
+            auth=encrypt(body.keys.auth),
         )
         db.add(sub)
 

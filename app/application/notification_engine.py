@@ -306,14 +306,19 @@ def _in_quiet_hours(now_time, settings: UserNotificationSettings | None) -> bool
 
 def _send_telegram(db: Session, notif: NotificationModel) -> bool:
     """Send a Telegram message using the user's own bot token. Returns True on success."""
+    from app.infrastructure.crypto import decrypt
     tg = db.query(TelegramSettings).filter_by(user_id=notif.user_id, connected=True).first()
     if not tg or not tg.chat_id or not tg.bot_token:
         return False
+    bot_token = decrypt(tg.bot_token)
+    chat_id = decrypt(tg.chat_id)
+    if not bot_token or not chat_id:
+        return False
     try:
         resp = requests.post(
-            f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={
-                "chat_id": tg.chat_id,
+                "chat_id": chat_id,
                 "text": notif.body_telegram,
                 "parse_mode": "HTML",
             },

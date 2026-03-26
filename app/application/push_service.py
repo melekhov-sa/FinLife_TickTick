@@ -30,11 +30,12 @@ def send_web_push(db: Session, subscription: PushSubscription, payload: dict) ->
         logger.warning("VAPID keys not configured, skipping push")
         return False
 
+    from app.infrastructure.crypto import decrypt
     subscription_info = {
         "endpoint": subscription.endpoint,
         "keys": {
-            "p256dh": subscription.p256dh,
-            "auth": subscription.auth,
+            "p256dh": decrypt(subscription.p256dh) or subscription.p256dh,
+            "auth": decrypt(subscription.auth) or subscription.auth,
         },
     }
 

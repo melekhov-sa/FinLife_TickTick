@@ -15,6 +15,7 @@ from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import PushSubscription
 from app.config import get_settings
+from app.infrastructure.crypto import encrypt, decrypt
 
 router = APIRouter(prefix="/push", tags=["push"])
 
@@ -51,14 +52,14 @@ def subscribe(body: SubscribeRequest, request: Request, db: Session = Depends(ge
 
     if existing:
         existing.user_id = user_id
-        existing.p256dh = body.keys.p256dh
-        existing.auth = body.keys.auth
+        existing.p256dh = encrypt(body.keys.p256dh)
+        existing.auth = encrypt(body.keys.auth)
     else:
         sub = PushSubscription(
             user_id=user_id,
             endpoint=body.endpoint,
-            p256dh=body.keys.p256dh,
-            auth=body.keys.auth,
+            p256dh=encrypt(body.keys.p256dh),
+            auth=encrypt(body.keys.auth),
         )
         db.add(sub)
 
