@@ -110,6 +110,18 @@ export default function NotificationSettingsPage() {
     onError: (e: any) => setTgError(e.message || "Ошибка"),
   });
 
+  const disconnectMut = useMutation({
+    mutationFn: () => api.post("/api/v2/notification-settings/telegram/disconnect"),
+    onSuccess: () => {
+      setSaved("Telegram отключён");
+      setBotToken("");
+      setChatId("");
+      qc.invalidateQueries({ queryKey: ["notification-settings"] });
+      setTimeout(() => setSaved(""), 2000);
+    },
+    onError: (e: any) => setTgError(e.message || "Ошибка"),
+  });
+
   const testMut = useMutation({
     mutationFn: () => api.post("/api/v2/notification-settings/telegram/test"),
     onSuccess: () => { setSaved("Тестовое сообщение отправлено"); setTimeout(() => setSaved(""), 3000); },
@@ -310,14 +322,24 @@ export default function NotificationSettingsPage() {
                 {tgMut.isPending ? "..." : "Сохранить"}
               </button>
               {settings?.telegram_connected && (
-                <button
-                  onClick={() => { setTgError(""); testMut.mutate(); }}
-                  disabled={testMut.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04] disabled:opacity-50"
-                  style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
-                >
-                  <MessageCircle size={13} /> {testMut.isPending ? "..." : "Тест"}
-                </button>
+                <>
+                  <button
+                    onClick={() => { setTgError(""); testMut.mutate(); }}
+                    disabled={testMut.isPending}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04] disabled:opacity-50"
+                    style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
+                  >
+                    <MessageCircle size={13} /> {testMut.isPending ? "..." : "Тест"}
+                  </button>
+                  <button
+                    onClick={() => { if (confirm("Отключить Telegram-бота?")) disconnectMut.mutate(); }}
+                    disabled={disconnectMut.isPending}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-red-500/10 disabled:opacity-50"
+                    style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+                  >
+                    {disconnectMut.isPending ? "..." : "Отключить"}
+                  </button>
+                </>
               )}
             </div>
 

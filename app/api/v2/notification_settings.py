@@ -138,6 +138,19 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
 
 # ── POST — test telegram message ─────────────────────────────────────────────
 
+@router.post("/telegram/disconnect")
+def telegram_disconnect(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    tg = db.query(TelegramSettings).filter_by(user_id=user_id).first()
+    if tg:
+        tg.bot_token = None
+        tg.chat_id = None
+        tg.connected = False
+        tg.connected_at = None
+        db.commit()
+    return {"ok": True, "connected": False}
+
+
 @router.post("/telegram/test")
 def telegram_test(request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
