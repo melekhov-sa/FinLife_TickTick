@@ -16,6 +16,7 @@ import {
   TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight,
   Percent, Receipt, CalendarDays,
   CheckSquare, Heart, AlertTriangle, Flame, Zap,
+  CreditCard, Target, Calendar,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -79,6 +80,15 @@ interface ProductivityData {
     top_habits: { title: string; current_streak: number; best_streak: number; done_30d: number }[];
   };
 }
+
+interface HeatmapDay { date: string; count: number }
+interface WalletBalData { wallets: { title: string; balance: number }[]; total: number; balance_trend: { month: string; balance: number }[] }
+interface WeekdayItem { day: string; avg: number; total: number; count: number }
+interface SubAnalytics { total_monthly: number; count: number; subscriptions: { name: string; cost: number; days_left: number | null }[]; expiring: { name: string; days_left: number; cost: number }[] }
+interface HabitsMatrix { days: string[]; habits: { habit_id: number; title: string; days: number[] }[] }
+interface GoalsProgress { goals: { title: string; current: number; target: number; percent: number; currency: string }[] }
+interface MonthComp { current: MonthData; previous: MonthData }
+interface MonthData { label: string; income: number; expense: number; net: number; ops: number; tasks_done: number; habits_rate: number }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -208,6 +218,31 @@ export default function AnalyticsPage() {
     queryKey: ["analytics-productivity"],
     queryFn: () => api.get("/api/v2/analytics/productivity"),
     staleTime: 60_000,
+  });
+
+  const { data: heatmap } = useQuery<{ days: HeatmapDay[] }>({
+    queryKey: ["analytics-heatmap"], queryFn: () => api.get("/api/v2/analytics/activity-heatmap"), staleTime: 120_000,
+  });
+  const { data: walletBal } = useQuery<WalletBalData>({
+    queryKey: ["analytics-wallet-bal"], queryFn: () => api.get("/api/v2/analytics/wallet-balances"), staleTime: 60_000,
+  });
+  const { data: spendWeekday } = useQuery<{ weekdays: WeekdayItem[] }>({
+    queryKey: ["analytics-spend-weekday"], queryFn: () => api.get("/api/v2/analytics/spending-by-weekday"), staleTime: 120_000,
+  });
+  const { data: subAnalytics } = useQuery<SubAnalytics>({
+    queryKey: ["analytics-subs"], queryFn: () => api.get("/api/v2/analytics/subscriptions-analytics"), staleTime: 60_000,
+  });
+  const { data: habitsMatrix } = useQuery<HabitsMatrix>({
+    queryKey: ["analytics-habits-matrix"], queryFn: () => api.get("/api/v2/analytics/habits-matrix"), staleTime: 60_000,
+  });
+  const { data: goalsData } = useQuery<GoalsProgress>({
+    queryKey: ["analytics-goals"], queryFn: () => api.get("/api/v2/analytics/goals-progress"), staleTime: 60_000,
+  });
+  const { data: prodWeekday } = useQuery<{ weekdays: { day: string; count: number }[] }>({
+    queryKey: ["analytics-prod-weekday"], queryFn: () => api.get("/api/v2/analytics/productivity-by-weekday"), staleTime: 120_000,
+  });
+  const { data: monthComp } = useQuery<MonthComp>({
+    queryKey: ["analytics-month-comp"], queryFn: () => api.get("/api/v2/analytics/month-comparison"), staleTime: 60_000,
   });
 
   const trendData = trend?.map((p) => ({ ...p, label: monthLabel(p.month) }));
@@ -548,6 +583,242 @@ export default function AnalyticsPage() {
                 </div>
               )}
             </>
+          )}
+
+          {/* ══ ACTIVITY HEATMAP ════════════════════════════════════════════ */}
+          {heatmap && heatmap.days.length > 0 && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-faint)" }}>
+                Активность за год
+              </h3>
+              <div className="overflow-x-auto">
+                <div className="flex gap-[2px]" style={{ minWidth: 720 }}>
+                  {(() => {
+                    const weeks: HeatmapDay[][] = [];
+                    for (let i = 0; i < heatmap.days.length; i += 7) weeks.push(heatmap.days.slice(i, i + 7));
+                    const maxCount = Math.max(1, ...heatmap.days.map(d => d.count));
+                    return weeks.map((week, wi) => (
+                      <div key={wi} className="flex flex-col gap-[2px]">
+                        {week.map((d) => {
+                          const r = d.count / maxCount;
+                          const bg = d.count === 0 ? "rgba(255,255,255,0.03)"
+                            : `rgba(99,102,241,${(0.15 + r * 0.65).toFixed(2)})`;
+                          return (
+                            <div
+                              key={d.date}
+                              className="w-[11px] h-[11px] rounded-[2px]"
+                              style={{ background: bg }}
+                              title={`${d.date}: ${d.count}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 mt-2 justify-end">
+                <span className="text-[9px]" style={{ color: "var(--t-faint)" }}>Меньше</span>
+                {[0, 0.2, 0.4, 0.7, 1].map((r, i) => (
+                  <div key={i} className="w-[10px] h-[10px] rounded-[2px]" style={{ background: r === 0 ? "rgba(255,255,255,0.03)" : `rgba(99,102,241,${(0.15 + r * 0.65).toFixed(2)})` }} />
+                ))}
+                <span className="text-[9px]" style={{ color: "var(--t-faint)" }}>Больше</span>
+              </div>
+            </div>
+          )}
+
+          {/* ══ MONTH COMPARISON ════════════════════════════════════════════ */}
+          {monthComp && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                Сравнение месяцев
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {[monthComp.previous, monthComp.current].map((m, i) => (
+                  <div key={i} className={clsx("rounded-lg p-4 border", i === 1 ? "border-indigo-500/20 bg-indigo-500/[0.04]" : "border-white/[0.05] bg-white/[0.02]")}>
+                    <p className="text-[12px] font-semibold mb-3" style={{ color: i === 1 ? "var(--t-primary)" : "var(--t-faint)" }}>{m.label}</p>
+                    <div className="space-y-2 text-[12px]">
+                      <div className="flex justify-between"><span style={{ color: "var(--t-faint)" }}>Доходы</span><span className="tabular-nums font-medium text-emerald-400">{fmt(m.income)} ₽</span></div>
+                      <div className="flex justify-between"><span style={{ color: "var(--t-faint)" }}>Расходы</span><span className="tabular-nums font-medium text-red-400">{fmt(m.expense)} ₽</span></div>
+                      <div className="flex justify-between border-t border-white/[0.05] pt-1"><span style={{ color: "var(--t-faint)" }}>Баланс</span><span className={clsx("tabular-nums font-semibold", m.net >= 0 ? "text-emerald-400" : "text-red-400")}>{fmt(m.net)} ₽</span></div>
+                      <div className="flex justify-between"><span style={{ color: "var(--t-faint)" }}>Задач</span><span className="tabular-nums" style={{ color: "var(--t-secondary)" }}>{m.tasks_done}</span></div>
+                      <div className="flex justify-between"><span style={{ color: "var(--t-faint)" }}>Привычки</span><span className="tabular-nums" style={{ color: "var(--t-secondary)" }}>{m.habits_rate}%</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══ WALLET BALANCES ═════════════════════════════════════════════ */}
+          {walletBal && (
+            <>
+              <div className="border-t border-white/[0.06] pt-6 mt-2">
+                <h2 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                  Балансы
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {walletBal.wallets.map((w, i) => (
+                  <KpiCard key={i} label={w.title} value={`${fmt(w.balance)} ₽`} icon={Wallet} color={w.balance >= 0 ? "#10b981" : "#ef4444"} />
+                ))}
+                <KpiCard label="Всего" value={`${fmt(walletBal.total)} ₽`} icon={Wallet} color="#6366f1" />
+              </div>
+              {walletBal.balance_trend.length > 0 && (
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                    Динамика общего баланса
+                  </h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={walletBal.balance_trend.map(p => ({ ...p, label: monthLabel(p.month) }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.5)" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : v} />
+                      <Tooltip content={<ChartTooltip />} />
+                      <defs><linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
+                      <Area type="monotone" dataKey="balance" name="Баланс" stroke="#10b981" fill="url(#balGrad)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ══ SPENDING BY WEEKDAY + PRODUCTIVITY BY WEEKDAY ═══════════════ */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {spendWeekday && spendWeekday.weekdays.some(w => w.avg > 0) && (
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                  Расходы по дням недели (3 мес.)
+                </h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={spendWeekday.weekdays}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.5)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : v} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Bar dataKey="avg" name="Средний расход" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {prodWeekday && prodWeekday.weekdays.some(w => w.count > 0) && (
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                  Задачи по дням недели (3 мес.)
+                </h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={prodWeekday.weekdays}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.5)" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Bar dataKey="count" name="Задач" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* ══ SUBSCRIPTIONS ═══════════════════════════════════════════════ */}
+          {subAnalytics && subAnalytics.count > 0 && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>Подписки</h3>
+                <span className="text-[13px] font-bold tabular-nums" style={{ color: "var(--t-primary)" }}>{fmt(subAnalytics.total_monthly)} ₽/мес</span>
+              </div>
+              <div className="space-y-1.5">
+                {subAnalytics.subscriptions.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1.5 border-b border-white/[0.04] last:border-0">
+                    <CreditCard size={12} style={{ color: "var(--t-faint)" }} />
+                    <span className="flex-1 text-[13px] truncate" style={{ color: "var(--t-secondary)" }}>{s.name}</span>
+                    <span className="text-[12px] tabular-nums font-medium" style={{ color: "var(--t-primary)" }}>{s.cost > 0 ? `${fmt(s.cost)} ₽` : "—"}</span>
+                    {s.days_left !== null && s.days_left <= 14 && (
+                      <span className={clsx("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", s.days_left <= 0 ? "bg-red-500/10 text-red-400" : "bg-amber-500/10 text-amber-400")}>
+                        {s.days_left <= 0 ? "Просрочено" : `${s.days_left} дн.`}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══ HABITS MATRIX ══════════════════════════════════════════════ */}
+          {habitsMatrix && habitsMatrix.habits.length > 0 && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-faint)" }}>
+                Привычки: матрица за 30 дней
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ minWidth: 500 }}>
+                  <thead>
+                    <tr>
+                      <th className="text-left text-[10px] font-medium pb-2 pr-3 sticky left-0 bg-transparent" style={{ color: "var(--t-faint)", minWidth: 100 }}></th>
+                      {habitsMatrix.days.map((d, i) => (
+                        <th key={d} className="text-[8px] font-normal pb-1 px-0" style={{ color: "var(--t-faint)", width: 13 }}>
+                          {i % 7 === 0 ? d.slice(8, 10) : ""}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {habitsMatrix.habits.map((h) => (
+                      <tr key={h.habit_id}>
+                        <td className="text-[11px] py-1 pr-3 truncate" style={{ color: "var(--t-secondary)", maxWidth: 120 }}>{h.title}</td>
+                        {h.days.map((v, i) => (
+                          <td key={i} className="px-0 py-0.5">
+                            <div
+                              className="w-[10px] h-[10px] rounded-[2px] mx-auto"
+                              style={{
+                                background: v === 1 ? "#10b981" : v === 0 ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.04)",
+                              }}
+                              title={`${habitsMatrix.days[i]}: ${v === 1 ? "Done" : v === 0 ? "Missed" : "N/A"}`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center gap-3 mt-2 justify-end text-[9px]" style={{ color: "var(--t-faint)" }}>
+                <span className="flex items-center gap-1"><span className="w-[8px] h-[8px] rounded-[1px] bg-emerald-500 inline-block" /> Выполнено</span>
+                <span className="flex items-center gap-1"><span className="w-[8px] h-[8px] rounded-[1px] inline-block" style={{ background: "rgba(239,68,68,0.25)" }} /> Пропущено</span>
+                <span className="flex items-center gap-1"><span className="w-[8px] h-[8px] rounded-[1px] inline-block" style={{ background: "rgba(255,255,255,0.04)" }} /> Нет</span>
+              </div>
+            </div>
+          )}
+
+          {/* ══ GOALS PROGRESS ═════════════════════════════════════════════ */}
+          {goalsData && goalsData.goals.length > 0 && (
+            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
+                Прогресс целей
+              </h3>
+              <div className="space-y-3">
+                {goalsData.goals.map((g, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>{g.title}</span>
+                      <span className="text-[12px] tabular-nums font-medium" style={{ color: "var(--t-secondary)" }}>
+                        {fmt(g.current)} / {g.target > 0 ? `${fmt(g.target)} ${g.currency}` : "—"}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(g.percent, 100)}%`,
+                          background: g.percent >= 100 ? "#10b981" : g.percent >= 50 ? "#6366f1" : "#f59e0b",
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] mt-0.5 text-right tabular-nums" style={{ color: "var(--t-faint)" }}>{g.percent}%</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
         </div>
