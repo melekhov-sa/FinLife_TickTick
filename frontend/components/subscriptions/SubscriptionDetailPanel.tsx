@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Trash2, Calendar, DollarSign, UserMinus, ExternalLink } from "lucide-react";
+import { X, Trash2, Calendar, DollarSign, UserMinus, UserPlus } from "lucide-react";
+import { AddMemberModal } from "@/components/modals/AddMemberModal";
 import { clsx } from "clsx";
 import type { SubscriptionItem, SubscriptionMember } from "@/types/api";
 import {
@@ -175,6 +176,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
   const [nameFocused, setNameFocused] = useState(false);
   const [paidUntil, setPaidUntil]     = useState(sub.paid_until_self ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
 
   const nameRef     = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -319,12 +321,12 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
               <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
                 Участники
               </p>
-              <a
-                href={`/legacy/subscriptions/${sub.id}/members/add`}
+              <button
+                onClick={() => setShowAddMember(true)}
                 className="text-[11px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors flex items-center gap-1"
               >
-                + Добавить
-              </a>
+                <UserPlus size={11} /> Добавить
+              </button>
             </div>
             {sub.members.length === 0 ? (
               <p className="text-[13px] py-3 text-center" style={{ color: "var(--t-faint)" }}>
@@ -339,15 +341,10 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
             )}
           </div>
 
-          {/* Advanced link */}
-          <a
-            href={`/legacy/subscriptions/${sub.id}`}
-            className="flex items-center gap-1.5 text-[12px] font-medium transition-colors"
-            style={{ color: "var(--t-faint)" }}
-          >
-            <ExternalLink size={12} />
-            Полное управление (компенсации, настройки)
-          </a>
+          {/* Add member modal */}
+          {showAddMember && (
+            <AddMemberModal subId={sub.id} onClose={() => setShowAddMember(false)} />
+          )}
         </div>
 
         {/* Footer */}
