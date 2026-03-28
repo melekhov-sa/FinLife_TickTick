@@ -317,30 +317,30 @@ function EntryRow({
         {isTask && !entry.is_done && (
           <button
             onClick={() => onReschedule(entry)}
-            className="opacity-0 group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-indigo-500/20"
+            className="md:opacity-0 md:group-hover/row:opacity-100 w-7 h-7 flex items-center justify-center rounded-md transition-all hover:bg-indigo-500/20 bg-white/[0.05] md:bg-transparent"
             style={{ color: "var(--t-faint)" }}
             title="Перенести"
           >
-            <CalendarDays size={13} />
+            <CalendarDays size={14} />
           </button>
         )}
         {isOp && !entry.is_done && (
           <>
             <button
               onClick={() => onExecuteOp(entry)}
-              className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
+              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1.5 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
               title="Выполнить операцию"
             >
               <Play size={9} className="fill-current" />
-              Выполнить
+              <span className="hidden md:inline">Выполнить</span>
             </button>
             <button
               onClick={() => onSkipOp(entry)}
-              className="opacity-0 group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400"
+              className="md:opacity-0 md:group-hover/row:opacity-100 w-7 h-7 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 bg-white/[0.05] md:bg-transparent"
               style={{ color: "var(--t-faint)" }}
-              title="Пропустить операцию"
+              title="Пропустить"
             >
-              <SkipForward size={12} />
+              <SkipForward size={13} />
             </button>
           </>
         )}

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward } from "lucide-react";
+import { CheckCircle2, SkipForward, CalendarDays, Play } from "lucide-react";
+import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
@@ -77,13 +78,23 @@ function Item({
           просрочено
         </span>
       )}
+      {!isDone && (
+        <Link
+          href="/plan"
+          className="w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-white/[0.06] shrink-0"
+          style={{ color: "var(--t-faint)" }}
+          title="Открыть в плане"
+        >
+          <CalendarDays size={12} />
+        </Link>
+      )}
     </div>
   );
 }
 
 function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: () => void; onSkip: () => void }) {
   return (
-    <div className="group/fi flex items-center gap-2.5 py-2 md:py-2.5 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
+    <div className="group/fi flex items-center gap-2 py-2 md:py-2.5 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
       <div className="w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] border-white/20 shrink-0" />
       <button
         onClick={onClick}
@@ -92,15 +103,23 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
         <span className="text-[13px] md:text-[14px] font-[500] truncate block" style={{ color: "var(--t-primary)" }}>
           {op.title}
         </span>
+        <span className="text-[10px] md:text-[11px] tabular-nums" style={{ color: "var(--t-muted)" }}>
+          {op.kind_label} · {op.amount_formatted}
+        </span>
       </button>
-      <span className="text-[11px] md:text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
-        {op.kind_label} · {op.amount_formatted}
-      </span>
+      <button
+        onClick={onClick}
+        className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all shrink-0"
+        title="Выполнить"
+      >
+        <Play size={8} className="fill-current" />
+        <span className="hidden md:inline">Выполнить</span>
+      </button>
       <button
         onClick={onSkip}
-        className="opacity-0 group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 shrink-0"
+        className="md:opacity-0 md:group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 shrink-0 bg-white/[0.04] md:bg-transparent"
         style={{ color: "var(--t-faint)" }}
-        title="Пропустить операцию"
+        title="Пропустить"
       >
         <SkipForward size={12} />
       </button>
