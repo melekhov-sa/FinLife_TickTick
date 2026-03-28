@@ -8,7 +8,8 @@ import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown } from "lucide-react";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar } from "lucide-react";
+import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -603,6 +604,25 @@ export default function PlanPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ── Quick links to templates ─────────────────────────────── */}
+          <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 overflow-x-auto">
+            {[
+              { href: "/recurring-tasks", icon: Repeat, label: "Повторяющиеся" },
+              { href: "/planned-ops", icon: Wallet, label: "Плановые операции" },
+              { href: "/event-templates", icon: Calendar, label: "Шаблоны событий" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] md:text-[12px] font-medium whitespace-nowrap transition-colors hover:bg-white/[0.04]"
+                style={{ borderColor: "rgba(255,255,255,0.07)", color: "var(--t-faint)" }}
+              >
+                <link.icon size={13} className="opacity-50" />
+                {link.label}
+              </Link>
+            ))}
           </div>
 
           {/* ── KPI Summary ───────────────────────────────────────────── */}
