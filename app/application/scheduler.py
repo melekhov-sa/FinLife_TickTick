@@ -91,6 +91,11 @@ def _run_notification_engine():
 
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
+    from app.config import get_settings
+    if get_settings().DISABLE_NOTIFICATIONS:
+        logger.info("DISABLE_NOTIFICATIONS=True — skipping notification scheduler jobs")
+        scheduler.start()
+        return
     # Morning digest — 08:00 MSK (05:00 UTC)
     scheduler.add_job(
         _run_morning_digest,

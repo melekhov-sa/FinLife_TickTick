@@ -9,6 +9,7 @@ import {
   useUpdateSubscription, useArchiveSubscription,
   useUpdateMember, useArchiveMember,
 } from "@/hooks/useSubscriptions";
+import { useMe } from "@/hooks/useMe";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,8 @@ interface Props {
 }
 
 export function SubscriptionDetailPanel({ sub, onClose }: Props) {
+  const { data: me } = useMe();
+  const isAdmin = me?.is_admin ?? false;
   const [name, setName]               = useState(sub.name);
   const [nameFocused, setNameFocused] = useState(false);
   const [paidUntil, setPaidUntil]     = useState(sub.paid_until_self ?? "");
@@ -265,15 +268,17 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           />
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
-              <div className="text-[20px] font-bold tabular-nums leading-none text-white/85" style={{ letterSpacing: "-0.04em" }}>
-                {sub.total_members}
+          <div className={clsx("grid gap-3", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
+            {isAdmin && (
+              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
+                <div className="text-[20px] font-bold tabular-nums leading-none text-white/85" style={{ letterSpacing: "-0.04em" }}>
+                  {sub.total_members}
+                </div>
+                <div className="text-[10px] mt-1 font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+                  Участников
+                </div>
               </div>
-              <div className="text-[10px] mt-1 font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                Участников
-              </div>
-            </div>
+            )}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
               <div className="text-[20px] font-bold tabular-nums leading-none text-red-400" style={{ letterSpacing: "-0.04em" }}>
                 {monthlyTotal > 0 ? `${monthlyTotal.toLocaleString("ru-RU")} ₽` : "—"}
@@ -315,31 +320,33 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
             </div>
           </div>
 
-          {/* Members */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                Участники
-              </p>
-              <button
-                onClick={() => setShowAddMember(true)}
-                className="text-[11px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors flex items-center gap-1"
-              >
-                <UserPlus size={11} /> Добавить
-              </button>
-            </div>
-            {sub.members.length === 0 ? (
-              <p className="text-[13px] py-3 text-center" style={{ color: "var(--t-faint)" }}>
-                Нет участников
-              </p>
-            ) : (
-              <div>
-                {sub.members.map((m) => (
-                  <MemberRow key={m.member_id} member={m} subId={sub.id} />
-                ))}
+          {/* Members — admin only */}
+          {isAdmin && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+                  Участники
+                </p>
+                <button
+                  onClick={() => setShowAddMember(true)}
+                  className="text-[11px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors flex items-center gap-1"
+                >
+                  <UserPlus size={11} /> Добавить
+                </button>
               </div>
-            )}
-          </div>
+              {sub.members.length === 0 ? (
+                <p className="text-[13px] py-3 text-center" style={{ color: "var(--t-faint)" }}>
+                  Нет участников
+                </p>
+              ) : (
+                <div>
+                  {sub.members.map((m) => (
+                    <MemberRow key={m.member_id} member={m} subId={sub.id} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add member modal */}
           {showAddMember && (

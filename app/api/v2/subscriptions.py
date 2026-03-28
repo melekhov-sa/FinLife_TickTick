@@ -312,6 +312,37 @@ def list_contacts(
     return [ContactItem(id=c.id, name=c.name) for c in rows]
 
 
+class ContactCreate(BaseModel):
+    name: str
+
+
+@router.post("/contacts", status_code=201)
+def create_contact(
+    body: ContactCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    c = ContactModel(account_id=user_id, name=body.name.strip())
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return {"id": c.id, "name": c.name}
+
+
+@router.delete("/contacts/{contact_id}", status_code=204)
+def delete_contact(
+    contact_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    db.query(ContactModel).filter(
+        ContactModel.id == contact_id, ContactModel.account_id == user_id,
+    ).update({"is_archived": True})
+    db.commit()
+
+
 @router.delete("/subscriptions/{sub_id}/members/{member_id}", status_code=204)
 def archive_member(
     sub_id: int, member_id: int,

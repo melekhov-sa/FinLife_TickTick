@@ -6,10 +6,11 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import {
-  User, Bell, Database, Shield,
+  User, Bell, Database, Shield, Users,
   ChevronRight, Smartphone, Send, Download, CheckCircle2, ExternalLink,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
 
 // ── PWA Install Hook ─────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ export default function SettingsPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const pwa = usePwaInstall();
+  const { data: me } = useMe();
 
   const { data: notifSettings } = useQuery<NotifSettings>({
     queryKey: ["notification-settings"],
@@ -239,6 +241,24 @@ export default function SettingsPage() {
                 </Link>
               );
             })}
+
+            {/* Contacts — admin only */}
+            {notifSettings && me?.is_admin && (
+              <Link
+                href="/contacts"
+                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01]"
+                style={{ borderColor: cardBorder, background: cardBg }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#10b98112" }}>
+                  <Users size={18} style={{ color: "#10b981" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>Участники</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>Управление участниками подписок</p>
+                </div>
+                <ChevronRight size={16} style={{ color: "var(--t-faint)" }} className="shrink-0" />
+              </Link>
+            )}
           </div>
 
         </div>

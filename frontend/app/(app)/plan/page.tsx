@@ -524,57 +524,47 @@ export default function PlanPage() {
       )}
 
       <AppTopbar title="План" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="max-w-[860px]">
 
           {/* ── Controls ──────────────────────────────────────────────── */}
-          <div className="flex flex-wrap items-end gap-6 mb-6">
-            {/* Status group */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                Статус
-              </span>
-              <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
-                {TABS.map((t) => (
-                  <button
-                    key={t.value}
-                    onClick={() => setTab(t.value)}
-                    className={clsx(
-                      "px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
-                      tab === t.value
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "hover:bg-white/[0.05]"
-                    )}
-                    style={{ color: tab === t.value ? undefined : "var(--t-secondary)" }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+          <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+            {/* Status pills */}
+            <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
+              {TABS.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => setTab(t.value)}
+                  className={clsx(
+                    "px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-md text-[11px] md:text-[13px] font-semibold transition-all",
+                    tab === t.value
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "hover:bg-white/[0.05]"
+                  )}
+                  style={{ color: tab === t.value ? undefined : "var(--t-secondary)" }}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
 
-            {/* Period group */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                Период
-              </span>
-              <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
-                {RANGES.map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => setRange(r.value)}
-                    className={clsx(
-                      "px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
-                      range === r.value
-                        ? "bg-white/[0.12] text-white/90 shadow-sm"
-                        : "hover:bg-white/[0.05]"
-                    )}
-                    style={{ color: range === r.value ? undefined : "var(--t-secondary)" }}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
+            {/* Period pills */}
+            <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
+              {RANGES.map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setRange(r.value)}
+                  className={clsx(
+                    "px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-md text-[11px] md:text-[13px] font-semibold transition-all",
+                    range === r.value
+                      ? "bg-white/[0.12] text-white/90 shadow-sm"
+                      : "hover:bg-white/[0.05]"
+                  )}
+                  style={{ color: range === r.value ? undefined : "var(--t-secondary)" }}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
 
             {/* Add button with dropdown */}
@@ -617,48 +607,24 @@ export default function PlanPage() {
 
           {/* ── KPI Summary ───────────────────────────────────────────── */}
           {summary && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-4 gap-1.5 md:gap-3 mb-4 md:mb-6">
               {[
-                {
-                  label: "Сегодня",
-                  value: summary.today_count,
-                  color: "var(--t-primary)",
-                  border: "border-white/[0.07]",
-                  bg: "bg-white/[0.04]",
-                },
-                {
-                  label: "На неделе",
-                  value: summary.week_count,
-                  color: "#60a5fa",
-                  border: "border-blue-500/20",
-                  bg: "bg-blue-500/[0.04]",
-                },
-                {
-                  label: "Просрочено",
-                  value: summary.overdue_count,
-                  color: summary.overdue_count > 0 ? "#f87171" : "var(--t-primary)",
-                  border: summary.overdue_count > 0 ? "border-red-500/25" : "border-white/[0.07]",
-                  bg: summary.overdue_count > 0 ? "bg-red-500/[0.04]" : "bg-white/[0.04]",
-                },
-                {
-                  label: "Сделано",
-                  value: summary.done_today_count,
-                  color: "#34d399",
-                  border: "border-emerald-500/20",
-                  bg: "bg-emerald-500/[0.04]",
-                },
+                { label: "Сегодня", value: summary.today_count, color: "var(--t-primary)", border: "border-white/[0.07]", bg: "bg-white/[0.04]" },
+                { label: "Неделя", value: summary.week_count, color: "#60a5fa", border: "border-blue-500/20", bg: "bg-blue-500/[0.04]" },
+                { label: "Просроч.", value: summary.overdue_count, color: summary.overdue_count > 0 ? "#f87171" : "var(--t-primary)", border: summary.overdue_count > 0 ? "border-red-500/25" : "border-white/[0.07]", bg: summary.overdue_count > 0 ? "bg-red-500/[0.04]" : "bg-white/[0.04]" },
+                { label: "Сделано", value: summary.done_today_count, color: "#34d399", border: "border-emerald-500/20", bg: "bg-emerald-500/[0.04]" },
               ].map((kpi) => (
                 <div
                   key={kpi.label}
-                  className={clsx("rounded-[14px] border p-4 text-center min-h-[80px] flex flex-col items-center justify-center gap-1", kpi.border, kpi.bg)}
+                  className={clsx("rounded-xl border py-2.5 md:p-4 text-center flex flex-col items-center justify-center gap-0.5", kpi.border, kpi.bg)}
                 >
                   <p
-                    className="text-[28px] font-bold tabular-nums leading-none"
+                    className="text-[20px] md:text-[28px] font-bold tabular-nums leading-none"
                     style={{ color: kpi.color, letterSpacing: "-0.04em" }}
                   >
                     {kpi.value}
                   </p>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+                  <p className="text-[9px] md:text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
                     {kpi.label}
                   </p>
                 </div>

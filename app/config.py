@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Application
     TIMEZONE: str = "Europe/Moscow"
     DEBUG: bool = False
+    DISABLE_NOTIFICATIONS: bool = False  # Set True on test environments to skip all push/telegram/email
 
     # Analytics (Microsoft Clarity)
     CLARITY_PROJECT_ID: str = ""
