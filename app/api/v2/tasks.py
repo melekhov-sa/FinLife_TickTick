@@ -803,3 +803,21 @@ def archive_task_template(
         raise HTTPException(status_code=404, detail="Template not found")
     template.is_archived = True
     db.commit()
+
+
+@router.post("/task-templates/{template_id}/restore")
+def restore_task_template(
+    template_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    template = db.query(TaskTemplateModel).filter(
+        TaskTemplateModel.template_id == template_id,
+        TaskTemplateModel.account_id == user_id,
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    template.is_archived = False
+    db.commit()
+    return {"ok": True}

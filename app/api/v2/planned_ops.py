@@ -153,3 +153,57 @@ def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Dep
     occ.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
+
+
+class PlannedOpUpdate(BaseModel):
+    title: str | None = None
+    amount: str | None = None
+    active_until: str | None = None
+
+
+@router.patch("/planned-ops/{template_id}")
+def update_planned_op(template_id: int, body: PlannedOpUpdate, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    t = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not t:
+        raise HTTPException(404, "Template not found")
+    if body.title is not None:
+        t.title = body.title
+    if body.amount is not None:
+        from decimal import Decimal
+        t.amount = Decimal(body.amount)
+    if body.active_until is not None:
+        t.active_until = date.fromisoformat(body.active_until) if body.active_until else None
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/planned-ops/{template_id}/archive")
+def archive_planned_op(template_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    t = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not t:
+        raise HTTPException(404, "Template not found")
+    t.is_archived = True
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/planned-ops/{template_id}/restore")
+def restore_planned_op(template_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    t = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not t:
+        raise HTTPException(404, "Template not found")
+    t.is_archived = False
+    db.commit()
+    return {"ok": True}

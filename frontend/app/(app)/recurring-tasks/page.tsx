@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Pencil, Check, X } from "lucide-react";
+import { RefreshCw, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
@@ -78,11 +78,22 @@ function TemplateRow({
   item,
   isLast,
   categories,
+  archived,
 }: {
   item: TaskTemplateItem;
   isLast: boolean;
   categories: WorkCategory[];
+  archived: boolean;
 }) {
+  const qc = useQueryClient();
+  const { mutate: archiveTemplate } = useMutation({
+    mutationFn: () => api.delete(`/api/v2/task-templates/${item.template_id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-templates"] }),
+  });
+  const { mutate: restoreTemplate } = useMutation({
+    mutationFn: () => api.post(`/api/v2/task-templates/${item.template_id}/restore`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task-templates"] }),
+  });
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const [editNote, setEditNote] = useState(item.note ?? "");
@@ -245,13 +256,23 @@ function TemplateRow({
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-medium">
           {freqLabel(item.freq)}
         </span>
+        {!archived && (
+          <button
+            onClick={startEdit}
+            className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+            style={{ color: "var(--t-faint)" }}
+            title="Редактировать"
+          >
+            <Pencil size={11} />
+          </button>
+        )}
         <button
-          onClick={startEdit}
-          className="w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+          onClick={() => archived ? restoreTemplate() : archiveTemplate()}
+          className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
           style={{ color: "var(--t-faint)" }}
-          title="Редактировать"
+          title={archived ? "Восстановить" : "В архив"}
         >
-          <Pencil size={11} />
+          {archived ? <RotateCcw size={11} /> : <Archive size={11} />}
         </button>
       </div>
     </div>
@@ -344,6 +365,7 @@ export default function RecurringTasksPage() {
                 item={item}
                 isLast={i === templates.length - 1}
                 categories={categories}
+                archived={archived}
               />
             ))}
           </div>

@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
-import { CalendarClock, LayoutList, Play } from "lucide-react";
+import { CalendarClock, LayoutList, Play, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -118,46 +119,80 @@ function KindBadge({ kind }: { kind: string }) {
 
 // ── TemplateRow ───────────────────────────────────────────────────────────────
 
-function TemplateRow({ item }: { item: PlannedOpItem }) {
+function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; archived: boolean }) {
   const s = kindStyle(item.kind);
   const amountSign = item.kind === "INCOME" ? "+" : item.kind === "EXPENSE" ? "\u2212" : "\u2194";
+  const qc = useQueryClient();
 
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors">
-      {/* Kind indicator */}
-      <div className={clsx("w-1 self-stretch rounded-full shrink-0", s.bg, s.text.replace("text-", "bg-").replace("/400", "/60"))} />
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(item.title);
+  const [editAmount, setEditAmount] = useState(item.amount);
+  const [editUntil, setEditUntil] = useState(item.active_until ?? "");
 
-      {/* Main content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>
-            {item.title}
-          </span>
-          <KindBadge kind={item.kind} />
-          {item.freq && (
-            <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>
-              {FREQ_LABELS[item.freq] ?? item.freq}
-            </span>
-          )}
+  const { mutate: update, isPending } = useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.patch(`/api/v2/planned-ops/${item.template_id}`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["planned-ops"] }); setEditing(false); },
+  });
+  const { mutate: archiveOp } = useMutation({
+    mutationFn: () => api.post(`/api/v2/planned-ops/${item.template_id}/archive`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["planned-ops"] }),
+  });
+  const { mutate: restoreOp } = useMutation({
+    mutationFn: () => api.post(`/api/v2/planned-ops/${item.template_id}/restore`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["planned-ops"] }),
+  });
+
+  function startEdit() {
+    setEditTitle(item.title);
+    setEditAmount(item.amount);
+    setEditUntil(item.active_until ?? "");
+    setEditing(true);
+  }
+
+  function save() {
+    if (!editTitle.trim()) return;
+    update({ title: editTitle.trim(), amount: editAmount, active_until: editUntil || null });
+  }
+
+  if (editing) {
+    const inputCls = "w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40";
+    return (
+      <div className="px-2 py-3 border-b border-white/[0.06] last:border-0 space-y-2">
+        <div className="flex gap-2">
+          <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название" className={`flex-1 ${inputCls}`} style={{ color: "var(--t-primary)" }} autoFocus />
+          <button onClick={save} disabled={isPending || !editTitle.trim()} className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40 shrink-0"><Check size={12} strokeWidth={2.5} /></button>
+          <button onClick={() => setEditing(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0" style={{ color: "var(--t-faint)" }}><X size={12} /></button>
         </div>
-        <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {item.wallet_title && (
-            <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>
-              {item.wallet_title}
-            </span>
-          )}
-          <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
-            с {formatDate(item.active_from)}
-            {item.active_until && ` по ${formatDate(item.active_until)}`}
-          </span>
+        <div className="flex gap-2">
+          <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="Сумма" className={`w-32 ${inputCls}`} style={{ color: "var(--t-secondary)" }} />
+          <input type="date" value={editUntil} onChange={(e) => setEditUntil(e.target.value)} placeholder="Активна до" className={`flex-1 ${inputCls} [color-scheme:dark]`} style={{ color: "var(--t-secondary)" }} />
         </div>
       </div>
+    );
+  }
 
-      {/* Amount */}
-      <div className="shrink-0 text-right">
-        <span className={clsx("text-[15px] font-semibold tabular-nums", s.text)}>
-          {amountSign}{formatAmount(item.amount)} ₽
-        </span>
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/row">
+      <div className={clsx("w-1 self-stretch rounded-full shrink-0", s.bg, s.text.replace("text-", "bg-").replace("/400", "/60"))} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>{item.title}</span>
+          <KindBadge kind={item.kind} />
+          {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
+        </div>
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
+          {item.wallet_title && <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>{item.wallet_title}</span>}
+          <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>с {formatDate(item.active_from)}{item.active_until && ` по ${formatDate(item.active_until)}`}</span>
+        </div>
+      </div>
+      <span className={clsx("text-[15px] font-semibold tabular-nums shrink-0", s.text)}>{amountSign}{formatAmount(item.amount)} ₽</span>
+      <div className="flex items-center gap-1 shrink-0">
+        {!isArchived && (
+          <button onClick={startEdit} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }} title="Редактировать"><Pencil size={11} /></button>
+        )}
+        <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }} title={isArchived ? "Восстановить" : "В архив"}>
+          {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
+        </button>
       </div>
     </div>
   );
@@ -305,7 +340,7 @@ function TemplatesTab() {
       {data && data.length > 0 && (
         <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.03] px-5 py-1">
           {data.map((item) => (
-            <TemplateRow key={item.template_id} item={item} />
+            <TemplateRow key={item.template_id} item={item} archived={archived} />
           ))}
         </div>
       )}
