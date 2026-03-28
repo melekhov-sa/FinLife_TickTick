@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
-import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
+import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 
 interface Props {
@@ -140,6 +140,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [executeOp, setExecuteOp] = useState<UpcomingPayment | null>(null);
   const [showOpModal, setShowOpModal] = useState(false);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
 
@@ -176,6 +177,16 @@ export function TodayBlock({ today, plannedOps }: Props) {
     <>
       {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
       {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+      {executeOp && (
+        <CreateOperationModal
+          occurrenceId={executeOp.occurrence_id}
+          initialValues={{
+            opType: executeOp.kind as "INCOME" | "EXPENSE" | "TRANSFER" | undefined,
+            amount: String(executeOp.amount),
+          }}
+          onClose={() => setExecuteOp(null)}
+        />
+      )}
       {confirmItem && isCompletable(confirmItem.kind) && (
         <ConfirmCompleteModal
           kind={confirmItem.kind as CompletableKind}
@@ -277,7 +288,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
           <div className="mb-2 md:mb-3">
             <SectionLabel label="Финансы" count={plannedOps.length} />
             {plannedOps.map((op) => (
-              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setShowOpModal(true)} onSkip={() => skipOp(op.occurrence_id)} />
+              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
             ))}
           </div>
         )}

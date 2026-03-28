@@ -978,6 +978,8 @@ function toggleAllVisibility(checked) {
     return targetRow.nextSibling;
   }
 
+  var lastDragOverRow = null;
+
   document.querySelectorAll('tr[data-cat-id]').forEach(function(row) {
     // Enable draggable only when grabbing the handle (mousedown/mouseup)
     var handle = row.querySelector('.drag-handle');
@@ -1007,6 +1009,7 @@ function toggleAllVisibility(checked) {
         r.classList.remove('bgt-dragging', 'bgt-drag-over');
       });
       dragSrc = null;
+      lastDragOverRow = null;
       disableDrag();
     });
 
@@ -1015,7 +1018,8 @@ function toggleAllVisibility(checked) {
       if (groupKey(row) !== groupKey(dragSrc)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      document.querySelectorAll('.bgt-drag-over').forEach(function(r) { r.classList.remove('bgt-drag-over'); });
+      if (lastDragOverRow && lastDragOverRow !== row) lastDragOverRow.classList.remove('bgt-drag-over');
+      lastDragOverRow = row;
       row.classList.add('bgt-drag-over');
     });
 
@@ -1078,6 +1082,7 @@ function toggleAllVisibility(checked) {
         r.classList.remove('bgt-dragging', 'bgt-drag-over');
       });
       dragSrc = null;
+      lastDragOverRow = null;
       disableDrag();
     });
 
@@ -1086,7 +1091,8 @@ function toggleAllVisibility(checked) {
       if (row.dataset.section !== dragSrc.dataset.section) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      document.querySelectorAll('.bgt-drag-over').forEach(function(r) { r.classList.remove('bgt-drag-over'); });
+      if (lastDragOverRow && lastDragOverRow !== row) lastDragOverRow.classList.remove('bgt-drag-over');
+      lastDragOverRow = row;
       row.classList.add('bgt-drag-over');
     });
 

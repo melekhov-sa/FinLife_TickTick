@@ -1,14 +1,18 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, Request, Query, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel, WalletBalance
-from pydantic import BaseModel
 
 router = APIRouter()
 
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class PlannedOpItem(BaseModel):
     template_id: int
@@ -36,6 +40,36 @@ class UpcomingOccurrence(BaseModel):
     category_id: int | None = None
 
 
+class PlannedOpUpdate(BaseModel):
+    title: str | None = None
+    amount: str | None = None
+    active_until: str | None = None
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _get_template_or_404(template_id: int, user_id: int, db: Session) -> OperationTemplateModel:
+    t = db.query(OperationTemplateModel).filter(
+        OperationTemplateModel.template_id == template_id,
+        OperationTemplateModel.account_id == user_id,
+    ).first()
+    if not t:
+        raise HTTPException(404, "Template not found")
+    return t
+
+
+def _get_occurrence_or_404(occurrence_id: int, user_id: int, db: Session) -> OperationOccurrence:
+    occ = db.query(OperationOccurrence).filter(
+        OperationOccurrence.id == occurrence_id,
+        OperationOccurrence.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(404, "Occurrence not found")
+    return occ
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
 @router.get("/planned-ops", response_model=list[PlannedOpItem])
 def list_planned_ops(
     request: Request,
@@ -44,27 +78,22 @@ def list_planned_ops(
 ):
     user_id = get_user_id(request, db)
     q = db.query(OperationTemplateModel).filter(
-        OperationTemplateModel.account_id == user_id
+        OperationTemplateModel.account_id == user_id,
+        OperationTemplateModel.is_archived == archived,
     )
-    if archived:
-        q = q.filter(OperationTemplateModel.is_archived == True)
-    else:
-        q = q.filter(OperationTemplateModel.is_archived == False)
     templates = q.order_by(OperationTemplateModel.template_id.desc()).all()
 
     wallet_ids = {t.wallet_id for t in templates if t.wallet_id}
+    wallet_map = {}
     if wallet_ids:
         wallets = db.query(WalletBalance).filter(WalletBalance.wallet_id.in_(wallet_ids)).all()
-    else:
-        wallets = []
-    wallet_map = {w.wallet_id: w.title for w in wallets}
+        wallet_map = {w.wallet_id: w.title for w in wallets}
 
     rule_ids = [t.rule_id for t in templates if t.rule_id]
+    rule_map = {}
     if rule_ids:
         rules = db.query(RecurrenceRuleModel).filter(RecurrenceRuleModel.rule_id.in_(rule_ids)).all()
-    else:
-        rules = []
-    rule_map = {r.rule_id: r for r in rules}
+        rule_map = {r.rule_id: r for r in rules}
 
     return [
         PlannedOpItem(
@@ -90,10 +119,7 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
 
     rows = (
         db.query(OperationOccurrence, OperationTemplateModel)
-        .join(
-            OperationTemplateModel,
-            OperationOccurrence.template_id == OperationTemplateModel.template_id,
-        )
+        .join(OperationTemplateModel, OperationOccurrence.template_id == OperationTemplateModel.template_id)
         .filter(
             OperationOccurrence.account_id == user_id,
             OperationOccurrence.status == "ACTIVE",
@@ -123,57 +149,32 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
     ]
 
 
-@router.post("/planned-ops/occurrences/{occurrence_id}/skip", status_code=200)
+@router.post("/planned-ops/occurrences/{occurrence_id}/skip")
 def skip_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
-    """Mark a planned operation occurrence as SKIPPED."""
     user_id = get_user_id(request, db)
-    occ = db.query(OperationOccurrence).filter(
-        OperationOccurrence.id == occurrence_id,
-        OperationOccurrence.account_id == user_id,
-    ).first()
-    if not occ:
-        raise HTTPException(status_code=404, detail="Occurrence not found")
+    occ = _get_occurrence_or_404(occurrence_id, user_id, db)
     occ.status = "SKIPPED"
     db.commit()
     return {"ok": True}
 
 
-@router.post("/planned-ops/occurrences/{occurrence_id}/done", status_code=200)
+@router.post("/planned-ops/occurrences/{occurrence_id}/done")
 def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
-    """Mark a planned operation occurrence as DONE (called after creating the transaction)."""
     user_id = get_user_id(request, db)
-    from datetime import datetime, timezone
-    occ = db.query(OperationOccurrence).filter(
-        OperationOccurrence.id == occurrence_id,
-        OperationOccurrence.account_id == user_id,
-    ).first()
-    if not occ:
-        raise HTTPException(status_code=404, detail="Occurrence not found")
+    occ = _get_occurrence_or_404(occurrence_id, user_id, db)
     occ.status = "DONE"
     occ.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
 
 
-class PlannedOpUpdate(BaseModel):
-    title: str | None = None
-    amount: str | None = None
-    active_until: str | None = None
-
-
 @router.patch("/planned-ops/{template_id}")
 def update_planned_op(template_id: int, body: PlannedOpUpdate, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
-    t = db.query(OperationTemplateModel).filter(
-        OperationTemplateModel.template_id == template_id,
-        OperationTemplateModel.account_id == user_id,
-    ).first()
-    if not t:
-        raise HTTPException(404, "Template not found")
+    t = _get_template_or_404(template_id, user_id, db)
     if body.title is not None:
         t.title = body.title
     if body.amount is not None:
-        from decimal import Decimal
         t.amount = Decimal(body.amount)
     if body.active_until is not None:
         t.active_until = date.fromisoformat(body.active_until) if body.active_until else None
@@ -184,12 +185,7 @@ def update_planned_op(template_id: int, body: PlannedOpUpdate, request: Request,
 @router.post("/planned-ops/{template_id}/archive")
 def archive_planned_op(template_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
-    t = db.query(OperationTemplateModel).filter(
-        OperationTemplateModel.template_id == template_id,
-        OperationTemplateModel.account_id == user_id,
-    ).first()
-    if not t:
-        raise HTTPException(404, "Template not found")
+    t = _get_template_or_404(template_id, user_id, db)
     t.is_archived = True
     db.commit()
     return {"ok": True}
@@ -198,12 +194,7 @@ def archive_planned_op(template_id: int, request: Request, db: Session = Depends
 @router.post("/planned-ops/{template_id}/restore")
 def restore_planned_op(template_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
-    t = db.query(OperationTemplateModel).filter(
-        OperationTemplateModel.template_id == template_id,
-        OperationTemplateModel.account_id == user_id,
-    ).first()
-    if not t:
-        raise HTTPException(404, "Template not found")
+    t = _get_template_or_404(template_id, user_id, db)
     t.is_archived = False
     db.commit()
     return {"ok": True}
