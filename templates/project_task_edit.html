@@ -131,7 +131,7 @@
     {% for att in attachments %}
     <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; background: var(--bg-input, rgba(0,0,0,0.03));">
       <span style="font-size: 13px;">{% if att.mime_type.startswith('image/') %}🖼{% elif 'spreadsheet' in att.mime_type or 'excel' in att.mime_type %}📊{% elif att.mime_type == 'application/pdf' %}📄{% else %}📁{% endif %}</span>
-      <a href="/uploads/{{ att.stored_filename }}" target="_blank" style="flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ att.original_filename }}">{{ att.original_filename }}</a>
+      <a href="/api/v2/tasks/{{ task.task_id }}/attachments/{{ att.id }}/download" target="_blank" style="flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ att.original_filename }}">{{ att.original_filename }}</a>
       <span style="font-size: 11px; color: var(--text-secondary, #888); white-space: nowrap;">{{ (att.file_size / 1024)|round|int }} КБ</span>
       <form method="POST" action="/projects/{{ project.id }}/tasks/{{ task.task_id }}/attachments/{{ att.id }}/delete" style="margin: 0;">
         <button type="submit" style="background: none; border: none; cursor: pointer; color: var(--text-secondary, #888); font-size: 14px; padding: 2px 4px;" title="Удалить" onclick="return confirm('Удалить файл?')">✕</button>

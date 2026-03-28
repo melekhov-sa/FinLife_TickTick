@@ -3,6 +3,7 @@ Shared dependencies for v2 API routes.
 Auth via Supabase JWT (Bearer token in Authorization header).
 """
 from fastapi import HTTPException, Request, Depends
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import User
@@ -28,14 +29,22 @@ def _get_email_from_token(token: str) -> str:
 
 
 def _get_or_create_user(email: str, db: Session) -> User:
-    """Return existing local user or create one on first login."""
+    """Return existing local user or create one on first login.
+    Race-safe: if concurrent insert hits unique constraint, re-query."""
     user = db.query(User).filter(User.email == email).first()
-    if not user:
+    if user:
+        return user
+    try:
         user = User(email=email)
         db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
+        db.flush()
+        return user
+    except IntegrityError:
+        db.rollback()
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(status_code=500, detail="User creation failed")
+        return user
 
 
 def get_user_id(request: Request, db: Session = Depends(get_db)) -> int:

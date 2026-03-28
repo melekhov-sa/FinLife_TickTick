@@ -12,6 +12,7 @@ import uuid
 _PROJECT_ROOT = pathlib.Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -54,6 +55,31 @@ ALLOWED_MIME_TYPES = {
 
 EXTENSIONS_LABEL = ", ".join(sorted(ALLOWED_EXTENSIONS))
 
+# Magic byte signatures for file type detection
+_MAGIC_SIGS: list[tuple[bytes, str]] = [
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+    (b"RIFF", "image/webp"),  # RIFF....WEBP
+    (b"%PDF", "application/pdf"),
+    (b"PK\x03\x04", "application/zip"),  # also docx/xlsx
+]
+
+
+def _detect_mime(data: bytes) -> str | None:
+    """Detect MIME type from file magic bytes. Returns None if unknown."""
+    for sig, mime in _MAGIC_SIGS:
+        if data[:len(sig)] == sig:
+            if sig == b"RIFF" and b"WEBP" not in data[:16]:
+                continue
+            if sig == b"PK\x03\x04":
+                # ZIP-based: could be docx, xlsx, or plain zip — all allowed
+                return "application/zip"
+            return mime
+    # Text-like files (txt, csv) — no reliable magic, trust extension
+    return None
+
 
 # ── Response schema ──────────────────────────────────────────────────────────
 
@@ -67,7 +93,7 @@ class AttachmentItem(BaseModel):
 
 
 def _attachment_url(att: TaskAttachmentModel) -> str:
-    return f"/uploads/{att.stored_filename}"
+    return f"/api/v2/tasks/{att.task_id}/attachments/{att.id}/download"
 
 
 def _to_item(att: TaskAttachmentModel) -> AttachmentItem:
@@ -152,6 +178,14 @@ async def upload_attachment(
             detail=f"Файл слишком большой. Максимум {MAX_FILE_SIZE // (1024 * 1024)} МБ",
         )
 
+    # Verify actual file type via magic bytes
+    actual_type = _detect_mime(data)
+    if actual_type and actual_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Содержимое файла не соответствует допустимому типу ({actual_type})",
+        )
+
     # Save to disk
     rel_dir = pathlib.Path(str(user_id)) / "tasks" / str(task_id)
     abs_dir = _uploads_dir() / rel_dir
@@ -204,3 +238,35 @@ def delete_attachment(
     db.delete(att)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/tasks/{task_id}/attachments/{attachment_id}/download")
+def download_attachment(
+    task_id: int,
+    attachment_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    att = (
+        db.query(TaskAttachmentModel)
+        .filter(
+            TaskAttachmentModel.id == attachment_id,
+            TaskAttachmentModel.task_id == task_id,
+            TaskAttachmentModel.account_id == user_id,
+        )
+        .first()
+    )
+    if not att:
+        raise HTTPException(status_code=404, detail="Вложение не найдено")
+
+    file_path = _uploads_dir() / att.stored_filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден на диске")
+
+    return FileResponse(
+        path=str(file_path),
+        filename=att.original_filename,
+        media_type=att.mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{att.original_filename}"'},
+    )
