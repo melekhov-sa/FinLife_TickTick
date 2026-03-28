@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
-import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { api } from "@/lib/api";
 
 interface BudgetRow {
@@ -163,7 +162,7 @@ export default function BudgetPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const [showOpModal, setShowOpModal] = useState(false);
+
 
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
 
@@ -188,10 +187,21 @@ export default function BudgetPage() {
 
   return (
     <>
-      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+
       <AppTopbar title="Бюджет" />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+
+        {/* Extended budget link */}
+        <div className="mb-4">
+          <Link
+            href="/budget/matrix"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-white/[0.04]"
+            style={{ borderColor: "rgba(255,255,255,0.07)", color: "var(--t-faint)" }}
+          >
+            Расширенный бюджет →
+          </Link>
+        </div>
 
         {/* Month nav */}
         <div className="flex items-center justify-between mb-6">
@@ -274,22 +284,6 @@ export default function BudgetPage() {
           </div>
         )}
 
-        {/* Links to legacy */}
-        <div className="mt-6 flex items-center gap-3">
-          <Link
-            href="/budget/matrix"
-            className="text-[12px] font-medium px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors"
-            style={{ color: "var(--t-muted)" }}
-          >
-            Расширенный бюджет →
-          </Link>
-          <button
-            onClick={() => setShowOpModal(true)}
-            className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-4 py-2 transition-colors"
-          >
-            + Операция
-          </button>
-        </div>
       </main>
     </>
   );
