@@ -432,26 +432,31 @@ function DoneTodayBlock({
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  const LIMIT = 3;
-  const visible = showAll ? entries : entries.slice(0, LIMIT);
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4 mb-4">
-      <h3 className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-muted)" }}>
-        ✓ Выполнено сегодня · {entries.length}
-      </h3>
-      {visible.map((e) => (
-        <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
-      ))}
-      {entries.length > LIMIT && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="mt-2 text-[12px] font-medium px-2 py-1 rounded-lg transition-colors hover:bg-white/[0.04]"
+    <div className="rounded-xl border border-white/[0.06] mb-4 overflow-hidden">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+      >
+        <span className="text-emerald-400 text-[13px]">✓</span>
+        <span className="text-[12px] font-medium" style={{ color: "var(--t-faint)" }}>
+          Выполнено сегодня
+        </span>
+        <span className="text-[12px] font-bold tabular-nums text-emerald-400">{entries.length}</span>
+        <ChevronDown
+          size={13}
+          className={clsx("ml-auto transition-transform", expanded && "rotate-180")}
           style={{ color: "var(--t-faint)" }}
-        >
-          {showAll ? "Скрыть" : `Показать все (${entries.length})`}
-        </button>
+        />
+      </button>
+      {expanded && (
+        <div className="px-4 pb-3 border-t border-white/[0.05]">
+          {entries.map((e) => (
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
+          ))}
+        </div>
       )}
     </div>
   );
