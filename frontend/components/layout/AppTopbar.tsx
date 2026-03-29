@@ -51,22 +51,20 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
           )}
         </div>
       )}
-      <div className="flex items-center gap-1.5 md:gap-2 ml-auto shrink-0">
-        {actions && <div className="flex items-center gap-1.5 md:gap-2">{actions}</div>}
+      <div className="flex items-center gap-3 md:gap-2 ml-auto shrink-0">
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
         <NotificationBell />
 
         {/* Avatar + Dropdown */}
         <div className="relative z-[80]">
-          {/* Touch target: 44x44 minimum, visual: 28-32px circle centered inside */}
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-11 h-11 flex items-center justify-center -m-1.5"
+            className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors touch-manipulation"
             aria-label="Профиль и настройки"
+            style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <span className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-500/20 flex items-center justify-center hover:bg-indigo-500/30 transition-colors">
-              <span className="text-indigo-400 text-[11px] md:text-xs font-semibold select-none">
-                {initial}
-              </span>
+            <span className="text-indigo-400 text-[12px] md:text-[13px] font-semibold select-none pointer-events-none">
+              {initial}
             </span>
           </button>
 
