@@ -1568,8 +1568,8 @@ class TelegramSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
-    bot_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    chat_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    bot_token: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    chat_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
     connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     connected_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
