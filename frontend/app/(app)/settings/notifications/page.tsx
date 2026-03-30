@@ -74,8 +74,19 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
     setBusy(true);
     try {
       const ok = await subscribePush();
-      if (ok) { setPushState("subscribed"); setSaved("Push-уведомления включены"); setTimeout(() => setSaved(""), 2000); }
-    } catch { setPushState(Notification.permission === "denied" ? "denied" : "prompt"); }
+      if (ok) {
+        setPushState("subscribed");
+        setSaved("Push-уведомления включены");
+        setTimeout(() => setSaved(""), 2000);
+      } else {
+        setSaved("Не удалось подключить push. Проверьте разрешения браузера.");
+        setTimeout(() => setSaved(""), 4000);
+      }
+    } catch {
+      setPushState(Notification.permission === "denied" ? "denied" : "prompt");
+      setSaved("Ошибка подключения push-уведомлений");
+      setTimeout(() => setSaved(""), 4000);
+    }
     setBusy(false);
   }
 

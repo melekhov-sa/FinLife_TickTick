@@ -41,11 +41,24 @@ export async function getPushState(): Promise<"subscribed" | "prompt" | "denied"
 
 export async function subscribePush(): Promise<boolean> {
   const reg = await getRegistration();
-  if (!reg) return false;
+  if (!reg) {
+    console.warn("[push] Service worker not available");
+    return false;
+  }
 
   // Get VAPID key from backend
-  const { key } = await api.get<{ key: string }>("/api/v2/push/vapid-key");
-  if (!key) return false;
+  let key: string;
+  try {
+    const res = await api.get<{ key: string }>("/api/v2/push/vapid-key");
+    key = res.key;
+  } catch (e) {
+    console.error("[push] Failed to get VAPID key", e);
+    return false;
+  }
+  if (!key) {
+    console.warn("[push] VAPID key is empty");
+    return false;
+  }
 
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
