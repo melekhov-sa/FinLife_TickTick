@@ -55,15 +55,14 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         {actions && <div className="flex items-center gap-2">{actions}</div>}
         <NotificationBell />
 
-        {/* Avatar + Dropdown */}
-        <div className="relative z-[80]">
+        {/* Avatar + Dropdown — desktop only, mobile uses bottom nav */}
+        <div className="relative z-[80] hidden md:block">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors touch-manipulation"
+            className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors"
             aria-label="Профиль и настройки"
-            style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <span className="text-indigo-400 text-[12px] md:text-[13px] font-semibold select-none pointer-events-none">
+            <span className="text-indigo-400 text-[13px] font-semibold select-none pointer-events-none">
               {initial}
             </span>
           </button>

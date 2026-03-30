@@ -8,7 +8,7 @@ import {
   ClipboardList,
   Wallet,
   PieChart,
-  BarChart3,
+  UserCircle,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -17,7 +17,7 @@ const TABS = [
   { href: "/plan",      label: "План",       icon: ClipboardList },
   { href: "/money",     label: "Деньги",     icon: Wallet },
   { href: "/budget",    label: "Бюджет",     icon: PieChart },
-  { href: "/analytics", label: "Аналитика",  icon: BarChart3 },
+  { href: "/settings",  label: "Профиль",    icon: UserCircle },
 ];
 
 export function MobileNav() {
@@ -37,6 +37,10 @@ export function MobileNav() {
     if (href === "/analytics") {
       return pathname.startsWith("/analytics") || pathname.startsWith("/efficiency")
         || pathname.startsWith("/strategy") || pathname.startsWith("/goals");
+    }
+    if (href === "/settings") {
+      return pathname.startsWith("/settings") || pathname.startsWith("/profile")
+        || pathname.startsWith("/notifications");
     }
     return pathname.startsWith(href);
   }
