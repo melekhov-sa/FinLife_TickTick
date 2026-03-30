@@ -29,12 +29,11 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
 
   return (
     <header
-      className="h-14 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
+      className="pt-[env(safe-area-inset-top)] min-h-14 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
       style={{
         background: "var(--app-topbar-bg)",
         borderColor: "var(--app-border)",
         boxShadow: isDark ? "0 1px 12px rgba(0,0,0,0.2)" : "0 1px 3px rgba(0,0,0,0.04)",
-        paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
       {(title || subtitle) && (
