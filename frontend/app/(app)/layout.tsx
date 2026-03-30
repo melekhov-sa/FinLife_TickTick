@@ -15,6 +15,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!localStorage.getItem(ONBOARDING_KEY)) {
       setShowOnboarding(true);
     }
+    // Restore color theme from localStorage
+    const savedTheme = localStorage.getItem("finlife_color_theme");
+    if (savedTheme) {
+      document.documentElement.setAttribute("data-color-theme", savedTheme);
+    }
   }, []);
 
   function handleOnboardingComplete() {

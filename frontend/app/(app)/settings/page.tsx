@@ -6,8 +6,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import {
-  User, Bell, Database, Shield, Users,
-  ChevronRight, Smartphone, Send, Download, CheckCircle2, ExternalLink,
+  User, Bell, Database, Shield, Users, Palette,
+  ChevronRight, Smartphone, Send, Download, CheckCircle2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
@@ -78,6 +78,13 @@ const SETTINGS_ITEMS = [
     label: "Шаблоны задач",
     desc: "Быстрое создание из шаблонов",
     color: "#06b6d4",
+  },
+  {
+    href: "/settings/theme",
+    icon: Palette,
+    label: "Тема оформления",
+    desc: "Obsidian, Graphite, Midnight, Snow, Emerald",
+    color: "#ec4899",
   },
 ];
 
