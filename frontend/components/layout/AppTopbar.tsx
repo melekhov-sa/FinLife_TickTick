@@ -29,7 +29,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
 
   return (
     <header
-      className="h-11 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
+      className="h-14 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
       style={{
         background: "var(--app-topbar-bg)",
         borderColor: "var(--app-border)",
@@ -55,7 +55,19 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         {actions && <div className="flex items-center gap-2">{actions}</div>}
         <NotificationBell />
 
-        {/* Avatar + Dropdown — desktop only, mobile uses bottom nav */}
+        {/* Avatar — mobile: simple link to /settings, desktop: dropdown */}
+        {/* Mobile avatar link */}
+        <Link
+          href="/settings"
+          className="md:hidden w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 transition-colors touch-manipulation"
+          style={{ WebkitTapHighlightColor: "transparent" }}
+        >
+          <span className="text-indigo-400 text-[12px] font-semibold select-none pointer-events-none">
+            {initial}
+          </span>
+        </Link>
+
+        {/* Desktop avatar + dropdown */}
         <div className="relative z-[80] hidden md:block">
           <button
             onClick={() => setMenuOpen((v) => !v)}
