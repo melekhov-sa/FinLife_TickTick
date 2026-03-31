@@ -5,6 +5,7 @@ export interface UserMe {
   email: string;
   theme: string | null;
   is_admin: boolean;
+  onboarding_done: boolean;
   enable_task_expense_link: boolean;
   enable_task_templates: boolean;
   enable_task_reschedule_reasons: boolean;

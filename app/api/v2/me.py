@@ -15,6 +15,7 @@ class UserMeResponse(BaseModel):
     email: str
     theme: str | None
     is_admin: bool
+    onboarding_done: bool
     enable_task_expense_link: bool
     enable_task_templates: bool
     enable_task_reschedule_reasons: bool
@@ -28,7 +29,16 @@ def get_me(request: Request, db: Session = Depends(get_db)):
         email=user.email,
         theme=user.theme,
         is_admin=user.is_admin,
+        onboarding_done=user.onboarding_done,
         enable_task_expense_link=user.enable_task_expense_link,
         enable_task_templates=user.enable_task_templates,
         enable_task_reschedule_reasons=user.enable_task_reschedule_reasons,
     )
+
+
+@router.post("/me/onboarding-done")
+def mark_onboarding_done(request: Request, db: Session = Depends(get_db)):
+    user: User = get_current_user(request, db)
+    user.onboarding_done = True
+    db.commit()
+    return {"ok": True}

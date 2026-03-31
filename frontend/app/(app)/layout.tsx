@@ -1,31 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
 import { OnboardingModal } from "@/components/layout/OnboardingModal";
-
-const ONBOARDING_KEY = "finlife_onboarding_done";
+import { api } from "@/lib/api";
+import type { UserMe } from "@/types/api";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const qc = useQueryClient();
+
+  const { data: me } = useQuery<UserMe>({
+    queryKey: ["me"],
+    queryFn: () => api.get<UserMe>("/api/v2/me"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Show onboarding only if server says not done
+  const showOnboarding = me ? !me.onboarding_done : false;
+
+  async function handleOnboardingComplete() {
+    try {
+      await api.post("/api/v2/me/onboarding-done");
+    } catch { /* ignore */ }
+    qc.invalidateQueries({ queryKey: ["me"] });
+  }
 
   useEffect(() => {
-    if (!localStorage.getItem(ONBOARDING_KEY)) {
-      setShowOnboarding(true);
-    }
-    // Restore color theme from localStorage
     const savedTheme = localStorage.getItem("finlife_color_theme");
     if (savedTheme) {
       document.documentElement.setAttribute("data-color-theme", savedTheme);
     }
   }, []);
-
-  function handleOnboardingComplete() {
-    localStorage.setItem(ONBOARDING_KEY, "done");
-    setShowOnboarding(false);
-  }
 
   return (
     <AuthGuard>
@@ -49,7 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <MobileNav />
       </div>
 
-      {/* Onboarding — first visit */}
+      {/* Onboarding — server-side flag, shows only once per user */}
       {showOnboarding && (
         <OnboardingModal onComplete={handleOnboardingComplete} />
       )}

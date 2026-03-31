@@ -42,6 +42,9 @@ class User(Base):
     digest_morning: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
     digest_evening: Mapped[bool | None] = mapped_column(Boolean, nullable=True, server_default="true")
 
+    # Onboarding completed — never show again
+    onboarding_done: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
     # Task-expense link feature toggle
     enable_task_expense_link: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
