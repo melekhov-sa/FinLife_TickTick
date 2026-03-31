@@ -39,11 +39,11 @@ def send_web_push(db: Session, subscription: PushSubscription, payload: dict) ->
         },
     }
 
-    # .env may store PEM with literal \n or real newlines depending on quoting
+    # .env may store PEM with literal \n (two chars: backslash + n) or real newlines
     raw_key = settings.VAPID_PRIVATE_KEY
-    # If it contains literal backslash-n, convert to real newlines
-    if "\\n" in raw_key:
-        raw_key = raw_key.replace("\\n", "\n")
+    # Replace literal two-char sequence \n with real newline
+    if r"\n" in raw_key:
+        raw_key = raw_key.replace(r"\n", "\n")
 
     # pywebpush accepts either a PEM string or a raw base64url key.
     # Extract raw key from PEM if present.

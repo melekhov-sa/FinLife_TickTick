@@ -349,6 +349,16 @@ def dispatch_pending_deliveries(db: Session) -> None:
         if delivery.channel == "inapp":
             delivery.status = "sent"
             delivery.sent_at = now
+            # Also send push notification to all user devices
+            try:
+                from app.application.push_service import send_push_to_user
+                send_push_to_user(db, notif.user_id, {
+                    "title": notif.title,
+                    "body": notif.body_inapp,
+                    "url": "/notifications",
+                })
+            except Exception:
+                pass  # push is best-effort, don't fail the delivery
         elif delivery.channel == "telegram":
             if _in_quiet_hours(now.time(), settings):
                 continue
