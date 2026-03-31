@@ -240,7 +240,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/[0.06] active:bg-white/[0.1] transition-colors touch-manipulation"
             style={{ color: "var(--t-faint)" }}
           >
             <X size={15} />

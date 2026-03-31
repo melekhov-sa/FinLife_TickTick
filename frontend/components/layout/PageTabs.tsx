@@ -24,7 +24,7 @@ export function PageTabs({ tabs }: { tabs: Tab[] }) {
 
   return (
     <div
-      className="flex items-center gap-0.5 px-6 border-b shrink-0"
+      className="flex items-center gap-0.5 px-4 md:px-6 border-b shrink-0 overflow-x-auto scrollbar-none"
       style={{ borderColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)" }}
     >
       {tabs.map((tab) => {

@@ -42,26 +42,29 @@ function Item({
       {canComplete ? (
         <button
           onClick={() => onComplete(item)}
-          className={clsx(
-            "w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] shrink-0 transition-all hover:scale-110",
+          className="w-8 h-8 flex items-center justify-center shrink-0 touch-manipulation"
+        >
+          <span className={clsx(
+            "w-[18px] h-[18px] rounded-full border-[1.5px] block transition-all",
             isOverdue
-              ? "border-red-400/70 hover:bg-red-500/20 hover:border-red-400"
-              : "border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400/60"
-          )}
-        />
+              ? "border-red-400/70"
+              : "border-white/30"
+          )} />
+        </button>
       ) : (
-        <div
-          className={clsx(
-            "w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] shrink-0",
+        <div className="w-8 h-8 flex items-center justify-center shrink-0">
+          <span className={clsx(
+            "w-[18px] h-[18px] rounded-full border-[1.5px] block",
             isDone ? "bg-indigo-500/50 border-indigo-500/50" : "border-white/20"
-          )}
-        />
+          )} />
+        </div>
       )}
 
       <div className="flex-1 min-w-0">
         <span
           className={clsx("text-[13px] md:text-[14px] font-[500] leading-snug block truncate", isDone ? "line-through" : "")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
+          title={title}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {title}
@@ -81,11 +84,11 @@ function Item({
       {!isDone && (
         <Link
           href="/plan"
-          className="w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-white/[0.06] shrink-0"
+          className="w-9 h-9 flex items-center justify-center rounded-lg transition-all hover:bg-white/[0.06] active:bg-white/[0.1] shrink-0 touch-manipulation"
           style={{ color: "var(--t-faint)" }}
           title="Открыть в плане"
         >
-          <CalendarDays size={12} />
+          <CalendarDays size={14} />
         </Link>
       )}
     </div>
@@ -109,19 +112,19 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
       </button>
       <button
         onClick={onClick}
-        className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all shrink-0"
+        className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-1 px-3 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 active:bg-indigo-600/50 text-indigo-300 text-[11px] font-semibold transition-all shrink-0 touch-manipulation min-h-[36px]"
         title="Выполнить"
       >
-        <Play size={8} className="fill-current" />
+        <Play size={10} className="fill-current" />
         <span className="hidden md:inline">Выполнить</span>
       </button>
       <button
         onClick={onSkip}
-        className="md:opacity-0 md:group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 shrink-0 bg-white/[0.04] md:bg-transparent"
+        className="md:opacity-0 md:group-hover/fi:opacity-100 w-9 h-9 flex items-center justify-center rounded-lg transition-all hover:bg-red-500/15 active:bg-red-500/20 hover:text-red-400 shrink-0 bg-white/[0.04] md:bg-transparent touch-manipulation"
         style={{ color: "var(--t-faint)" }}
         title="Пропустить"
       >
-        <SkipForward size={12} />
+        <SkipForward size={14} />
       </button>
     </div>
   );

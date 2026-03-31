@@ -43,12 +43,12 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 flex items-end"
+      className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch"
       style={{
-        background: isDark ? "rgba(10,13,28,0.92)" : "rgba(255,255,255,0.92)",
-        borderTop: `0.5px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        background: isDark ? "rgba(10,13,28,0.95)" : "rgba(255,255,255,0.95)",
+        borderTop: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
@@ -58,24 +58,25 @@ export function MobileNav() {
           <Link
             key={href}
             href={href}
-            className="flex-1 flex flex-col items-center gap-0 py-2 transition-colors"
+            aria-label={label}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3 min-h-[52px] transition-colors active:opacity-70 touch-manipulation"
           >
             <Icon
-              size={20}
-              strokeWidth={active ? 2.2 : 1.8}
+              size={22}
+              strokeWidth={active ? 2.2 : 1.7}
               className={clsx(
                 "transition-colors",
                 active
                   ? "text-indigo-500"
-                  : isDark ? "text-white/40" : "text-black/30"
+                  : isDark ? "text-white/60" : "text-black/50"
               )}
             />
             <span
               className={clsx(
-                "text-[9px] font-medium mt-0.5",
+                "text-[10px] font-medium",
                 active
                   ? "text-indigo-500"
-                  : isDark ? "text-white/40" : "text-black/30"
+                  : isDark ? "text-white/50" : "text-black/40"
               )}
             >
               {label}
