@@ -1,19 +1,15 @@
 /**
  * API client for FinLife backend (v2 JSON API).
  *
- * In development, Next.js proxies /api/v2/* → http://localhost:8000/api/v2/*
  * Auth: Supabase JWT sent as Authorization: Bearer <token> header.
- *
- * Key feature: refresh token mutex prevents thundering herd problem
- * when many parallel requests detect an expired token simultaneously.
+ * Refresh mutex prevents thundering herd when parallel requests hit expired token.
+ * IMPORTANT: Never calls signOut() — only AuthGuard handles logout.
  */
 import { supabase } from "@/lib/supabase";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-// ── Refresh mutex: only one refresh at a time ─────────────────────────────
-// When 13+ parallel requests all see an expired token, only the first one
-// calls refreshSession(). The rest wait for the same promise.
+// ── Refresh mutex ─────────────────────────────────────────────────────────
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshOnce(): Promise<string | null> {
@@ -27,42 +23,35 @@ async function refreshOnce(): Promise<string | null> {
     } catch {
       return null;
     } finally {
-      // Release mutex after a short delay so back-to-back calls still share
-      setTimeout(() => { refreshPromise = null; }, 1000);
+      setTimeout(() => { refreshPromise = null; }, 2000);
     }
   })();
 
   return refreshPromise;
 }
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+async function getToken(): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession();
-
-  if (session?.access_token) {
-    return { Authorization: `Bearer ${session.access_token}` };
-  }
-
-  // Token missing — try refresh (shared across all concurrent callers)
-  const token = await refreshOnce();
-  if (token) return { Authorization: `Bearer ${token}` };
-  return {};
+  if (session?.access_token) return session.access_token;
+  return refreshOnce();
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const authHeader = await getAuthHeader();
+  const token = await getToken();
 
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...authHeader,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
     ...init,
   });
 
   if (res.status === 401) {
-    // Try refreshing once (mutex ensures only one actual refresh call)
+    // Token might have expired between getToken() and the request arriving.
+    // Try ONE refresh + retry.
     const newToken = await refreshOnce();
     if (newToken) {
       const retryRes = await fetch(`${BASE}${path}`, {
@@ -80,12 +69,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
         }
         return retryRes.json() as Promise<T>;
       }
+      // Retry also failed — throw, do NOT signOut
+      const text = await retryRes.text().catch(() => "");
+      throw new Error(`API error ${retryRes.status}: ${text}`);
     }
-    // Refresh failed — sign out
-    await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    // No token at all — throw auth error but do NOT signOut
+    // AuthGuard will detect session loss via onAuthStateChange
     throw new Error("Unauthenticated");
   }
 
