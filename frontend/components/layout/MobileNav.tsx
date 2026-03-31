@@ -11,6 +11,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useKeyboardVisible } from "@/lib/useKeyboardVisible";
 
 const TABS = [
   { href: "/dashboard", label: "Главная",    icon: LayoutDashboard },
@@ -24,6 +25,10 @@ export function MobileNav() {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const keyboardVisible = useKeyboardVisible();
+
+  // Hide nav when keyboard or modal is open
+  if (keyboardVisible) return null;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";

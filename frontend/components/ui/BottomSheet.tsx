@@ -82,6 +82,21 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     return () => vv.removeEventListener("resize", onResize);
   }, [open]);
 
+  // ── Auto-scroll focused input into view (iOS keyboard) ──────────────────
+  useEffect(() => {
+    if (!open) return;
+    function onFocusIn(e: FocusEvent) {
+      const el = e.target as HTMLElement;
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 350);
+      }
+    }
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [open]);
+
   // ── Overlay click ────────────────────────────────────────────────────────
   const handleOverlayClick = useCallback((e: React.MouseEvent) => {
     if (e.target === overlayRef.current) onClose();
@@ -128,9 +143,9 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           <button
             type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/50 hover:text-white/70 hover:bg-white/[0.07] transition-colors"
+            className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/50 hover:text-white/70 hover:bg-white/[0.07] active:bg-white/[0.1] transition-colors touch-manipulation"
           >
-            <X size={14} />
+            <X size={15} />
           </button>
         </div>
 
