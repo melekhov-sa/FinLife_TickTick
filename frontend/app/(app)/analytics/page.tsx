@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { PageTabs } from "@/components/layout/PageTabs";
@@ -214,35 +214,53 @@ export default function AnalyticsPage() {
     staleTime: 120_000,
   });
 
+  // ── Wave 2: productivity (loads after first paint) ─────────────────────
+  const [wave2, setWave2] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setWave2(true), 300); return () => clearTimeout(t); }, []);
+
   const { data: prod } = useQuery<ProductivityData>({
     queryKey: ["analytics-productivity"],
     queryFn: () => api.get("/api/v2/analytics/productivity"),
     staleTime: 60_000,
+    enabled: wave2,
   });
+
+  const { data: monthComp } = useQuery<MonthComp>({
+    queryKey: ["analytics-month-comp"], queryFn: () => api.get("/api/v2/analytics/month-comparison"), staleTime: 60_000,
+    enabled: wave2,
+  });
+
+  // ── Wave 3: below-fold blocks (loads after scroll or 1.5s) ───────────
+  const [wave3, setWave3] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setWave3(true), 1500); return () => clearTimeout(t); }, []);
 
   const { data: heatmap } = useQuery<{ days: HeatmapDay[] }>({
     queryKey: ["analytics-heatmap"], queryFn: () => api.get("/api/v2/analytics/activity-heatmap"), staleTime: 120_000,
+    enabled: wave3,
   });
   const { data: walletBal } = useQuery<WalletBalData>({
     queryKey: ["analytics-wallet-bal"], queryFn: () => api.get("/api/v2/analytics/wallet-balances"), staleTime: 60_000,
+    enabled: wave3,
   });
   const { data: spendWeekday } = useQuery<{ weekdays: WeekdayItem[] }>({
     queryKey: ["analytics-spend-weekday"], queryFn: () => api.get("/api/v2/analytics/spending-by-weekday"), staleTime: 120_000,
+    enabled: wave3,
   });
   const { data: subAnalytics } = useQuery<SubAnalytics>({
     queryKey: ["analytics-subs"], queryFn: () => api.get("/api/v2/analytics/subscriptions-analytics"), staleTime: 60_000,
+    enabled: wave3,
   });
   const { data: habitsMatrix } = useQuery<HabitsMatrix>({
     queryKey: ["analytics-habits-matrix"], queryFn: () => api.get("/api/v2/analytics/habits-matrix"), staleTime: 60_000,
+    enabled: wave3,
   });
   const { data: goalsData } = useQuery<GoalsProgress>({
     queryKey: ["analytics-goals"], queryFn: () => api.get("/api/v2/analytics/goals-progress"), staleTime: 60_000,
+    enabled: wave3,
   });
   const { data: prodWeekday } = useQuery<{ weekdays: { day: string; count: number }[] }>({
     queryKey: ["analytics-prod-weekday"], queryFn: () => api.get("/api/v2/analytics/productivity-by-weekday"), staleTime: 120_000,
-  });
-  const { data: monthComp } = useQuery<MonthComp>({
-    queryKey: ["analytics-month-comp"], queryFn: () => api.get("/api/v2/analytics/month-comparison"), staleTime: 60_000,
+    enabled: wave3,
   });
 
   const trendData = trend?.map((p) => ({ ...p, label: monthLabel(p.month) }));
