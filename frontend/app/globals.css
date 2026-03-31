@@ -346,6 +346,14 @@ html.dark[data-color-theme="emerald"] {
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* ── iOS Safari: prevent zoom, stable scroll ───────────────────── */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
   body {
     background: var(--app-bg);
     @apply text-foreground;
@@ -358,6 +366,15 @@ html.dark[data-color-theme="emerald"] {
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── iOS: prevent auto-zoom on input focus (must be >= 16px) ──── */
+  @media screen and (max-width: 767px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
   }
 
   /* ── Card surface: premium dark bg instead of transparent ──────── */

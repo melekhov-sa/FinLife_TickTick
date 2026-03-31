@@ -50,12 +50,16 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     body.style.position = "fixed";
     body.style.top = `-${scrollY}px`;
     body.style.width = "100%";
+    body.style.overscrollBehavior = "none";
+    body.style.touchAction = "none";
 
     return () => {
       body.style.overflow = prevOverflow;
       body.style.position = prevPosition;
       body.style.top = prevTop;
       body.style.width = prevWidth;
+      body.style.overscrollBehavior = "";
+      body.style.touchAction = "";
       window.scrollTo(0, scrollY);
     };
   }, [open]);
