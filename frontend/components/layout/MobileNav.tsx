@@ -43,47 +43,52 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 flex items-stretch"
+      className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
       style={{
         background: isDark ? "rgba(10,13,28,0.95)" : "rgba(255,255,255,0.95)",
         borderTop: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {TABS.map(({ href, label, icon: Icon }) => {
-        const active = isActive(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3 min-h-[52px] transition-colors active:opacity-70 touch-manipulation"
-          >
-            <Icon
-              size={22}
-              strokeWidth={active ? 2.2 : 1.7}
-              className={clsx(
-                "transition-colors",
-                active
-                  ? "text-indigo-500"
-                  : isDark ? "text-white/60" : "text-black/50"
-              )}
-            />
-            <span
-              className={clsx(
-                "text-[10px] font-medium",
-                active
-                  ? "text-indigo-500"
-                  : isDark ? "text-white/50" : "text-black/40"
-              )}
+      {/* Tab buttons — fixed 52px height, not stretched by safe area */}
+      <div className="flex items-stretch h-[52px]">
+        {TABS.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors active:opacity-70 touch-manipulation"
             >
-              {label}
-            </span>
-          </Link>
-        );
-      })}
+              <Icon
+                size={22}
+                strokeWidth={active ? 2.2 : 1.7}
+                className={clsx(
+                  "transition-colors",
+                  active
+                    ? "text-indigo-500"
+                    : isDark ? "text-white/60" : "text-black/50"
+                )}
+              />
+              <span
+                className={clsx(
+                  "text-[10px] font-medium",
+                  active
+                    ? "text-indigo-500"
+                    : isDark ? "text-white/50" : "text-black/40"
+                )}
+              >
+                {label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Safe area spacer — empty zone below buttons, same bg */}
+      <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
     </nav>
   );
 }
