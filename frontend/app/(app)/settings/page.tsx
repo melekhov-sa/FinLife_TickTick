@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
-  ChevronRight, Smartphone, Send, Download, CheckCircle2,
+  ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
@@ -95,6 +95,47 @@ interface NotifSettings {
   telegram_chat_id: string | null;
 }
 
+function TestPushButton() {
+  const [result, setResult] = useState<string | null>(null);
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => api.post<{ ok: boolean; sent: number }>("/api/v2/push/test"),
+    onSuccess: (data) => {
+      if (data.sent > 0) {
+        setResult("Push отправлен! Проверьте уведомления.");
+      } else {
+        setResult("Нет активных подписок. Включите push-уведомления выше.");
+      }
+      setTimeout(() => setResult(null), 5000);
+    },
+    onError: () => {
+      setResult("Ошибка отправки");
+      setTimeout(() => setResult(null), 3000);
+    },
+  });
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      <button
+        onClick={() => mutate()}
+        disabled={isPending}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
+        style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}
+      >
+        <Zap size={14} />
+        {isPending ? "Отправка..." : "Тест push-уведомления"}
+      </button>
+      {result && (
+        <span className={clsx(
+          "text-[12px] font-medium",
+          result.includes("отправлен") ? "text-emerald-400" : "text-amber-400"
+        )}>
+          {result}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -180,6 +221,9 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+
+            {/* Test Push Button */}
+            <TestPushButton />
 
             {/* Telegram Bot */}
             <div
