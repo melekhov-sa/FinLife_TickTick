@@ -26,7 +26,7 @@ const NAV_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
   function isActive(href: string) {
@@ -55,7 +55,7 @@ export function AppSidebar() {
 
   const inactiveStyle = isDark
     ? "text-white/60 hover:text-white/90 hover:bg-white/[0.05] font-normal"
-    : "text-black/50 hover:text-black/80 hover:bg-black/[0.04] font-normal";
+    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-normal";
 
   return (
     <aside
