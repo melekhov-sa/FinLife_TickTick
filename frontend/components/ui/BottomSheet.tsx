@@ -51,7 +51,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     body.style.top = `-${scrollY}px`;
     body.style.width = "100%";
     body.style.overscrollBehavior = "none";
-    body.style.touchAction = "none";
 
     return () => {
       body.style.overflow = prevOverflow;
@@ -59,7 +58,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
       body.style.top = prevTop;
       body.style.width = prevWidth;
       body.style.overscrollBehavior = "";
-      body.style.touchAction = "";
       window.scrollTo(0, scrollY);
     };
   }, [open]);
@@ -88,9 +86,12 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     function onFocusIn(e: FocusEvent) {
       const el = e.target as HTMLElement;
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 350);
+        // Only scroll if the element is inside our sheet content
+        if (contentRef.current?.contains(el)) {
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }, 350);
+        }
       }
     }
     document.addEventListener("focusin", onFocusIn);
@@ -162,7 +163,11 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {footer && (
           <div
             className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-white/[0.06]"
-            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+            style={{
+              paddingBottom: viewportH && viewportH < (window?.innerHeight ?? 9999) * 0.85
+                ? "12px"  /* keyboard open — no safe area needed */
+                : "max(12px, env(safe-area-inset-bottom))",
+            }}
           >
             {footer}
           </div>
