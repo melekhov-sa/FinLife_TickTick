@@ -33,7 +33,23 @@ export async function getPushState(): Promise<"subscribed" | "prompt" | "denied"
     const reg = await getRegistration();
     if (!reg) return "unsupported";
     const sub = await reg.pushManager.getSubscription();
-    return sub ? "subscribed" : "prompt";
+    if (!sub) return "prompt";
+
+    // Browser has subscription — verify backend also has it
+    try {
+      const status = await api.get<{ subscribed: boolean }>("/api/v2/push/status");
+      if (!status.subscribed) {
+        // Browser subscribed but backend lost it — re-register
+        const json = sub.toJSON();
+        await api.post("/api/v2/push/subscribe", {
+          endpoint: json.endpoint,
+          keys: { p256dh: json.keys!.p256dh, auth: json.keys!.auth },
+        });
+      }
+    } catch {
+      // API unavailable — trust browser state
+    }
+    return "subscribed";
   } catch {
     return "prompt";
   }
@@ -60,16 +76,31 @@ export async function subscribePush(): Promise<boolean> {
     return false;
   }
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(key).buffer as ArrayBuffer,
-  });
+  // Subscribe at browser level
+  let sub: PushSubscription;
+  try {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key).buffer as ArrayBuffer,
+    });
+  } catch (e) {
+    console.error("[push] Browser subscribe failed", e);
+    return false;
+  }
 
+  // Send subscription to backend
   const json = sub.toJSON();
-  await api.post("/api/v2/push/subscribe", {
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys!.p256dh, auth: json.keys!.auth },
-  });
+  try {
+    await api.post("/api/v2/push/subscribe", {
+      endpoint: json.endpoint,
+      keys: { p256dh: json.keys!.p256dh, auth: json.keys!.auth },
+    });
+  } catch (e) {
+    console.error("[push] Backend subscribe failed, unsubscribing browser", e);
+    // Rollback browser subscription so state stays consistent
+    await sub.unsubscribe().catch(() => {});
+    return false;
+  }
 
   return true;
 }
