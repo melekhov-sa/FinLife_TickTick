@@ -54,45 +54,41 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         {actions && <div className="flex items-center gap-2">{actions}</div>}
         <NotificationBell />
 
-        {/* Avatar — mobile: simple link to /settings, desktop: dropdown */}
-        {/* Mobile avatar link */}
-        <Link
-          href="/settings"
-          className="md:hidden w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 transition-colors touch-manipulation"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <span className="text-indigo-400 text-[12px] font-semibold select-none pointer-events-none">
-            {initial}
-          </span>
-        </Link>
-
-        {/* Desktop avatar + dropdown */}
-        <div className="relative z-[80] hidden md:block">
+        {/* Avatar button — opens menu on both mobile and desktop */}
+        <div className="relative z-[80]">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors"
+            className="w-10 h-10 md:w-9 md:h-9 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors touch-manipulation"
             aria-label="Профиль и настройки"
+            style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <span className="text-indigo-400 text-[13px] font-semibold select-none pointer-events-none">
+            <span className="text-indigo-400 text-[12px] md:text-[13px] font-semibold select-none pointer-events-none">
               {initial}
             </span>
           </button>
 
           {menuOpen && (
             <>
-              {/* Overlay — catches taps outside menu to close it */}
+              {/* Overlay */}
               <div
-                className="fixed inset-0 z-[80]"
+                className="fixed inset-0 z-[80] bg-black/0 md:bg-transparent"
                 onClick={() => setMenuOpen(false)}
                 aria-hidden
               />
 
-              {/* Dropdown menu */}
+              {/* Menu: bottom sheet on mobile, dropdown on desktop */}
               <div
-                className="absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-2xl z-[90] overflow-hidden"
+                className={clsx(
+                  "fixed md:absolute z-[90] overflow-hidden border shadow-2xl",
+                  // Mobile: bottom sheet
+                  "inset-x-0 bottom-0 rounded-t-2xl md:rounded-2xl",
+                  // Desktop: dropdown
+                  "md:inset-auto md:right-0 md:top-full md:mt-1 md:w-56",
+                )}
                 style={{
                   background: isDark ? "#0f1221" : "#ffffff",
                   borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+                  paddingBottom: "env(safe-area-inset-bottom, 0px)",
                 }}
               >
                 {/* User info */}
