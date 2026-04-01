@@ -17,9 +17,9 @@ const WALLET_TYPES = [
 ];
 
 const inputCls =
-  "w-full px-3 h-9 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
+  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const labelCls =
-  "block text-[11px] md:text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
+  "block text-[11px] md:text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/72";
 
 export function CreateWalletModal({ onClose }: Props) {
   const qc = useQueryClient();

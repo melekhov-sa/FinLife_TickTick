@@ -123,7 +123,8 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         ref={sheetRef as React.Ref<HTMLFormElement & HTMLDivElement>}
         className={clsx(
           // Base
-          "flex flex-col bg-[#1a1d23] border border-white/[0.09] shadow-2xl overflow-hidden",
+          "flex flex-col border shadow-2xl overflow-hidden",
+          "bg-white dark:bg-[#1a1d23] border-slate-200 dark:border-white/[0.09]",
           // Mobile: bottom sheet, full width
           "w-full rounded-t-2xl",
           // Desktop: centered modal
@@ -133,18 +134,18 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
       >
         {/* Handle bar — mobile only */}
         <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
-          <div className="w-9 h-1 rounded-full bg-white/[0.15]" />
+          <div className="w-9 h-1 rounded-full bg-slate-300 dark:bg-white/[0.15]" />
         </div>
 
         {/* Header — always fixed at top */}
-        <div className="flex items-center justify-between px-5 md:px-6 pt-2 md:pt-5 pb-3 md:pb-4 border-b border-white/[0.06] shrink-0">
-          <h2 className="text-[15px] md:text-base font-semibold text-white/90" style={{ letterSpacing: "-0.02em" }}>
+        <div className="flex items-center justify-between px-5 md:px-6 pt-2 md:pt-5 pb-3 md:pb-4 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
+          <h2 className="text-[15px] md:text-base font-semibold text-slate-800 dark:text-white/90" style={{ letterSpacing: "-0.02em" }}>
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/50 hover:text-white/70 hover:bg-white/[0.07] active:bg-white/[0.1] transition-colors touch-manipulation"
+            className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] flex items-center justify-center text-slate-400 dark:text-white/50 hover:text-slate-600 dark:hover:text-white/70 hover:bg-slate-200 dark:hover:bg-white/[0.07] active:bg-slate-300 dark:active:bg-white/[0.1] transition-colors touch-manipulation"
           >
             <X size={15} />
           </button>
@@ -162,7 +163,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {/* Sticky footer — stays above keyboard */}
         {footer && (
           <div
-            className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-white/[0.06]"
+            className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-slate-200 dark:border-white/[0.06]"
             style={{
               paddingBottom: viewportH && viewportH < (window?.innerHeight ?? 9999) * 0.85
                 ? "12px"  /* keyboard open — no safe area needed */

@@ -16,9 +16,9 @@ interface Props {
 }
 
 const inputCls =
-  "w-full px-3 h-10 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors";
+  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const labelCls =
-  "block text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
+  "block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/72";
 
 export function AddMemberModal({ subId, onClose }: Props) {
   const qc = useQueryClient();
@@ -66,7 +66,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-sm mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl p-6">
+      <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-6">
         <h2 className="text-[15px] font-semibold text-white/90 mb-5">Добавить участника</h2>
 
         <div className="space-y-4">
