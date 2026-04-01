@@ -99,11 +99,30 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
     setBusy(false);
   }
 
+  async function handleReconnect() {
+    setBusy(true);
+    try {
+      await unsubscribePush();
+      const ok = await subscribePush();
+      if (ok) {
+        setPushState("subscribed");
+        setSaved("Push переподключены");
+      } else {
+        setPushState("prompt");
+        setSaved("Не удалось переподключить");
+      }
+    } catch {
+      setSaved("Ошибка переподключения");
+    }
+    setTimeout(() => setSaved(""), 3000);
+    setBusy(false);
+  }
+
   async function handleTest() {
     setBusy(true);
     const sent = await testPush();
-    setSaved(sent > 0 ? "Тестовое push отправлено" : "Нет активных подписок");
-    setTimeout(() => setSaved(""), 3000);
+    setSaved(sent > 0 ? "Тестовое push отправлено" : "Нет активных подписок. Нажмите «Переподключить».");
+    setTimeout(() => setSaved(""), 4000);
     setBusy(false);
   }
 
@@ -157,7 +176,7 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
       )}
 
       {pushState === "subscribed" && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={handleTest}
             disabled={busy}
@@ -165,6 +184,14 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
             style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
           >
             <MessageCircle size={13} /> {busy ? "..." : "Тест"}
+          </button>
+          <button
+            onClick={handleReconnect}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-indigo-500/10 disabled:opacity-50"
+            style={{ borderColor: "rgba(99,102,241,0.2)", color: "#6366f1" }}
+          >
+            <Volume2 size={13} /> {busy ? "..." : "Переподключить"}
           </button>
           <button
             onClick={handleUnsubscribe}
