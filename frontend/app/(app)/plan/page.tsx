@@ -8,7 +8,7 @@ import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar } from "lucide-react";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar, FolderKanban } from "lucide-react";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -614,6 +614,7 @@ export default function PlanPage() {
           {/* ── Quick links to templates ─────────────────────────────── */}
           <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 overflow-x-auto">
             {[
+              { href: "/projects", icon: FolderKanban, label: "Проекты" },
               { href: "/recurring-tasks", icon: Repeat, label: "Повторяющиеся" },
               { href: "/planned-ops", icon: Wallet, label: "Плановые операции" },
               { href: "/event-templates", icon: Calendar, label: "Шаблоны событий" },
