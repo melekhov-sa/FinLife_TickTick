@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import Link from "next/link";
@@ -95,42 +95,67 @@ interface NotifSettings {
   telegram_chat_id: string | null;
 }
 
-function TestPushButton() {
+function PushActions() {
   const [result, setResult] = useState<string | null>(null);
-  const { mutate, isPending } = useMutation({
-    mutationFn: () => api.post<{ ok: boolean; sent: number }>("/api/v2/push/test"),
-    onSuccess: (data) => {
-      if (data.sent > 0) {
-        setResult("Push отправлен! Проверьте уведомления.");
-      } else {
-        setResult("Нет активных подписок. Включите push-уведомления выше.");
-      }
-      setTimeout(() => setResult(null), 5000);
-    },
-    onError: () => {
+  const [busy, setBusy] = useState(false);
+
+  async function handleReconnect() {
+    setBusy(true);
+    setResult(null);
+    try {
+      const { unsubscribePush, subscribePush } = await import("@/lib/push");
+      await unsubscribePush();
+      const ok = await subscribePush();
+      setResult(ok ? "Push подключены! Нажмите «Тест»." : "Не удалось подключить push. Разрешите уведомления в настройках браузера.");
+    } catch {
+      setResult("Ошибка подключения");
+    }
+    setTimeout(() => setResult(null), 5000);
+    setBusy(false);
+  }
+
+  async function handleTest() {
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await api.post<{ ok: boolean; sent: number }>("/api/v2/push/test");
+      setResult(res.sent > 0 ? "Push отправлен! Проверьте уведомления." : "Нет подписок. Нажмите «Подключить push».");
+    } catch {
       setResult("Ошибка отправки");
-      setTimeout(() => setResult(null), 3000);
-    },
-  });
+    }
+    setTimeout(() => setResult(null), 5000);
+    setBusy(false);
+  }
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-      <button
-        onClick={() => mutate()}
-        disabled={isPending}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
-        style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}
-      >
-        <Zap size={14} />
-        {isPending ? "Отправка..." : "Тест push-уведомления"}
-      </button>
+    <div className="p-3 rounded-xl border space-y-3" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleReconnect}
+          disabled={busy}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
+          style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+        >
+          <Smartphone size={14} />
+          {busy ? "..." : "Подключить push"}
+        </button>
+        <button
+          onClick={handleTest}
+          disabled={busy}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
+          style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}
+        >
+          <Zap size={14} />
+          {busy ? "..." : "Тест push"}
+        </button>
+      </div>
       {result && (
-        <span className={clsx(
+        <p className={clsx(
           "text-[12px] font-medium",
-          result.includes("отправлен") ? "text-emerald-400" : "text-amber-400"
+          result.includes("отправлен") || result.includes("подключены") ? "text-emerald-400" : "text-amber-400"
         )}>
           {result}
-        </span>
+        </p>
       )}
     </div>
   );
@@ -223,7 +248,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Test Push Button */}
-            <TestPushButton />
+            <PushActions />
 
             {/* Telegram Bot */}
             <div
