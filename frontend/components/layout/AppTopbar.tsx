@@ -20,8 +20,8 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const isDark = resolvedTheme === "dark";
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const textPrimary = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
-  const textMuted = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.35)";
+  const textPrimary = "var(--app-topbar-text)";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.7)";
 
   const initial = me?.email?.[0]?.toUpperCase() ?? "?";
   const email = me?.email ?? "";
@@ -32,8 +32,8 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
       className="pt-[env(safe-area-inset-top)] min-h-14 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
       style={{
         background: "var(--app-topbar-bg)",
-        borderColor: "var(--app-border)",
-        boxShadow: isDark ? "0 1px 12px rgba(0,0,0,0.2)" : "0 1px 3px rgba(0,0,0,0.04)",
+        borderColor: isDark ? "var(--app-border)" : "transparent",
+        boxShadow: isDark ? "0 1px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(99,102,241,0.15)",
       }}
     >
       {(title || subtitle) && (
@@ -58,11 +58,17 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         <div className="relative z-[80]">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-10 h-10 md:w-9 md:h-9 rounded-full bg-indigo-500/20 flex items-center justify-center active:bg-indigo-500/40 hover:bg-indigo-500/30 transition-colors touch-manipulation"
+            className={clsx(
+              "w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-colors touch-manipulation",
+              isDark ? "bg-indigo-500/20 active:bg-indigo-500/40" : "bg-white/20 active:bg-white/30"
+            )}
             aria-label="Профиль и настройки"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <span className="text-indigo-400 text-[12px] md:text-[13px] font-semibold select-none pointer-events-none">
+            <span className={clsx(
+              "text-[12px] md:text-[13px] font-bold select-none pointer-events-none",
+              isDark ? "text-indigo-400" : "text-white"
+            )}>
               {initial}
             </span>
           </button>

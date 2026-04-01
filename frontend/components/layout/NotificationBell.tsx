@@ -220,8 +220,8 @@ export function NotificationBell() {
       <button
         ref={btnRef}
         onClick={toggle}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06] dark:hover:bg-white/[0.06]"
-        style={{ color: unread > 0 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}
+        className="relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:bg-white/[0.12] active:bg-white/[0.2] touch-manipulation"
+        style={{ color: unread > 0 ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)" }}
         title="Уведомления"
       >
         <Bell size={15} />

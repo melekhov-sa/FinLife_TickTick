@@ -50,8 +50,8 @@ export function MobileNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
       style={{
-        background: isDark ? "rgba(10,13,28,0.95)" : "rgba(255,255,255,0.95)",
-        borderTop: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        background: isDark ? "rgba(10,13,28,0.95)" : "rgba(255,255,255,0.98)",
+        borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0"}`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
       }}
@@ -73,7 +73,7 @@ export function MobileNav() {
                 className={clsx(
                   "transition-colors",
                   active
-                    ? "text-indigo-500"
+                    ? "text-indigo-600"
                     : isDark ? "text-white/60" : "text-black/50"
                 )}
               />
@@ -81,7 +81,7 @@ export function MobileNav() {
                 className={clsx(
                   "text-[10px] font-medium",
                   active
-                    ? "text-indigo-500"
+                    ? "text-indigo-600"
                     : isDark ? "text-white/50" : "text-black/40"
                 )}
               >
