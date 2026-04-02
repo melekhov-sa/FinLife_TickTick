@@ -153,7 +153,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {/* Scrollable content */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto overscroll-contain px-5 md:px-6 py-4 md:py-5 space-y-4"
+          className="flex-1 overflow-y-auto overscroll-contain px-5 md:px-6 py-3 md:py-5 space-y-3 touch-manipulation"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {children}

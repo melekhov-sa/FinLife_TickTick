@@ -323,11 +323,11 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
             <button
               key={op.value}
               type="button"
-              onClick={() => { setOpType(op.value); setError(null); }}
-              className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
+              onPointerUp={() => { setOpType(op.value); setError(null); }}
+              className={`flex-1 py-2.5 text-[12px] md:text-xs font-semibold rounded-xl border transition-colors touch-manipulation ${
                 opType === op.value
                   ? op.activeColor
-                  : "bg-white/[0.03] border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.05]"
+                  : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68"
               }`}
             >
               {op.label}
