@@ -115,7 +115,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     <div
       ref={overlayRef}
       className="modal-overlay fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
-      style={{ height: viewportH ? `${viewportH}px` : "100dvh" }}
       onClick={handleOverlayClick}
     >
       <Wrapper
@@ -130,7 +129,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           // Desktop: centered modal
           "md:max-w-md md:mx-4 md:rounded-2xl md:max-h-[85vh]",
         )}
-        style={{ maxHeight: `calc(${mobileMaxH} - 24px)` }}
+        style={{ maxHeight: viewportH ? `${viewportH - 20}px` : "calc(100dvh - 24px)" }}
       >
         {/* Handle bar — mobile only */}
         <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
