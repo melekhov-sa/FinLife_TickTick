@@ -97,7 +97,7 @@ export function MobileNav() {
 
       {/* Plus menu */}
       {showPlus && <>
-        <div className="fixed inset-0 z-40 bg-black/30 touch-manipulation" onTouchEnd={() => setShowPlus(false)} onClick={() => setShowPlus(false)} />
+        <div className="fixed inset-0 z-40 bg-black/30 touch-manipulation" onClick={() => setShowPlus(false)} />
         <div className="fixed z-50 left-1/2 -translate-x-1/2 flex flex-col gap-3 items-center" style={{ bottom: `calc(80px + env(safe-area-inset-bottom, 0px))` }}>
           <button
             className="w-48 py-4 rounded-2xl text-[16px] font-semibold shadow-xl touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
@@ -116,7 +116,7 @@ export function MobileNav() {
 
       {/* More menu */}
       {showMore && <>
-        <div className="fixed inset-0 z-40 touch-manipulation" onTouchEnd={() => setShowMore(false)} onClick={() => setShowMore(false)} />
+        <div className="fixed inset-0 z-40 touch-manipulation" onClick={() => setShowMore(false)} />
         <div className="fixed z-50 right-3 rounded-2xl border shadow-xl overflow-hidden bg-white dark:bg-[#161d2b] border-slate-200 dark:border-white/[0.08]" style={{ bottom: `calc(80px + env(safe-area-inset-bottom, 0px))`, minWidth: 200 }}>
           {MORE_ITEMS.map(item => (
             <Link
