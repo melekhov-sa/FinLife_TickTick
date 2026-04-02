@@ -585,6 +585,7 @@ function CategoryDataRow({
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
+  const isTopLevel = row.is_group || row.parent_id === null;
   const indent = row.depth > 0 ? "pl-6" : "pl-3";
   const { dragHandlers } = editing;
   const canDrag = !!row.category_id && !row.is_group;
@@ -607,11 +608,11 @@ function CategoryDataRow({
         className={clsx(
           "text-[12px] py-1.5 sticky left-0 z-10 max-w-[200px] truncate",
           indent,
-          row.is_group ? "font-bold" : "font-normal"
+          isTopLevel ? "font-bold" : "font-normal"
         )}
         style={{
-          color: row.is_group ? "#0F172A" : "#475569",
-          background: row.is_group ? "#F1F5F9" : "#FAFBFD",
+          color: isTopLevel ? "#0F172A" : "#1E293B",
+          background: isTopLevel ? "#F1F5F9" : "#FAFBFD",
           borderRight: "2px solid #64748B",
         }}
         title={row.title}
