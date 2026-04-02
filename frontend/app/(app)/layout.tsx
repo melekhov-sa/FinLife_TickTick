@@ -37,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <div className="flex h-[100dvh] overflow-hidden" style={{ background: "var(--app-bg)" }}>
+      <div className="flex overflow-hidden" style={{ background: "var(--app-bg)", height: "100dvh", minHeight: "-webkit-fill-available" }}>
         {/* Sidebar — desktop only */}
         <div className="hidden md:flex">
           <AppSidebar />
