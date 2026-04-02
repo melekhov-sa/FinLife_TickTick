@@ -555,14 +555,14 @@ export default function PlanPage() {
 
           {/* ── Controls ──────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-            {/* Status pills */}
-            <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
+            {/* Status pills — desktop only */}
+            <div className="hidden md:flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
               {TABS.map((t) => (
                 <button
                   key={t.value}
                   onClick={() => setTab(t.value)}
                   className={clsx(
-                    "px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-md text-[11px] md:text-[13px] font-semibold transition-all",
+                    "px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
                     tab === t.value
                       ? "bg-indigo-600 text-white shadow-sm"
                       : "hover:bg-white/[0.05]"
@@ -574,7 +574,7 @@ export default function PlanPage() {
               ))}
             </div>
 
-            {/* Period pills */}
+            {/* Period pills — mobile: Неделя/Месяц only */}
             <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
               {RANGES.map((r) => (
                 <button
@@ -584,7 +584,8 @@ export default function PlanPage() {
                     "px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-md text-[11px] md:text-[13px] font-semibold transition-all",
                     range === r.value
                       ? "bg-white/[0.12] text-white/90 shadow-sm"
-                      : "hover:bg-white/[0.05]"
+                      : "hover:bg-white/[0.05]",
+                    (r.value === 1 || r.value === 90) && "hidden md:block"
                   )}
                   style={{ color: range === r.value ? undefined : "var(--t-secondary)" }}
                 >
@@ -631,8 +632,8 @@ export default function PlanPage() {
             </div>
           </div>
 
-          {/* ── Quick links to templates ─────────────────────────────── */}
-          <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 overflow-x-auto">
+          {/* ── Quick links to templates — desktop only ────────────── */}
+          <div className="hidden md:flex items-center gap-3 mb-4 overflow-x-auto">
             {[
               { href: "/projects", icon: FolderKanban, label: "Проекты" },
               { href: "/recurring-tasks", icon: Repeat, label: "Повторяющиеся" },
@@ -651,9 +652,9 @@ export default function PlanPage() {
             ))}
           </div>
 
-          {/* ── KPI Summary ───────────────────────────────────────────── */}
+          {/* ── KPI Summary — desktop only ───────────────────────────── */}
           {summary && (
-            <div className="grid grid-cols-4 gap-1.5 md:gap-3 mb-4 md:mb-6">
+            <div className="hidden md:grid grid-cols-4 gap-3 mb-6">
               {[
                 { label: "Сегодня", value: summary.today_count, color: "var(--t-primary)", border: "border-white/[0.07]", bg: "bg-white/[0.04]" },
                 { label: "Неделя", value: summary.week_count, color: "#60a5fa", border: "border-blue-500/20", bg: "bg-blue-500/[0.04]" },
