@@ -146,8 +146,6 @@ export function MobileNav() {
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
         }}
       >
         <div className="flex items-end h-[56px] relative">

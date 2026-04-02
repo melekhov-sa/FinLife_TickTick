@@ -1,64 +1,65 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /**
- * Detects iOS/Android virtual keyboard by comparing visualViewport
- * height to window.innerHeight. Returns true when keyboard is visible.
- * Also returns true when any modal/bottom-sheet is open (body overflow hidden).
+ * Detects when nav should be hidden:
+ * - Input/textarea is focused (keyboard likely open)
+ * - Body position is fixed (modal scroll lock active)
+ *
+ * Uses only focus events — no MutationObserver or visualViewport
+ * listeners (those cause infinite rerender loops on iOS PWA).
  */
 export function useKeyboardVisible(): boolean {
-  const [visible, setVisible] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    function check() {
-      // Method 1: visualViewport shrink (iOS keyboard)
-      const vv = window.visualViewport;
-      if (vv && vv.height < window.innerHeight * 0.75) {
-        setVisible(true);
-        return;
-      }
-
-      // Method 2: body scroll locked = modal open
+    function show() {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Check if modal is open (body scroll locked)
       if (document.body.style.position === "fixed") {
-        setVisible(true);
+        setHidden(true);
         return;
       }
-
-      setVisible(false);
+      setHidden(false);
     }
 
-    // Check on focus/blur of inputs
     function onFocusIn(e: FocusEvent) {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
-        // Delay to let iOS keyboard animate
-        setTimeout(check, 300);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setHidden(true);
       }
     }
 
     function onFocusOut() {
-      setTimeout(check, 100);
+      // Delay — iOS keyboard takes ~300ms to dismiss
+      timerRef.current = setTimeout(show, 400);
     }
-
-    // VisualViewport resize (primary signal on iOS)
-    const vv = window.visualViewport;
-    if (vv) vv.addEventListener("resize", check);
 
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
 
-    // MutationObserver for body style changes (modal open/close)
-    const observer = new MutationObserver(check);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["style"] });
+    // Periodic check for modal state (every 500ms, lightweight)
+    const interval = setInterval(() => {
+      const modalOpen = document.body.style.position === "fixed";
+      setHidden(prev => {
+        if (modalOpen && !prev) return true;
+        if (!modalOpen && prev && document.activeElement?.tagName !== "INPUT"
+            && document.activeElement?.tagName !== "TEXTAREA"
+            && document.activeElement?.tagName !== "SELECT") return false;
+        return prev;
+      });
+    }, 500);
 
     return () => {
-      if (vv) vv.removeEventListener("resize", check);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
-      observer.disconnect();
+      if (timerRef.current) clearTimeout(timerRef.current);
+      clearInterval(interval);
     };
   }, []);
 
-  return visible;
+  return hidden;
 }
