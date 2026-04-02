@@ -95,56 +95,47 @@ export function MobileNav() {
       {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
       {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
-      {/* Plus menu overlay */}
-      {showPlus && (
-        <div className="fixed inset-0 z-[35] bg-black/30" onClick={() => setShowPlus(false)}>
-          <div
-            className="absolute bottom-[calc(70px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center"
-            onClick={e => e.stopPropagation()}
+      {/* Plus menu */}
+      {showPlus && <>
+        <div className="fixed inset-0 z-40 bg-black/30 touch-manipulation" onTouchEnd={() => setShowPlus(false)} onClick={() => setShowPlus(false)} />
+        <div className="fixed z-50 left-1/2 -translate-x-1/2 flex flex-col gap-3 items-center" style={{ bottom: `calc(80px + env(safe-area-inset-bottom, 0px))` }}>
+          <button
+            className="w-48 py-4 rounded-2xl text-[16px] font-semibold shadow-xl touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
+            onClick={() => { setShowPlus(false); setTimeout(() => setShowTaskModal(true), 50); }}
           >
-            <button
-              onPointerDown={() => { setShowPlus(false); setShowTaskModal(true); }}
-              className="px-6 py-3.5 rounded-2xl text-[15px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
-            >
-              Задача
-            </button>
-            <button
-              onPointerDown={() => { setShowPlus(false); setShowOpModal(true); }}
-              className="px-6 py-3.5 rounded-2xl text-[15px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
-            >
-              Операция
-            </button>
-          </div>
+            Задача
+          </button>
+          <button
+            className="w-48 py-4 rounded-2xl text-[16px] font-semibold shadow-xl touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
+            onClick={() => { setShowPlus(false); setTimeout(() => setShowOpModal(true), 50); }}
+          >
+            Операция
+          </button>
         </div>
-      )}
+      </>}
 
-      {/* More menu overlay */}
-      {showMore && (
-        <div className="fixed inset-0 z-[35]" onClick={() => setShowMore(false)}>
-          <div
-            className="absolute bottom-[calc(70px+env(safe-area-inset-bottom))] right-3 rounded-2xl border shadow-xl overflow-hidden bg-white dark:bg-[#161d2b] border-slate-200 dark:border-white/[0.08]"
-            style={{ minWidth: 180 }}
-            onClick={e => e.stopPropagation()}
-          >
-            {MORE_ITEMS.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setShowMore(false)}
-                className={clsx(
-                  "block px-4 py-3 text-[14px] font-medium border-b last:border-0 transition-colors touch-manipulation",
-                  "border-slate-100 dark:border-white/[0.04]",
-                  pathname.startsWith(item.href)
-                    ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04]"
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
+      {/* More menu */}
+      {showMore && <>
+        <div className="fixed inset-0 z-40 touch-manipulation" onTouchEnd={() => setShowMore(false)} onClick={() => setShowMore(false)} />
+        <div className="fixed z-50 right-3 rounded-2xl border shadow-xl overflow-hidden bg-white dark:bg-[#161d2b] border-slate-200 dark:border-white/[0.08]" style={{ bottom: `calc(80px + env(safe-area-inset-bottom, 0px))`, minWidth: 200 }}>
+          {MORE_ITEMS.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setShowMore(false)}
+              className={clsx(
+                "block px-4 py-3 text-[14px] font-medium border-b last:border-0 transition-colors touch-manipulation",
+                "border-slate-100 dark:border-white/[0.04]",
+                pathname.startsWith(item.href)
+                  ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04]"
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
-      )}
+      </>}
 
       {/* Bottom nav bar */}
       <nav
