@@ -76,33 +76,47 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
     onClose();
   }
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
   return createPortal(
     <div
       className="fixed inset-0 z-[200]"
       onClick={onClose}
     >
       <div
-        className="absolute flex flex-col overflow-hidden"
-        style={{
+        className={clsx(
+          "flex flex-col overflow-hidden bg-white dark:bg-[#161d2b] border border-slate-200 dark:border-white/[0.07]",
+          isMobile
+            ? "fixed inset-x-0 bottom-0 rounded-t-2xl max-h-[85dvh]"
+            : "absolute rounded-2xl"
+        )}
+        style={isMobile ? {
+          boxShadow: "0 -10px 40px rgba(0,0,0,0.15)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        } : {
           top,
           right,
-          width: 360,
+          width: 380,
           maxHeight: "calc(100vh - 80px)",
-          background: "#161d2b",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 14,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile handle bar */}
+        {isMobile && (
+          <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+            <div className="w-9 h-1 rounded-full bg-slate-300 dark:bg-white/[0.15]" />
+          </div>
+        )}
+
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            <span className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
               Уведомления
             </span>
             {unreadCount > 0 && (
-              <span className="text-[10px] font-semibold bg-red-500/20 text-red-400 rounded-full px-1.5 leading-[1.7] tabular-nums">
+              <span className="text-[10px] font-semibold bg-red-500/15 text-red-500 dark:bg-red-500/20 dark:text-red-400 rounded-full px-1.5 leading-[1.7] tabular-nums">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
@@ -111,9 +125,8 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
             {unreadCount > 0 && (
               <button
                 onClick={() => markAll()}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.06]"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06]"
                 style={{ color: "var(--t-faint)" }}
-                title="Отметить всё прочитанным"
               >
                 <CheckCheck size={12} />
                 Всё прочитано
@@ -121,16 +134,16 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
             )}
             <button
               onClick={onClose}
-              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors touch-manipulation"
               style={{ color: "var(--t-faint)" }}
             >
-              <X size={13} />
+              <X size={15} />
             </button>
           </div>
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
           {preview.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
               <BellOff size={24} className="mb-2.5" style={{ color: "var(--t-faint)" }} />
@@ -145,16 +158,16 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
                 key={n.id}
                 onClick={() => handleClick(n)}
                 className={clsx(
-                  "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors",
-                  i < preview.length - 1 && "border-b border-white/[0.04]",
-                  n.is_read ? "opacity-50 hover:opacity-70" : "hover:bg-white/[0.03]"
+                  "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors touch-manipulation",
+                  i < preview.length - 1 && "border-b border-slate-100 dark:border-white/[0.04]",
+                  n.is_read ? "opacity-50 hover:opacity-70" : "hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                 )}
               >
                 <div className={clsx("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", iconBg)}>
                   <Icon size={14} className={iconColor} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold leading-snug truncate" style={{ color: "var(--t-primary)" }}>
+                  <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--t-primary)" }}>
                     {n.title}
                   </p>
                   <p className="text-[12px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--t-muted)" }}>
@@ -175,12 +188,12 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-white/[0.06] px-4 py-2.5">
+        <div className="shrink-0 border-t border-slate-200 dark:border-white/[0.06] px-4 py-2.5">
           <Link
             href="/notifications"
             onClick={onClose}
-            className="block w-full text-center text-[12px] font-medium py-1.5 rounded-lg transition-colors hover:bg-white/[0.05]"
-            style={{ color: "var(--t-faint)" }}
+            className="block w-full text-center text-[13px] font-medium py-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.05]"
+            style={{ color: "var(--t-muted)" }}
           >
             Все уведомления →
           </Link>
