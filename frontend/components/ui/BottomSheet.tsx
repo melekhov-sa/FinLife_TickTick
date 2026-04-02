@@ -39,27 +39,13 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   useEffect(() => {
     if (!open) return;
 
-    const scrollY = window.scrollY;
-    const { body } = document;
-    const prevOverflow = body.style.overflow;
-    const prevPosition = body.style.position;
-    const prevTop = body.style.top;
-    const prevWidth = body.style.width;
-
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
-    body.style.overscrollBehavior = "none";
+    // Simple scroll lock — no position:fixed which causes iOS nav glitch
+    const html = document.documentElement;
+    const prevOverflow = html.style.overflow;
+    html.style.overflow = "hidden";
 
     return () => {
-      body.style.overflow = prevOverflow;
-      body.style.position = prevPosition;
-      body.style.top = prevTop;
-      body.style.width = prevWidth;
-      body.style.overscrollBehavior = "";
-      // Restore scroll position after a microtask to avoid iOS layout glitch
-      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      html.style.overflow = prevOverflow;
     };
   }, [open]);
 
