@@ -109,7 +109,7 @@ function PlanEditModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-sm mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl p-5">
+      <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-5">
         <h3 className="text-[14px] font-semibold mb-0.5" style={{ color: "var(--t-primary)" }}>
           {target.categoryTitle}
         </h3>
@@ -216,10 +216,10 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-md mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "80vh" }}>
+      <div className="w-full max-w-md mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "80vh" }}>
         {/* Header */}
-        <div className="p-5 pb-3 shrink-0">
-          <h3 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+        <div className="p-5 pb-3 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
+          <h3 className="text-[15px] font-semibold" style={{ color: "var(--t-primary)" }}>
             {target.categoryTitle}
           </h3>
           <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>
@@ -230,34 +230,39 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
         {/* List */}
         <div className="flex-1 overflow-y-auto px-5 pb-4">
           {isPending && (
-            <p className="text-[13px] py-4 text-center" style={{ color: "var(--t-faint)" }}>Загрузка…</p>
+            <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>Загрузка…</p>
           )}
           {!isPending && items.length === 0 && (
-            <p className="text-[13px] py-4 text-center" style={{ color: "var(--t-faint)" }}>Нет операций</p>
+            <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>Нет операций за этот период</p>
           )}
           {items.map((tx) => (
-            <div key={tx.id} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+            <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-white/[0.05] last:border-0">
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] truncate" style={{ color: "var(--t-primary)" }}>
+                <p className="text-[13px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
                   {tx.description || "Без описания"}
                 </p>
-                <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
                   {new Date(tx.occurred_at).toLocaleDateString("ru-RU")}
                   {tx.wallet_title && ` · ${tx.wallet_title}`}
                 </p>
               </div>
-              <span className="text-[13px] font-medium tabular-nums shrink-0 ml-3" style={{ color: "var(--t-secondary)" }}>
-                {parseFloat(tx.amount).toLocaleString("ru-RU")} ₽
+              <span className={clsx("text-[14px] font-semibold tabular-nums shrink-0 ml-3",
+                target.kind === "INCOME" ? "text-emerald-600" : "text-red-600"
+              )}>
+                {target.kind === "INCOME" ? "+" : "−"}{parseFloat(tx.amount).toLocaleString("ru-RU")} ₽
               </span>
             </div>
           ))}
         </div>
 
         {/* Footer */}
-        <div className="p-4 pt-2 border-t border-white/[0.06] shrink-0">
+        <div className="p-4 pt-3 border-t border-slate-200 dark:border-white/[0.06] shrink-0 flex items-center justify-between">
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            Итого: {fmt(target.factAmount)} ₽ ({items.length} оп.)
+          </span>
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-colors"
           >
             Закрыть
           </button>
@@ -405,10 +410,10 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
             key={p.index}
             colSpan={periodColCount(kind)}
             className={clsx(
-              "text-[10px] font-semibold uppercase tracking-wider px-2 py-2 text-center border-b border-white/[0.06]",
-              kind === "current" && "bg-indigo-500/[0.06]"
+              "text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center",
+              kind === "current" ? "bg-indigo-50 dark:bg-indigo-500/[0.06]" : "bg-slate-100 dark:bg-transparent"
             )}
-            style={{ color: kind === "current" ? "var(--t-primary)" : "var(--t-faint)" }}
+            style={{ color: kind === "current" ? "var(--t-primary)" : "var(--t-muted)", border: "1px solid #94A3B8" }}
           >
             {p.short_label}
           </th>
@@ -416,8 +421,8 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
       })}
       <th
         colSpan={2}
-        className="text-[10px] font-semibold uppercase tracking-wider px-2 py-2 text-center border-b border-white/[0.06]"
-        style={{ color: "var(--t-faint)" }}
+        className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center bg-slate-100 dark:bg-transparent"
+        style={{ color: "var(--t-muted)", border: "1px solid #94A3B8" }}
       >
         Итого
       </th>
@@ -425,8 +430,8 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
   );
 }
 
-const subHdrCls = "text-[9px] font-medium px-2 py-1 text-right border-b border-white/[0.06]";
-const subHdrStyle = { color: "var(--t-faint)", opacity: 0.7 };
+const subHdrCls = "text-[10px] font-semibold px-2 py-1 text-right bg-slate-100 dark:bg-[#0c1122]";
+const subHdrStyle: React.CSSProperties = { color: "var(--t-muted)", border: "1px solid #94A3B8" };
 
 function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
   return (
@@ -1049,23 +1054,30 @@ export default function BudgetMatrixPage() {
 
           {data && (
             <div className="min-w-max">
-              <table className="w-full border-collapse text-left">
+              <style>{`
+                .bgt-matrix td { border: 1px solid #E2E8F0; font-size: 13px; padding: 3px 7px; }
+                .bgt-matrix td:first-child { border-right: 2px solid #94A3B8; background: #FAFBFD; position: sticky; left: 0; z-index: 5; }
+                .bgt-matrix tr:hover td { background-color: #EFF6FF !important; }
+                .dark .bgt-matrix td { border-color: rgba(255,255,255,0.06); }
+                .dark .bgt-matrix td:first-child { background: #0c1122; border-right-color: rgba(255,255,255,0.1); }
+              `}</style>
+              <table className="bgt-matrix w-full border-collapse text-left" style={{ border: "1px solid #94A3B8" }}>
                 <thead>
                   {/* Period headers */}
-                  <tr className="sticky top-0 z-20" style={{ background: "var(--app-sidebar-bg)" }}>
+                  <tr className="sticky top-0 z-20 bg-slate-100 dark:bg-[#0c1122]">
                     <th
-                      className="text-[10px] font-semibold uppercase tracking-wider px-3 py-2 sticky left-0 z-30 min-w-[180px] border-b border-white/[0.06]"
-                      style={{ color: "var(--t-faint)", background: "var(--app-sidebar-bg)" }}
+                      className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 sticky left-0 z-30 min-w-[180px] bg-slate-100 dark:bg-[#0c1122] text-slate-700 dark:text-slate-400"
+                      style={{ border: "1px solid #94A3B8" }}
                     >
                       Категория
                     </th>
                     <PeriodHeaders periods={periods} />
                   </tr>
                   {/* P / F sub-headers */}
-                  <tr className="sticky top-[33px] z-20" style={{ background: "var(--app-sidebar-bg)" }}>
+                  <tr className="sticky top-[33px] z-20 bg-slate-100 dark:bg-[#0c1122]">
                     <th
-                      className="sticky left-0 z-30 border-b border-white/[0.06]"
-                      style={{ background: "var(--app-sidebar-bg)" }}
+                      className="sticky left-0 z-30 bg-slate-100 dark:bg-[#0c1122]"
+                      style={{ border: "1px solid #94A3B8" }}
                     />
                     <SubHeaders periods={periods} />
                   </tr>

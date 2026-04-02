@@ -382,11 +382,18 @@ def list_transactions(
             TransactionFeed.to_wallet_id == wallet_id,
         ))
     if category_id:
-        q = q.filter(TransactionFeed.category_id == category_id)
+        # Include child categories if this is a parent (group) category
+        cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
+        if cat and cat.parent_id is None:
+            child_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(CategoryInfo.parent_id == category_id).all()]
+            q = q.filter(TransactionFeed.category_id.in_([category_id] + child_ids))
+        else:
+            q = q.filter(TransactionFeed.category_id == category_id)
     if date_from:
         q = q.filter(TransactionFeed.occurred_at >= date_from)
     if date_to:
-        q = q.filter(TransactionFeed.occurred_at <= f"{date_to}T23:59:59")
+        # Support both inclusive (YYYY-MM-DD) and exclusive (budget periods) date ranges
+        q = q.filter(TransactionFeed.occurred_at < f"{date_to}T23:59:59")
     if search and search.strip():
         q = q.filter(TransactionFeed.description.ilike(f"%{search.strip()}%"))
 
