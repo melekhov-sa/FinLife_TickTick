@@ -36,11 +36,29 @@
 .main-content { max-width: none; }
 
 /* ── Compact budget table ── */
-.budget-table.bgt-compact { border-collapse: collapse; }
-.budget-table.bgt-compact th { padding: 5px 8px; font-size: 13px; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #94A3B8; }
-.budget-table.bgt-compact td { padding: 4px 8px; font-size: 14px; font-weight: 500; line-height: 1.25; font-variant-numeric: tabular-nums; color: #0F172A; border-bottom: 1px solid #CBD5E1; }
-.budget-table.bgt-compact .compact-cell { padding: 4px 6px !important; font-size: 14px; text-align: right; }
-.budget-table.bgt-compact .sticky-col { min-width: 140px; max-width: 220px; font-size: 13px; font-weight: 500; color: #334155; border-right: 2px solid #CBD5E1; }
+.budget-table.bgt-compact { border-collapse: collapse; border: 1px solid #94A3B8; }
+
+/* Sticky header */
+.budget-table.bgt-compact thead { position: sticky; top: 0; z-index: 10; }
+.budget-table.bgt-compact thead th {
+  padding: 6px 8px; font-size: 12px; font-weight: 700; color: #1E293B;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  background: #F1F5F9; border: 1px solid #94A3B8;
+}
+
+/* Data cells — borders everywhere */
+.budget-table.bgt-compact td {
+  padding: 3px 7px; font-size: 13px; font-weight: 500; line-height: 1.2;
+  font-variant-numeric: tabular-nums; color: #0F172A;
+  border: 1px solid #E2E8F0;
+}
+.budget-table.bgt-compact .compact-cell { padding: 3px 6px !important; font-size: 13px; text-align: right; }
+.budget-table.bgt-compact .sticky-col {
+  min-width: 160px; max-width: 240px; font-size: 12px; font-weight: 500; color: #334155;
+  border-right: 2px solid #94A3B8 !important;
+  background: #FAFBFD; position: sticky; left: 0; z-index: 5;
+}
+.budget-table.bgt-compact thead .sticky-col { z-index: 15; background: #F1F5F9; }
 .budget-table.bgt-compact .sticky-col a { color: inherit; }
 
 /* ── Light mode: value emphasis ── */
@@ -60,15 +78,14 @@
   user-select: none;
 }
 .bgt-section-hdr td {
-  padding: 6px 10px !important;
+  padding: 5px 10px !important;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #475569;
-  background: #F1F5F9;
-  border-bottom: 1px solid #CBD5E1;
-  border-top: 2px solid #CBD5E1;
+  background: #E2E8F0 !important;
+  border: 1px solid #94A3B8 !important;
 }
 .bgt-section-hdr .bgt-chevron {
   display: inline-block;
@@ -113,7 +130,7 @@
 }
 
 /* ── Compact sub-header labels ── */
-.sub-header { font-size: 11px; min-width: 40px; padding: 4px 6px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #94A3B8; }
+.sub-header { font-size: 10px; min-width: 40px; padding: 3px 6px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: #F1F5F9; border: 1px solid #94A3B8; }
 .sub-header[title] { cursor: help; }
 
 /* ── Child category indent (compact) ── */
@@ -125,7 +142,7 @@
   font-size: 10px;
 }
 /* Child rows: dimmer text, indented */
-tr.bgt-section-body:not(.bgt-group-row) .sticky-col { color: #64748B; font-weight: 400; font-size: 13px; }
+tr.bgt-section-body:not(.bgt-group-row) .sticky-col { color: #64748B; font-weight: 400; font-size: 12px; }
 
 /* ── Row status hints (focus month) ── */
 tr.row-ok > td { color: #9ca3af; }
@@ -244,18 +261,18 @@ tr.row-over .bgt-focus-delta { color: #dc2626 !important; font-weight: 500; }
 [data-theme$="-dark"] .budget-table.bgt-compact td.muted { color: #60a5fa; }
 
 /* ── Total rows ── */
-tr.budget-total-row > td { background: #EEF2FF !important; font-weight: 700; font-size: 14px; border-top: 2px solid #6366F1 !important; border-bottom: 1px solid #C7D2FE !important; }
-tr.budget-total-row > td.sticky-col { color: #4338CA; font-weight: 700; }
+tr.budget-total-row > td { background: #EEF2FF !important; font-weight: 700; font-size: 13px; border-top: 2px solid #6366F1 !important; border-bottom: 2px solid #6366F1 !important; }
+tr.budget-total-row > td.sticky-col { color: #4338CA; font-weight: 700; background: #EEF2FF !important; }
 [data-theme$="-dark"] tr.budget-total-row > td { background: rgba(255,255,255,0.04) !important; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.9) !important; }
 [data-theme$="-dark"] tr.budget-total-row > td.sticky-col { color: #818cf8 !important; }
 
 /* ── Total column (Итого) — visual separator ── */
-td.total-cell { border-left: 2px solid #94A3B8 !important; font-weight: 600; }
+td.total-cell { border-left: 2px solid #64748B !important; font-weight: 600; }
 [data-theme$="-dark"] td.total-cell { border-left: 2px solid rgba(255,255,255,0.1); }
 
 /* ── Group / parent category rows ── */
-tr.bgt-group-row > td { background-color: #F8FAFC !important; font-weight: 600; border-bottom: 1px solid #CBD5E1 !important; }
-tr.bgt-group-row > td.sticky-col { font-size: 14px !important; font-weight: 700 !important; color: #1E293B !important; }
+tr.bgt-group-row > td { background-color: #F1F5F9 !important; font-weight: 600; }
+tr.bgt-group-row > td.sticky-col { font-size: 13px !important; font-weight: 700 !important; color: #0F172A !important; background: #F1F5F9 !important; }
 [data-theme$="-dark"] tr.bgt-group-row > td { background-color: rgba(255,255,255,0.03) !important; color: rgba(255,255,255,0.9) !important; border-top: 1px solid rgba(255,255,255,0.04); }
 [data-theme$="-dark"] tr.bgt-group-row > td.sticky-col { color: rgba(255,255,255,0.75) !important; font-size: 13px !important; }
 
@@ -269,7 +286,7 @@ tr.bgt-row-alt > td { background-color: #FAFBFD; }
 [data-theme$="-dark"] tr.bgt-row-alt > td { background-color: rgba(255,255,255,0.02); }
 
 /* ── Month column separators ── */
-td.period-border, th.period-border { border-left: 2px solid #CBD5E1 !important; }
+td.period-border, th.period-border { border-left: 2px solid #94A3B8 !important; }
 [data-theme$="-dark"] td.period-border, [data-theme$="-dark"] th.period-border { border-left: 1px solid rgba(255,255,255,0.08) !important; }
 
 /* ── Dark mode: balance hint row ── */
@@ -510,8 +527,8 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
 {% set _expense_plan_total = view.expense_totals.total.plan + (view.goal_totals.total.plan if view.goal_rows else 0) %}
 {% set _expense_fact_total = view.expense_totals.total.fact + (view.goal_totals.total.fact if view.goal_rows else 0) %}
 
-<div class="card">
-  <div class="matrix-scroll-wrapper">
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div class="matrix-scroll-wrapper" style="overflow: auto; max-height: calc(100vh - 140px);">
     <table class="budget-table matrix-table bgt-compact">
       {% set _ns = namespace(val=1) %}{% for p in view.periods %}{% if show_plan %}{% if p.is_past %}{% set _ns.val = _ns.val + 2 %}{% elif p.is_future %}{% set _ns.val = _ns.val + 1 %}{% else %}{% set _ns.val = _ns.val + 4 %}{% endif %}{% else %}{% if not p.is_future %}{% set _ns.val = _ns.val + 1 %}{% endif %}{% endif %}{% endfor %}{% set _ns.val = _ns.val + (2 if show_plan else 1) %}{% set n_cols = _ns.val %}{% if avg_months > 0 %}{% set n_cols = n_cols + 1 %}{% endif %}
       <thead>

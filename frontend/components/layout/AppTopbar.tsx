@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { User, Settings, LogOut, Sun, Moon } from "lucide-react";
+import { User, Settings, LogOut } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
@@ -16,7 +16,7 @@ interface AppTopbarProps {
 
 export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const { data: me } = useMe();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -129,16 +129,6 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
                   >
                     <Settings size={14} className="opacity-50" /> Настройки
                   </Link>
-                  <button
-                    onClick={() => { setTheme(isDark ? "light" : "dark"); setMenuOpen(false); }}
-                    className={clsx(
-                      "w-full flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors",
-                      isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
-                    )}
-                  >
-                    {isDark ? <Sun size={14} className="opacity-50" /> : <Moon size={14} className="opacity-50" />}
-                    {isDark ? "Светлая тема" : "Тёмная тема"}
-                  </button>
                 </div>
 
                 {/* Logout */}
