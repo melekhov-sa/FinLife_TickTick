@@ -593,9 +593,10 @@ function CategoryDataRow({
   return (
     <tr
       className={clsx(
-        "border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors",
-        isDropTarget && "bg-indigo-500/[0.08] border-t-indigo-500/30"
+        "transition-colors",
+        isDropTarget && "!border-t-[3px] !border-t-indigo-500"
       )}
+      data-drag-over={isDropTarget || undefined}
       draggable={canDrag}
       onDragStart={canDrag ? (e) => dragHandlers.onDragStart(e, row.category_id!, row.parent_id) : undefined}
       onDragOver={canDrag ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
@@ -974,7 +975,7 @@ export default function BudgetMatrixPage() {
       )}
       <AppTopbar title="Бюджет (матрица)" />
 
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main className="flex-1 flex flex-col overflow-hidden">
 
         {/* Controls bar */}
         <div
@@ -1038,8 +1039,8 @@ export default function BudgetMatrixPage() {
           </div>
         </div>
 
-        {/* Table area — scroll container for sticky headers */}
-        <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
+        {/* Table area — this div is the scroll container, sticky works inside it */}
+        <div className="flex-1 overflow-auto relative">
           {isPending && (
             <div className="p-6 space-y-2">
               {[...Array(6)].map((_, i) => (
@@ -1060,16 +1061,16 @@ export default function BudgetMatrixPage() {
                 .bgt-matrix td { border: 1px solid #CBD5E1; font-size: 13px; padding: 3px 7px; color: #0F172A; }
                 .bgt-matrix td:first-child { border-right: 2px solid #64748B !important; background: #FAFBFD; position: sticky; left: 0; z-index: 5; font-size: 12px; }
                 .bgt-matrix tr:hover td { background-color: #EFF6FF !important; }
-                .bgt-matrix thead th { position: sticky; z-index: 20; }
-                .bgt-matrix thead tr:first-child th { top: 0; }
-                .bgt-matrix thead tr:nth-child(2) th { top: 33px; }
+                .bgt-matrix thead { position: sticky; top: 0; z-index: 20; }
                 .dark .bgt-matrix td { border-color: rgba(255,255,255,0.06); color: #E2E8F0; }
                 .dark .bgt-matrix td:first-child { background: #0c1122; border-right-color: rgba(255,255,255,0.1); }
+                .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid #6366F1 !important; }
+                .bgt-matrix tr.opacity-30 { opacity: 0.3; }
               `}</style>
               <table className="bgt-matrix w-full border-collapse text-left" style={{ border: "1px solid #94A3B8" }}>
                 <thead>
                   {/* Period headers */}
-                  <tr className="sticky top-0 z-20 bg-slate-100 dark:bg-[#0c1122]">
+                  <tr className="bg-slate-100 dark:bg-[#0c1122]">
                     <th
                       className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 sticky left-0 z-30 min-w-[180px] bg-slate-100 dark:bg-[#0c1122] text-slate-700 dark:text-slate-400"
                       style={{ border: "1px solid #94A3B8" }}
@@ -1079,7 +1080,7 @@ export default function BudgetMatrixPage() {
                     <PeriodHeaders periods={periods} />
                   </tr>
                   {/* P / F sub-headers */}
-                  <tr className="sticky top-[33px] z-20 bg-slate-100 dark:bg-[#0c1122]">
+                  <tr className="bg-slate-200 dark:bg-[#0c1122]">
                     <th
                       className="sticky left-0 z-30 bg-slate-100 dark:bg-[#0c1122]"
                       style={{ border: "1px solid #94A3B8" }}
