@@ -148,12 +148,11 @@ export function MobileNav() {
       {/* Bottom nav bar */}
       <nav
         id="mobile-nav"
-        className="fixed bottom-0 left-0 right-0 z-30"
+        className="fixed left-0 right-0 z-30"
         style={{
+          bottom: 0,
           background: isDark ? "rgba(10,13,28,0.97)" : "rgba(255,255,255,0.98)",
           borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0"}`,
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >

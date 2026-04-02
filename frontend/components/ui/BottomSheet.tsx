@@ -58,7 +58,8 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
       body.style.top = prevTop;
       body.style.width = prevWidth;
       body.style.overscrollBehavior = "";
-      window.scrollTo(0, scrollY);
+      // Restore scroll position after a microtask to avoid iOS layout glitch
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
     };
   }, [open]);
 
