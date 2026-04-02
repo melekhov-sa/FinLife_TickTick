@@ -151,24 +151,26 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const [showOpModal, setShowOpModal] = useState(false);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
 
-  const [showAllDone, setShowAllDone] = useState(false);
+  const [showDone, setShowDone] = useState(false);
 
   const activeTasks = [
     ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
     ...(active ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
   ];
   const doneTasks = (done ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ");
-  const taskItems = [...activeTasks, ...doneTasks];
-  const visibleDone = showAllDone ? doneTasks : doneTasks.slice(0, 2);
 
-  const habitItems = [
+  const activeHabits = [
     ...(overdue ?? []).filter((i) => i.kind === "habit"),
     ...(active ?? []).filter((i) => i.kind === "habit"),
-    ...(done ?? []).filter((i) => i.kind === "habit"),
   ];
+  const doneHabits = (done ?? []).filter((i) => i.kind === "habit");
+
+  const totalDone = doneTasks.length + doneHabits.length;
+
+  const habitItems = [...activeHabits, ...(showDone ? doneHabits : [])];
 
   const isEmpty =
-    taskItems.length === 0 &&
+    activeTasks.length === 0 && doneTasks.length === 0 &&
     habitItems.length === 0 &&
     (events ?? []).length === 0 &&
     (plannedOps ?? []).length === 0;
@@ -203,9 +205,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
         />
       )}
 
-      <div className="rounded-xl md:rounded-[14px] border p-3.5 md:p-5" style={{ borderColor: "rgba(120,140,255,0.4)", background: "rgba(99,102,241,0.04)" }}>
+      <div className="rounded-xl md:rounded-[14px] border p-2.5 md:p-5" style={{ borderColor: "rgba(120,140,255,0.4)", background: "rgba(99,102,241,0.04)" }}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-3 md:mb-4">
+        <div className="flex items-center justify-between mb-2 md:mb-4">
           <div className="flex items-center gap-2 md:gap-3">
             <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
               Сегодня
@@ -213,7 +215,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
             {progress.total > 0 && (
               <div className="flex items-center gap-1.5 md:gap-2">
-                <div className="h-1 md:h-1.5 w-16 md:w-20 bg-white/[0.07] rounded-full overflow-hidden">
+                <div className="h-1 md:h-1.5 w-16 md:w-20 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.06)" }}>
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -231,16 +233,17 @@ export function TodayBlock({ today, plannedOps }: Props) {
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          {/* Desktop only: add buttons */}
+          <div className="hidden md:flex items-center gap-1">
             <button
               onClick={() => setShowTaskModal(true)}
-              className="text-[11px] md:text-[13px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg bg-indigo-500/[0.12] border border-indigo-500/20 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-500/[0.18] transition-all font-medium"
+              className="text-[13px] px-2.5 py-1 rounded-lg bg-indigo-500/[0.12] border border-indigo-500/20 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-500/[0.18] transition-all font-medium"
             >
               + Задача
             </button>
             <button
               onClick={() => setShowOpModal(true)}
-              className="text-[11px] md:text-[13px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all font-medium"
+              className="text-[13px] px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all font-medium"
               style={{ color: "var(--t-secondary)" }}
             >
               + Операция
@@ -249,31 +252,33 @@ export function TodayBlock({ today, plannedOps }: Props) {
         </div>
 
         {/* ЗАДАЧИ */}
-        {taskItems.length > 0 && (
-          <div className="mb-2 md:mb-3">
-            <SectionLabel label="Задачи" count={taskItems.length} />
+        {(activeTasks.length > 0 || doneTasks.length > 0) && (
+          <div className="mb-1.5 md:mb-3">
+            <SectionLabel label="Задачи" count={activeTasks.length + doneTasks.length} />
             {activeTasks.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
             ))}
-            {visibleDone.map((item) => (
-              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+            {showDone && doneTasks.map((item) => (
+              <div key={`${item.kind}-${item.id}`} className="opacity-50">
+                <Item item={item} onComplete={setConfirmItem} />
+              </div>
             ))}
-            {doneTasks.length > 2 && (
+            {doneTasks.length > 0 && (
               <button
-                onClick={() => setShowAllDone(v => !v)}
-                className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-400"
+                onClick={() => setShowDone((v: boolean) => !v)}
+                className="w-full text-center py-1 text-[11px] font-medium transition-colors hover:text-indigo-500"
                 style={{ color: "var(--t-faint)" }}
               >
-                {showAllDone ? "Скрыть" : `Ещё ${doneTasks.length - 2} выполненных`}
+                {showDone ? "Скрыть выполненные" : `Ещё ${doneTasks.length} выполненных`}
               </button>
             )}
           </div>
         )}
 
         {/* ПРИВЫЧКИ */}
-        {habitItems.length > 0 && (
-          <div className="mb-2 md:mb-3">
-            <SectionLabel label="Привычки" count={habitItems.length} />
+        {(activeHabits.length > 0 || doneHabits.length > 0) && (
+          <div className="mb-1.5 md:mb-3">
+            <SectionLabel label="Привычки" count={activeHabits.length + doneHabits.length} />
             {habitItems.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
             ))}
@@ -282,7 +287,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
         {/* СОБЫТИЯ */}
         {(events ?? []).length > 0 && (
-          <div className="mb-2 md:mb-3">
+          <div className="mb-1.5 md:mb-3">
             <SectionLabel label="События" count={events.length} />
             {events.map((item) => (
               <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
