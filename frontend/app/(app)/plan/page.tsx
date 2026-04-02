@@ -74,12 +74,12 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 const KIND_COLORS: Record<string, string> = {
-  task:       "text-indigo-300/70 bg-indigo-500/[0.08]",
-  task_occ:   "text-indigo-300/70 bg-indigo-500/[0.08]",
-  event:      "text-sky-300/70 bg-sky-500/[0.08]",
-  planned_op: "text-amber-300/70 bg-amber-500/[0.08]",
-  habit:      "text-violet-300/70 bg-violet-500/[0.08]",
-  wish:       "text-pink-300/70 bg-pink-500/[0.08]",
+  task:       "text-indigo-700 dark:text-indigo-300/70 bg-indigo-100 dark:bg-indigo-500/[0.08]",
+  task_occ:   "text-indigo-700 dark:text-indigo-300/70 bg-indigo-100 dark:bg-indigo-500/[0.08]",
+  event:      "text-sky-700 dark:text-sky-300/70 bg-sky-100 dark:bg-sky-500/[0.08]",
+  planned_op: "text-amber-700 dark:text-amber-300/70 bg-amber-100 dark:bg-amber-500/[0.08]",
+  habit:      "text-violet-700 dark:text-violet-300/70 bg-violet-100 dark:bg-violet-500/[0.08]",
+  wish:       "text-pink-700 dark:text-pink-300/70 bg-pink-100 dark:bg-pink-500/[0.08]",
 };
 
 type CompletableKind = "task" | "habit" | "task_occ";
@@ -623,7 +623,7 @@ export default function PlanPage() {
                 key={link.href}
                 href={link.href}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] md:text-[12px] font-medium whitespace-nowrap transition-colors hover:bg-white/[0.04]"
-                style={{ borderColor: "rgba(255,255,255,0.07)", color: "var(--t-faint)" }}
+                style={{ borderColor: "var(--app-border)", color: "var(--t-muted)" }}
               >
                 <link.icon size={13} className="opacity-50" />
                 {link.label}

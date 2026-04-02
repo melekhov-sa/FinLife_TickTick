@@ -133,10 +133,10 @@
 
   /* Text — high contrast on white */
   --t-primary:   #0F172A;
-  --t-secondary: #334155;
-  --t-muted:     #64748B;
-  --t-faint:     #94A3B8;
-  --t-label:     #475569;
+  --t-secondary: #1E293B;
+  --t-muted:     #475569;
+  --t-faint:     #64748B;
+  --t-label:     #334155;
 
   /* Cards */
   --app-card-bg:    #FFFFFF;
@@ -213,10 +213,10 @@ html:not(.dark) .bg-white\/\[0\.12\]  { background-color: #E5E7EB !important; bo
 html:not(.dark) .bg-white\/\[0\.09\]  { background-color: #E5E7EB !important; box-shadow: none !important; }
 html:not(.dark) .bg-white\/\[0\.07\]  { background-color: #F3F4F6 !important; box-shadow: none !important; }
 
-/* ── Card / surface backgrounds → white with clear borders ────────────── */
-html:not(.dark) .bg-white\/\[0\.02\]  { background-color: #FAFBFD !important; border-color: #E2E8F0 !important; }
-html:not(.dark) .bg-white\/\[0\.03\]  { background-color: #FFFFFF !important; border-color: #E2E8F0 !important; }
-html:not(.dark) .bg-white\/\[0\.04\]  { background-color: #FFFFFF !important; border-color: #E2E8F0 !important; }
+/* ── Card / surface backgrounds → white with visible borders ─────────── */
+html:not(.dark) .bg-white\/\[0\.02\]  { background-color: #F8FAFC !important; }
+html:not(.dark) .bg-white\/\[0\.03\]  { background-color: #FFFFFF !important; }
+html:not(.dark) .bg-white\/\[0\.04\]  { background-color: #FFFFFF !important; }
 html:not(.dark) .bg-white\/\[0\.05\]  { background-color: #FFFFFF !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px #E5E7EB !important; }
 html:not(.dark) .bg-white\/\[0\.06\]  { background-color: #FFFFFF !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px #E5E7EB !important; }
 html:not(.dark) .bg-white\/\[0\.08\]  { background-color: #FFFFFF !important; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px #E5E7EB !important; }
@@ -232,18 +232,18 @@ html:not(.dark) .hover\:bg-white\/\[0\.06\]:hover { background-color: #F3F4F6 !i
 html:not(.dark) .hover\:bg-white\/\[0\.07\]:hover { background-color: #ECEEF1 !important; box-shadow: none !important; }
 html:not(.dark) .hover\:bg-white\/\[0\.08\]:hover { background-color: #ECEEF1 !important; box-shadow: none !important; }
 
-/* ── Borders → explicit grays ────────────────────────────────────────────── */
-html:not(.dark) .border-white\/\[0\.04\] { border-color: #F3F4F6 !important; }
-html:not(.dark) .border-white\/\[0\.05\] { border-color: #ECEEF1 !important; }
-html:not(.dark) .border-white\/\[0\.06\] { border-color: #E5E7EB !important; }
-html:not(.dark) .border-white\/\[0\.07\] { border-color: #E5E7EB !important; }
-html:not(.dark) .border-white\/\[0\.08\] { border-color: #D9DBE0 !important; }
-html:not(.dark) .border-white\/\[0\.09\] { border-color: #D1D5DB !important; }
-html:not(.dark) .border-white\/\[0\.10\] { border-color: #D1D5DB !important; }
-html:not(.dark) .border-white\/15        { border-color: #D1D5DB !important; }
-html:not(.dark) .border-white\/20        { border-color: #C8CDD5 !important; }
-html:not(.dark) .border-white\/25        { border-color: #BFC5CE !important; }
-html:not(.dark) .border-dashed.border-white\/\[0\.06\] { border-color: #D1D5DB !important; }
+/* ── Borders → strong visible lines on white ─────────────────────────────── */
+html:not(.dark) .border-white\/\[0\.04\] { border-color: #E2E8F0 !important; }
+html:not(.dark) .border-white\/\[0\.05\] { border-color: #E2E8F0 !important; }
+html:not(.dark) .border-white\/\[0\.06\] { border-color: #CBD5E1 !important; }
+html:not(.dark) .border-white\/\[0\.07\] { border-color: #CBD5E1 !important; }
+html:not(.dark) .border-white\/\[0\.08\] { border-color: #CBD5E1 !important; }
+html:not(.dark) .border-white\/\[0\.09\] { border-color: #94A3B8 !important; }
+html:not(.dark) .border-white\/\[0\.10\] { border-color: #94A3B8 !important; }
+html:not(.dark) .border-white\/15        { border-color: #94A3B8 !important; }
+html:not(.dark) .border-white\/20        { border-color: #94A3B8 !important; }
+html:not(.dark) .border-white\/25        { border-color: #64748B !important; }
+html:not(.dark) .border-dashed.border-white\/\[0\.06\] { border-color: #94A3B8 !important; }
 
 /* ── Checkboxes / circles: white borders → visible on light bg ──────────── */
 html:not(.dark) .border-white\/30         { border-color: #CBD5E1 !important; }
@@ -276,6 +276,15 @@ html:not(.dark) .bg-indigo-500\/15      { background-color: rgba(99,102,241,0.08
 html:not(.dark) .bg-indigo-500\/20      { background-color: rgba(99,102,241,0.1) !important; }
 html:not(.dark) .border-indigo-500\/20  { border-color: rgba(99,102,241,0.2) !important; }
 html:not(.dark) .text-indigo-300\/80    { color: #4F46E5 !important; }
+
+/* ── Indigo tints: more visible on white backgrounds ─────────────────────── */
+html:not(.dark) .bg-indigo-500\/\[0\.12\] { background-color: rgba(99,102,241,0.15) !important; }
+html:not(.dark) .bg-indigo-500\/\[0\.13\] { background-color: rgba(99,102,241,0.15) !important; }
+html:not(.dark) .bg-indigo-500\/10       { background-color: rgba(99,102,241,0.1) !important; }
+
+/* ── Selected pills/tabs: visible on light ───────────────────────────────── */
+html:not(.dark) .bg-white\/\[0\.12\]  { background-color: #E2E8F0 !important; color: #1E293B !important; }
+html:not(.dark) .bg-white\/\[0\.09\]  { background-color: #E2E8F0 !important; color: #1E293B !important; }
 
 /* ── Active/pressed state on light ───────────────────────────────────────── */
 html:not(.dark) .active\:bg-white\/\[0\.1\]:active { background-color: #E5E7EB !important; }
