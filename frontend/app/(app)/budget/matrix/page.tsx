@@ -586,9 +586,10 @@ function CategoryDataRow({
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
   const isTopLevel = row.is_group || row.parent_id === null;
-  const indent = row.depth > 0 ? "pl-6" : "pl-3";
+  const indent = row.depth > 0 ? "pl-8" : "pl-3";
   const { dragHandlers } = editing;
   const canDrag = !!row.category_id && !row.is_group;
+  const canReceiveDrop = !!row.category_id; // groups can receive drops
   const isDropTarget = dragHandlers.dragOverId === row.category_id;
 
   return (
@@ -600,9 +601,9 @@ function CategoryDataRow({
       data-drag-over={isDropTarget || undefined}
       draggable={canDrag}
       onDragStart={canDrag ? (e) => dragHandlers.onDragStart(e, row.category_id!, row.parent_id) : undefined}
-      onDragOver={canDrag ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
+      onDragOver={canReceiveDrop ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
       onDragEnd={dragHandlers.onDragEnd}
-      onDrop={canDrag && onDrop ? (e) => onDrop(e, row.category_id!) : undefined}
+      onDrop={canReceiveDrop && onDrop ? (e) => onDrop(e, row.category_id!) : undefined}
     >
       <td
         className={clsx(
@@ -621,6 +622,7 @@ function CategoryDataRow({
           {canDrag && (
             <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
           )}
+          {row.depth > 0 && <span className="text-slate-300 text-[10px] mr-0.5">└</span>}
           {row.title}
         </span>
       </td>
@@ -844,8 +846,10 @@ export default function BudgetMatrixPage() {
 
   const onDragOver = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
     if (!dragSrc.current) return;
-    // Only allow reorder within same parent group
-    if (dragSrc.current.parentId !== parentId) return;
+    // Allow reorder within same parent group, or between top-level items
+    const sameGroup = dragSrc.current.parentId === parentId;
+    const bothTopLevel = dragSrc.current.parentId === null && parentId === null;
+    if (!sameGroup && !bothTopLevel) return;
     if (dragSrc.current.catId === catId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
