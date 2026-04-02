@@ -874,9 +874,17 @@ export default function BudgetMatrixPage() {
     const tgtIdx = ids.indexOf(targetCatId);
     if (srcIdx < 0 || tgtIdx < 0) return;
 
-    // Move srcId to tgtIdx position
+    // Determine direction and insert accordingly
+    const movingDown = srcIdx < tgtIdx;
     ids.splice(srcIdx, 1);
-    ids.splice(tgtIdx, 0, srcId);
+    const newTgtIdx = ids.indexOf(targetCatId);
+    if (movingDown) {
+      // Moving down: place AFTER target
+      ids.splice(newTgtIdx + 1, 0, srcId);
+    } else {
+      // Moving up: place BEFORE target
+      ids.splice(newTgtIdx, 0, srcId);
+    }
 
     const items = ids.map((id, i) => ({ category_id: id, sort_order: i }));
     await api.post("/api/v2/categories/reorder", { items });
