@@ -7,6 +7,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { clsx } from "clsx";
 import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar, FolderKanban } from "lucide-react";
 import Link from "next/link";
@@ -215,12 +216,14 @@ function EntryRow({
   onReschedule,
   onExecuteOp,
   onSkipOp,
+  onEntryClick,
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
+  onEntryClick?: (entry: PlanEntry) => void;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
@@ -261,7 +264,7 @@ function EntryRow({
         )}
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
         {/* Title row */}
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className={clsx(
@@ -356,6 +359,7 @@ function DayGroupCard({
   onExecuteOp,
   onSkipOp,
   onAddTask,
+  onEntryClick,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
@@ -363,6 +367,7 @@ function DayGroupCard({
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
   onAddTask: () => void;
+  onEntryClick: (entry: PlanEntry) => void;
 }) {
   const label = group.date && !group.is_overdue_group
     ? formatDayHeader(group.date)
@@ -401,7 +406,7 @@ function DayGroupCard({
 
       {/* Entries */}
       {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
+        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
       ))}
 
       {/* Per-day quick-add */}
@@ -425,12 +430,14 @@ function DoneTodayBlock({
   onReschedule,
   onExecuteOp,
   onSkipOp,
+  onEntryClick,
 }: {
   entries: PlanEntry[];
   onComplete: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
+  onEntryClick: (entry: PlanEntry) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -454,7 +461,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-4 pb-3 border-t border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
           ))}
         </div>
       )}
@@ -479,6 +486,8 @@ export default function PlanPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 
+  const [detailEntry, setDetailEntry] = useState<PlanEntry | null>(null);
+
   function handleSkipOp(entry: PlanEntry) {
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipOp(occurrenceId);
@@ -489,6 +498,16 @@ export default function PlanPage() {
     queryFn: () => api.get<PlanData>(`/api/v2/plan?tab=${tab}&range=${range}`),
     staleTime: 30_000,
   });
+
+  // Filter out wishes — not needed in current UI
+  const filteredData = data ? {
+    ...data,
+    day_groups: data.day_groups.map(g => ({
+      ...g,
+      entries: g.entries.filter(e => e.kind !== "wish"),
+    })).filter(g => g.entries.length > 0),
+    done_today: data.done_today.filter(e => e.kind !== "wish"),
+  } : undefined;
 
   const summary = data?.summary;
 
@@ -507,6 +526,7 @@ export default function PlanPage() {
     <>
       {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
       {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} />}
+      {detailEntry && <EntryDetailModal entry={detailEntry} onClose={() => setDetailEntry(null)} />}
       {rescheduleEntry && (
         <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
       )}
@@ -672,7 +692,7 @@ export default function PlanPage() {
           )}
 
           {/* ── Empty state ───────────────────────────────────────────── */}
-          {data && data.day_groups.length === 0 && !isLoading && (
+          {filteredData && filteredData.day_groups.length === 0 && !isLoading && (
             <div className="text-center py-20">
               <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl">📅</span>
@@ -690,14 +710,14 @@ export default function PlanPage() {
           )}
 
           {/* ── Done today (collapsible) ──────────────────────────────── */}
-          {data && tab === "active" && data.done_today.length > 0 && (
-            <DoneTodayBlock entries={data.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} onSkipOp={handleSkipOp} />
+          {filteredData && tab === "active" && filteredData.done_today.length > 0 && (
+            <DoneTodayBlock entries={filteredData.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} onSkipOp={handleSkipOp} onEntryClick={setDetailEntry} />
           )}
 
           {/* ── Day groups ────────────────────────────────────────────── */}
-          {data && (
+          {filteredData && (
             <div className="space-y-4">
-              {data.day_groups.map((g, i) => (
+              {filteredData.day_groups.map((g, i) => (
                 <DayGroupCard
                   key={i}
                   group={g}
@@ -706,6 +726,7 @@ export default function PlanPage() {
                   onExecuteOp={setExecuteEntry}
                   onSkipOp={handleSkipOp}
                   onAddTask={() => setShowCreateTask(true)}
+                  onEntryClick={setDetailEntry}
                 />
               ))}
             </div>

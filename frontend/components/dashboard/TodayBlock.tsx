@@ -39,7 +39,11 @@ function Item({
         isDone && "opacity-40"
       )}
     >
-      {canComplete ? (
+      {kind === "event" ? (
+        <div className="w-8 h-8 flex items-center justify-center shrink-0">
+          <span className="text-[15px]">📅</span>
+        </div>
+      ) : canComplete ? (
         <button
           onClick={() => onComplete(item)}
           className="w-8 h-8 flex items-center justify-center shrink-0 touch-manipulation"
