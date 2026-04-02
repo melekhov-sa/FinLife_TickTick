@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -66,6 +67,9 @@ interface EditingProps {
   openPlanEdit: (target: PlanEditTarget) => void;
   openFactDetail: (target: FactDetailTarget) => void;
   dragHandlers: DragHandlers;
+  toggleVisibility?: (catId: number) => void;
+  hiddenCatIds?: Set<number>;
+  showHidden?: boolean;
 }
 
 interface DragHandlers {
@@ -618,12 +622,27 @@ function CategoryDataRow({
         }}
         title={row.title}
       >
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-1 group/cat">
           {canDrag && (
             <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
           )}
           {row.depth > 0 && <span className="text-slate-300 text-[10px] mr-0.5">└</span>}
-          {row.title}
+          <span className={editing.hiddenCatIds?.has(row.category_id!) ? "opacity-40 line-through" : ""}>
+            {row.title}
+          </span>
+          {editing.showHidden && editing.toggleVisibility && row.category_id && (
+            <button
+              onClick={(e) => { e.stopPropagation(); editing.toggleVisibility!(row.category_id!); }}
+              className="opacity-0 group-hover/cat:opacity-100 ml-1 shrink-0 transition-opacity"
+              title={editing.hiddenCatIds?.has(row.category_id) ? "Показать в бюджете" : "Скрыть из бюджета"}
+            >
+              {editing.hiddenCatIds?.has(row.category_id) ? (
+                <EyeOff size={11} className="text-red-400" />
+              ) : (
+                <Eye size={11} className="text-slate-400 hover:text-slate-600" />
+              )}
+            </button>
+          )}
         </span>
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
@@ -834,6 +853,7 @@ export default function BudgetMatrixPage() {
 
   const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
   const [factDetailTarget, setFactDetailTarget] = useState<FactDetailTarget | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
 
   // ── Drag-and-drop reorder state ──
   const dragSrc = useRef<{ catId: number; parentId: number | null } | null>(null);
@@ -923,11 +943,11 @@ export default function BudgetMatrixPage() {
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
-  const { data, isPending, isError } = useQuery<BudgetMatrix>({
-    queryKey: ["budget-matrix", year, month, rangeCount],
+  const { data, isPending, isError } = useQuery<BudgetMatrix & { hidden_category_ids?: number[] }>({
+    queryKey: ["budget-matrix", year, month, rangeCount, showHidden],
     queryFn: () =>
-      api.get<BudgetMatrix>(
-        `/api/v2/budget/matrix?year=${year}&month=${month}&range_count=${rangeCount}`
+      api.get<BudgetMatrix & { hidden_category_ids?: number[] }>(
+        `/api/v2/budget/matrix?year=${year}&month=${month}&range_count=${rangeCount}&show_hidden=${showHidden}`
       ),
     staleTime: 30_000,
   });
@@ -943,6 +963,17 @@ export default function BudgetMatrixPage() {
     let y = year;
     while (m > 12) { m -= 12; y++; }
     setMonth(m); setYear(y);
+  }
+
+  const hiddenCatIds = new Set(data?.hidden_category_ids ?? []);
+
+  async function toggleVisibility(categoryId: number) {
+    const isHidden = hiddenCatIds.has(categoryId);
+    await api.post("/api/v2/budget/toggle-visibility", {
+      category_id: categoryId,
+      hidden: !isHidden,
+    });
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
   const periods = data?.periods ?? [];
@@ -969,6 +1000,9 @@ export default function BudgetMatrixPage() {
     openPlanEdit: setPlanEditTarget,
     openFactDetail: setFactDetailTarget,
     dragHandlers: { onDragStart, onDragOver, onDragEnd, dragOverId },
+    toggleVisibility: showHidden ? toggleVisibility : undefined,
+    hiddenCatIds: showHidden ? hiddenCatIds : undefined,
+    showHidden,
   };
 
   return (
@@ -1040,12 +1074,23 @@ export default function BudgetMatrixPage() {
             </div>
           </div>
 
-          {/* Link back to simple view */}
-          <div className="ml-auto">
+          {/* Controls right */}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowHidden(v => !v)}
+              className={clsx(
+                "text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5",
+                showHidden
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              {showHidden ? <Eye size={12} /> : <EyeOff size={12} />}
+              {showHidden ? "Скрытые видны" : "Показать скрытые"}
+            </button>
             <Link
               href="/budget"
-              className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors"
-              style={{ color: "var(--t-muted)" }}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
             >
               Простой вид
             </Link>
@@ -1071,16 +1116,18 @@ export default function BudgetMatrixPage() {
           {data && (
             <div className="min-w-max">
               <style>{`
-                .bgt-matrix td { border: 1px solid #CBD5E1; font-size: 13px; padding: 3px 7px; color: #0F172A; }
+                .bgt-matrix { border-spacing: 0; }
+                .bgt-matrix td, .bgt-matrix th { border: 1px solid #CBD5E1; }
+                .bgt-matrix td { font-size: 13px; padding: 3px 7px; color: #0F172A; }
                 .bgt-matrix td:first-child { border-right: 2px solid #64748B !important; background: #FAFBFD; position: sticky; left: 0; z-index: 5; font-size: 12px; }
                 .bgt-matrix tr:hover td { background-color: #EFF6FF !important; }
                 .bgt-matrix thead { position: sticky; top: 0; z-index: 20; }
+                .bgt-matrix thead th { background: #EDF0F4; }
                 .dark .bgt-matrix td { border-color: rgba(255,255,255,0.06); color: #E2E8F0; }
                 .dark .bgt-matrix td:first-child { background: #0c1122; border-right-color: rgba(255,255,255,0.1); }
                 .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid #6366F1 !important; }
-                .bgt-matrix tr.opacity-30 { opacity: 0.3; }
               `}</style>
-              <table className="bgt-matrix w-full border-collapse text-left" style={{ border: "1px solid #94A3B8" }}>
+              <table className="bgt-matrix w-full text-left" style={{ border: "1px solid #94A3B8", borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   {/* Period headers */}
                   <tr className="bg-slate-100 dark:bg-[#0c1122]">

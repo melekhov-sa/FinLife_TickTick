@@ -101,6 +101,7 @@ def budget_matrix(
     month: int | None = Query(None),
     variant_id: int | None = Query(None),
     avg_months: int = Query(0),
+    show_hidden: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     from app.application.budget_matrix import BudgetMatrixService
@@ -125,9 +126,9 @@ def budget_matrix(
 
     variant_id_resolved = variant.id if variant else None
 
-    hidden_cats = get_hidden_category_ids(db, variant_id_resolved) if variant_id_resolved else set()
-    hidden_goals = get_hidden_goal_ids(db, variant_id_resolved) if variant_id_resolved else set()
-    hidden_wgoals = get_hidden_withdrawal_goal_ids(db, variant_id_resolved) if variant_id_resolved else set()
+    hidden_cats = get_hidden_category_ids(db, variant_id_resolved) if variant_id_resolved and not show_hidden else set()
+    hidden_goals = get_hidden_goal_ids(db, variant_id_resolved) if variant_id_resolved and not show_hidden else set()
+    hidden_wgoals = get_hidden_withdrawal_goal_ids(db, variant_id_resolved) if variant_id_resolved and not show_hidden else set()
 
     if grain == "month":
         for offset in range(range_count):
@@ -167,7 +168,14 @@ def budget_matrix(
             return obj.isoformat()
         return obj
 
-    return serialize(view)
+    result = serialize(view)
+    # Include hidden IDs so frontend can mark them
+    if show_hidden and variant_id_resolved:
+        all_hidden_cats = get_hidden_category_ids(db, variant_id_resolved)
+        result["hidden_category_ids"] = list(all_hidden_cats)
+    else:
+        result["hidden_category_ids"] = []
+    return result
 
 
 class BudgetPlanLine(BaseModel):
@@ -268,4 +276,28 @@ def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = De
         actor_user_id=user_id,
         budget_variant_id=variant_id,
     )
+    return {"ok": True}
+
+
+# ── Toggle category visibility in budget ──────────────────────────────────
+
+class ToggleVisibilityBody(BaseModel):
+    category_id: int
+    hidden: bool
+    variant_id: int | None = None
+
+@router.post("/budget/toggle-visibility")
+def toggle_category_visibility(body: ToggleVisibilityBody, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    from app.application.budget import get_active_variant, get_hidden_category_ids, save_hidden_category_ids
+    variant = get_active_variant(db, user_id, body.variant_id)
+    if not variant:
+        return {"ok": False}
+    hidden = get_hidden_category_ids(db, variant.id)
+    if body.hidden:
+        hidden.add(body.category_id)
+    else:
+        hidden.discard(body.category_id)
+    save_hidden_category_ids(db, variant.id, hidden)
+    db.commit()
     return {"ok": True}
