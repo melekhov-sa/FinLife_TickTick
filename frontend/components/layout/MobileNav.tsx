@@ -48,7 +48,16 @@ export function MobileNav() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpModal, setShowOpModal] = useState(false);
 
-  if (keyboardVisible) return null;
+  // Modals must render OUTSIDE the early return — otherwise they get
+  // unmounted when keyboard opens (focusin on input → keyboardVisible → return null)
+  const modals = (
+    <>
+      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
+      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+    </>
+  );
+
+  if (keyboardVisible) return modals;
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
@@ -92,8 +101,7 @@ export function MobileNav() {
 
   return (
     <>
-      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
-      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+      {modals}
 
       {/* Plus menu */}
       {showPlus && <>
@@ -101,13 +109,13 @@ export function MobileNav() {
         <div className="fixed z-50 left-1/2 -translate-x-1/2 flex flex-col gap-3 items-center" style={{ bottom: `calc(80px + env(safe-area-inset-bottom, 0px))` }}>
           <button
             className="w-48 py-4 rounded-2xl text-[16px] font-semibold shadow-xl touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
-            onClick={() => { setShowPlus(false); setTimeout(() => setShowTaskModal(true), 50); }}
+            onClick={() => { setShowPlus(false); setShowTaskModal(true); }}
           >
             Задача
           </button>
           <button
             className="w-48 py-4 rounded-2xl text-[16px] font-semibold shadow-xl touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
-            onClick={() => { setShowPlus(false); setTimeout(() => setShowOpModal(true), 50); }}
+            onClick={() => { setShowPlus(false); setShowOpModal(true); }}
           >
             Операция
           </button>
