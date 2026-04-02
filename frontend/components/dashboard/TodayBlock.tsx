@@ -251,53 +251,56 @@ export function TodayBlock({ today, plannedOps }: Props) {
           </div>
         </div>
 
-        {/* ЗАДАЧИ */}
-        {(activeTasks.length > 0 || doneTasks.length > 0) && (
-          <div className="mb-1.5 md:mb-3">
-            <SectionLabel label="Задачи" count={activeTasks.length + doneTasks.length} />
-            {activeTasks.map((item) => (
-              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
-            ))}
-            {showDone && doneTasks.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="opacity-50">
-                <Item item={item} onComplete={setConfirmItem} />
-              </div>
-            ))}
-            {doneTasks.length > 0 && (
-              <button
-                onClick={() => setShowDone((v: boolean) => !v)}
-                className="w-full text-center py-1 text-[11px] font-medium transition-colors hover:text-indigo-500"
-                style={{ color: "var(--t-faint)" }}
-              >
-                {showDone ? "Скрыть выполненные" : `Ещё ${doneTasks.length} выполненных`}
-              </button>
-            )}
-          </div>
-        )}
+        {/* ── Unified list: active first, then done ── */}
+        {(() => {
+          const activeItems: DashboardItem[] = [
+            ...activeTasks,
+            ...activeHabits,
+            ...(events ?? []),
+          ];
+          const doneItems: DashboardItem[] = [...doneTasks, ...doneHabits];
+          const PREVIEW_LIMIT = 5;
+          const [expanded, setExpanded] = [showDone, setShowDone];
 
-        {/* ПРИВЫЧКИ */}
-        {(activeHabits.length > 0 || doneHabits.length > 0) && (
-          <div className="mb-1.5 md:mb-3">
-            <SectionLabel label="Привычки" count={activeHabits.length + doneHabits.length} />
-            {habitItems.map((item) => (
-              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
-            ))}
-          </div>
-        )}
+          const visibleActive = activeItems;
+          const visibleDone = expanded ? doneItems : doneItems.slice(0, Math.max(0, PREVIEW_LIMIT - activeItems.length));
+          const hiddenDoneCount = expanded ? 0 : doneItems.length - visibleDone.length;
 
-        {/* СОБЫТИЯ */}
-        {(events ?? []).length > 0 && (
-          <div className="mb-1.5 md:mb-3">
-            <SectionLabel label="События" count={events.length} />
-            {events.map((item) => (
-              <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
-            ))}
-          </div>
-        )}
+          return (
+            <>
+              {visibleActive.map((item) => (
+                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+              ))}
+              {visibleDone.length > 0 && visibleDone.map((item) => (
+                <div key={`done-${item.kind}-${item.id}`} className="opacity-50">
+                  <Item item={item} onComplete={setConfirmItem} />
+                </div>
+              ))}
+              {hiddenDoneCount > 0 && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-500 touch-manipulation"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  + ещё {hiddenDoneCount} выполненных
+                </button>
+              )}
+              {expanded && doneItems.length > 0 && (
+                <button
+                  onClick={() => setExpanded(false)}
+                  className="w-full text-center py-1 text-[10px] font-medium transition-colors hover:text-indigo-500"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  Скрыть
+                </button>
+              )}
+            </>
+          );
+        })()}
 
         {/* ФИНАНСЫ */}
         {(plannedOps ?? []).length > 0 && (
-          <div className="mb-2 md:mb-3">
+          <div className="mt-1.5 md:mt-3">
             <SectionLabel label="Финансы" count={plannedOps.length} />
             {plannedOps.map((op) => (
               <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
