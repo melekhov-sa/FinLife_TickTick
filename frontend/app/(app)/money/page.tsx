@@ -281,107 +281,93 @@ export default function MoneyPage() {
         />
       )}
       <AppTopbar title="Деньги" />
-      <PageTabs tabs={[
-        { href: "/money", label: "Операции" },
-        { href: "/wallets", label: "Кошельки" },
-        { href: "/subscriptions", label: "Подписки" },
-        { href: "/categories", label: "Категории" },
-      ]} />
+      {/* Desktop tabs */}
+      <div className="hidden md:block">
+        <PageTabs tabs={[
+          { href: "/money", label: "Операции" },
+          { href: "/wallets", label: "Кошельки" },
+          { href: "/subscriptions", label: "Подписки" },
+          { href: "/categories", label: "Категории" },
+        ]} />
+      </div>
 
       <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl">
-        {/* Header actions */}
-        <div className="flex items-center gap-2 mb-3 md:mb-6">
-          <a
-            href="/wallets"
-            className="text-[11px] md:text-xs font-medium px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/75 hover:bg-white/[0.08] transition-colors"
+
+        {/* ── Mobile: type filter + add button ── */}
+        <div className="md:hidden flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-200 rounded-lg p-0.5 flex-1">
+            {[
+              { value: "", label: "Все" },
+              { value: "EXPENSE", label: "Расходы" },
+              { value: "INCOME", label: "Доходы" },
+            ].map((t) => (
+              <button
+                key={t.value}
+                onClick={() => { setOpTypeFilter(t.value); setPage(1); }}
+                className={clsx(
+                  "flex-1 py-1.5 rounded-md text-[12px] font-semibold transition-all text-center",
+                  opTypeFilter === t.value
+                    ? "bg-white shadow-sm text-slate-800"
+                    : "text-slate-500"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowOpModal(true)}
+            className="bg-indigo-600 text-white text-[12px] font-semibold rounded-lg px-3 py-2 shrink-0"
           >
+            +
+          </button>
+        </div>
+
+        {/* ── Desktop: header actions ── */}
+        <div className="hidden md:flex items-center gap-2 mb-6">
+          <a href="/wallets" className="text-xs font-medium px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
             Кошельки
           </a>
-          <a
-            href="/budget"
-            className="text-[11px] md:text-xs font-medium px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 hover:text-white/75 hover:bg-white/[0.08] transition-colors"
-          >
+          <a href="/budget" className="text-xs font-medium px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
             Бюджет
           </a>
           <button
             onClick={() => setShowOpModal(true)}
-            className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] md:text-xs font-medium rounded-lg md:rounded-xl px-3 md:px-4 py-1.5 md:py-2 transition-colors"
+            className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"
           >
             + Операция
           </button>
         </div>
 
-        {/* Mobile: collapsible filter toggle */}
-        <div className="md:hidden mb-3">
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={clsx(
-              "flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors",
-              hasFilters
-                ? "bg-indigo-500/[0.08] border-indigo-500/20 text-indigo-300"
-                : "bg-white/[0.04] border-white/[0.08] text-white/55"
-            )}
-          >
-            <SlidersHorizontal size={12} />
-            Фильтры
-            {activeFilterCount > 0 && (
-              <span className="ml-0.5 text-[9px] font-bold bg-indigo-500/20 text-indigo-300 rounded-full w-4 h-4 flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Filters — always visible on desktop, toggleable on mobile */}
-        <div className={clsx(
-          "bg-white/[0.02] border border-white/[0.05] rounded-xl md:rounded-2xl p-3 md:p-4 mb-3 md:mb-5 space-y-2 md:space-y-3",
-          "md:block",
-          filtersOpen ? "block" : "hidden md:block"
-        )}>
-          <div className="flex items-center justify-between md:justify-start">
-            <p className="text-[9px] md:text-[10px] font-semibold text-white/60 uppercase tracking-widest">Фильтры</p>
-            <button
-              onClick={() => setFiltersOpen(false)}
-              className="md:hidden w-5 h-5 flex items-center justify-center rounded-md hover:bg-white/[0.08]"
-              style={{ color: "var(--t-faint)" }}
-            >
-              <X size={12} />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-1.5 md:gap-2">
-            <div className="w-full md:w-40">
+        {/* ── Desktop: Filters ── */}
+        <div className="hidden md:block bg-white border border-slate-200 rounded-2xl p-4 mb-5 space-y-3">
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Фильтры</p>
+          <div className="flex flex-wrap gap-2">
+            <div className="w-40">
               <Select value={opTypeFilter} onChange={(v) => { setOpTypeFilter(v); setPage(1); }} options={opTypeOptions} />
             </div>
-            <div className="w-[calc(50%-3px)] md:w-44">
+            <div className="w-44">
               <Select value={walletFilter} onChange={(v) => { setWalletFilter(v); setPage(1); }} options={walletOptions} />
             </div>
-            <div className="w-[calc(50%-3px)] md:w-48">
+            <div className="w-48">
               <Select value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={categoryOptions} searchable />
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 md:gap-2">
-            <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${inputCls} w-[calc(50%-3px)] md:w-auto`} placeholder="От" />
-            <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${inputCls} w-[calc(50%-3px)] md:w-auto`} placeholder="До" />
-            <input
-              type="text" value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Поиск..."
-              className={`${inputCls} flex-1 min-w-0`}
-            />
+          <div className="flex flex-wrap gap-2">
+            <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${inputCls} w-auto`} />
+            <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${inputCls} w-auto`} />
+            <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск..." className={`${inputCls} flex-1 min-w-0`} />
             {hasFilters && (
-              <button
-                onClick={resetFilters}
-                className="text-[11px] md:text-xs font-medium text-white/60 hover:text-white/55 transition-colors px-2"
-              >
+              <button onClick={resetFilters} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors px-2">
                 Сбросить
               </button>
             )}
           </div>
         </div>
 
-        {/* Stats + loading */}
+        {/* Stats */}
         {data && (
-          <p className="text-[9px] md:text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-2 md:mb-4">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 md:mb-4">
             {data.total} операций
           </p>
         )}
@@ -409,23 +395,23 @@ export default function MoneyPage() {
 
         {data && data.items.length > 0 && (
           <>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
+            <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
               {data.items.map((tx, i) => (
                 <div
                   key={tx.transaction_id}
                   className={clsx(
-                    "flex items-center gap-2.5 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 hover:bg-white/[0.03] transition-colors group/tx",
-                    i < data.items.length - 1 && "border-b border-white/[0.04]"
+                    "flex items-center gap-2.5 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/tx",
+                    i < data.items.length - 1 && "border-b border-slate-100 dark:border-white/[0.04]"
                   )}
                 >
                   <div
-                    className={clsx("w-0.5 md:w-1 h-8 md:h-9 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-white/20")}
+                    className={clsx("w-1 h-8 md:h-9 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-slate-200")}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] md:text-sm text-white/80 font-medium truncate leading-snug">
+                    <p className="text-[13px] md:text-sm font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                       {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
                     </p>
-                    <p className="text-[10px] md:text-[11px] text-white/50 mt-0.5 truncate">
+                    <p className="text-[10px] md:text-[11px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
                       {tx.operation_type === "TRANSFER"
                         ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
                         : walletMap[tx.wallet_id ?? 0] ?? ""}
@@ -435,7 +421,8 @@ export default function MoneyPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setEditTx(tx)}
-                      className="opacity-0 group-hover/tx:opacity-100 w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all"
+                      className="md:opacity-0 md:group-hover/tx:opacity-100 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
+                      style={{ color: "var(--t-faint)" }}
                       title="Редактировать"
                     >
                       <Pencil size={12} />
@@ -444,7 +431,7 @@ export default function MoneyPage() {
                       <p className={clsx("text-[13px] md:text-sm font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
                         {formatAmount(tx.amount, tx.operation_type, tx.currency)}
                       </p>
-                      <p className="text-[9px] md:text-[11px] text-white/45 mt-0.5 tabular-nums">
+                      <p className="text-[9px] md:text-[11px] mt-0.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
                         {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
                       </p>
                     </div>
