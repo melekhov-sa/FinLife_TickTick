@@ -390,10 +390,19 @@ def list_transactions(
         else:
             q = q.filter(TransactionFeed.category_id == category_id)
     if date_from:
-        q = q.filter(TransactionFeed.occurred_at >= date_from)
+        from datetime import datetime as _dt
+        try:
+            df = _dt.fromisoformat(date_from)
+        except ValueError:
+            df = _dt.strptime(date_from, "%Y-%m-%d")
+        q = q.filter(TransactionFeed.occurred_at >= df)
     if date_to:
-        # Support both inclusive (YYYY-MM-DD) and exclusive (budget periods) date ranges
-        q = q.filter(TransactionFeed.occurred_at < f"{date_to}T23:59:59")
+        from datetime import datetime as _dt
+        try:
+            dt_end = _dt.fromisoformat(date_to)
+        except ValueError:
+            dt_end = _dt.strptime(date_to, "%Y-%m-%d")
+        q = q.filter(TransactionFeed.occurred_at < dt_end)
     if search and search.strip():
         q = q.filter(TransactionFeed.description.ilike(f"%{search.strip()}%"))
 
