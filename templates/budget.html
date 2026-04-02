@@ -69,6 +69,10 @@
 /* Child category: dimmer */
 .bgt-child-indent + span, td.sticky-col > .bgt-child-indent ~ * { color: #94A3B8; }
 
+/* ── Fact cells: clickable ── */
+td.bgt-fact-cell { cursor: pointer; transition: background 0.1s; }
+td.bgt-fact-cell:hover { background: #EFF6FF !important; }
+
 /* ── Zero values very muted ── */
 .zero-val { color: #CBD5E1; }
 
@@ -607,7 +611,7 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
           {% set _p = view.periods[loop.index0] %}
           {% if show_plan %}
           {% if _p.is_past %}
-          <td class="text-right compact-cell period-border">{{ fmt_or_dash(cell.fact) }}</td>
+          <td class="text-right compact-cell period-border bgt-fact-cell" data-cat="{{ row.category_id }}" data-start="{{ _p.range_start }}" data-end="{{ _p.range_end }}" data-kind="{{ row.kind }}" style="cursor:pointer;">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% elif _p.is_future %}
           <td class="text-right compact-cell muted period-border" data-val="{{ cell.plan }}">{{ plan_cell(cell,
@@ -619,7 +623,7 @@ tr[data-cat-id] .sticky-col, tr[data-goal-id] .sticky-col { cursor: grab; user-s
             link_url=("/budget/plan/edit?category_id=" ~ row.category_id ~ "&year=" ~ _p.year ~ "&month=" ~ _p.month ~ "&variant_id=" ~ variant.id ~ "&kind=" ~ row.kind ~ "&grain=" ~ grain ~ "&range_count=" ~ range_count ~ "&anchor_year=" ~ anchor_year ~ "&anchor_month=" ~ anchor_month)
             if (grain == "month") else None
           ) }}</td>
-          <td class="text-right compact-cell">{{ fmt_or_dash(cell.fact) }}</td>
+          <td class="text-right compact-cell bgt-fact-cell" data-cat="{{ row.category_id }}" data-start="{{ _p.range_start }}" data-end="{{ _p.range_end }}" data-kind="{{ row.kind }}" style="cursor:pointer;">{{ fmt_or_dash(cell.fact) }}</td>
           <td class="text-right compact-cell muted bgt-col-remain">{{ fmt_or_dash(cell.plan - cell.fact) }}</td>
           <td class="text-right compact-cell {% if cell.deviation > 0 %}positive{% elif cell.deviation < 0 %}negative{% endif %}">{{ fmtd_or_dash(cell.deviation) }}</td>
           {% endif %}
@@ -1054,13 +1058,11 @@ function toggleAllVisibility(checked) {
 
       tree.forEach(function(r) { tbody.insertBefore(r, ref || null); });
 
-      // Save new order for this group
+      // Save new order — collect ALL rows in this section in DOM order
       var items = [];
       var idx = 0;
       tbody.querySelectorAll('tr[data-cat-id][data-section="' + dragSrc.dataset.section + '"]').forEach(function(r) {
-        if ((r.dataset.parId || '') === (dragSrc.dataset.parId || '')) {
-          items.push({ category_id: parseInt(r.dataset.catId), sort_order: idx++ });
-        }
+        items.push({ category_id: parseInt(r.dataset.catId), sort_order: idx++ });
       });
       fetch('/api/v1/categories/reorder', {
         method: 'POST',
@@ -1240,6 +1242,87 @@ function toggleAllVisibility(checked) {
     for (var i = 0; i < rows.length; i++) {
       if (i % 2 === 1) rows[i].classList.add('bgt-row-alt');
     }
+  });
+})();
+
+// ── Fact cell drill-down modal ──────────────────────────────────────────
+(function initDrillDown() {
+  // Create modal HTML
+  var modal = document.createElement('div');
+  modal.id = 'bgt-drill-modal';
+  modal.style.cssText = 'display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.4);';
+  modal.innerHTML = '<div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:16px; border:1px solid #CBD5E1; box-shadow:0 20px 60px rgba(0,0,0,0.15); width:90%; max-width:520px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;">'
+    + '<div id="bgt-drill-header" style="padding:16px 20px; border-bottom:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">'
+    + '<div><div id="bgt-drill-title" style="font-size:15px; font-weight:700; color:#0F172A;"></div>'
+    + '<div id="bgt-drill-subtitle" style="font-size:12px; color:#64748B; margin-top:2px;"></div></div>'
+    + '<button id="bgt-drill-close" style="width:32px; height:32px; border-radius:8px; border:1px solid #E2E8F0; background:#F8FAFC; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; color:#64748B;">✕</button>'
+    + '</div>'
+    + '<div id="bgt-drill-body" style="flex:1; overflow-y:auto; padding:12px 20px;"></div>'
+    + '<div id="bgt-drill-footer" style="padding:12px 20px; border-top:1px solid #E2E8F0; font-size:13px; font-weight:600; color:#0F172A; text-align:right;"></div>'
+    + '</div>';
+  document.body.appendChild(modal);
+
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+  document.getElementById('bgt-drill-close').addEventListener('click', function() { modal.style.display = 'none'; });
+
+  function formatAmount(n) { return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function formatDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  document.querySelectorAll('td.bgt-fact-cell').forEach(function(td) {
+    td.addEventListener('click', function() {
+      var cat = td.dataset.cat;
+      var start = td.dataset.start;
+      var end = td.dataset.end;
+      var kind = td.dataset.kind || 'EXPENSE';
+      var opType = (kind === 'INCOME' || kind === 'income') ? 'INCOME' : 'EXPENSE';
+
+      // Get category name from sticky-col
+      var tr = td.closest('tr');
+      var stickyCol = tr ? tr.querySelector('.sticky-col') : null;
+      var catName = stickyCol ? stickyCol.textContent.trim().replace(/^[⠿└\s]+/, '') : 'Категория';
+
+      document.getElementById('bgt-drill-title').textContent = catName;
+      document.getElementById('bgt-drill-subtitle').textContent = start + ' — ' + end;
+      document.getElementById('bgt-drill-body').innerHTML = '<div style="text-align:center; padding:20px; color:#94A3B8;">Загрузка...</div>';
+      document.getElementById('bgt-drill-footer').textContent = '';
+      modal.style.display = 'block';
+
+      fetch('/api/v1/budget/drill?category_id=' + cat + '&start=' + start + '&end=' + end + '&op_type=' + opType, { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var body = document.getElementById('bgt-drill-body');
+          if (!data.operations || data.operations.length === 0) {
+            body.innerHTML = '<div style="text-align:center; padding:30px; color:#94A3B8;">Нет операций за этот период</div>';
+            return;
+          }
+          var html = '';
+          data.operations.forEach(function(op) {
+            var isIncome = opType === 'INCOME';
+            var color = isIncome ? '#16A34A' : '#DC2626';
+            var sign = isIncome ? '+' : '−';
+            html += '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #F1F5F9;">'
+              + '<div style="flex:1; min-width:0;">'
+              + '<div style="font-size:13px; font-weight:500; color:#1E293B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (op.description || '—') + '</div>'
+              + '<div style="font-size:11px; color:#94A3B8; margin-top:1px;">' + formatDate(op.occurred_at) + '</div>'
+              + '</div>'
+              + '<div style="font-size:14px; font-weight:600; color:' + color + '; white-space:nowrap; margin-left:12px;">' + sign + formatAmount(op.amount) + ' ₽</div>'
+              + '</div>';
+          });
+          body.innerHTML = html;
+          document.getElementById('bgt-drill-footer').textContent = 'Итого: ' + (opType === 'INCOME' ? '+' : '−') + formatAmount(data.total) + ' ₽ (' + data.count + ' операций)';
+        })
+        .catch(function() {
+          document.getElementById('bgt-drill-body').innerHTML = '<div style="text-align:center; padding:30px; color:#EF4444;">Ошибка загрузки</div>';
+        });
+    });
+
+    // Visual hover effect on fact cells
+    td.addEventListener('mouseenter', function() { td.style.background = '#EFF6FF'; });
+    td.addEventListener('mouseleave', function() { td.style.background = ''; });
   });
 })();
 </script>

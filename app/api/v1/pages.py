@@ -7876,6 +7876,66 @@ def save_category_visibility(
     return RedirectResponse(f"/budget?{qs}", status_code=302)
 
 
+# ── Budget fact drill-down (JSON) ─────────────────────────────────────────
+@router.get("/api/v1/budget/drill")
+def budget_drill(
+    request: Request,
+    category_id: int = 0,
+    start: str = "",
+    end: str = "",
+    op_type: str = "EXPENSE",
+    db: Session = Depends(get_db),
+):
+    """Return transactions for a category in a date range (budget fact drill-down)."""
+    if not require_user(request):
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    user_id = request.session["user_id"]
+
+    from datetime import datetime as dt
+    try:
+        d_start = dt.fromisoformat(start)
+        d_end = dt.fromisoformat(end)
+    except (ValueError, TypeError):
+        return JSONResponse({"operations": [], "total": 0})
+
+    q = db.query(TransactionFeed).filter(
+        TransactionFeed.account_id == user_id,
+        TransactionFeed.occurred_at >= d_start,
+        TransactionFeed.occurred_at < d_end,
+    )
+
+    if category_id:
+        # Include child categories
+        cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
+        if cat and cat.parent_id is None:
+            child_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(
+                CategoryInfo.parent_id == category_id
+            ).all()]
+            q = q.filter(TransactionFeed.category_id.in_([category_id] + child_ids))
+        else:
+            q = q.filter(TransactionFeed.category_id == category_id)
+
+    q = q.filter(TransactionFeed.operation_type == op_type)
+    rows = q.order_by(TransactionFeed.occurred_at.desc()).limit(50).all()
+
+    operations = []
+    for r in rows:
+        operations.append({
+            "id": r.transaction_id,
+            "description": r.description,
+            "amount": float(r.amount),
+            "currency": r.currency,
+            "occurred_at": r.occurred_at.isoformat() if r.occurred_at else "",
+            "category_id": r.category_id,
+        })
+
+    return JSONResponse({
+        "operations": operations,
+        "total": sum(o["amount"] for o in operations),
+        "count": len(operations),
+    })
+
+
 @router.get("/budget/plan/edit", response_class=HTMLResponse)
 def budget_plan_edit_page(
     request: Request,
