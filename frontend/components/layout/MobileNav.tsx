@@ -139,19 +139,20 @@ export function MobileNav() {
 
       {/* Bottom nav bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-30"
         style={{
           background: isDark ? "rgba(10,13,28,0.97)" : "rgba(255,255,255,0.98)",
           borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#E2E8F0"}`,
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
         }}
       >
         <div className="flex items-end h-[56px] relative">
-          {/* Left tabs */}
           {LEFT_TABS.map(t => <TabLink key={t.href} {...t} />)}
 
-          {/* Center + button */}
           <div className="flex-1 flex items-end justify-center pb-1">
             <button
               onClick={() => { setShowPlus(v => !v); setShowMore(false); }}
@@ -168,12 +169,8 @@ export function MobileNav() {
             </button>
           </div>
 
-          {/* Right tabs */}
           {RIGHT_TABS.map(t => <TabLink key={t.href} {...t} />)}
         </div>
-
-        {/* Safe area spacer */}
-        <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
       </nav>
     </>
   );
