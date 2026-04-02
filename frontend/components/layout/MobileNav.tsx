@@ -139,6 +139,7 @@ export function MobileNav() {
 
       {/* Bottom nav bar */}
       <nav
+        id="mobile-nav"
         className="fixed bottom-0 left-0 right-0 z-30"
         style={{
           background: isDark ? "rgba(10,13,28,0.97)" : "rgba(255,255,255,0.98)",

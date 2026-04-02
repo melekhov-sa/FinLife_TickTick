@@ -521,6 +521,9 @@ html.dark[data-color-theme="emerald"] {
   .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
 
+  /* ── Hide mobile nav when modal overlay is present ────────────────────── */
+  body:has(.modal-overlay) #mobile-nav { display: none; }
+
   /* ── Focus ring ────────────────────────────────────────────────────────── */
   *:focus-visible {
     outline: 2px solid rgba(99,102,241,0.6);
