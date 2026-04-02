@@ -275,16 +275,16 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
 // ── Cell rendering ────────────────────────────────────────────────────────────
 
 // Non-editable plan <td> (used in totals, goal rows, result row)
-function PlanTd({ cell, isMuted }: { cell: BudgetCell; isMuted?: boolean }) {
+function PlanTd({ cell, isMuted, extraStyle }: { cell: BudgetCell; isMuted?: boolean; extraStyle?: React.CSSProperties }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
   if (!hasPlan && !hasFact) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>;
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", ...extraStyle }}>—</td>;
   }
   return (
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px]"
-      style={{ color: isMuted ? "var(--t-faint)" : "var(--t-secondary)" }}
+      style={{ color: isMuted ? "#64748B" : "#475569", ...extraStyle }}
     >
       {hasPlan ? fmt(cell.plan) : "—"}
     </td>
@@ -428,8 +428,8 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
   );
 }
 
-const subHdrCls = "text-[10px] font-semibold px-2 py-1 text-right bg-slate-100 dark:bg-[#0c1122]";
-const subHdrStyle: React.CSSProperties = { color: "var(--t-muted)", border: "1px solid #94A3B8" };
+const subHdrCls = "text-[10px] font-bold px-2 py-1 text-right bg-slate-200 dark:bg-[#0c1122]";
+const subHdrStyle: React.CSSProperties = { color: "#334155", border: "1px solid #94A3B8" };
 
 function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
   return (
@@ -666,7 +666,7 @@ function CategoryDataRow({
           </React.Fragment>
         );
       })}
-      <PlanTd cell={row.total} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid #64748B" }} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -706,13 +706,16 @@ function GoalDataRow({
   }
 
   return (
-    <tr className="border-t border-white/[0.04] hover:bg-white/[0.015] transition-colors">
+    <tr className="transition-colors">
       <td
-        className="text-[12px] py-1.5 px-3 sticky left-0 z-10 max-w-[180px] truncate font-normal"
-        style={{ color: "var(--t-secondary)", background: "var(--app-sidebar-bg)" }}
+        className="text-[12px] py-1.5 px-3 sticky left-0 z-10 max-w-[200px] truncate font-normal"
+        style={{ color: "#475569", background: "#FAFBFD", borderRight: "2px solid #64748B" }}
         title={row.title}
       >
-        {row.title}
+        <span className="inline-flex items-center gap-1">
+          <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
+          {row.title}
+        </span>
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
         const p = periods?.[i];
@@ -727,9 +730,11 @@ function GoalDataRow({
           </span>
         );
 
+        const pBorder = { borderLeft: "2px solid #94A3B8" } as React.CSSProperties;
+
         if (pk === "past") return (
           <React.Fragment key={i}>
-            <FactCell cell={cell} kind={kind} />
+            <FactCell cell={cell} kind={kind} extraStyle={pBorder} />
             <DeviationCell cell={cell} kind={kind} />
           </React.Fragment>
         );
@@ -737,9 +742,9 @@ function GoalDataRow({
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>{planSpan}</td>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#475569", ...pBorder }}>{planSpan}</td>
               <FactCell cell={cell} kind={kind} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "#475569" : "#DC2626" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -747,12 +752,12 @@ function GoalDataRow({
         }
         // future
         return (
-          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>
+          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#475569", ...pBorder }}>
             {planSpan}
           </td>
         );
       })}
-      <PlanTd cell={row.total} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid #64748B" }} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -1033,8 +1038,8 @@ export default function BudgetMatrixPage() {
           </div>
         </div>
 
-        {/* Table area */}
-        <div className="flex-1 overflow-auto">
+        {/* Table area — scroll container for sticky headers */}
+        <div className="overflow-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
           {isPending && (
             <div className="p-6 space-y-2">
               {[...Array(6)].map((_, i) => (
