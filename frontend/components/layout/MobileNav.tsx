@@ -97,20 +97,20 @@ export function MobileNav() {
 
       {/* Plus menu overlay */}
       {showPlus && (
-        <div className="fixed inset-0 z-[28] bg-black/30" onClick={() => setShowPlus(false)}>
+        <div className="fixed inset-0 z-[35] bg-black/30" onClick={() => setShowPlus(false)}>
           <div
-            className="absolute bottom-[calc(60px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center"
+            className="absolute bottom-[calc(70px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center"
             onClick={e => e.stopPropagation()}
           >
             <button
-              onClick={() => { setShowPlus(false); setShowTaskModal(true); }}
-              className="px-5 py-3 rounded-2xl text-[14px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700"
+              onPointerDown={() => { setShowPlus(false); setShowTaskModal(true); }}
+              className="px-6 py-3.5 rounded-2xl text-[15px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
             >
               Задача
             </button>
             <button
-              onClick={() => { setShowPlus(false); setShowOpModal(true); }}
-              className="px-5 py-3 rounded-2xl text-[14px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700"
+              onPointerDown={() => { setShowPlus(false); setShowOpModal(true); }}
+              className="px-6 py-3.5 rounded-2xl text-[15px] font-semibold shadow-lg touch-manipulation bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform"
             >
               Операция
             </button>
@@ -120,9 +120,9 @@ export function MobileNav() {
 
       {/* More menu overlay */}
       {showMore && (
-        <div className="fixed inset-0 z-[28]" onClick={() => setShowMore(false)}>
+        <div className="fixed inset-0 z-[35]" onClick={() => setShowMore(false)}>
           <div
-            className="absolute bottom-[calc(60px+env(safe-area-inset-bottom))] right-3 rounded-2xl border shadow-xl overflow-hidden bg-white dark:bg-[#161d2b] border-slate-200 dark:border-white/[0.08]"
+            className="absolute bottom-[calc(70px+env(safe-area-inset-bottom))] right-3 rounded-2xl border shadow-xl overflow-hidden bg-white dark:bg-[#161d2b] border-slate-200 dark:border-white/[0.08]"
             style={{ minWidth: 180 }}
             onClick={e => e.stopPropagation()}
           >
