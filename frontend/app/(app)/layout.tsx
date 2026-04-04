@@ -43,12 +43,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <AppSidebar />
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto md:pb-0">
-          {/* Bottom padding = nav height (52px) + safe area (inside nav) */}
-          <div className="flex-1 flex flex-col md:pb-0 pb-[calc(56px+env(safe-area-inset-bottom))]">
-            {children}
-          </div>
+        {/* Main content — single scroll container */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto md:pb-0 pb-[calc(56px+env(safe-area-inset-bottom))]">
+          {children}
         </div>
       </div>
 
