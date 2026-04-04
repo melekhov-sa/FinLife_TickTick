@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, CalendarDays, Play } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, SkipForward, Play } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
@@ -31,70 +30,82 @@ function Item({
 }) {
   const { title, category_emoji: emoji, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const canComplete = isCompletable(kind) && !isDone;
+  const reminders = (item.meta?.reminders as string[]) ?? [];
+  const timeStr = time ? String(time).slice(0, 5) : null; // HH:MM without seconds
+
+  const kindLabel = kind === "event" ? "Событие" : kind === "habit" ? "Привычка" : "Задача";
 
   return (
     <div
       className={clsx(
-        "flex items-center gap-2.5 py-2 md:py-2.5 border-b border-white/[0.05] last:border-0",
+        "flex items-start gap-2 py-1.5 md:py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0",
         isDone && "opacity-40"
       )}
     >
-      {kind === "event" ? (
-        <div className="w-8 h-8 flex items-center justify-center shrink-0">
-          <span className="text-[15px]">📅</span>
-        </div>
-      ) : canComplete ? (
-        <button
-          onClick={() => onComplete(item)}
-          className="w-8 h-8 flex items-center justify-center shrink-0 touch-manipulation"
-        >
-          <span className={clsx(
-            "w-[18px] h-[18px] rounded-full border-[1.5px] block transition-all",
-            isOverdue
-              ? "border-red-400/70"
-              : "border-white/30"
-          )} />
-        </button>
-      ) : (
-        <div className="w-8 h-8 flex items-center justify-center shrink-0">
-          <span className={clsx(
-            "w-[18px] h-[18px] rounded-full border-[1.5px] block",
-            isDone ? "bg-indigo-500/50 border-indigo-500/50" : "border-white/20"
-          )} />
-        </div>
-      )}
-
-      <div className="flex-1 min-w-0">
-        <span
-          className={clsx("text-[13px] md:text-[14px] font-[500] leading-snug block truncate", isDone ? "line-through" : "")}
-          style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
-          title={title}
-        >
-          {emoji && <span className="mr-1">{emoji}</span>}
-          {title}
-        </span>
-        {time && (
-          <span className="ml-1.5 text-[11px] md:text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
-            {time}
-          </span>
+      {/* Status icon */}
+      <div className="mt-0.5 shrink-0">
+        {kind === "event" ? (
+          <div className="w-7 h-7 flex items-center justify-center">
+            <span className="text-[14px]">📅</span>
+          </div>
+        ) : canComplete ? (
+          <button
+            onClick={() => onComplete(item)}
+            className="w-7 h-7 flex items-center justify-center touch-manipulation"
+          >
+            <span className={clsx(
+              "w-[16px] h-[16px] rounded-full border-[1.5px] block transition-all",
+              kind === "habit" ? "border-violet-400 rounded-[4px]" : isOverdue ? "border-red-400" : "border-slate-300 dark:border-white/30"
+            )} />
+          </button>
+        ) : (
+          <div className="w-7 h-7 flex items-center justify-center">
+            <span className={clsx(
+              "w-[16px] h-[16px] rounded-full border-[1.5px] block",
+              isDone ? "bg-emerald-500/60 border-emerald-500/60" : "border-slate-200"
+            )}>
+              {isDone && <span className="text-white text-[9px] flex items-center justify-center h-full">✓</span>}
+            </span>
+          </div>
         )}
       </div>
 
-      {isOverdue && !isDone && (
-        <span className="text-[9px] md:text-[10px] font-medium text-red-400 bg-red-500/[0.12] px-1.5 py-0.5 rounded-md shrink-0">
-          просрочено
-        </span>
-      )}
-      {!isDone && (
-        <Link
-          href="/plan"
-          className="w-9 h-9 flex items-center justify-center rounded-lg transition-all hover:bg-white/[0.06] active:bg-white/[0.1] shrink-0 touch-manipulation"
-          style={{ color: "var(--t-faint)" }}
-          title="Открыть в плане"
-        >
-          <CalendarDays size={14} />
-        </Link>
-      )}
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {/* Line 1: emoji + title + time */}
+        <div className="flex items-baseline gap-1">
+          <span
+            className={clsx("text-[13px] font-medium leading-snug truncate flex-1", isDone ? "line-through" : "")}
+            style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
+            title={title}
+          >
+            {emoji && <span className="mr-1">{emoji}</span>}
+            {title}
+          </span>
+          {timeStr && (
+            <span className="text-[11px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
+              {timeStr}
+            </span>
+          )}
+        </div>
+
+        {/* Line 2: kind badge + reminders */}
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] font-medium" style={{ color: "var(--t-faint)" }}>
+            {kindLabel}
+          </span>
+          {isOverdue && !isDone && (
+            <span className="text-[9px] font-semibold text-red-500 bg-red-50 dark:bg-red-500/10 px-1 py-px rounded">
+              просрочено
+            </span>
+          )}
+          {reminders.length > 0 && !isDone && (
+            <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+              🔔 {reminders.join(", ")}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

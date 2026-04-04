@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
-    TaskModel, TaskTemplateModel, TaskOccurrence,
+    TaskModel, TaskTemplateModel, TaskOccurrence, TaskReminderModel,
     HabitModel, HabitOccurrence,
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
@@ -151,15 +151,33 @@ class DashboardService:
 
     def _task_item(self, t: TaskModel, today: date, wc_map: dict,
                    is_overdue: bool = False, is_done: bool = False) -> dict:
+        # Build time string (HH:MM, no seconds)
+        task_time = None
+        if hasattr(t, 'due_time') and t.due_time:
+            task_time = t.due_time.strftime("%H:%M") if hasattr(t.due_time, 'strftime') else str(t.due_time)[:5]
+
+        # Get reminder times
+        reminder_times = []
+        if hasattr(t, 'due_time') and t.due_time and t.due_date:
+            from datetime import datetime, timedelta
+            reminders = self.db.query(TaskReminderModel).filter(
+                TaskReminderModel.task_id == t.task_id
+            ).order_by(TaskReminderModel.offset_minutes.desc()).all()
+            base_dt = datetime.combine(t.due_date, t.due_time)
+            for r in reminders:
+                rt = base_dt + timedelta(minutes=r.offset_minutes)
+                reminder_times.append(rt.strftime("%H:%M"))
+
         return {
             "kind": "task",
             "id": t.task_id,
             "title": t.title,
             "date": t.due_date or today,
+            "time": task_time,
             "is_done": is_done or t.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, t.category_id),
-            "meta": {"task_id": t.task_id},
+            "meta": {"task_id": t.task_id, "reminders": reminder_times},
         }
 
     # --- Task occurrences ---
@@ -319,19 +337,19 @@ class DashboardService:
                 ).first()
             ev = ev_cache[occ.event_id]
             if ev and ev.is_active:
+                event_time = occ.start_time.strftime("%H:%M") if occ.start_time else None
                 active.append({
                     "kind": "event",
                     "id": occ.id,
                     "title": ev.title,
                     "date": occ.start_date,
-                    "time": occ.start_time,
+                    "time": event_time,
                     "is_done": False,
                     "is_overdue": False,
                     "category_emoji": self._wc_emoji(wc_map, ev.category_id),
                     "meta": {
                         "occurrence_id": occ.id,
                         "event_id": occ.event_id,
-                        "start_time": occ.start_time,
                     },
                 })
 
