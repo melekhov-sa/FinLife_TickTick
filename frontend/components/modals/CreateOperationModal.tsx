@@ -52,7 +52,7 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
 export function CreateOperationModal({ onClose, initialValues, occurrenceId }: Props) {
   const qc = useQueryClient();
 
-  const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? null);
+  const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? "EXPENSE");
   const [amount, setAmount] = useState(initialValues?.amount ?? "");
   const [walletId, setWalletId] = useState<number | "">(initialValues?.walletId ?? "");
   const [fromWalletId, setFromWalletId] = useState<number | "">(initialValues?.fromWalletId ?? "");
