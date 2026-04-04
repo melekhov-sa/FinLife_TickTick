@@ -592,8 +592,8 @@ function CategoryDataRow({
   const isTopLevel = row.is_group || row.parent_id === null;
   const indent = row.depth > 0 ? "pl-8" : "pl-3";
   const { dragHandlers } = editing;
-  const canDrag = !!row.category_id && !row.is_group;
-  const canReceiveDrop = !!row.category_id; // groups can receive drops
+  const canDrag = !!row.category_id; // groups AND children can be dragged
+  const canReceiveDrop = !!row.category_id;
   const isDropTarget = dragHandlers.dragOverId === row.category_id;
 
   return (
@@ -866,10 +866,8 @@ export default function BudgetMatrixPage() {
 
   const onDragOver = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
     if (!dragSrc.current) return;
-    // Allow reorder within same parent group, or between top-level items
-    const sameGroup = dragSrc.current.parentId === parentId;
-    const bothTopLevel = dragSrc.current.parentId === null && parentId === null;
-    if (!sameGroup && !bothTopLevel) return;
+    // Allow reorder within same parent group
+    if (dragSrc.current.parentId !== parentId) return;
     if (dragSrc.current.catId === catId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -890,9 +888,9 @@ export default function BudgetMatrixPage() {
     const parentId = dragSrc.current.parentId;
     dragSrc.current = null;
 
-    // Get siblings (same parent)
+    // Get siblings: top-level items (parent_id=null) or children of same parent
     const siblings = rows.filter((r) =>
-      r.category_id && !r.is_group && r.parent_id === parentId
+      r.category_id && r.parent_id === parentId
     );
     const ids = siblings.map((r) => r.category_id!);
     const srcIdx = ids.indexOf(srcId);
