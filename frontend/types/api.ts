@@ -467,6 +467,8 @@ export interface BudgetMatrix {
   expense_rows: BudgetRow[];
   income_totals: BudgetSectionTotals;
   expense_totals: BudgetSectionTotals;
+  other_income?: { cells: BudgetCell[]; total: BudgetCell };
+  other_expense?: { cells: BudgetCell[]; total: BudgetCell };
   result: { cells: { plan: number; fact: number }[]; total: { plan: number; fact: number } };
   goal_rows: BudgetGoalRow[];
   goal_totals: BudgetSectionTotals;
