@@ -1167,13 +1167,13 @@ export default function BudgetMatrixPage() {
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
-                  {/* Прочие доходы — hidden/uncategorized income */}
-                  {incomeOpen && data.other_income && (data.other_income.total.fact !== 0 || data.other_income.total.plan !== 0) && (
+                  {/* Прочие доходы — always visible */}
+                  {incomeOpen && (
                     <tr>
                       <td className="text-[12px] py-1.5 pl-3 italic" style={{ color: "var(--t-faint)", background: "#FAFBFD", borderRight: "2px solid #64748B" }}>
                         Прочие доходы
                       </td>
-                      {data.other_income.cells.slice(0, rangeCount).map((cell, i) => {
+                      {(data.other_income?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
                         const pk = getPeriodKind(periods[i]);
                         if (pk === "past") return (
                           <React.Fragment key={i}>
@@ -1191,7 +1191,7 @@ export default function BudgetMatrixPage() {
                         return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
                       })}
                       <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid #64748B" }}>—</td>
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_income.total.fact ? "#1E293B" : "#D1D5DB" }}>{data.other_income.total.fact ? fmt(data.other_income.total.fact) : "—"}</td>
+                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_income?.total?.fact ? "#1E293B" : "#D1D5DB" }}>{data.other_income?.total?.fact ? fmt(data.other_income.total.fact) : "—"}</td>
                     </tr>
                   )}
                   <TotalsRow
@@ -1251,12 +1251,12 @@ export default function BudgetMatrixPage() {
                     />
                   ))}
                   {/* Прочие расходы — hidden/uncategorized expenses */}
-                  {expenseOpen && data.other_expense && (data.other_expense.total.fact !== 0 || data.other_expense.total.plan !== 0) && (
+                  {expenseOpen && (
                     <tr>
                       <td className="text-[12px] py-1.5 pl-3 italic" style={{ color: "var(--t-faint)", background: "#FAFBFD", borderRight: "2px solid #64748B" }}>
                         Прочие расходы
                       </td>
-                      {data.other_expense.cells.slice(0, rangeCount).map((cell, i) => {
+                      {(data.other_expense?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
                         const pk = getPeriodKind(periods[i]);
                         if (pk === "past") return (
                           <React.Fragment key={i}>
@@ -1274,7 +1274,7 @@ export default function BudgetMatrixPage() {
                         return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
                       })}
                       <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid #64748B" }}>—</td>
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_expense.total.fact ? "#DC2626" : "#D1D5DB" }}>{data.other_expense.total.fact ? fmt(data.other_expense.total.fact) : "—"}</td>
+                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_expense?.total?.fact ? "#DC2626" : "#D1D5DB" }}>{data.other_expense?.total?.fact ? fmt(data.other_expense.total.fact) : "—"}</td>
                     </tr>
                   )}
                   <TotalsRow
