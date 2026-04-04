@@ -26,7 +26,6 @@ const RIGHT_TABS = [
 
 const MORE_ITEMS = [
   { href: "/budget",      label: "Бюджет" },
-  { href: "/analytics",   label: "Аналитика" },
   { href: "/projects",    label: "Проекты" },
   { href: "/habits",      label: "Привычки" },
   { href: "/events",      label: "События" },

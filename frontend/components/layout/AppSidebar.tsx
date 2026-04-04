@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Wallet,
   PieChart,
-  BarChart3,
   FolderKanban,
   Heart,
 } from "lucide-react";
@@ -19,7 +18,6 @@ const NAV_ITEMS = [
   { href: "/plan",       label: "План",        icon: ClipboardList },
   { href: "/money",      label: "Деньги",      icon: Wallet },
   { href: "/budget",     label: "Бюджет",      icon: PieChart },
-  { href: "/analytics",  label: "Аналитика",   icon: BarChart3 },
   { href: "/projects",   label: "Проекты",     icon: FolderKanban },
   { href: "/habits",     label: "Привычки",    icon: Heart },
 ];
