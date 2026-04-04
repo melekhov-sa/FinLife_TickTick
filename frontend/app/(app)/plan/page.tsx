@@ -7,6 +7,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { clsx } from "clsx";
 import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar, FolderKanban } from "lucide-react";
@@ -104,6 +105,9 @@ function RescheduleModal({
   const [error, setError] = useState<string | null>(null);
   const qc = useQueryClient();
 
+  const inputCls = "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
+  const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/50";
+
   async function save() {
     if (!date) { setError("Укажите дату"); return; }
     setSaving(true);
@@ -123,64 +127,15 @@ function RescheduleModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-[#131b2e] border border-white/[0.10] rounded-2xl shadow-2xl p-5 w-[320px]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
-            Перенести задачу
-          </h3>
+    <BottomSheet
+      open
+      onClose={onClose}
+      title="Перенести задачу"
+      footer={
+        <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="text-[18px] leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors"
-            style={{ color: "var(--t-muted)" }}
-          >
-            ×
-          </button>
-        </div>
-
-        <p className="text-[12px] mb-4 truncate" style={{ color: "var(--t-muted)" }}>
-          {entry.title}
-        </p>
-
-        <div className="space-y-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Дата
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-[13px] font-medium border border-white/[0.10] bg-white/[0.04] focus:outline-none focus:border-indigo-500/60 transition-colors"
-              style={{ color: "var(--t-primary)" }}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Время (необязательно)
-            </label>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-[13px] font-medium border border-white/[0.10] bg-white/[0.04] focus:outline-none focus:border-indigo-500/60 transition-colors"
-              style={{ color: "var(--t-primary)" }}
-            />
-          </div>
-        </div>
-
-        {error && (
-          <p className="mt-3 text-[12px] text-red-400">{error}</p>
-        )}
-
-        <div className="flex gap-2 mt-5">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl py-2 text-[13px] font-semibold border border-white/[0.08] hover:bg-white/[0.04] transition-colors"
+            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
             style={{ color: "var(--t-secondary)" }}
           >
             Отмена
@@ -188,13 +143,42 @@ function RescheduleModal({
           <button
             onClick={save}
             disabled={saving || !date}
-            className="flex-1 rounded-xl py-2 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
           >
             {saving ? "..." : "Сохранить"}
           </button>
         </div>
+      }
+    >
+      <p className="text-[13px] font-medium mb-3 truncate" style={{ color: "var(--t-primary)" }}>
+        {entry.title}
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <label className={labelCls}>Дата</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Время (необязательно)</label>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className={inputCls}
+          />
+        </div>
       </div>
-    </div>
+
+      {error && (
+        <p className="mt-3 text-[12px] text-red-500 font-medium">{error}</p>
+      )}
+    </BottomSheet>
   );
 }
 
