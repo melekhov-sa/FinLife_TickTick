@@ -42,7 +42,7 @@ export function WeekEventsCard({ events }: Props) {
               />
               <div className="flex-1 min-w-0">
                 <p
-                  className="t-main truncate leading-snug"
+                  className="t-main leading-snug"
                   style={{ color: ev.is_today ? "var(--t-primary)" : "var(--t-secondary)" }}
                 >
                   {ev.category_emoji && <span className="mr-1">{ev.category_emoji}</span>}
