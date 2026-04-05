@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
-import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 
 interface Props {
@@ -191,6 +191,10 @@ export function TodayBlock({ today, plannedOps }: Props) {
           initialValues={{
             opType: executeOp.kind as "INCOME" | "EXPENSE" | "TRANSFER" | undefined,
             amount: String(executeOp.amount),
+            walletId: executeOp.wallet_id ?? undefined,
+            fromWalletId: executeOp.wallet_id ?? undefined,
+            toWalletId: executeOp.destination_wallet_id ?? undefined,
+            categoryId: executeOp.category_id ?? undefined,
           }}
           onClose={() => setExecuteOp(null)}
         />

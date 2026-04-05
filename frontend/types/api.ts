@@ -49,6 +49,9 @@ export interface UpcomingPayment {
   amount: number;
   amount_formatted: string;
   days_until: number;
+  wallet_id: number | null;
+  destination_wallet_id: number | null;
+  category_id: number | null;
 }
 
 export interface HeatmapCell {

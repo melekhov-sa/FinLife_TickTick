@@ -276,7 +276,7 @@ function OccurrenceRow({
 
 // ── TemplatesTab ──────────────────────────────────────────────────────────────
 
-function TemplatesTab() {
+function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
   const [archived, setArchived] = useState(false);
   const { data, isLoading, isError } = usePlannedOps(archived);
 
@@ -327,12 +327,12 @@ function TemplatesTab() {
             {archived ? "Архив пуст" : "Нет плановых операций"}
           </p>
           {!archived && (
-            <a
-              href="/legacy/planned-ops/new"
+            <button
+              onClick={onCreateOp}
               className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
             >
               + Добавить операцию
-            </a>
+            </button>
           )}
         </div>
       )}
@@ -473,9 +473,11 @@ const MAIN_TABS: { value: MainTab; label: string }[] = [
 
 export default function PlannedOpsPage() {
   const [tab, setTab] = useState<MainTab>("upcoming");
+  const [showCreateOp, setShowCreateOp] = useState(false);
 
   return (
     <>
+      {showCreateOp && <CreateOperationModal onClose={() => setShowCreateOp(false)} />}
       <AppTopbar title="Плановые операции" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[760px]">
@@ -485,13 +487,13 @@ export default function PlannedOpsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Регулярные финансовые операции
             </h2>
-            <a
-              href="/legacy/planned-ops/new"
+            <button
+              onClick={() => setShowCreateOp(true)}
               className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
             >
               <span className="text-[16px] leading-none">+</span>
               Операция
-            </a>
+            </button>
           </div>
 
           {/* Main tabs */}
@@ -514,7 +516,7 @@ export default function PlannedOpsPage() {
           </div>
 
           {tab === "upcoming" && <UpcomingTab />}
-          {tab === "templates" && <TemplatesTab />}
+          {tab === "templates" && <TemplatesTab onCreateOp={() => setShowCreateOp(true)} />}
 
         </div>
       </main>

@@ -56,6 +56,9 @@ class UpcomingPayment(BaseModel):
     amount: Decimal
     amount_formatted: str
     days_until: int
+    wallet_id: int | None = None
+    destination_wallet_id: int | None = None
+    category_id: int | None = None
 
     @field_serializer("scheduled_date")
     def serialize_date(self, v: date) -> str:
@@ -373,6 +376,9 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
             amount=p["amount"],
             amount_formatted=p["amount_formatted"],
             days_until=p["days_until"],
+            wallet_id=p.get("wallet_id"),
+            destination_wallet_id=p.get("destination_wallet_id"),
+            category_id=p.get("category_id"),
         )
         for p in upcoming_raw
     ]

@@ -431,6 +431,9 @@ class DashboardService:
                 "amount": tmpl.amount,
                 "amount_formatted": format_money(tmpl.amount, currency),
                 "days_until": (occ.scheduled_date - today).days,
+                "wallet_id": tmpl.wallet_id,
+                "destination_wallet_id": tmpl.destination_wallet_id,
+                "category_id": tmpl.category_id,
             })
             if len(result) >= limit:
                 break
