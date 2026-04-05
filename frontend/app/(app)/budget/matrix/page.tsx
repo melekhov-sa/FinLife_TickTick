@@ -648,7 +648,7 @@ function CategoryDataRow({
       {row.cells.slice(0, periodCount).map((cell, i) => {
         const p = periods[i];
         const pk = getPeriodKind(p);
-        const canClickFact = !!row.category_id && !row.is_group && cell.fact !== 0;
+        const canClickFact = !!row.category_id && cell.fact !== 0;
         const heatBg = maxPlanByPeriod ? planHeatBg(Math.abs(cell.plan), maxPlanByPeriod[i]) : undefined;
         const factClick = canClickFact ? () => editing.openFactDetail({
           categoryId: row.category_id!,
@@ -1175,16 +1175,19 @@ export default function BudgetMatrixPage() {
                       </td>
                       {(data.other_income?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
                         const pk = getPeriodKind(periods[i]);
+                        const p = periods[i];
+                        const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие доходы", kind: "INCOME", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
+                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "#D1D5DB" }}>—</span>;
                         if (pk === "past") return (
                           <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: cell.fact ? "#1E293B" : "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>{cell.fact ? fmt(cell.fact) : "—"}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#1E293B", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
                           </React.Fragment>
                         );
                         if (pk === "current") return (
                           <React.Fragment key={i}>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: cell.fact ? "#1E293B" : "#D1D5DB" }}>{cell.fact ? fmt(cell.fact) : "—"}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#1E293B" }}>{factEl}</td>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
                           </React.Fragment>
                         );
@@ -1250,7 +1253,7 @@ export default function BudgetMatrixPage() {
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
-                  {/* Прочие расходы — hidden/uncategorized expenses */}
+                  {/* Прочие расходы — always visible, clickable */}
                   {expenseOpen && (
                     <tr>
                       <td className="text-[12px] py-1.5 pl-3 italic" style={{ color: "var(--t-faint)", background: "#FAFBFD", borderRight: "2px solid #64748B" }}>
@@ -1258,16 +1261,19 @@ export default function BudgetMatrixPage() {
                       </td>
                       {(data.other_expense?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
                         const pk = getPeriodKind(periods[i]);
+                        const p = periods[i];
+                        const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие расходы", kind: "EXPENSE", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
+                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "#D1D5DB" }}>—</span>;
                         if (pk === "past") return (
                           <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: cell.fact ? "#1E293B" : "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>{cell.fact ? fmt(cell.fact) : "—"}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
                           </React.Fragment>
                         );
                         if (pk === "current") return (
                           <React.Fragment key={i}>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: cell.fact ? "#DC2626" : "#D1D5DB" }}>{cell.fact ? fmt(cell.fact) : "—"}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626" }}>{factEl}</td>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
                           </React.Fragment>
                         );

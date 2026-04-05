@@ -382,13 +382,27 @@ def list_transactions(
             TransactionFeed.to_wallet_id == wallet_id,
         ))
     if category_id:
-        # Include child categories if this is a parent (group) category
-        cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
-        if cat and cat.parent_id is None:
-            child_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(CategoryInfo.parent_id == category_id).all()]
-            q = q.filter(TransactionFeed.category_id.in_([category_id] + child_ids))
+        if category_id == -1:
+            # "Прочие" — uncategorized transactions (no category or category not in active budget rows)
+            # Get all visible (non-hidden, non-archived) category IDs for this user
+            visible_cat_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(
+                CategoryInfo.account_id == user_id,
+                CategoryInfo.is_archived == False,
+            ).all()]
+            # Прочие = transactions whose category_id is NOT in the visible list
+            from sqlalchemy import or_
+            q = q.filter(or_(
+                TransactionFeed.category_id == None,
+                ~TransactionFeed.category_id.in_(visible_cat_ids) if visible_cat_ids else True,
+            ))
         else:
-            q = q.filter(TransactionFeed.category_id == category_id)
+            # Include child categories if this is a parent (group) category
+            cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
+            if cat and cat.parent_id is None:
+                child_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(CategoryInfo.parent_id == category_id).all()]
+                q = q.filter(TransactionFeed.category_id.in_([category_id] + child_ids))
+            else:
+                q = q.filter(TransactionFeed.category_id == category_id)
     if date_from:
         from datetime import datetime as _dt
         try:
