@@ -470,13 +470,13 @@ html.dark[data-color-theme="emerald"] {
 
   /* Main label text: wallet names, item titles */
   .t-main {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
   }
 
   /* Secondary / meta text */
   .t-secondary {
-    font-size: 13px;
+    font-size: 14px;
     opacity: 0.65;
   }
 
