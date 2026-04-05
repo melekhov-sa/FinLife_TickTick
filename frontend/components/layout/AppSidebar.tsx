@@ -78,16 +78,16 @@ export function AppSidebar() {
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-100 leading-snug relative",
                 active
                   ? isDark
-                    ? "bg-indigo-500/[0.15] text-white font-semibold"
-                    : "bg-indigo-50 text-indigo-700 font-semibold"
+                    ? "bg-indigo-500/[0.18] text-white font-semibold"
+                    : "bg-indigo-100/70 text-indigo-700 font-semibold"
                   : isDark
-                    ? "text-slate-400 hover:text-white hover:bg-white/[0.06] font-normal"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 font-normal"
+                    ? "text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] font-normal"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-normal"
               )}
             >
               {active && (
                 <span className={clsx(
-                  "absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full",
+                  "absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full",
                   isDark ? "bg-indigo-400" : "bg-indigo-600"
                 )} />
               )}
@@ -98,7 +98,7 @@ export function AppSidebar() {
                   "shrink-0 transition-colors",
                   active
                     ? isDark ? "text-indigo-300" : "text-indigo-600"
-                    : isDark ? "text-slate-500" : "text-slate-400"
+                    : isDark ? "text-slate-400" : "text-slate-500"
                 )}
               />
               <span className="flex-1 truncate">{label}</span>

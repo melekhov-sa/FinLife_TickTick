@@ -35,15 +35,15 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-center gap-2.5 py-[5px] hover:bg-indigo-50/40 dark:hover:bg-white/[0.03] transition-colors rounded-md -mx-1 px-1",
+        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
         isDone && "opacity-40"
       )}
     >
-      {/* Status icon */}
+      {/* Checkbox / icon */}
       <div className="shrink-0">
         {kind === "event" ? (
           <div className="w-5 h-5 flex items-center justify-center">
-            <span className="text-[13px]">📅</span>
+            <span className="text-[14px]">📅</span>
           </div>
         ) : canComplete ? (
           <button
@@ -51,14 +51,14 @@ function Item({
             className="w-5 h-5 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
-              "w-[15px] h-[15px] rounded-full border-[1.5px] block transition-all",
-              kind === "habit" ? "border-violet-400 rounded-[3px]" : isOverdue ? "border-red-400" : "border-indigo-300 dark:border-slate-500"
+              "w-[16px] h-[16px] rounded-full border-[1.5px] block transition-all",
+              kind === "habit" ? "border-violet-400 rounded-[3px]" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500"
             )} />
           </button>
         ) : (
           <div className="w-5 h-5 flex items-center justify-center">
             <span className={clsx(
-              "w-[15px] h-[15px] rounded-full border-[1.5px] flex items-center justify-center",
+              "w-[16px] h-[16px] rounded-full border-[1.5px] flex items-center justify-center",
               isDone ? "bg-emerald-500 border-emerald-500" : "border-slate-200"
             )}>
               {isDone && <span className="text-white text-[7px] font-bold">✓</span>}
@@ -67,10 +67,10 @@ function Item({
         )}
       </div>
 
-      {/* Content — single line */}
+      {/* Content */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
         <span
-          className={clsx("text-[13px] font-medium leading-snug truncate", isDone ? "line-through" : "")}
+          className={clsx("text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone ? "line-through" : "")}
           style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
           title={title}
         >
@@ -88,7 +88,7 @@ function Item({
           </span>
         )}
         {timeStr && (
-          <span className="text-[10px] font-medium tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
+          <span className="text-[11px] font-medium tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
             {timeStr}
           </span>
         )}
@@ -99,16 +99,16 @@ function Item({
 
 function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: () => void; onSkip: () => void }) {
   return (
-    <div className="group/fi flex items-center gap-2 py-[5px] hover:bg-indigo-50/40 dark:hover:bg-white/[0.03] transition-colors rounded-md -mx-1 px-1">
-      <div className="w-[15px] h-[15px] rounded-full border-[1.5px] border-indigo-200 dark:border-white/20 shrink-0" />
+    <div className="group/fi flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1">
+      <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-indigo-300/60 dark:border-white/20 shrink-0" />
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left flex items-center gap-1.5"
       >
-        <span className="text-[13px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+        <span className="text-[14px] md:text-[15px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
           {op.title}
         </span>
-        <span className="text-[10px] tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
+        <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
           {op.amount_formatted}
         </span>
       </button>
@@ -117,7 +117,7 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
         className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-0.5 px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all shrink-0 touch-manipulation"
         title="Выполнить"
       >
-        <Play size={8} className="fill-current" />
+        <Play size={9} className="fill-current" />
       </button>
       <button
         onClick={onSkip}
@@ -133,11 +133,11 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
 
 function GroupHeader({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 pt-1.5 pb-px first:pt-0">
-      <p className="text-[9px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
+    <div className="flex items-center gap-2 pt-2 pb-0.5 first:pt-0">
+      <p className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.6 }}>
         {label}
       </p>
-      <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.05]" />
+      <div className="flex-1 h-px bg-indigo-200/40 dark:bg-white/[0.06]" />
     </div>
   );
 }
@@ -202,28 +202,26 @@ export function TodayBlock({ today, plannedOps }: Props) {
       )}
 
       <div
-        className="rounded-xl md:rounded-2xl border p-3 md:p-4 relative overflow-hidden"
+        className="rounded-xl md:rounded-2xl border p-3.5 md:p-5 relative overflow-hidden"
         style={{
-          borderColor: "rgba(99,102,241,0.20)",
-          background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.06))",
+          borderColor: "rgba(99,102,241,0.25)",
+          background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.12))",
         }}
       >
         {/* Header */}
-        <div className="mb-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[16px] md:text-[18px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
-              Сегодня
-            </h2>
-            {progress.total > 0 && (
-              <span className="text-[11px] md:text-[12px] font-medium" style={{ color: "var(--t-muted)" }}>
-                • {progress.done} из {progress.total} выполнено
-              </span>
-            )}
-          </div>
+        <div className="mb-2.5">
+          <h2 className="text-[18px] md:text-[20px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
+            Сегодня
+          </h2>
+          {progress.total > 0 && (
+            <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
+              {progress.done} из {progress.total} выполнено
+            </p>
+          )}
 
           {/* Progress bar */}
           {progress.total > 0 && (
-            <div className="mt-1.5 h-[5px] md:h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.10)" }}>
+            <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.12)" }}>
               <div
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
@@ -232,8 +230,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
                     ? "linear-gradient(90deg, #10b981, #34d399)"
                     : "linear-gradient(90deg, #6366f1, #818cf8)",
                   boxShadow: progressPct === 100
-                    ? "0 0 8px rgba(16,185,129,0.4)"
-                    : "0 0 8px rgba(99,102,241,0.35)",
+                    ? "0 0 10px rgba(16,185,129,0.45)"
+                    : "0 0 10px rgba(99,102,241,0.4)",
                 }}
               />
             </div>
@@ -300,7 +298,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
             <>
               {groups.map((g, idx) => (
                 <div key={g.key}>
-                  {idx > 0 && <div className="h-px bg-indigo-100/60 dark:bg-white/[0.05] my-0.5" />}
+                  {idx > 0 && <div className="h-px bg-indigo-200/30 dark:bg-white/[0.05] my-0.5" />}
                   <GroupHeader label={g.label} />
                   {g.content}
                 </div>
@@ -310,7 +308,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               {!showDone && hiddenDoneCount > 0 && (
                 <button
                   onClick={() => setShowDone(true)}
-                  className="w-full text-center py-1 text-[10px] font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 touch-manipulation"
+                  className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 touch-manipulation"
                   style={{ color: "var(--t-faint)" }}
                 >
                   + ещё {hiddenDoneCount} выполненных
@@ -331,9 +329,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
         {/* Empty state */}
         {isEmpty && (
-          <div className="flex flex-col items-center gap-1 py-4 text-center">
-            <CheckCircle2 size={22} className="text-indigo-400/25" />
-            <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
+          <div className="flex flex-col items-center gap-1.5 py-5 text-center">
+            <CheckCircle2 size={24} className="text-indigo-400/30" />
+            <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
           </div>
         )}
       </div>
