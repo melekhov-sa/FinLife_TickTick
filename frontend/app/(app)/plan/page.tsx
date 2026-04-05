@@ -65,24 +65,6 @@ const RANGES = [
   { value: 90, label: "3 мес." },
 ];
 
-const KIND_LABELS: Record<string, string> = {
-  task:       "Задача",
-  task_occ:   "Задача",
-  event:      "Событие",
-  planned_op: "Операция",
-  habit:      "Привычка",
-  wish:       "Желание",
-};
-
-const KIND_COLORS: Record<string, string> = {
-  task:       "text-indigo-700 dark:text-indigo-300/70 bg-indigo-100 dark:bg-indigo-500/[0.08]",
-  task_occ:   "text-indigo-700 dark:text-indigo-300/70 bg-indigo-100 dark:bg-indigo-500/[0.08]",
-  event:      "text-sky-700 dark:text-sky-300/70 bg-sky-100 dark:bg-sky-500/[0.08]",
-  planned_op: "text-amber-700 dark:text-amber-300/70 bg-amber-100 dark:bg-amber-500/[0.08]",
-  habit:      "text-violet-700 dark:text-violet-300/70 bg-violet-100 dark:bg-violet-500/[0.08]",
-  wish:       "text-pink-700 dark:text-pink-300/70 bg-pink-100 dark:bg-pink-500/[0.08]",
-};
-
 type CompletableKind = "task" | "habit" | "task_occ";
 
 function isCompletable(kind: string): kind is CompletableKind {
@@ -217,9 +199,8 @@ function EntryRow({
 
   return (
     <div className={clsx(
-      "flex items-center gap-2.5 py-1.5 border-t first:border-0 transition-colors cursor-default group/row",
-      "border-slate-100 dark:border-white/[0.06] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
-      entry.is_done && "opacity-40"
+      "flex items-center gap-2.5 py-[5px] border-t first:border-0 transition-colors cursor-default group/row",
+      "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
     )}>
       {/* Checkbox / icon */}
       <div className="shrink-0">
@@ -227,7 +208,7 @@ function EntryRow({
           <button
             onClick={() => onComplete(entry)}
             className={clsx(
-              "w-[17px] h-[17px] rounded-full border-[1.5px] transition-all hover:scale-110",
+              "w-[16px] h-[16px] rounded-full border-[1.5px] transition-all hover:scale-110",
               entry.is_overdue
                 ? "border-red-400 hover:bg-red-500/20"
                 : "border-slate-300 dark:border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400"
@@ -235,40 +216,31 @@ function EntryRow({
             title="Отметить как выполненное"
           />
         ) : entry.is_done && isCompletable(entry.kind) ? (
-          <div className="w-[17px] h-[17px] rounded-full bg-emerald-500 flex items-center justify-center">
-            <span className="text-[9px] text-white font-bold">✓</span>
+          <div className="w-[16px] h-[16px] rounded-full bg-emerald-500 flex items-center justify-center">
+            <span className="text-[8px] text-white font-bold">✓</span>
           </div>
-        ) : isEvent ? (
-          <span className="text-[14px] leading-none">📅</span>
         ) : isOp ? (
-          <span className="text-[14px] leading-none">💰</span>
+          <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0" />
         ) : (
-          <div className="w-[17px] h-[17px] rounded-full border-[1.5px] border-slate-200 dark:border-white/20 shrink-0" />
+          <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-slate-200 dark:border-white/20 shrink-0" />
         )}
       </div>
 
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
-        {/* Single-line: emoji + title + kind + time */}
         <div className="flex items-center gap-1.5">
           <span className={clsx(
             "text-[13px] font-medium leading-snug truncate",
-            entry.is_done ? "line-through" : "",
+            entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
             {entry.category_emoji && <span className="mr-0.5">{entry.category_emoji}</span>}
             {entry.title}
           </span>
 
-          <span className={clsx(
-            "inline-flex text-[9px] font-semibold uppercase tracking-wider px-1 py-px rounded shrink-0 leading-none",
-            KIND_COLORS[entry.kind] ?? "text-slate-400 bg-slate-100 dark:text-white/50 dark:bg-white/[0.06]"
-          )}>
-            {KIND_LABELS[entry.kind] ?? entry.kind}
-          </span>
-
+          {/* Only useful meta — no kind chips */}
           {isOp && amountFormatted && (
             <span className={clsx(
-              "text-[12px] font-semibold tabular-nums shrink-0",
+              "text-[11px] font-semibold tabular-nums shrink-0",
               opKind === "INCOME" ? "money-income" : "money-expense"
             )}>
               {opKind === "INCOME" ? "+" : "\u2212"}{amountFormatted} ₽
@@ -281,8 +253,14 @@ function EntryRow({
             </span>
           )}
 
+          {entry.is_overdue && !entry.is_done && (
+            <span className="text-[8px] font-bold text-red-500 bg-red-50 dark:bg-red-500/[0.12] px-1 py-px rounded shrink-0">
+              просроч.
+            </span>
+          )}
+
           {entry.time && (
-            <span className="text-[11px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
+            <span className="text-[10px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
               {entry.time}
             </span>
           )}
@@ -290,11 +268,6 @@ function EntryRow({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {entry.is_overdue && !entry.is_done && (
-          <span className="text-[9px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.12] px-1 py-px rounded">
-            просроч.
-          </span>
-        )}
         {isTask && !entry.is_done && (
           <button
             onClick={() => onReschedule(entry)}
@@ -309,8 +282,8 @@ function EntryRow({
           <>
             <button
               onClick={() => onExecuteOp(entry)}
-              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-1 px-1.5 py-1 rounded bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all"
-              title="Выполнить операцию"
+              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-0.5 px-1.5 py-1 rounded bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all"
+              title="Выполнить"
             >
               <Play size={9} className="fill-current" />
             </button>
@@ -325,6 +298,31 @@ function EntryRow({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+type EntryGroupType = "tasks" | "habits" | "events" | "ops";
+
+const ENTRY_GROUP_ORDER: EntryGroupType[] = ["tasks", "habits", "events", "ops"];
+const ENTRY_GROUP_LABELS: Record<EntryGroupType, string> = {
+  tasks: "Задачи", habits: "Привычки", events: "События", ops: "Финансы",
+};
+
+function entryGroupType(kind: string): EntryGroupType {
+  if (kind === "task" || kind === "task_occ") return "tasks";
+  if (kind === "habit") return "habits";
+  if (kind === "event") return "events";
+  return "ops";
+}
+
+function EntryGroupHeader({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-1.5 pb-px first:pt-0">
+      <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.05]" />
     </div>
   );
 }
@@ -350,6 +348,14 @@ function DayGroupCard({
     ? formatDayHeader(group.date)
     : group.date_label;
 
+  // Group entries by type
+  const grouped = ENTRY_GROUP_ORDER
+    .map((gt) => ({
+      type: gt,
+      entries: group.entries.filter((e) => entryGroupType(e.kind) === gt),
+    }))
+    .filter((g) => g.entries.length > 0);
+
   return (
     <div className={clsx(
       "rounded-xl border px-3 py-2.5",
@@ -359,8 +365,8 @@ function DayGroupCard({
         ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
         : "bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]"
     )}>
-      {/* Day header — compact with + button */}
-      <div className="flex items-center gap-2 mb-1.5">
+      {/* Day header */}
+      <div className="flex items-center gap-2 mb-1">
         <h3 className={clsx(
           "text-[13px] font-semibold leading-none",
           group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
@@ -370,7 +376,7 @@ function DayGroupCard({
           {label}
         </h3>
         {group.is_today && (
-          <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
+          <span className="text-[9px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
             сегодня
           </span>
         )}
@@ -389,9 +395,14 @@ function DayGroupCard({
         )}
       </div>
 
-      {/* Entries */}
-      {group.entries.map((e) => (
-        <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
+      {/* Type-grouped entries */}
+      {grouped.map((g) => (
+        <div key={g.type}>
+          {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
+          {g.entries.map((e) => (
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
+          ))}
+        </div>
       ))}
     </div>
   );
