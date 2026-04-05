@@ -35,8 +35,7 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
-        isDone && "opacity-40"
+        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1"
       )}
     >
       {/* Checkbox / icon */}
@@ -70,8 +69,8 @@ function Item({
       {/* Content */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
         <span
-          className={clsx("text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone ? "line-through" : "")}
-          style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
+          className={clsx("text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone && "line-through decoration-slate-300 dark:decoration-white/20")}
+          style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
           title={title}
         >
           {emoji && <span className="mr-0.5">{emoji}</span>}
@@ -255,7 +254,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               key: "tasks",
               label: "Задачи",
               content: allTasks.map((item) => (
-                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-45" : undefined}>
+                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
                   <Item item={item} onComplete={setConfirmItem} />
                 </div>
               )),
@@ -267,7 +266,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               key: "habits",
               label: "Привычки",
               content: allHabits.map((item) => (
-                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-45" : undefined}>
+                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
                   <Item item={item} onComplete={setConfirmItem} />
                 </div>
               )),
