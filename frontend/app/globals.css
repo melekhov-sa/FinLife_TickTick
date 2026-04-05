@@ -138,6 +138,16 @@
   --t-faint:     #64748B;
   --t-label:     #334155;
 
+  /* ── Typography scale ─────────────────────────────────────────── */
+  /* Mobile-first sizes; @media md overrides below                  */
+  --fs-hero:      20px;   /* page title, block hero number          */
+  --fs-title:     17px;   /* card/section title                     */
+  --fs-body:      15px;   /* primary content — item titles, names   */
+  --fs-secondary: 13px;   /* secondary text — wallet, subtitle      */
+  --fs-caption:   12px;   /* time, meta, tertiary info              */
+  --fs-badge:     10px;   /* chips, badges, labels                  */
+  --fs-micro:     9px;    /* group headers (uppercase)              */
+
   /* Cards */
   --app-card-bg:    #FFFFFF;
   --app-card-border: #E2E8F0;
@@ -151,6 +161,19 @@
   --color-income:  #22C55E;
   --color-expense: #EF4444;
   --color-transfer: #3B82F6;
+}
+
+/* ── Desktop typography scale (≥768px) ─────────────────────────────────── */
+@media (min-width: 768px) {
+  :root {
+    --fs-hero:      22px;
+    --fs-title:     18px;
+    --fs-body:      15px;
+    --fs-secondary: 14px;
+    --fs-caption:   12px;
+    --fs-badge:     10px;
+    --fs-micro:     10px;
+  }
 }
 
 /* ── Dark mode ─────────────────────────────────────────────────────────── */
@@ -449,11 +472,11 @@ html.dark[data-color-theme="emerald"] {
     font-size: 100%;
   }
 
-  /* ── Typography tokens ──────────────────────────────────────────── */
+  /* ── Typography utility classes (use --fs-* tokens) ────────────── */
 
   /* Card section title: "ФИНАНСОВОЕ СОСТОЯНИЕ" */
   .block-title {
-    font-size: 12px;
+    font-size: var(--fs-caption);
     font-weight: 500;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -470,13 +493,13 @@ html.dark[data-color-theme="emerald"] {
 
   /* Main label text: wallet names, item titles */
   .t-main {
-    font-size: 15px;
+    font-size: var(--fs-body);
     font-weight: 500;
   }
 
   /* Secondary / meta text */
   .t-secondary {
-    font-size: 14px;
+    font-size: var(--fs-secondary);
     opacity: 0.65;
   }
 
