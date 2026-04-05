@@ -10,8 +10,7 @@ import { CreateOperationModal, type CreateOperationInitialValues } from "@/compo
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown, Repeat, Wallet, Calendar, FolderKanban } from "lucide-react";
-import Link from "next/link";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -218,116 +217,110 @@ function EntryRow({
 
   return (
     <div className={clsx(
-      "flex items-start gap-3 py-2.5 border-b last:border-0 rounded-lg px-2 -mx-2 transition-colors cursor-default group/row",
-      "border-white/[0.06] hover:bg-white/[0.03]",
+      "flex items-center gap-2.5 py-1.5 border-t first:border-0 transition-colors cursor-default group/row",
+      "border-slate-100 dark:border-white/[0.06] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
       entry.is_done && "opacity-40"
     )}>
-      {/* Left indicator */}
-      <div className="mt-0.5 shrink-0">
+      {/* Checkbox / icon */}
+      <div className="shrink-0">
         {canComplete ? (
           <button
             onClick={() => onComplete(entry)}
             className={clsx(
-              "w-[18px] h-[18px] rounded-full border-[1.5px] transition-all hover:scale-110",
+              "w-[17px] h-[17px] rounded-full border-[1.5px] transition-all hover:scale-110",
               entry.is_overdue
-                ? "border-red-400/70 hover:bg-red-500/20 hover:border-red-400"
-                : "border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400/60"
+                ? "border-red-400 hover:bg-red-500/20"
+                : "border-slate-300 dark:border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400"
             )}
             title="Отметить как выполненное"
           />
         ) : entry.is_done && isCompletable(entry.kind) ? (
-          <div className="w-[18px] h-[18px] rounded-full bg-indigo-500/40 border-[1.5px] border-indigo-500/50 flex items-center justify-center">
-            <span className="text-[9px] text-white/80">✓</span>
+          <div className="w-[17px] h-[17px] rounded-full bg-emerald-500 flex items-center justify-center">
+            <span className="text-[9px] text-white font-bold">✓</span>
           </div>
         ) : isEvent ? (
-          <span className="text-[15px] leading-none">📅</span>
+          <span className="text-[14px] leading-none">📅</span>
         ) : isOp ? (
-          <span className="text-[15px] leading-none">💰</span>
+          <span className="text-[14px] leading-none">💰</span>
         ) : (
-          <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-white/20 shrink-0" />
+          <div className="w-[17px] h-[17px] rounded-full border-[1.5px] border-slate-200 dark:border-white/20 shrink-0" />
         )}
       </div>
 
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
-        {/* Title row */}
-        <div className="flex items-baseline gap-2 flex-wrap">
+        {/* Single-line: emoji + title + kind + time */}
+        <div className="flex items-center gap-1.5">
           <span className={clsx(
-            "text-[14px] font-[500] leading-snug",
+            "text-[13px] font-medium leading-snug truncate",
             entry.is_done ? "line-through" : "",
-            entry.is_overdue && !entry.is_done ? "text-red-400/90" : ""
+            entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
-            {entry.category_emoji && <span className="mr-1">{entry.category_emoji}</span>}
+            {entry.category_emoji && <span className="mr-0.5">{entry.category_emoji}</span>}
             {entry.title}
           </span>
-          {entry.time && (
-            <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
-              {entry.time}
-            </span>
-          )}
-        </div>
 
-        {/* Meta row */}
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          {/* Kind badge */}
           <span className={clsx(
-            "inline-flex text-[11px] font-medium px-1.5 py-0.5 rounded-md leading-none",
-            KIND_COLORS[entry.kind] ?? "text-white/50 bg-white/[0.06]"
+            "inline-flex text-[9px] font-semibold uppercase tracking-wider px-1 py-px rounded shrink-0 leading-none",
+            KIND_COLORS[entry.kind] ?? "text-slate-400 bg-slate-100 dark:text-white/50 dark:bg-white/[0.06]"
           )}>
             {KIND_LABELS[entry.kind] ?? entry.kind}
           </span>
 
-          {/* Financial amount */}
           {isOp && amountFormatted && (
             <span className={clsx(
-              "text-[12px] font-semibold tabular-nums",
+              "text-[12px] font-semibold tabular-nums shrink-0",
               opKind === "INCOME" ? "money-income" : "money-expense"
             )}>
               {opKind === "INCOME" ? "+" : "\u2212"}{amountFormatted} ₽
             </span>
           )}
 
-          {/* Habit streak */}
           {entry.kind === "habit" && Boolean(entry.meta.current_streak) && (
-            <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
-              🔥 {String(entry.meta.current_streak)}
+            <span className="text-[10px] shrink-0" style={{ color: "var(--t-muted)" }}>
+              🔥{String(entry.meta.current_streak)}
+            </span>
+          )}
+
+          {entry.time && (
+            <span className="text-[11px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
+              {entry.time}
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+      <div className="flex items-center gap-1 shrink-0">
         {entry.is_overdue && !entry.is_done && (
-          <span className="text-[10px] font-semibold text-red-400 bg-red-500/[0.12] border border-red-500/20 px-1.5 py-0.5 rounded-md">
-            просрочено
+          <span className="text-[9px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/[0.12] px-1 py-px rounded">
+            просроч.
           </span>
         )}
         {isTask && !entry.is_done && (
           <button
             onClick={() => onReschedule(entry)}
-            className="md:opacity-0 md:group-hover/row:opacity-100 w-7 h-7 flex items-center justify-center rounded-md transition-all hover:bg-indigo-500/20 bg-white/[0.05] md:bg-transparent"
+            className="md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
             style={{ color: "var(--t-faint)" }}
             title="Перенести"
           >
-            <CalendarDays size={14} />
+            <CalendarDays size={13} />
           </button>
         )}
         {isOp && !entry.is_done && (
           <>
             <button
               onClick={() => onExecuteOp(entry)}
-              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-1 px-2 py-1.5 rounded-md bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[10px] font-semibold transition-all"
+              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-1 px-1.5 py-1 rounded bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all"
               title="Выполнить операцию"
             >
               <Play size={9} className="fill-current" />
-              <span className="hidden md:inline">Выполнить</span>
             </button>
             <button
               onClick={() => onSkipOp(entry)}
-              className="md:opacity-0 md:group-hover/row:opacity-100 w-7 h-7 flex items-center justify-center rounded-md transition-all hover:bg-red-500/15 hover:text-red-400 bg-white/[0.05] md:bg-transparent"
+              className="md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-red-50 dark:hover:bg-red-500/15 hover:text-red-500 dark:hover:text-red-400"
               style={{ color: "var(--t-faint)" }}
               title="Пропустить"
             >
-              <SkipForward size={13} />
+              <SkipForward size={12} />
             </button>
           </>
         )}
@@ -359,51 +352,47 @@ function DayGroupCard({
 
   return (
     <div className={clsx(
-      "rounded-[14px] border p-4",
+      "rounded-xl border px-3 py-2.5",
       group.is_overdue_group
-        ? "bg-red-500/[0.03] border-red-500/25"
+        ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
         : group.is_today
-        ? "border-indigo-500/35"
-        : "border-white/[0.06]",
-      !group.is_overdue_group && !group.is_today && "bg-white/[0.03]",
-      group.is_today && "bg-indigo-500/[0.04]"
+        ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+        : "bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]"
     )}>
-      {/* Day header */}
-      <div className="flex items-center gap-2.5 mb-3">
+      {/* Day header — compact with + button */}
+      <div className="flex items-center gap-2 mb-1.5">
         <h3 className={clsx(
-          "text-[14px] font-semibold leading-none",
-          group.is_overdue_group ? "text-red-400/85"
-            : group.is_today ? "text-indigo-300/90"
-            : "text-white/90"
+          "text-[13px] font-semibold leading-none",
+          group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
+            : group.is_today ? "text-indigo-600 dark:text-indigo-300/90"
+            : "text-slate-800 dark:text-white/90"
         )}>
           {label}
-          {group.is_today && (
-            <span className="ml-2 text-[11px] font-medium text-indigo-400/60 bg-indigo-500/10 px-1.5 py-0.5 rounded-md">
-              сегодня
-            </span>
-          )}
         </h3>
-        <span className="text-[11px] font-medium bg-white/[0.06] px-1.5 py-0.5 rounded-full tabular-nums" style={{ color: "var(--t-muted)" }}>
+        {group.is_today && (
+          <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
+            сегодня
+          </span>
+        )}
+        <span className="text-[10px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>
           {group.entries.length}
         </span>
+        {!group.is_overdue_group && (
+          <button
+            onClick={onAddTask}
+            className="ml-auto w-6 h-6 flex items-center justify-center rounded-md transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+            style={{ color: "var(--t-faint)" }}
+            title="Добавить задачу"
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
 
       {/* Entries */}
       {group.entries.map((e) => (
         <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
       ))}
-
-      {/* Per-day quick-add */}
-      {(group.is_today || !group.is_overdue_group) && (
-        <button
-          onClick={onAddTask}
-          className="mt-2 flex items-center gap-1.5 text-[12px] font-medium px-2 py-1.5 rounded-lg w-full text-left transition-colors hover:bg-white/[0.04]"
-          style={{ color: "var(--t-faint)" }}
-        >
-          <span className="text-[16px] leading-none opacity-60">+</span>
-          Добавить задачу
-        </button>
-      )}
     </div>
   );
 }
@@ -426,24 +415,24 @@ function DoneTodayBlock({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] mb-4 overflow-hidden">
+    <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] mb-2 overflow-hidden bg-white dark:bg-transparent">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]"
       >
-        <span className="text-emerald-400 text-[13px]">✓</span>
-        <span className="text-[12px] font-medium" style={{ color: "var(--t-faint)" }}>
+        <span className="text-emerald-500 text-[12px]">✓</span>
+        <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>
           Выполнено сегодня
         </span>
-        <span className="text-[12px] font-bold tabular-nums text-emerald-400">{entries.length}</span>
+        <span className="text-[11px] font-bold tabular-nums text-emerald-500">{entries.length}</span>
         <ChevronDown
-          size={13}
+          size={12}
           className={clsx("ml-auto transition-transform", expanded && "rotate-180")}
           style={{ color: "var(--t-faint)" }}
         />
       </button>
       {expanded && (
-        <div className="px-4 pb-3 border-t border-white/[0.05]">
+        <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
             <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
           ))}
@@ -537,76 +526,69 @@ export default function PlanPage() {
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="max-w-[860px]">
 
-          {/* ── Controls ──────────────────────────────────────────────── */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-            {/* Status pills — desktop only */}
-            <div className="hidden md:flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
-              {TABS.map((t) => (
+          {/* ── Controls — compact ────────────────────────────────── */}
+          <div className="flex items-center gap-2 mb-3">
+            {/* Status: Активные / Выполненные */}
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+              {TABS.filter(t => t.value !== "archive").map((t) => (
                 <button
                   key={t.value}
                   onClick={() => setTab(t.value)}
                   className={clsx(
-                    "px-3.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
+                    "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all",
                     tab === t.value
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "hover:bg-white/[0.05]"
+                      ? "bg-white dark:bg-indigo-600 text-slate-800 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-white/50 hover:text-slate-700"
                   )}
-                  style={{ color: tab === t.value ? undefined : "var(--t-secondary)" }}
                 >
                   {t.label}
                 </button>
               ))}
             </div>
 
-            {/* Period pills — mobile: Неделя/Месяц only */}
-            <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
-              {RANGES.map((r) => (
+            {/* Period: Неделя / Месяц */}
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+              {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
                 <button
                   key={r.value}
                   onClick={() => setRange(r.value)}
                   className={clsx(
-                    "px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-md text-[11px] md:text-[13px] font-semibold transition-all",
+                    "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all",
                     range === r.value
-                      ? "bg-white/[0.12] text-white/90 shadow-sm"
-                      : "hover:bg-white/[0.05]",
-                    (r.value === 1 || r.value === 90) && "hidden md:block"
+                      ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-white/50 hover:text-slate-700"
                   )}
-                  style={{ color: range === r.value ? undefined : "var(--t-secondary)" }}
                 >
                   {r.label}
                 </button>
               ))}
             </div>
 
-            {/* Add button with dropdown */}
+            {/* Add button */}
             <div className="ml-auto relative">
               <button
                 onClick={() => setShowAddMenu((v) => !v)}
                 onBlur={() => setTimeout(() => setShowAddMenu(false), 150)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm"
               >
-                <Plus size={15} />
-                Добавить
-                <ChevronDown size={13} className={clsx("transition-transform", showAddMenu && "rotate-180")} />
+                <Plus size={14} />
+                <span className="hidden md:inline">Добавить</span>
+                <ChevronDown size={12} className={clsx("transition-transform hidden md:block", showAddMenu && "rotate-180")} />
               </button>
               {showAddMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1.5 w-44 rounded-xl border shadow-xl z-20 overflow-hidden"
-                  style={{
-                    background: "var(--app-bg, #0f1221)",
-                    borderColor: "rgba(255,255,255,0.08)",
-                  }}
+                  className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-xl z-20 overflow-hidden bg-white dark:bg-[#0f1221] border-slate-200 dark:border-white/[0.08]"
                 >
                   <button
                     onMouseDown={() => { setShowAddMenu(false); setShowCreateTask(true); }}
-                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-white/[0.06] transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
                     style={{ color: "var(--t-primary)" }}
                   >
                     Задача
                   </button>
                   <button
                     onMouseDown={() => { setShowAddMenu(false); setShowCreateEvent(true); }}
-                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-white/[0.06] transition-colors"
+                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
                     style={{ color: "var(--t-primary)" }}
                   >
                     Событие
@@ -616,58 +598,11 @@ export default function PlanPage() {
             </div>
           </div>
 
-          {/* ── Quick links to templates — desktop only ────────────── */}
-          <div className="hidden md:flex items-center gap-3 mb-4 overflow-x-auto">
-            {[
-              { href: "/projects", icon: FolderKanban, label: "Проекты" },
-              { href: "/recurring-tasks", icon: Repeat, label: "Повторяющиеся" },
-              { href: "/planned-ops", icon: Wallet, label: "Плановые операции" },
-              { href: "/event-templates", icon: Calendar, label: "Шаблоны событий" },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] md:text-[12px] font-medium whitespace-nowrap transition-colors hover:bg-white/[0.04]"
-                style={{ borderColor: "var(--app-border)", color: "var(--t-muted)" }}
-              >
-                <link.icon size={13} className="opacity-50" />
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* ── KPI Summary — desktop only ───────────────────────────── */}
-          {summary && (
-            <div className="hidden md:grid grid-cols-4 gap-3 mb-6">
-              {[
-                { label: "Сегодня", value: summary.today_count, color: "var(--t-primary)", border: "border-white/[0.07]", bg: "bg-white/[0.04]" },
-                { label: "Неделя", value: summary.week_count, color: "#60a5fa", border: "border-blue-500/20", bg: "bg-blue-500/[0.04]" },
-                { label: "Просроч.", value: summary.overdue_count, color: summary.overdue_count > 0 ? "#f87171" : "var(--t-primary)", border: summary.overdue_count > 0 ? "border-red-500/25" : "border-white/[0.07]", bg: summary.overdue_count > 0 ? "bg-red-500/[0.04]" : "bg-white/[0.04]" },
-                { label: "Сделано", value: summary.done_today_count, color: "#34d399", border: "border-emerald-500/20", bg: "bg-emerald-500/[0.04]" },
-              ].map((kpi) => (
-                <div
-                  key={kpi.label}
-                  className={clsx("rounded-xl border py-2.5 md:p-4 text-center flex flex-col items-center justify-center gap-0.5", kpi.border, kpi.bg)}
-                >
-                  <p
-                    className="text-[20px] md:text-[28px] font-bold tabular-nums leading-none"
-                    style={{ color: kpi.color, letterSpacing: "-0.04em" }}
-                  >
-                    {kpi.value}
-                  </p>
-                  <p className="text-[9px] md:text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
-                    {kpi.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* ── Loading ───────────────────────────────────────────────── */}
           {isLoading && (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-white/[0.02] rounded-[14px] animate-pulse" />
+                <div key={i} className="h-24 bg-slate-100 dark:bg-white/[0.02] rounded-xl animate-pulse" />
               ))}
             </div>
           )}
@@ -679,7 +614,7 @@ export default function PlanPage() {
           {/* ── Empty state ───────────────────────────────────────────── */}
           {filteredData && filteredData.day_groups.length === 0 && !isLoading && (
             <div className="text-center py-20">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center mx-auto mb-4">
                 <span className="text-xl">📅</span>
               </div>
               <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
@@ -701,7 +636,7 @@ export default function PlanPage() {
 
           {/* ── Day groups ────────────────────────────────────────────── */}
           {filteredData && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {filteredData.day_groups.map((g, i) => (
                 <DayGroupCard
                   key={i}

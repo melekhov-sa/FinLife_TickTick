@@ -31,80 +31,68 @@ function Item({
   const { title, category_emoji: emoji, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const canComplete = isCompletable(kind) && !isDone;
   const reminders = (item.meta?.reminders as string[]) ?? [];
-  const timeStr = time ? String(time).slice(0, 5) : null; // HH:MM without seconds
-
-  const kindLabel = kind === "event" ? "Событие" : kind === "habit" ? "Привычка" : "Задача";
+  const timeStr = time ? String(time).slice(0, 5) : null;
 
   return (
     <div
       className={clsx(
-        "flex items-start gap-2.5 py-2 md:py-2.5 border-b border-slate-100 dark:border-white/[0.06] last:border-0 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors rounded-md -mx-1 px-1",
+        "flex items-center gap-2.5 py-1.5 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors rounded-md -mx-1 px-1",
         isDone && "opacity-40"
       )}
     >
       {/* Status icon */}
-      <div className="mt-0.5 shrink-0">
+      <div className="shrink-0">
         {kind === "event" ? (
-          <div className="w-7 h-7 flex items-center justify-center">
-            <span className="text-[15px]">📅</span>
+          <div className="w-6 h-6 flex items-center justify-center">
+            <span className="text-[14px]">📅</span>
           </div>
         ) : canComplete ? (
           <button
             onClick={() => onComplete(item)}
-            className="w-7 h-7 flex items-center justify-center touch-manipulation"
+            className="w-6 h-6 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
-              "w-[17px] h-[17px] rounded-full border-[2px] block transition-all",
+              "w-[16px] h-[16px] rounded-full border-[1.5px] block transition-all",
               kind === "habit" ? "border-violet-400 rounded-[4px]" : isOverdue ? "border-red-400" : "border-slate-400 dark:border-slate-500"
             )} />
           </button>
         ) : (
-          <div className="w-7 h-7 flex items-center justify-center">
+          <div className="w-6 h-6 flex items-center justify-center">
             <span className={clsx(
-              "w-[17px] h-[17px] rounded-full border-[2px] block flex items-center justify-center",
+              "w-[16px] h-[16px] rounded-full border-[1.5px] flex items-center justify-center",
               isDone ? "bg-emerald-500 border-emerald-500" : "border-slate-200"
             )}>
-              {isDone && <span className="text-white text-[9px] flex items-center justify-center h-full font-bold">✓</span>}
+              {isDone && <span className="text-white text-[8px] font-bold">✓</span>}
             </span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Line 1: emoji + title + time */}
-        <div className="flex items-baseline gap-1">
-          <span
-            className={clsx("text-[14px] font-semibold leading-snug truncate flex-1", isDone ? "line-through" : "")}
-            style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
-            title={title}
-          >
-            {emoji && <span className="mr-1">{emoji}</span>}
-            {title}
+      {/* Content — single line */}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span
+          className={clsx("text-[13px] font-medium leading-snug truncate", isDone ? "line-through" : "")}
+          style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
+          title={title}
+        >
+          {emoji && <span className="mr-0.5">{emoji}</span>}
+          {title}
+        </span>
+        {isOverdue && !isDone && (
+          <span className="text-[9px] font-semibold text-red-500 bg-red-50 dark:bg-red-500/10 px-1 py-px rounded shrink-0">
+            просроч.
           </span>
-          {timeStr && (
-            <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
-              {timeStr}
-            </span>
-          )}
-        </div>
-
-        {/* Line 2: kind badge + reminders */}
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
-            {kindLabel}
+        )}
+        {reminders.length > 0 && !isDone && (
+          <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
+            🔔 {reminders.join(", ")}
           </span>
-          {isOverdue && !isDone && (
-            <span className="text-[9px] font-semibold text-red-500 bg-red-50 dark:bg-red-500/10 px-1 py-px rounded">
-              просрочено
-            </span>
-          )}
-          {reminders.length > 0 && !isDone && (
-            <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-              🔔 {reminders.join(", ")}
-            </span>
-          )}
-        </div>
+        )}
+        {timeStr && (
+          <span className="text-[11px] font-medium tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
+            {timeStr}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -145,18 +133,16 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
   );
 }
 
-function SectionLabel({ label, count }: { label: string; count: number }) {
+function GroupHeader({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 mb-1.5 mt-1">
-      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-        {label}
-      </p>
-      <span className="text-[9px] font-bold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-px rounded-full" style={{ color: "var(--t-faint)" }}>
-        {count}
-      </span>
-      <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.06]" />
-    </div>
+    <p className="text-[10px] font-bold uppercase tracking-widest pt-2 pb-0.5 first:pt-0" style={{ color: "var(--t-faint)", opacity: 0.6 }}>
+      {label}
+    </p>
   );
+}
+
+function GroupDivider() {
+  return <div className="h-px bg-slate-100 dark:bg-white/[0.05] my-1" />;
 }
 
 export function TodayBlock({ today, plannedOps }: Props) {
@@ -182,13 +168,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
   ];
   const doneHabits = (done ?? []).filter((i) => i.kind === "habit");
 
-  const totalDone = doneTasks.length + doneHabits.length;
-
-  const habitItems = [...activeHabits, ...(showDone ? doneHabits : [])];
-
   const isEmpty =
     activeTasks.length === 0 && doneTasks.length === 0 &&
-    habitItems.length === 0 &&
+    activeHabits.length === 0 && doneHabits.length === 0 &&
     (events ?? []).length === 0 &&
     (plannedOps ?? []).length === 0;
 
@@ -268,62 +250,94 @@ export function TodayBlock({ today, plannedOps }: Props) {
           </div>
         </div>
 
-        {/* ── Unified list: active first, then done ── */}
+        {/* ── Grouped sections ── */}
         {(() => {
-          const activeItems: DashboardItem[] = [
-            ...activeTasks,
-            ...activeHabits,
-            ...(events ?? []),
-          ];
-          const doneItems: DashboardItem[] = [...doneTasks, ...doneHabits];
-          const PREVIEW_LIMIT = 5;
-          const [expanded, setExpanded] = [showDone, setShowDone];
+          const allTasks = [...activeTasks, ...(showDone ? doneTasks : [])];
+          const allHabits = [...activeHabits, ...(showDone ? doneHabits : [])];
+          const eventItems = events ?? [];
+          const finOps = plannedOps ?? [];
 
-          const visibleActive = activeItems;
-          const visibleDone = expanded ? doneItems : doneItems.slice(0, Math.max(0, PREVIEW_LIMIT - activeItems.length));
-          const hiddenDoneCount = expanded ? 0 : doneItems.length - visibleDone.length;
+          const doneItems = [...doneTasks, ...doneHabits];
+          const hiddenDoneCount = showDone ? 0 : doneItems.length;
+
+          const groups: { key: string; label: string; content: React.ReactNode }[] = [];
+
+          if (allTasks.length > 0) {
+            groups.push({
+              key: "tasks",
+              label: "Задачи",
+              content: allTasks.map((item) => (
+                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-45" : undefined}>
+                  <Item item={item} onComplete={setConfirmItem} />
+                </div>
+              )),
+            });
+          }
+
+          if (allHabits.length > 0) {
+            groups.push({
+              key: "habits",
+              label: "Привычки",
+              content: allHabits.map((item) => (
+                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-45" : undefined}>
+                  <Item item={item} onComplete={setConfirmItem} />
+                </div>
+              )),
+            });
+          }
+
+          if (eventItems.length > 0) {
+            groups.push({
+              key: "events",
+              label: "События",
+              content: eventItems.map((item) => (
+                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+              )),
+            });
+          }
+
+          if (finOps.length > 0) {
+            groups.push({
+              key: "finance",
+              label: "Финансы",
+              content: finOps.map((op) => (
+                <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
+              )),
+            });
+          }
 
           return (
             <>
-              {visibleActive.map((item) => (
-                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
-              ))}
-              {visibleDone.length > 0 && visibleDone.map((item) => (
-                <div key={`done-${item.kind}-${item.id}`} className="opacity-50">
-                  <Item item={item} onComplete={setConfirmItem} />
+              {groups.map((g, idx) => (
+                <div key={g.key}>
+                  {idx > 0 && <GroupDivider />}
+                  <GroupHeader label={g.label} />
+                  {g.content}
                 </div>
               ))}
-              {hiddenDoneCount > 0 && (
+
+              {/* Show/hide done toggle */}
+              {!showDone && hiddenDoneCount > 0 && (
                 <button
-                  onClick={() => setExpanded(true)}
+                  onClick={() => setShowDone(true)}
                   className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-500 touch-manipulation"
                   style={{ color: "var(--t-faint)" }}
                 >
                   + ещё {hiddenDoneCount} выполненных
                 </button>
               )}
-              {expanded && doneItems.length > 0 && (
+              {showDone && doneItems.length > 0 && (
                 <button
-                  onClick={() => setExpanded(false)}
+                  onClick={() => setShowDone(false)}
                   className="w-full text-center py-1 text-[10px] font-medium transition-colors hover:text-indigo-500"
                   style={{ color: "var(--t-faint)" }}
                 >
-                  Скрыть
+                  Скрыть выполненные
                 </button>
               )}
             </>
           );
         })()}
-
-        {/* ФИНАНСЫ */}
-        {(plannedOps ?? []).length > 0 && (
-          <div className="mt-1.5 md:mt-3">
-            <SectionLabel label="Финансы" count={plannedOps.length} />
-            {plannedOps.map((op) => (
-              <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
-            ))}
-          </div>
-        )}
 
         {/* Empty state */}
         {isEmpty && (
