@@ -173,8 +173,14 @@ def budget_matrix(
     if show_hidden and variant_id_resolved:
         all_hidden_cats = get_hidden_category_ids(db, variant_id_resolved)
         result["hidden_category_ids"] = list(all_hidden_cats)
+        all_hidden_goals = get_hidden_goal_ids(db, variant_id_resolved)
+        all_hidden_wgoals = get_hidden_withdrawal_goal_ids(db, variant_id_resolved)
+        result["hidden_goal_ids"] = list(all_hidden_goals)
+        result["hidden_withdrawal_goal_ids"] = list(all_hidden_wgoals)
     else:
         result["hidden_category_ids"] = []
+        result["hidden_goal_ids"] = []
+        result["hidden_withdrawal_goal_ids"] = []
     return result
 
 
@@ -299,5 +305,39 @@ def toggle_category_visibility(body: ToggleVisibilityBody, request: Request, db:
     else:
         hidden.discard(body.category_id)
     save_hidden_category_ids(db, variant.id, hidden)
+    db.commit()
+    return {"ok": True}
+
+
+class ToggleGoalVisibilityBody(BaseModel):
+    goal_id: int
+    hidden: bool
+    section: str = "goal"  # "goal" or "withdrawal"
+    variant_id: int | None = None
+
+@router.post("/budget/toggle-goal-visibility")
+def toggle_goal_visibility(body: ToggleGoalVisibilityBody, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    from app.application.budget import (
+        get_active_variant, get_hidden_goal_ids, save_hidden_goal_ids,
+        get_hidden_withdrawal_goal_ids, save_hidden_withdrawal_goal_ids,
+    )
+    variant = get_active_variant(db, user_id, body.variant_id)
+    if not variant:
+        return {"ok": False}
+    if body.section == "withdrawal":
+        hidden = get_hidden_withdrawal_goal_ids(db, variant.id)
+        if body.hidden:
+            hidden.add(body.goal_id)
+        else:
+            hidden.discard(body.goal_id)
+        save_hidden_withdrawal_goal_ids(db, variant.id, hidden)
+    else:
+        hidden = get_hidden_goal_ids(db, variant.id)
+        if body.hidden:
+            hidden.add(body.goal_id)
+        else:
+            hidden.discard(body.goal_id)
+        save_hidden_goal_ids(db, variant.id, hidden)
     db.commit()
     return {"ok": True}

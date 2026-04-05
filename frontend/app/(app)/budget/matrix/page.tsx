@@ -704,6 +704,8 @@ function GoalDataRow({
   periods,
   editing,
   goalPlanType,
+  isHidden,
+  onToggleVisibility,
 }: {
   row: BudgetGoalRow;
   periodCount: number;
@@ -711,6 +713,8 @@ function GoalDataRow({
   periods?: BudgetPeriod[];
   editing?: EditingProps;
   goalPlanType?: string;
+  isHidden?: boolean;
+  onToggleVisibility?: () => void;
 }) {
   function openGoalPlan(p: BudgetPeriod, cell: BudgetCell) {
     if (!editing || !p.has_manual_plan) return;
@@ -732,12 +736,21 @@ function GoalDataRow({
     <tr className="transition-colors">
       <td
         className="text-[12px] py-1.5 px-3 sticky left-0 z-10 max-w-[200px] truncate font-normal"
-        style={{ color: "#475569", background: "#FAFBFD", borderRight: "2px solid #64748B" }}
+        style={{ color: "#1E293B", background: "#FAFBFD", borderRight: "2px solid #64748B" }}
         title={row.title}
       >
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-1 group/goal">
           <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
-          {row.title}
+          <span className={isHidden ? "opacity-40 line-through" : ""}>{row.title}</span>
+          {onToggleVisibility && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }}
+              className="opacity-0 group-hover/goal:opacity-100 ml-1 shrink-0 transition-opacity"
+              title={isHidden ? "Показать в бюджете" : "Скрыть из бюджета"}
+            >
+              {isHidden ? <EyeOff size={11} className="text-red-400" /> : <Eye size={11} className="text-slate-400 hover:text-slate-600" />}
+            </button>
+          )}
         </span>
       </td>
       {row.cells.slice(0, periodCount).map((cell, i) => {
@@ -964,6 +977,19 @@ export default function BudgetMatrixPage() {
   }
 
   const hiddenCatIds = new Set(data?.hidden_category_ids ?? []);
+  const hiddenGoalIds = new Set((data as any)?.hidden_goal_ids ?? []);
+  const hiddenWGoalIds = new Set((data as any)?.hidden_withdrawal_goal_ids ?? []);
+
+  async function toggleGoalVisibility(goalId: number, section: "goal" | "withdrawal") {
+    const ids = section === "withdrawal" ? hiddenWGoalIds : hiddenGoalIds;
+    const isHidden = ids.has(goalId);
+    await api.post("/api/v2/budget/toggle-goal-visibility", {
+      goal_id: goalId,
+      hidden: !isHidden,
+      section,
+    });
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
 
   async function toggleVisibility(categoryId: number) {
     const isHidden = hiddenCatIds.has(categoryId);
@@ -1223,6 +1249,8 @@ export default function BudgetMatrixPage() {
                           periods={periods}
                           editing={editingProps}
                           goalPlanType="withdrawal"
+                          isHidden={showHidden && hiddenWGoalIds.has(row.goal_id)}
+                          onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "withdrawal") : undefined}
                         />
                       ))}
                       <TotalsRow
@@ -1309,6 +1337,8 @@ export default function BudgetMatrixPage() {
                           periods={periods}
                           editing={editingProps}
                           goalPlanType="goal"
+                          isHidden={showHidden && hiddenGoalIds.has(row.goal_id)}
+                          onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "goal") : undefined}
                         />
                       ))}
                       <TotalsRow
