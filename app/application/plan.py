@@ -599,6 +599,23 @@ def _query_done_today(db: Session, account_id: int, today: date, wc_map: dict) -
             item["is_early"] = False
             items.append(item)
 
+    # Planned operations completed today
+    op_tmpl_cache: dict[int, OperationTemplateModel] = {}
+    for occ in db.query(OperationOccurrence).filter(
+        OperationOccurrence.account_id == account_id,
+        OperationOccurrence.status == "DONE",
+        func.date(OperationOccurrence.completed_at) == today,
+    ).all():
+        if occ.template_id not in op_tmpl_cache:
+            op_tmpl_cache[occ.template_id] = db.query(OperationTemplateModel).filter(
+                OperationTemplateModel.template_id == occ.template_id
+            ).first()
+        tmpl = op_tmpl_cache[occ.template_id]
+        if tmpl:
+            item = _op_occ_to_item(occ, tmpl, today, wc_map)
+            item["is_early"] = False
+            items.append(item)
+
     # Sort: early items first, then by title
     items.sort(key=lambda x: (not x["is_early"], x["title"]))
     return items
