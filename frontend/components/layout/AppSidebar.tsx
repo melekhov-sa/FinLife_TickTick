@@ -36,36 +36,19 @@ export function AppSidebar() {
     if (href === "/budget") {
       return pathname.startsWith("/budget") || pathname.startsWith("/planned-ops");
     }
-    if (href === "/analytics") {
-      return pathname.startsWith("/analytics") || pathname.startsWith("/efficiency")
-        || pathname.startsWith("/strategy") || pathname.startsWith("/goals");
-    }
     return pathname.startsWith(href);
   }
-
-  const linkBase = clsx(
-    "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-100 leading-snug"
-  );
-
-  const activeStyle = isDark
-    ? "bg-indigo-500/[0.12] text-white font-medium"
-    : "bg-indigo-50 text-indigo-700 font-medium";
-
-  const inactiveStyle = isDark
-    ? "text-white/60 hover:text-white/90 hover:bg-white/[0.05] font-normal"
-    : "text-slate-500 hover:text-slate-800 hover:bg-slate-50 font-normal";
 
   return (
     <aside
       className="flex flex-col h-full w-[200px] select-none shrink-0 border-r"
       style={{
-        background: "var(--app-sidebar-bg)",
-        borderColor: "var(--app-border)",
-        boxShadow: isDark ? "1px 0 20px rgba(0,0,0,0.3)" : "1px 0 0 rgba(0,0,0,0.06)",
+        background: isDark ? "#0a0f1e" : "#F8F9FB",
+        borderColor: isDark ? "rgba(255,255,255,0.06)" : "#E2E8F0",
       }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 mb-1 shrink-0">
+      <div className="flex items-center gap-2.5 px-4 py-4 mb-2 shrink-0">
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
@@ -75,7 +58,7 @@ export function AppSidebar() {
         <span
           className="font-semibold text-sm"
           style={{
-            color: isDark ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.82)",
+            color: isDark ? "rgba(255,255,255,0.9)" : "#1E293B",
             letterSpacing: "-0.02em",
           }}
         >
@@ -84,22 +67,39 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2.5 space-y-0.5 pb-2">
+      <nav className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-2">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
             <Link
               key={href}
               href={href}
-              className={clsx(linkBase, active ? activeStyle : inactiveStyle, "relative")}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-100 leading-snug relative",
+                active
+                  ? isDark
+                    ? "bg-indigo-500/[0.15] text-white font-semibold"
+                    : "bg-indigo-50 text-indigo-700 font-semibold"
+                  : isDark
+                    ? "text-slate-400 hover:text-white hover:bg-white/[0.06] font-normal"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 font-normal"
+              )}
             >
               {active && (
-                <span className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-indigo-500" />
+                <span className={clsx(
+                  "absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full",
+                  isDark ? "bg-indigo-400" : "bg-indigo-600"
+                )} />
               )}
               <Icon
-                size={16}
-                strokeWidth={active ? 2 : 1.7}
-                className={clsx("shrink-0", active ? "text-indigo-400" : "opacity-50")}
+                size={17}
+                strokeWidth={active ? 2.2 : 1.8}
+                className={clsx(
+                  "shrink-0 transition-colors",
+                  active
+                    ? isDark ? "text-indigo-300" : "text-indigo-600"
+                    : isDark ? "text-slate-500" : "text-slate-400"
+                )}
               />
               <span className="flex-1 truncate">{label}</span>
             </Link>

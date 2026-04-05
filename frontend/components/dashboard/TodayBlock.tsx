@@ -38,7 +38,7 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-start gap-2 py-1.5 md:py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0",
+        "flex items-start gap-2.5 py-2 md:py-2.5 border-b border-slate-100 dark:border-white/[0.06] last:border-0 hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors rounded-md -mx-1 px-1",
         isDone && "opacity-40"
       )}
     >
@@ -46,7 +46,7 @@ function Item({
       <div className="mt-0.5 shrink-0">
         {kind === "event" ? (
           <div className="w-7 h-7 flex items-center justify-center">
-            <span className="text-[14px]">📅</span>
+            <span className="text-[15px]">📅</span>
           </div>
         ) : canComplete ? (
           <button
@@ -54,17 +54,17 @@ function Item({
             className="w-7 h-7 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] block transition-all",
-              kind === "habit" ? "border-violet-400 rounded-[4px]" : isOverdue ? "border-red-400" : "border-slate-300 dark:border-white/30"
+              "w-[17px] h-[17px] rounded-full border-[2px] block transition-all",
+              kind === "habit" ? "border-violet-400 rounded-[4px]" : isOverdue ? "border-red-400" : "border-slate-400 dark:border-slate-500"
             )} />
           </button>
         ) : (
           <div className="w-7 h-7 flex items-center justify-center">
             <span className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] block",
-              isDone ? "bg-emerald-500/60 border-emerald-500/60" : "border-slate-200"
+              "w-[17px] h-[17px] rounded-full border-[2px] block flex items-center justify-center",
+              isDone ? "bg-emerald-500 border-emerald-500" : "border-slate-200"
             )}>
-              {isDone && <span className="text-white text-[9px] flex items-center justify-center h-full">✓</span>}
+              {isDone && <span className="text-white text-[9px] flex items-center justify-center h-full font-bold">✓</span>}
             </span>
           </div>
         )}
@@ -75,7 +75,7 @@ function Item({
         {/* Line 1: emoji + title + time */}
         <div className="flex items-baseline gap-1">
           <span
-            className={clsx("text-[13px] font-medium leading-snug truncate flex-1", isDone ? "line-through" : "")}
+            className={clsx("text-[14px] font-semibold leading-snug truncate flex-1", isDone ? "line-through" : "")}
             style={{ color: isDone ? "var(--t-faint)" : "var(--t-primary)" }}
             title={title}
           >
@@ -83,7 +83,7 @@ function Item({
             {title}
           </span>
           {timeStr && (
-            <span className="text-[11px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
+            <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
               {timeStr}
             </span>
           )}
@@ -91,7 +91,7 @@ function Item({
 
         {/* Line 2: kind badge + reminders */}
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[10px] font-medium" style={{ color: "var(--t-faint)" }}>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
             {kindLabel}
           </span>
           {isOverdue && !isDone && (
@@ -147,9 +147,15 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
 
 function SectionLabel({ label, count }: { label: string; count: number }) {
   return (
-    <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>
-      {label} · {count}
-    </p>
+    <div className="flex items-center gap-2 mb-1.5 mt-1">
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+        {label}
+      </p>
+      <span className="text-[9px] font-bold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-px rounded-full" style={{ color: "var(--t-faint)" }}>
+        {count}
+      </span>
+      <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.06]" />
+    </div>
   );
 }
 
@@ -216,11 +222,11 @@ export function TodayBlock({ today, plannedOps }: Props) {
         />
       )}
 
-      <div className="rounded-xl md:rounded-[14px] border p-2.5 md:p-5" style={{ borderColor: "rgba(120,140,255,0.4)", background: "rgba(99,102,241,0.04)" }}>
+      <div className="rounded-xl md:rounded-[14px] border p-3 md:p-5 bg-white dark:bg-white/[0.02]" style={{ borderColor: "rgba(99,102,241,0.25)" }}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-2 md:mb-4">
+        <div className="flex items-center justify-between mb-2 md:mb-3">
           <div className="flex items-center gap-2 md:gap-3">
-            <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+            <h2 className="text-[14px] md:text-[15px] font-bold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
               Сегодня
             </h2>
 
