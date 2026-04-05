@@ -220,7 +220,7 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
       </div>
 
       {/* Items */}
-      {visible.map((ev, i) => <EventRow key={i} ev={ev} />)}
+      {visible.map((ev, i) => <EventRow key={`${ev.occurred_at}-${ev.title}-${i}`} ev={ev} />)}
 
       {!showAll && hiddenCount > 0 && (
         <button

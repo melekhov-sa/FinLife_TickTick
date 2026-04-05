@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { clsx } from "clsx";
 import { CheckCircle2, SkipForward, Play } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { isCompletable, type CompletableKind } from "@/lib/completion";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
@@ -12,12 +13,6 @@ import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 interface Props {
   today: TodayBlockType;
   plannedOps: UpcomingPayment[];
-}
-
-type CompletableKind = "task" | "habit" | "task_occ";
-
-function isCompletable(kind: string): kind is CompletableKind {
-  return kind === "task" || kind === "habit" || kind === "task_occ";
 }
 
 function Item({
@@ -150,26 +145,26 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   const [showDone, setShowDone] = useState(false);
 
-  const activeTasks = [
-    ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
-    ...(active ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
-  ];
-  const doneTasks = (done ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ");
-
-  const activeHabits = [
-    ...(overdue ?? []).filter((i) => i.kind === "habit"),
-    ...(active ?? []).filter((i) => i.kind === "habit"),
-  ];
-  const doneHabits = (done ?? []).filter((i) => i.kind === "habit");
-
-  const doneOps = (done ?? []).filter((i) => i.kind === "planned_op");
-
-  const isEmpty =
-    activeTasks.length === 0 && doneTasks.length === 0 &&
-    activeHabits.length === 0 && doneHabits.length === 0 &&
-    doneOps.length === 0 &&
-    (events ?? []).length === 0 &&
-    (plannedOps ?? []).length === 0;
+  const { activeTasks, doneTasks, activeHabits, doneHabits, doneOps, isEmpty } = useMemo(() => {
+    const _activeTasks = [
+      ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
+      ...(active ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
+    ];
+    const _doneTasks = (done ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ");
+    const _activeHabits = [
+      ...(overdue ?? []).filter((i) => i.kind === "habit"),
+      ...(active ?? []).filter((i) => i.kind === "habit"),
+    ];
+    const _doneHabits = (done ?? []).filter((i) => i.kind === "habit");
+    const _doneOps = (done ?? []).filter((i) => i.kind === "planned_op");
+    const _isEmpty =
+      _activeTasks.length === 0 && _doneTasks.length === 0 &&
+      _activeHabits.length === 0 && _doneHabits.length === 0 &&
+      _doneOps.length === 0 &&
+      (events ?? []).length === 0 &&
+      (plannedOps ?? []).length === 0;
+    return { activeTasks: _activeTasks, doneTasks: _doneTasks, activeHabits: _activeHabits, doneHabits: _doneHabits, doneOps: _doneOps, isEmpty: _isEmpty };
+  }, [overdue, active, done, events, plannedOps]);
 
   const qc = useQueryClient();
   const { mutate: skipOp } = useMutation({

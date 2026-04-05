@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
@@ -9,9 +9,9 @@ import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
+import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
 import { CalendarDays, Play, SkipForward, Plus, ChevronDown } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -55,7 +55,6 @@ interface PlanData {
 const TABS = [
   { value: "active",  label: "Активные" },
   { value: "done",    label: "Выполненные" },
-  { value: "archive", label: "Архив" },
 ] as const;
 
 const RANGES = [
@@ -64,12 +63,6 @@ const RANGES = [
   { value: 30, label: "Месяц" },
   { value: 90, label: "3 мес." },
 ];
-
-type CompletableKind = "task" | "habit" | "task_occ";
-
-function isCompletable(kind: string): kind is CompletableKind {
-  return kind === "task" || kind === "habit" || kind === "task_occ";
-}
 
 // ── Reschedule Modal ──────────────────────────────────────────────────────────
 
@@ -192,7 +185,6 @@ function EntryRow({
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
-  const isEvent = entry.kind === "event";
   const isOp = entry.kind === "planned_op";
   const opKind = entry.meta.op_kind as string | undefined;
   const amountFormatted = entry.meta.amount_formatted as string | undefined;
@@ -346,12 +338,12 @@ function DayGroupCard({
     : group.date_label;
 
   // Group entries by type
-  const grouped = ENTRY_GROUP_ORDER
+  const grouped = useMemo(() => ENTRY_GROUP_ORDER
     .map((gt) => ({
       type: gt,
       entries: group.entries.filter((e) => entryGroupType(e.kind) === gt),
     }))
-    .filter((g) => g.entries.length > 0);
+    .filter((g) => g.entries.length > 0), [group.entries]);
 
   return (
     <div className={clsx(
@@ -451,7 +443,7 @@ function DoneTodayBlock({
 }
 
 export default function PlanPage() {
-  const [tab, setTab] = useState<"active" | "done" | "archive">("active");
+  const [tab, setTab] = useState<"active" | "done">("active");
   const [range, setRange] = useState(7);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -489,8 +481,6 @@ export default function PlanPage() {
     })).filter(g => g.entries.length > 0),
     done_today: data.done_today.filter(e => e.kind !== "wish"),
   } : undefined;
-
-  const summary = data?.summary;
 
   const executeInitialValues: CreateOperationInitialValues | undefined = executeEntry
     ? {
@@ -538,7 +528,7 @@ export default function PlanPage() {
           <div className="flex items-center gap-2 mb-3">
             {/* Status: Активные / Выполненные */}
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-              {TABS.filter(t => t.value !== "archive").map((t) => (
+              {TABS.map((t) => (
                 <button
                   key={t.value}
                   onClick={() => setTab(t.value)}
