@@ -318,12 +318,9 @@ function entryGroupType(kind: string): EntryGroupType {
 
 function EntryGroupHeader({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 pt-1.5 pb-px first:pt-0">
-      <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.05]" />
-    </div>
+    <p className="text-[9px] font-bold uppercase tracking-[0.06em] pt-2 pb-px first:pt-0" style={{ color: "var(--t-muted)", opacity: 0.5 }}>
+      {label}
+    </p>
   );
 }
 
