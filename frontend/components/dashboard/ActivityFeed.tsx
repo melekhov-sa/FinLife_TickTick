@@ -49,6 +49,7 @@ const CHIP_STYLES: Record<string, string> = {
   habit:    "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10",
   goal:     "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10",
   repeat:   "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/[0.06]",
+  wallet:   "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/[0.05]",
 };
 
 const CHIP_LABELS: Record<string, string> = {
@@ -56,10 +57,10 @@ const CHIP_LABELS: Record<string, string> = {
   habit: "Привычка", goal: "Цель", repeat: "Повтор",
 };
 
-function Chip({ type }: { type: string }) {
+function Chip({ type, label }: { type: string; label?: string }) {
   return (
     <span className={clsx("text-[7px] font-bold uppercase tracking-wider px-1 py-px rounded shrink-0 leading-none", CHIP_STYLES[type])}>
-      {CHIP_LABELS[type]}
+      {label ?? CHIP_LABELS[type]}
     </span>
   );
 }
@@ -71,26 +72,31 @@ function FinanceRow({ ev }: { ev: FeedEvent }) {
   const { wallet, category } = parseFinanceSubtitle(ev.subtitle);
   const isGenericTitle = ev.title === "Расход" || ev.title === "Доход";
   const mainText = isGenericTitle ? (category || wallet || ev.title) : ev.title;
-  const secondaryText = isGenericTitle ? (category ? wallet : "") : ev.subtitle;
+  const walletName = isGenericTitle ? (category ? wallet : "") : "";
 
   return (
-    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/80 dark:border-white/[0.04]">
+    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      {/* Icon from event */}
+      <span className="text-[13px] shrink-0 mt-px">{ev.icon}</span>
+
       <div className="flex-1 min-w-0">
+        {/* Line 1: category + chip */}
         <div className="flex items-center gap-1">
           <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
             {mainText}
           </span>
           <Chip type={type} />
         </div>
-        {(secondaryText || ev.time_str) && (
-          <p className="text-[10px] truncate mt-px" style={{ color: "var(--t-faint)" }}>
-            {secondaryText}{secondaryText && ev.time_str ? " • " : ""}{ev.time_str}
-          </p>
-        )}
+        {/* Line 2: wallet • time */}
+        <p className="text-[10px] truncate mt-px" style={{ color: "var(--t-faint)" }}>
+          {walletName && <>{walletName} • </>}{ev.time_str}
+        </p>
       </div>
+
+      {/* Amount */}
       {ev.amount_label && (
         <span className={clsx(
-          "text-[11px] font-semibold tabular-nums shrink-0 mt-px",
+          "text-[11px] font-semibold tabular-nums shrink-0 mt-0.5",
           type === "income" ? "money-income" : "money-expense"
         )}>
           {ev.amount_label}
@@ -105,7 +111,8 @@ function TransferRow({ ev }: { ev: FeedEvent }) {
   const mainText = isGenericTitle ? ev.subtitle : ev.title;
 
   return (
-    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/80 dark:border-white/[0.04]">
+    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      <span className="text-[13px] shrink-0 mt-px">🔄</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">
           <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
@@ -116,7 +123,7 @@ function TransferRow({ ev }: { ev: FeedEvent }) {
         <p className="text-[10px] mt-px" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
       </div>
       {ev.amount_label && (
-        <span className="text-[11px] font-semibold tabular-nums shrink-0 mt-px" style={{ color: "var(--t-muted)" }}>
+        <span className="text-[11px] font-semibold tabular-nums shrink-0 mt-0.5" style={{ color: "var(--t-muted)" }}>
           {ev.amount_label}
         </span>
       )}
@@ -130,7 +137,8 @@ function TaskRow({ ev }: { ev: FeedEvent }) {
     : ev.subtitle.includes("Повтор") ? "repeat" : null;
 
   return (
-    <div className="flex items-center gap-2 py-[5px] border-t first:border-0 border-slate-100/80 dark:border-white/[0.04]">
+    <div className="flex items-center gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      <span className="text-[13px] shrink-0">{ev.icon}</span>
       <div className="flex-1 min-w-0 flex items-center gap-1">
         <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
           {ev.title}
@@ -149,15 +157,9 @@ function EventRow({ ev }: { ev: FeedEvent }) {
   return <TaskRow ev={ev} />;
 }
 
-// ── Inner group (type section within a day) ──────────────────────────────────
+// ── Type group within a day ──────────────────────────────────────────────────
 
 type GroupType = "finance" | "tasks" | "transfers";
-
-const GROUP_META: Record<GroupType, { icon: string; label: string }> = {
-  finance:   { icon: "💰", label: "Финансы" },
-  tasks:     { icon: "✅", label: "Задачи" },
-  transfers: { icon: "🔁", label: "Переводы" },
-};
 
 function toGroupType(t: ItemType): GroupType {
   if (t === "expense" || t === "income") return "finance";
@@ -168,8 +170,6 @@ function toGroupType(t: ItemType): GroupType {
 interface InnerGroup {
   groupType: GroupType;
   items: FeedEvent[];
-  expenseCount: number;
-  incomeCount: number;
   total: number | null;
 }
 
@@ -183,50 +183,35 @@ function buildInnerGroups(events: FeedEvent[]): InnerGroup[] {
     if (items.length === 0) continue;
 
     let total: number | null = null;
-    let expenseCount = 0, incomeCount = 0;
     if (gt === "finance") {
       total = items.reduce((s, ev) => s + (ev.amount_label ? parseAmount(ev.amount_label) : 0), 0);
-      expenseCount = items.filter(ev => ev.amount_css === "expense").length;
-      incomeCount = items.filter(ev => ev.amount_css === "income").length;
     }
 
-    result.push({ groupType: gt, items, expenseCount, incomeCount, total });
+    result.push({ groupType: gt, items, total });
   }
   return result;
 }
 
+const GROUP_LABELS: Record<GroupType, string> = {
+  finance: "Финансы", tasks: "Задачи", transfers: "Переводы",
+};
+
 function InnerGroupSection({ group }: { group: InnerGroup }) {
   const [showAll, setShowAll] = useState(false);
-  const meta = GROUP_META[group.groupType];
   const visible = showAll ? group.items : group.items.slice(0, 3);
   const hiddenCount = group.items.length - 3;
 
   return (
     <div className="mt-1.5 first:mt-0">
-      {/* Group header */}
+      {/* Group header: ФИНАНСЫ · 5        −12 300 ₽ */}
       <div className="flex items-center gap-1.5 mb-px">
-        <span className="text-[10px]">{meta.icon}</span>
-        <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.6 }}>
-          {meta.label}
+        <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
+          {GROUP_LABELS[group.groupType]}
         </span>
-        <span className="text-[8px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1 py-px rounded-full" style={{ color: "var(--t-muted)" }}>
+        <span className="text-[9px] font-bold" style={{ color: "var(--t-faint)" }}>·</span>
+        <span className="text-[9px] font-semibold tabular-nums" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
           {group.items.length}
         </span>
-
-        {group.groupType === "finance" && (
-          <div className="flex items-center gap-0.5 ml-0.5">
-            {group.expenseCount > 0 && (
-              <span className="text-[7px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1 py-px rounded">
-                {group.expenseCount} расх.
-              </span>
-            )}
-            {group.incomeCount > 0 && (
-              <span className="text-[7px] font-bold text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-px rounded">
-                {group.incomeCount} дох.
-              </span>
-            )}
-          </div>
-        )}
 
         {group.total !== null && (
           <span className={clsx(
@@ -238,12 +223,13 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
         )}
       </div>
 
+      {/* Items */}
       {visible.map((ev, i) => <EventRow key={i} ev={ev} />)}
 
       {!showAll && hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="text-[10px] font-medium pt-0.5 transition-colors hover:text-indigo-500 touch-manipulation"
+          className="text-[10px] font-medium pt-0.5 pl-6 transition-colors hover:text-indigo-500 touch-manipulation"
           style={{ color: "var(--t-faint)" }}
         >
           Показать ещё {hiddenCount} →
@@ -255,14 +241,16 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
 
 // ── Day block ────────────────────────────────────────────────────────────────
 
-function DayBlock({ group }: { group: FeedGroup }) {
+function DayBlock({ group, isFirst }: { group: FeedGroup; isFirst: boolean }) {
   const innerGroups = useMemo(() => buildInnerGroups(group.events), [group.events]);
 
   return (
-    <div>
+    <div className={clsx(!isFirst && "pt-2 border-t border-slate-100 dark:border-white/[0.05]")}>
+      {/* Day header */}
       <p className="text-[12px] font-bold mb-0.5" style={{ color: "var(--t-primary)" }}>
         {group.label}
       </p>
+
       {innerGroups.map((ig) => (
         <InnerGroupSection key={ig.groupType} group={ig} />
       ))}
@@ -277,6 +265,7 @@ export function ActivityFeed({ feed }: Props) {
 
   if (feed.length === 0) return null;
 
+  // Show first 2-3 days with activity; rest hidden
   const visibleDays = showAll ? feed : feed.slice(0, 3);
   const hiddenDayCount = feed.length - 3;
 
@@ -286,12 +275,13 @@ export function ActivityFeed({ feed }: Props) {
         Активность
       </h2>
 
-      <div className="space-y-2.5">
-        {visibleDays.map((group) => (
-          <DayBlock key={group.date} group={group} />
+      <div className="space-y-0">
+        {visibleDays.map((group, i) => (
+          <DayBlock key={group.date} group={group} isFirst={i === 0} />
         ))}
       </div>
 
+      {/* Show all / collapse */}
       {!showAll && hiddenDayCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
