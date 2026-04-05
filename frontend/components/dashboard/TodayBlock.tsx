@@ -162,9 +162,12 @@ export function TodayBlock({ today, plannedOps }: Props) {
   ];
   const doneHabits = (done ?? []).filter((i) => i.kind === "habit");
 
+  const doneOps = (done ?? []).filter((i) => i.kind === "planned_op");
+
   const isEmpty =
     activeTasks.length === 0 && doneTasks.length === 0 &&
     activeHabits.length === 0 && doneHabits.length === 0 &&
+    doneOps.length === 0 &&
     (events ?? []).length === 0 &&
     (plannedOps ?? []).length === 0;
 
@@ -243,8 +246,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
           const allHabits = [...activeHabits, ...(showDone ? doneHabits : [])];
           const eventItems = events ?? [];
           const finOps = plannedOps ?? [];
+          const completedOps = showDone ? doneOps : [];
 
-          const doneItems = [...doneTasks, ...doneHabits];
+          const doneItems = [...doneTasks, ...doneHabits, ...doneOps];
           const hiddenDoneCount = showDone ? 0 : doneItems.length;
 
           const groups: { key: string; label: string; content: React.ReactNode }[] = [];
@@ -283,13 +287,22 @@ export function TodayBlock({ today, plannedOps }: Props) {
             });
           }
 
-          if (finOps.length > 0) {
+          if (finOps.length > 0 || completedOps.length > 0) {
             groups.push({
               key: "finance",
               label: "Финансы",
-              content: finOps.map((op) => (
-                <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
-              )),
+              content: (
+                <>
+                  {finOps.map((op) => (
+                    <FinanceItem key={op.occurrence_id} op={op} onClick={() => setExecuteOp(op)} onSkip={() => skipOp(op.occurrence_id)} />
+                  ))}
+                  {completedOps.map((item) => (
+                    <div key={`done-op-${item.id}`} className="opacity-70">
+                      <Item item={item} onComplete={setConfirmItem} />
+                    </div>
+                  ))}
+                </>
+              ),
             });
           }
 
