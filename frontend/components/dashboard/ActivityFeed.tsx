@@ -59,7 +59,7 @@ const CHIP_LABELS: Record<string, string> = {
 
 function Chip({ type, label }: { type: string; label?: string }) {
   return (
-    <span className={clsx("text-[7px] font-bold uppercase tracking-wider px-1 py-px rounded shrink-0 leading-none", CHIP_STYLES[type])}>
+    <span className={clsx("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 leading-none", CHIP_STYLES[type])}>
       {label ?? CHIP_LABELS[type]}
     </span>
   );
@@ -75,28 +75,24 @@ function FinanceRow({ ev }: { ev: FeedEvent }) {
   const walletName = isGenericTitle ? (category ? wallet : "") : "";
 
   return (
-    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
-      {/* Icon from event */}
-      <span className="text-[13px] shrink-0 mt-px">{ev.icon}</span>
+    <div className="flex items-start gap-2.5 py-1.5 border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      <span className="text-[14px] shrink-0 mt-px">{ev.icon}</span>
 
       <div className="flex-1 min-w-0">
-        {/* Line 1: category + chip */}
-        <div className="flex items-center gap-1">
-          <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
             {mainText}
           </span>
           <Chip type={type} />
         </div>
-        {/* Line 2: wallet • time */}
-        <p className="text-[10px] truncate mt-px" style={{ color: "var(--t-faint)" }}>
+        <p className="text-[12px] truncate mt-px" style={{ color: "var(--t-faint)" }}>
           {walletName && <>{walletName} • </>}{ev.time_str}
         </p>
       </div>
 
-      {/* Amount */}
       {ev.amount_label && (
         <span className={clsx(
-          "text-[11px] font-semibold tabular-nums shrink-0 mt-0.5",
+          "text-[13px] font-semibold tabular-nums shrink-0 mt-0.5",
           type === "income" ? "money-income" : "money-expense"
         )}>
           {ev.amount_label}
@@ -111,19 +107,19 @@ function TransferRow({ ev }: { ev: FeedEvent }) {
   const mainText = isGenericTitle ? ev.subtitle : ev.title;
 
   return (
-    <div className="flex items-start gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
-      <span className="text-[13px] shrink-0 mt-px">🔄</span>
+    <div className="flex items-start gap-2.5 py-1.5 border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      <span className="text-[14px] shrink-0 mt-px">🔄</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1">
-          <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
             {mainText}
           </span>
           <Chip type="transfer" />
         </div>
-        <p className="text-[10px] mt-px" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
+        <p className="text-[12px] mt-px" style={{ color: "var(--t-faint)" }}>{ev.time_str}</p>
       </div>
       {ev.amount_label && (
-        <span className="text-[11px] font-semibold tabular-nums shrink-0 mt-0.5" style={{ color: "var(--t-muted)" }}>
+        <span className="text-[13px] font-semibold tabular-nums shrink-0 mt-0.5" style={{ color: "var(--t-muted)" }}>
           {ev.amount_label}
         </span>
       )}
@@ -137,15 +133,15 @@ function TaskRow({ ev }: { ev: FeedEvent }) {
     : ev.subtitle.includes("Повтор") ? "repeat" : null;
 
   return (
-    <div className="flex items-center gap-2 py-[5px] border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
-      <span className="text-[13px] shrink-0">{ev.icon}</span>
-      <div className="flex-1 min-w-0 flex items-center gap-1">
-        <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+    <div className="flex items-center gap-2.5 py-1.5 border-t first:border-0 border-slate-100/70 dark:border-white/[0.04]">
+      <span className="text-[14px] shrink-0">{ev.icon}</span>
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
           {ev.title}
         </span>
         {chipType && <Chip type={chipType} />}
       </div>
-      <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>{ev.time_str}</span>
+      <span className="text-[11px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>{ev.time_str}</span>
     </div>
   );
 }
@@ -205,17 +201,17 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
     <div className="mt-1.5 first:mt-0">
       {/* Group header: ФИНАНСЫ · 5        −12 300 ₽ */}
       <div className="flex items-center gap-1.5 mb-px">
-        <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.05em]" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
           {GROUP_LABELS[group.groupType]}
         </span>
-        <span className="text-[9px] font-bold" style={{ color: "var(--t-faint)" }}>·</span>
-        <span className="text-[9px] font-semibold tabular-nums" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
+        <span className="text-[11px] font-bold" style={{ color: "var(--t-faint)" }}>·</span>
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--t-muted)", opacity: 0.55 }}>
           {group.items.length}
         </span>
 
         {group.total !== null && (
           <span className={clsx(
-            "text-[10px] font-semibold tabular-nums ml-auto",
+            "text-[13px] font-semibold tabular-nums ml-auto",
             group.total < 0 ? "money-expense" : "money-income"
           )}>
             {formatTotal(group.total)}
@@ -229,7 +225,7 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
       {!showAll && hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="text-[10px] font-medium pt-0.5 pl-6 transition-colors hover:text-indigo-500 touch-manipulation"
+          className="text-[12px] font-medium pt-0.5 pl-7 transition-colors hover:text-indigo-500 touch-manipulation"
           style={{ color: "var(--t-faint)" }}
         >
           Показать ещё {hiddenCount} →
@@ -247,7 +243,7 @@ function DayBlock({ group, isFirst }: { group: FeedGroup; isFirst: boolean }) {
   return (
     <div className={clsx(!isFirst && "pt-2 border-t border-slate-100 dark:border-white/[0.05]")}>
       {/* Day header */}
-      <p className="text-[12px] font-bold mb-0.5" style={{ color: "var(--t-primary)" }}>
+      <p className="text-[14px] font-bold mb-0.5" style={{ color: "var(--t-primary)" }}>
         {group.label}
       </p>
 
@@ -271,7 +267,7 @@ export function ActivityFeed({ feed }: Props) {
 
   return (
     <div className="bg-white dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.06] p-3 md:p-4">
-      <h2 className="text-[13px] md:text-[14px] font-semibold mb-2" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <h2 className="text-[15px] md:text-[16px] font-semibold mb-2" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Активность
       </h2>
 
@@ -285,7 +281,7 @@ export function ActivityFeed({ feed }: Props) {
       {!showAll && hiddenDayCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="w-full text-center py-1.5 mt-2 text-[11px] font-medium transition-colors hover:text-indigo-500 touch-manipulation"
+          className="w-full text-center py-1.5 mt-2 text-[13px] font-medium transition-colors hover:text-indigo-500 touch-manipulation"
           style={{ color: "var(--t-faint)" }}
         >
           Показать всю историю →
@@ -294,7 +290,7 @@ export function ActivityFeed({ feed }: Props) {
       {showAll && feed.length > 3 && (
         <button
           onClick={() => setShowAll(false)}
-          className="w-full text-center py-1 mt-1.5 text-[10px] font-medium transition-colors hover:text-indigo-500"
+          className="w-full text-center py-1 mt-1.5 text-[12px] font-medium transition-colors hover:text-indigo-500"
           style={{ color: "var(--t-faint)" }}
         >
           Скрыть
