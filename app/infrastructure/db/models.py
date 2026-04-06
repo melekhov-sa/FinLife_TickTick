@@ -1603,3 +1603,60 @@ class StrategyTarget(Base):
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ============================================================================
+# Shared Lists (wishlist, giftlist, roadmap)
+# ============================================================================
+
+class SharedList(Base):
+    """A shareable list: wishlist, gift list, or roadmap."""
+    __tablename__ = "shared_lists"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    list_type: Mapped[str] = mapped_column(String(32), nullable=False)  # wishlist | giftlist | roadmap
+    slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class SharedListGroup(Base):
+    """A group/category within a shared list."""
+    __tablename__ = "shared_list_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    list_id: Mapped[int] = mapped_column(Integer, ForeignKey("shared_lists.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    sort_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    color: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class SharedListItem(Base):
+    """An item within a shared list."""
+    __tablename__ = "shared_list_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    list_id: Mapped[int] = mapped_column(Integer, ForeignKey("shared_lists.id", ondelete="CASCADE"), nullable=False, index=True)
+    group_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("shared_list_groups.id", ondelete="SET NULL"), nullable=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    price: Mapped[Decimal | None] = mapped_column(Numeric(precision=14, scale=2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, server_default="RUB")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="open")  # open | done | reserved
+    reserved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    planned_op_template_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> operation_templates
+    sort_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )

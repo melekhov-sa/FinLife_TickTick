@@ -10,6 +10,7 @@ import {
   PieChart,
   FolderKanban,
   Heart,
+  ListChecks,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/budget",     label: "Бюджет",      icon: PieChart },
   { href: "/projects",   label: "Проекты",     icon: FolderKanban },
   { href: "/habits",     label: "Привычки",    icon: Heart },
+  { href: "/lists",      label: "Списки",      icon: ListChecks },
 ];
 
 export function AppSidebar() {

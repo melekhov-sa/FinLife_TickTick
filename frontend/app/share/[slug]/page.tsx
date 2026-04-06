@@ -1,0 +1,252 @@
+"use client";
+
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { clsx } from "clsx";
+import { Check, ExternalLink, Gift, ShoppingBag, Map } from "lucide-react";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface ListGroup {
+  id: number;
+  title: string;
+  sort_order: number;
+  color: string | null;
+}
+
+interface ListItem {
+  id: number;
+  list_id: number;
+  group_id: number | null;
+  title: string;
+  note: string | null;
+  url: string | null;
+  image_url: string | null;
+  price: string | null;
+  currency: string;
+  status: string;
+  reserved_by: string | null;
+  sort_order: number;
+}
+
+interface SharedListPublic {
+  id: number;
+  title: string;
+  description: string | null;
+  list_type: string;
+  slug: string;
+  is_public: boolean;
+  groups: ListGroup[];
+  items: ListItem[];
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+async function publicGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function publicPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string }> = {
+  wishlist: { icon: ShoppingBag, label: "Вишлист" },
+  giftlist: { icon: Gift, label: "Список подарков" },
+  roadmap:  { icon: Map, label: "Роадмап" },
+};
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default function SharedListPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const qc = useQueryClient();
+
+  const { data: list, isLoading, isError } = useQuery<SharedListPublic>({
+    queryKey: ["shared-list-public", slug],
+    queryFn: () => publicGet<SharedListPublic>(`/api/v2/share/${slug}`),
+    staleTime: 30_000,
+  });
+
+  const [reservingId, setReservingId] = useState<number | null>(null);
+  const [reserveName, setReserveName] = useState("");
+
+  const { mutate: reserveItem, isPending: reserving } = useMutation({
+    mutationFn: ({ itemId, name }: { itemId: number; name: string }) =>
+      publicPost(`/api/v2/share/${slug}/items/${itemId}/reserve`, { reserved_by: name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shared-list-public", slug] });
+      setReservingId(null);
+      setReserveName("");
+    },
+  });
+
+  const isGiftlist = list?.list_type === "giftlist";
+  const meta = TYPE_META[list?.list_type ?? "wishlist"] ?? TYPE_META.wishlist;
+  const Icon = meta.icon;
+
+  // Group items
+  const grouped = list ? (() => {
+    const ungrouped = list.items.filter((it) => !it.group_id);
+    const byGroup = list.groups.map((g) => ({
+      group: g,
+      items: list.items.filter((it) => it.group_id === g.id),
+    }));
+    const result: { group: ListGroup | null; items: ListItem[] }[] = [];
+    if (ungrouped.length > 0) result.push({ group: null, items: ungrouped });
+    result.push(...byGroup);
+    return result;
+  })() : [];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 rounded-xl bg-indigo-100 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (isError || !list) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <p className="text-[18px] font-bold text-slate-800 mb-2">Список не найден</p>
+          <p className="text-[14px] text-slate-500">Возможно, он приватный или удалён</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 px-4 py-6 md:py-8">
+        <div className="max-w-[600px] mx-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <Icon size={24} className="text-indigo-500" />
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-indigo-500">{meta.label}</span>
+          </div>
+          <h1 className="text-[22px] md:text-[26px] font-bold text-slate-900 tracking-tight">{list.title}</h1>
+          {list.description && (
+            <p className="text-[14px] text-slate-500 mt-1">{list.description}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-[600px] mx-auto px-4 py-6">
+        {grouped.map(({ group, items }) => (
+          <div key={group?.id ?? "ungrouped"} className="mb-5">
+            {group && (
+              <h3 className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
+                {group.title}
+              </h3>
+            )}
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className={clsx(
+                    "flex items-center gap-3 px-4 py-3 border-b last:border-0 border-slate-100",
+                    item.status === "done" && "opacity-50",
+                    item.status === "reserved" && "bg-pink-50/50"
+                  )}
+                >
+                  {/* Status */}
+                  <div className="shrink-0">
+                    {item.status === "done" ? (
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <Check size={12} className="text-white" strokeWidth={3} />
+                      </div>
+                    ) : item.status === "reserved" ? (
+                      <div className="w-5 h-5 rounded-full bg-pink-200 flex items-center justify-center">
+                        <span className="text-[10px]">🎁</span>
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border-2 border-slate-300" />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className={clsx("text-[15px] font-medium text-slate-800", item.status === "done" && "line-through text-slate-400")}>
+                      {item.title}
+                    </p>
+                    {item.note && item.status !== "reserved" && (
+                      <p className="text-[12px] text-slate-400 truncate">{item.note}</p>
+                    )}
+                    {item.status === "reserved" && item.reserved_by && (
+                      <p className="text-[12px] text-pink-500 font-medium">🎁 Зарезервировано: {item.reserved_by}</p>
+                    )}
+                  </div>
+
+                  {/* Price */}
+                  {item.price && (
+                    <span className="text-[14px] font-semibold tabular-nums text-slate-600 shrink-0">
+                      {parseFloat(item.price).toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+
+                  {/* URL */}
+                  {item.url && (
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-indigo-400 hover:text-indigo-600 transition-colors">
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+
+                  {/* Reserve button (giftlist only, open items only) */}
+                  {isGiftlist && item.status === "open" && (
+                    <button
+                      onClick={() => { setReservingId(item.id); setReserveName(""); }}
+                      className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-pink-100 text-pink-600 hover:bg-pink-200 transition-colors"
+                    >
+                      Я подарю
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* Reserve modal */}
+        {reservingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setReservingId(null)}>
+            <div className="bg-white rounded-2xl p-5 w-[320px] shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-[16px] font-bold text-slate-800 mb-3">Зарезервировать подарок</h3>
+              <p className="text-[13px] text-slate-500 mb-3">Введите ваше имя, чтобы владелец списка знал, что подарок за вами</p>
+              <input
+                value={reserveName}
+                onChange={(e) => setReserveName(e.target.value)}
+                placeholder="Ваше имя"
+                className="w-full px-3 h-10 text-[15px] rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 mb-3"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setReservingId(null)} className="flex-1 py-2 text-[13px] font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                  Отмена
+                </button>
+                <button
+                  onClick={() => reserveName.trim() && reserveItem({ itemId: reservingId, name: reserveName.trim() })}
+                  disabled={reserving || !reserveName.trim()}
+                  className="flex-1 py-2 text-[13px] font-semibold rounded-xl bg-pink-500 text-white hover:bg-pink-600 disabled:opacity-50 transition-colors"
+                >
+                  {reserving ? "..." : "Подтвердить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
