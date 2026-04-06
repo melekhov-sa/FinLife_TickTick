@@ -221,7 +221,7 @@ function EntryRow({
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
         <div className="flex items-center gap-1.5">
           <span className={clsx(
-            "text-[15px] font-medium leading-snug truncate",
+            "text-[14px] font-medium leading-snug truncate",
             entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
@@ -232,7 +232,7 @@ function EntryRow({
           {/* Only useful meta — no kind chips */}
           {isOp && amountFormatted && (
             <span className={clsx(
-              "text-[13px] font-semibold tabular-nums shrink-0",
+              "text-[12px] font-semibold tabular-nums shrink-0",
               opKind === "INCOME" ? "money-income" : "money-expense"
             )}>
               {opKind === "INCOME" ? "+" : "\u2212"}{amountFormatted} ₽
@@ -240,7 +240,7 @@ function EntryRow({
           )}
 
           {entry.kind === "habit" && Boolean(entry.meta.current_streak) && (
-            <span className="text-[12px] shrink-0" style={{ color: "var(--t-muted)" }}>
+            <span className="text-[11px] shrink-0" style={{ color: "var(--t-muted)" }}>
               🔥{String(entry.meta.current_streak)}
             </span>
           )}
@@ -252,7 +252,7 @@ function EntryRow({
           )}
 
           {entry.time && (
-            <span className="text-[12px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
+            <span className="text-[11px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
               {entry.time}
             </span>
           )}
@@ -357,7 +357,7 @@ function DayGroupCard({
       {/* Day header */}
       <div className="flex items-center gap-2 mb-1">
         <h3 className={clsx(
-          "text-[15px] font-semibold leading-none",
+          "text-[14px] font-semibold leading-none",
           group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
             : group.is_today ? "text-indigo-600 dark:text-indigo-300/90"
             : "text-slate-800 dark:text-white/90"
@@ -420,11 +420,11 @@ function DoneTodayBlock({
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]"
       >
-        <span className="text-emerald-500 text-[13px]">✓</span>
-        <span className="text-[13px] font-medium" style={{ color: "var(--t-faint)" }}>
+        <span className="text-emerald-500 text-[12px]">✓</span>
+        <span className="text-[12px] font-medium" style={{ color: "var(--t-faint)" }}>
           Выполнено сегодня
         </span>
-        <span className="text-[13px] font-bold tabular-nums text-emerald-500">{entries.length}</span>
+        <span className="text-[12px] font-bold tabular-nums text-emerald-500">{entries.length}</span>
         <ChevronDown
           size={12}
           className={clsx("ml-auto transition-transform", expanded && "rotate-180")}
@@ -525,7 +525,7 @@ export default function PlanPage() {
         <div className="max-w-[860px]">
 
           {/* ── Controls — compact ────────────────────────────────── */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             {/* Status: Активные / Выполненные */}
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
               {TABS.map((t) => (
@@ -533,7 +533,7 @@ export default function PlanPage() {
                   key={t.value}
                   onClick={() => setTab(t.value)}
                   className={clsx(
-                    "px-3 py-1.5 rounded-md text-[13px] font-semibold transition-all",
+                    "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
                     tab === t.value
                       ? "bg-white dark:bg-indigo-600 text-slate-800 dark:text-white shadow-sm"
                       : "text-slate-500 dark:text-white/50 hover:text-slate-700"
@@ -551,7 +551,7 @@ export default function PlanPage() {
                   key={r.value}
                   onClick={() => setRange(r.value)}
                   className={clsx(
-                    "px-3 py-1.5 rounded-md text-[13px] font-semibold transition-all",
+                    "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
                     range === r.value
                       ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
                       : "text-slate-500 dark:text-white/50 hover:text-slate-700"
@@ -567,7 +567,7 @@ export default function PlanPage() {
               <button
                 onClick={() => setShowAddMenu((v) => !v)}
                 onBlur={() => setTimeout(() => setShowAddMenu(false), 150)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm"
               >
                 <Plus size={14} />
                 <span className="hidden md:inline">Добавить</span>
