@@ -191,7 +191,7 @@ function EntryRow({
 
   return (
     <div className={clsx(
-      "flex items-center gap-2.5 py-[5px] border-t first:border-0 transition-colors cursor-default group/row",
+      "flex items-center gap-2.5 py-[7px] border-t first:border-0 transition-colors cursor-default group/row",
       "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
     )}>
       {/* Checkbox / icon */}
@@ -310,7 +310,7 @@ function entryGroupType(kind: string): EntryGroupType {
 
 function EntryGroupHeader({ label }: { label: string }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-[0.05em] pt-2.5 pb-0.5 first:pt-0" style={{ color: "var(--t-muted)", opacity: 0.5 }}>
+    <p className="text-[10px] font-bold uppercase tracking-[0.05em] pt-3.5 pb-0.5 first:pt-0" style={{ color: "var(--t-muted)", opacity: 0.5 }}>
       {label}
     </p>
   );
