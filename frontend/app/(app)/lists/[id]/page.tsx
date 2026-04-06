@@ -6,7 +6,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clsx } from "clsx";
-import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X } from "lucide-react";
+import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3 } from "lucide-react";
 import { api } from "@/lib/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,7 +47,13 @@ interface SharedListFull {
   items: ListItem[];
 }
 
-type ViewMode = "list" | "grid";
+type ViewMode = "list" | "grid" | "kanban";
+
+const ROADMAP_STATUSES: Record<string, { label: string; color: string; bg: string }> = {
+  done:        { label: "Готово",    color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/15" },
+  in_progress: { label: "В работе",  color: "text-amber-600 dark:text-amber-400",    bg: "bg-amber-100 dark:bg-amber-500/15" },
+  open:        { label: "План",      color: "text-slate-500 dark:text-slate-400",     bg: "bg-slate-100 dark:bg-white/[0.06]" },
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,12 +74,8 @@ export default function ListDetailPage() {
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [copiedSlug, setCopiedSlug] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") return (localStorage.getItem("list-view") as ViewMode) || "list";
-    return "list";
-  });
-
-  useEffect(() => { localStorage.setItem("list-view", viewMode); }, [viewMode]);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewInited, setViewInited] = useState(false);
 
   // ── Queries ──────────────────────────────────────────────────────────
 
@@ -84,6 +86,22 @@ export default function ListDetailPage() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["shared-list", listId] });
+
+  // Set default view once list loads: kanban for roadmaps, saved preference for others
+  useEffect(() => {
+    if (!list || viewInited) return;
+    if (list.list_type === "roadmap") {
+      setViewMode("kanban");
+    } else {
+      const saved = localStorage.getItem("list-view") as ViewMode | null;
+      if (saved === "list" || saved === "grid") setViewMode(saved);
+    }
+    setViewInited(true);
+  }, [list, viewInited]);
+
+  useEffect(() => {
+    if (viewInited && viewMode !== "kanban") localStorage.setItem("list-view", viewMode);
+  }, [viewMode, viewInited]);
 
   // ── Mutations ────────────────────────────────────────────────────────
 
@@ -322,6 +340,75 @@ export default function ListDetailPage() {
     );
   }
 
+  function renderKanbanCard(item: ListItem) {
+    const st = ROADMAP_STATUSES[item.status] ?? ROADMAP_STATUSES.open;
+    return (
+      <div
+        key={item.id}
+        className="rounded-lg border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] p-2.5 group/card hover:shadow-sm transition-all"
+      >
+        <div className="flex items-start gap-1.5">
+          <p className="text-[13px] font-medium leading-snug flex-1 min-w-0" style={{ color: "var(--t-primary)" }}>
+            {item.title}
+          </p>
+          <div className="flex gap-0.5 shrink-0 opacity-0 group-hover/card:opacity-100 transition-all">
+            <button onClick={() => openEdit(item)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }}><Pencil size={10} /></button>
+            <button onClick={() => deleteItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={10} /></button>
+          </div>
+        </div>
+        {item.note && <p className="text-[11px] mt-1 line-clamp-2" style={{ color: "var(--t-faint)" }}>{item.note}</p>}
+        <div className="flex items-center gap-1.5 mt-2">
+          <button
+            onClick={() => {
+              const cycle = ["open", "in_progress", "done"];
+              const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length];
+              updateItem({ itemId: item.id, status: next });
+            }}
+            className={clsx("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded transition-colors", st.color, st.bg)}
+          >
+            {st.label}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderKanban() {
+    if (!list) return null;
+    const groups = list.groups.length > 0 ? list.groups : [{ id: 0, title: "Все", sort_order: 0, color: null }];
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-3 px-3 md:-mx-6 md:px-6">
+        {groups.map((group) => {
+          const colItems = group.id === 0
+            ? list.items
+            : list.items.filter((it) => it.group_id === group.id);
+
+          return (
+            <div key={group.id} className="w-[260px] md:w-[280px] shrink-0 flex flex-col">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <h3 className="text-[13px] font-bold" style={{ color: "var(--t-primary)" }}>{group.title}</h3>
+                <span className="text-[10px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
+                <button
+                  onClick={() => { setItemGroupId(group.id === 0 ? null : group.id); setShowAddItem(true); }}
+                  className="ml-auto w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+              <div className="flex-1 space-y-1.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.04] p-2 min-h-[100px]">
+                {colItems.map(renderKanbanCard)}
+                {colItems.length === 0 && (
+                  <p className="text-[11px] text-center py-4" style={{ color: "var(--t-faint)" }}>Пусто</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Add item modal */}
@@ -411,7 +498,7 @@ export default function ListDetailPage() {
 
       <AppTopbar title={list?.title ?? "Список"} />
       <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
-        <div className="max-w-[700px]">
+        <div className={viewMode === "kanban" ? "" : "max-w-[700px]"}>
 
           {isLoading && (
             <div className="space-y-3">
@@ -448,6 +535,7 @@ export default function ListDetailPage() {
                 <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
                   <button onClick={() => setViewMode("list")} className={clsx("p-1.5 rounded-md transition-all", viewMode === "list" ? "bg-white dark:bg-white/[0.12] shadow-sm" : "")} style={{ color: viewMode === "list" ? "var(--t-primary)" : "var(--t-faint)" }}><List size={14} /></button>
                   <button onClick={() => setViewMode("grid")} className={clsx("p-1.5 rounded-md transition-all", viewMode === "grid" ? "bg-white dark:bg-white/[0.12] shadow-sm" : "")} style={{ color: viewMode === "grid" ? "var(--t-primary)" : "var(--t-faint)" }}><LayoutGrid size={14} /></button>
+                  <button onClick={() => setViewMode("kanban")} className={clsx("p-1.5 rounded-md transition-all", viewMode === "kanban" ? "bg-white dark:bg-white/[0.12] shadow-sm" : "")} style={{ color: viewMode === "kanban" ? "var(--t-primary)" : "var(--t-faint)" }}><Columns3 size={14} /></button>
                 </div>
 
                 <div className="flex items-center gap-1.5 ml-auto">
@@ -469,27 +557,31 @@ export default function ListDetailPage() {
                 </div>
               )}
 
-              {grouped.map(({ group, items }) => (
-                <div key={group?.id ?? "ungrouped"} className="mb-4">
-                  {group && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-[13px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)", opacity: 0.6 }}>{group.title}</h3>
-                      <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{items.length}</span>
-                      <button onClick={() => deleteGroup(group.id)} className="ml-auto w-6 h-6 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить группу"><Trash2 size={12} /></button>
-                    </div>
-                  )}
+              {viewMode === "kanban" ? (
+                renderKanban()
+              ) : (
+                grouped.map(({ group, items }) => (
+                  <div key={group?.id ?? "ungrouped"} className="mb-4">
+                    {group && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-[13px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)", opacity: 0.6 }}>{group.title}</h3>
+                        <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{items.length}</span>
+                        <button onClick={() => deleteGroup(group.id)} className="ml-auto w-6 h-6 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить группу"><Trash2 size={12} /></button>
+                      </div>
+                    )}
 
-                  {viewMode === "list" ? (
-                    <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
-                      {items.map(renderListItem)}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                      {items.map(renderGridItem)}
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {viewMode === "list" ? (
+                      <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
+                        {items.map(renderListItem)}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                        {items.map(renderGridItem)}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </>
           )}
         </div>

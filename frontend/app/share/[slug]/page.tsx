@@ -60,9 +60,16 @@ async function publicPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string }> = {
-  wishlist: { icon: ShoppingBag, label: "Вишлист" },
-  giftlist: { icon: Gift, label: "Список подарков" },
-  roadmap:  { icon: Map, label: "Роадмап" },
+  wishlist:  { icon: ShoppingBag, label: "Вишлист" },
+  personal:  { icon: ShoppingBag, label: "Список" },
+  giftlist:  { icon: Gift, label: "Список подарков" },
+  roadmap:   { icon: Map, label: "Роадмап" },
+};
+
+const ROADMAP_STATUSES: Record<string, { label: string; color: string; bg: string }> = {
+  done:        { label: "Готово",    color: "text-emerald-700", bg: "bg-emerald-100" },
+  in_progress: { label: "В работе",  color: "text-amber-700",   bg: "bg-amber-100" },
+  open:        { label: "План",      color: "text-slate-600",   bg: "bg-slate-100" },
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -90,7 +97,8 @@ export default function SharedListPage() {
     },
   });
 
-  const isGiftlist = list?.list_type === "giftlist";
+  const isGiftlist = list?.list_type === "giftlist" || list?.list_type === "wishlist";
+  const isRoadmap = list?.list_type === "roadmap";
   const meta = TYPE_META[list?.list_type ?? "wishlist"] ?? TYPE_META.wishlist;
   const Icon = meta.icon;
 
@@ -143,8 +151,40 @@ export default function SharedListPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-[600px] mx-auto px-4 py-6">
-        {grouped.map(({ group, items }) => (
+      <div className={clsx("mx-auto px-4 py-6", isRoadmap ? "max-w-full" : "max-w-[600px]")}>
+        {isRoadmap ? (
+          /* Kanban view for roadmaps */
+          <div className="flex gap-3 overflow-x-auto pb-4">
+            {(list.groups.length > 0 ? list.groups : [{ id: 0, title: "Все", sort_order: 0, color: null }]).map((group) => {
+              const colItems = group.id === 0 ? list.items : list.items.filter((it) => it.group_id === group.id);
+              return (
+                <div key={group.id} className="w-[260px] md:w-[280px] shrink-0 flex flex-col">
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <h3 className="text-[14px] font-bold text-slate-800">{group.title}</h3>
+                    <span className="text-[11px] font-semibold tabular-nums bg-slate-200/60 px-1.5 py-0.5 rounded-full text-slate-500">{colItems.length}</span>
+                  </div>
+                  <div className="flex-1 space-y-1.5 rounded-xl bg-slate-100/60 border border-slate-200/60 p-2 min-h-[100px]">
+                    {colItems.map((item) => {
+                      const st = ROADMAP_STATUSES[item.status] ?? ROADMAP_STATUSES.open;
+                      return (
+                        <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+                          <p className="text-[13px] font-medium text-slate-800 leading-snug">{item.title}</p>
+                          {item.note && <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{item.note}</p>}
+                          <div className="mt-2">
+                            <span className={clsx("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded", st.color, st.bg)}>{st.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {colItems.length === 0 && <p className="text-[11px] text-center py-4 text-slate-400">Пусто</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+        /* List view for wishlists/personal */
+        grouped.map(({ group, items }) => (
           <div key={group?.id ?? "ungrouped"} className="mb-5">
             {group && (
               <h3 className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
@@ -216,7 +256,8 @@ export default function SharedListPage() {
               ))}
             </div>
           </div>
-        ))}
+        ))
+        )}
 
         {/* Reserve modal */}
         {reservingId && (

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.application.shared_lists import SharedListService
+from app.infrastructure.db.models import User
 
 router = APIRouter()
 
@@ -77,8 +78,13 @@ def get_lists(request: Request, db: Session = Depends(get_db)):
 @router.post("/lists")
 def create_list(body: CreateListRequest, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
-    if body.list_type not in ("wishlist", "giftlist", "roadmap"):
+    allowed_types = ("wishlist", "personal", "roadmap")
+    if body.list_type not in allowed_types:
         raise HTTPException(400, "Invalid list_type")
+    if body.list_type == "roadmap":
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_admin:
+            raise HTTPException(403, "Roadmap lists are admin-only")
     svc = SharedListService(db)
     return svc.create_list(user_id, body.title, body.list_type, body.description)
 

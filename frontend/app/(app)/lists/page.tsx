@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
-import { Plus, Gift, ShoppingBag, Map, Globe, Lock, Trash2 } from "lucide-react";
+import { Plus, ShoppingBag, ListTodo, Map, Globe, Lock, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
@@ -22,13 +23,16 @@ interface SharedListSummary {
 }
 
 const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string; color: string }> = {
-  wishlist: { icon: ShoppingBag, label: "Вишлист", color: "text-indigo-500" },
-  giftlist: { icon: Gift, label: "Подарки", color: "text-pink-500" },
-  roadmap:  { icon: Map, label: "Роадмап", color: "text-emerald-500" },
+  wishlist:  { icon: ShoppingBag, label: "Вишлист",  color: "text-indigo-500" },
+  personal:  { icon: ListTodo,    label: "Личное",   color: "text-slate-500" },
+  roadmap:   { icon: Map,         label: "Роадмап",  color: "text-emerald-500" },
 };
 
 export default function ListsPage() {
   const qc = useQueryClient();
+  const { data: me } = useMe();
+  const isAdmin = me?.is_admin ?? false;
+
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newType, setNewType] = useState<string>("wishlist");
@@ -61,6 +65,10 @@ export default function ListsPage() {
     createList({ title: newTitle.trim(), list_type: newType, description: newDesc.trim() || null });
   }
 
+  const availableTypes = isAdmin
+    ? ["wishlist", "personal", "roadmap"] as const
+    : ["wishlist", "personal"] as const;
+
   return (
     <>
       {showCreate && (
@@ -79,9 +87,8 @@ export default function ListsPage() {
           }
         >
           <div className="space-y-3">
-            {/* Type selector */}
             <div className="flex gap-2">
-              {(["wishlist", "giftlist", "roadmap"] as const).map((t) => {
+              {availableTypes.map((t) => {
                 const meta = TYPE_META[t];
                 const Icon = meta.icon;
                 return (
@@ -109,7 +116,7 @@ export default function ListsPage() {
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={newType === "wishlist" ? "Мои хотелки" : newType === "giftlist" ? "Что подарить мне" : "Проект X"}
+                placeholder={newType === "wishlist" ? "Мои хотелки" : newType === "roadmap" ? "Roadmap 2026" : "Фильмы к просмотру"}
                 className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
                 autoFocus
               />
@@ -134,7 +141,7 @@ export default function ListsPage() {
 
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Вишлисты, подарки, роадмапы
+              Вишлисты, списки, роадмапы
             </h2>
             <button
               onClick={() => setShowCreate(true)}
@@ -158,13 +165,8 @@ export default function ListsPage() {
               <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center mx-auto mb-4">
                 <ShoppingBag size={24} className="text-indigo-400/40" />
               </div>
-              <p className="text-[14px] font-medium" style={{ color: "var(--t-muted)" }}>
-                Пока нет списков
-              </p>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="mt-3 text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors"
-              >
+              <p className="text-[14px] font-medium" style={{ color: "var(--t-muted)" }}>Пока нет списков</p>
+              <button onClick={() => setShowCreate(true)} className="mt-3 text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">
                 + Создать первый список
               </button>
             </div>
@@ -181,17 +183,14 @@ export default function ListsPage() {
                     href={`/lists/${lst.id}`}
                     className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors group"
                   >
-                    <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", meta.color, "bg-current/10")}>
+                    <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-slate-50 dark:bg-white/[0.04]", meta.color)}>
                       <Icon size={20} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
-                        {lst.title}
-                      </p>
+                      <p className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>{lst.title}</p>
                       <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
                         {meta.label} · {lst.item_count} элементов
-                        {lst.is_public && <> · <Globe size={10} className="inline -mt-px" /> публичный</>}
-                        {!lst.is_public && <> · <Lock size={10} className="inline -mt-px" /> приватный</>}
+                        {lst.is_public ? <> · <Globe size={10} className="inline -mt-px" /> публичный</> : <> · <Lock size={10} className="inline -mt-px" /> приватный</>}
                       </p>
                     </div>
                     <button
