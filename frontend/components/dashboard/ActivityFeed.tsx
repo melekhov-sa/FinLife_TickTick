@@ -29,16 +29,8 @@ function parseFinanceSubtitle(sub: string): { wallet: string; category: string }
   return { wallet: sub, category: "" };
 }
 
-function parseAmount(label: string): number {
-  const cleaned = label.replace(/\s/g, "").replace("₽", "").replace(",", ".").replace("−", "-").replace("\u2212", "-");
-  return parseFloat(cleaned) || 0;
-}
 
-function formatTotal(n: number): string {
-  const abs = Math.abs(n);
-  const formatted = abs.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  return `${n < 0 ? "−" : "+"}${formatted} ₽`;
-}
+
 
 // ── Single-line row renderers ────────────────────────────────────────────────
 
@@ -129,7 +121,6 @@ function toGroupType(t: ItemType): GroupType {
 interface InnerGroup {
   groupType: GroupType;
   items: FeedEvent[];
-  total: number | null;
 }
 
 function buildInnerGroups(events: FeedEvent[]): InnerGroup[] {
@@ -140,13 +131,7 @@ function buildInnerGroups(events: FeedEvent[]): InnerGroup[] {
   for (const gt of ["finance", "tasks", "transfers"] as GroupType[]) {
     const items = buckets[gt];
     if (items.length === 0) continue;
-
-    let total: number | null = null;
-    if (gt === "finance") {
-      total = items.reduce((s, ev) => s + (ev.amount_label ? parseAmount(ev.amount_label) : 0), 0);
-    }
-
-    result.push({ groupType: gt, items, total });
+    result.push({ groupType: gt, items });
   }
   return result;
 }
@@ -168,14 +153,6 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
           {group.items.length}
         </span>
 
-        {group.total !== null && (
-          <span className={clsx(
-            "text-[13px] font-semibold tabular-nums ml-auto",
-            group.total < 0 ? "money-expense" : "money-income"
-          )}>
-            {formatTotal(group.total)}
-          </span>
-        )}
       </div>
 
       {visible.map((ev, i) => <EventRow key={`${ev.occurred_at}-${ev.title}-${i}`} ev={ev} />)}
