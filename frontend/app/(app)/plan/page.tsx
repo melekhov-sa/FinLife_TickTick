@@ -345,6 +345,33 @@ function DayGroupCard({
     }))
     .filter((g) => g.entries.length > 0), [group.entries]);
 
+  const isEmpty = group.entries.length === 0;
+
+  // Empty day — compact single row
+  if (isEmpty) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-slate-100 dark:border-white/[0.04] px-3 py-2">
+        <span className="text-[13px] font-medium" style={{ color: "var(--t-faint)" }}>
+          {label}
+        </span>
+        {group.is_today && (
+          <span className="text-[9px] font-semibold text-indigo-500 bg-indigo-100 dark:bg-indigo-500/10 px-1 py-0.5 rounded">
+            сегодня
+          </span>
+        )}
+        <span className="text-[12px]" style={{ color: "var(--t-faint)", opacity: 0.6 }}>
+          — нет дел
+        </span>
+        <button
+          onClick={onAddTask}
+          className="ml-auto text-[11px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
+        >
+          + добавить
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={clsx(
       "rounded-xl border px-3 py-2.5",
@@ -472,15 +499,50 @@ export default function PlanPage() {
     staleTime: 30_000,
   });
 
-  // Filter out wishes — not needed in current UI
-  const filteredData = data ? {
-    ...data,
-    day_groups: data.day_groups.map(g => ({
+  // Filter wishes, then fill in empty days within the range
+  const filteredData = useMemo(() => {
+    if (!data) return undefined;
+
+    const populated = data.day_groups.map(g => ({
       ...g,
       entries: g.entries.filter(e => e.kind !== "wish"),
-    })).filter(g => g.entries.length > 0),
-    done_today: data.done_today.filter(e => e.kind !== "wish"),
-  } : undefined;
+    }));
+
+    // Build full date range from today
+    const today = data.today;
+    const allDays: DayGroup[] = [];
+    const populatedByDate = new Map(populated.map(g => [g.date, g]));
+
+    for (let i = 0; i < data.range_days; i++) {
+      const d = new Date(today + "T00:00:00");
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const existing = populatedByDate.get(iso);
+      if (existing && existing.entries.length > 0) {
+        allDays.push(existing);
+      } else {
+        allDays.push({
+          date: iso,
+          date_label: formatDayHeader(iso),
+          is_today: iso === today,
+          is_overdue_group: false,
+          entries: [],
+        });
+      }
+    }
+
+    // Prepend overdue group if it exists
+    const overdueGroup = populated.find(g => g.is_overdue_group);
+    if (overdueGroup && overdueGroup.entries.length > 0) {
+      allDays.unshift(overdueGroup);
+    }
+
+    return {
+      ...data,
+      day_groups: allDays,
+      done_today: data.done_today.filter(e => e.kind !== "wish"),
+    };
+  }, [data]);
 
   const executeInitialValues: CreateOperationInitialValues | undefined = executeEntry
     ? {
@@ -521,7 +583,7 @@ export default function PlanPage() {
       )}
 
       <AppTopbar title="План" />
-      <main className="flex-1 overflow-auto p-3 md:p-6">
+      <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
         <div className="max-w-[860px]">
 
           {/* ── Controls — compact ────────────────────────────────── */}
