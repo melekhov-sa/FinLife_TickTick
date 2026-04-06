@@ -76,6 +76,18 @@ function Item({
             просроч.
           </span>
         )}
+        {/* Habit streak */}
+        {kind === "habit" && Boolean(item.meta?.current_streak) && (
+          isDone ? (
+            <span className="text-[11px] font-medium shrink-0 tabular-nums" style={{ color: "var(--t-muted)" }}>
+              🔥 {String(item.meta.current_streak)} дн.
+            </span>
+          ) : (
+            <span className="text-[11px] font-semibold shrink-0 tabular-nums text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">
+              🔥 {String(item.meta.current_streak)} дн.
+            </span>
+          )
+        )}
         {reminders.length > 0 && !isDone && (
           <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
             🔔 {reminders.join(", ")}
