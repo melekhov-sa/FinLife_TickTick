@@ -350,24 +350,34 @@ function DayGroupCard({
   // Empty day — compact single row
   if (isEmpty) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-slate-100 dark:border-white/[0.04] px-3 py-2">
-        <span className="text-[13px] font-medium" style={{ color: "var(--t-faint)" }}>
-          {label}
-        </span>
-        {group.is_today && (
-          <span className="text-[9px] font-semibold text-indigo-500 bg-indigo-100 dark:bg-indigo-500/10 px-1 py-0.5 rounded">
-            сегодня
+      <div className={clsx(
+        "rounded-xl border px-3 py-2.5",
+        group.is_today
+          ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+          : "bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]"
+      )}>
+        <div className="flex items-center gap-2">
+          <h3 className={clsx(
+            "text-[14px] font-semibold leading-none",
+            group.is_today ? "text-indigo-600 dark:text-indigo-300/90" : "text-slate-800 dark:text-white/90"
+          )}>
+            {label}
+          </h3>
+          {group.is_today && (
+            <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
+              сегодня
+            </span>
+          )}
+          <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
+            — нет дел
           </span>
-        )}
-        <span className="text-[12px]" style={{ color: "var(--t-faint)", opacity: 0.6 }}>
-          — нет дел
-        </span>
-        <button
-          onClick={onAddTask}
-          className="ml-auto text-[11px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
-        >
-          + добавить
-        </button>
+          <button
+            onClick={onAddTask}
+            className="ml-auto text-[11px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
+          >
+            + добавить
+          </button>
+        </div>
       </div>
     );
   }
