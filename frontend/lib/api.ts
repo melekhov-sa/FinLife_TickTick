@@ -39,10 +39,13 @@ async function getToken(): Promise<string | null> {
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getToken();
 
+  const isFormData = init?.body instanceof FormData;
+  const contentHeaders: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
+
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...contentHeaders,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
@@ -50,14 +53,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
-    // Token might have expired between getToken() and the request arriving.
-    // Try ONE refresh + retry.
     const newToken = await refreshOnce();
     if (newToken) {
       const retryRes = await fetch(`${BASE}${path}`, {
         credentials: "include",
         headers: {
-          "Content-Type": "application/json",
+          ...contentHeaders,
           Authorization: `Bearer ${newToken}`,
           ...init?.headers,
         },
@@ -98,4 +99,6 @@ export const api = {
     apiFetch<T>(path, { method: "PATCH",  body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) =>
     apiFetch<T>(path, { method: "DELETE" }),
+  postForm: <T>(path: string, formData: FormData) =>
+    apiFetch<T>(path, { method: "POST", body: formData }),
 };
