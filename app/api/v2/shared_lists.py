@@ -23,6 +23,7 @@ class UpdateListRequest(BaseModel):
     title: str | None = None
     description: str | None = None
     is_public: bool | None = None
+    custom_statuses: list[dict] | None = None
 
 
 class CreateGroupRequest(BaseModel):

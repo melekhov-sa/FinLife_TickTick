@@ -82,7 +82,7 @@ class SharedListService:
         if not lst:
             return None
 
-        for key in ("title", "description", "is_public"):
+        for key in ("title", "description", "is_public", "custom_statuses"):
             if key in kwargs:
                 setattr(lst, key, kwargs[key])
 
@@ -271,6 +271,7 @@ class SharedListService:
             "list_type": lst.list_type,
             "slug": lst.slug,
             "is_public": lst.is_public,
+            "custom_statuses": lst.custom_statuses,
             "created_at": lst.created_at,
             "updated_at": lst.updated_at,
             "groups": [

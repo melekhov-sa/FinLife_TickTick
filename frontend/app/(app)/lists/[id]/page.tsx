@@ -6,7 +6,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clsx } from "clsx";
-import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical } from "lucide-react";
+import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
@@ -39,6 +39,12 @@ interface ListItem {
   created_at: string | null;
 }
 
+interface StatusDef {
+  key: string;
+  label: string;
+  color: string;
+}
+
 interface SharedListFull {
   id: number;
   title: string;
@@ -46,17 +52,34 @@ interface SharedListFull {
   list_type: string;
   slug: string;
   is_public: boolean;
+  custom_statuses: StatusDef[] | null;
   groups: ListGroup[];
   items: ListItem[];
 }
 
 type ViewMode = "list" | "grid" | "kanban";
 
-const ROADMAP_STATUSES: Record<string, { label: string; color: string; bg: string }> = {
-  done:        { label: "Готово",    color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/15" },
-  in_progress: { label: "В работе",  color: "text-amber-600 dark:text-amber-400",    bg: "bg-amber-100 dark:bg-amber-500/15" },
-  open:        { label: "План",      color: "text-slate-500 dark:text-slate-400",     bg: "bg-slate-100 dark:bg-white/[0.06]" },
+const DEFAULT_STATUSES: StatusDef[] = [
+  { key: "open",        label: "План",     color: "slate" },
+  { key: "in_progress", label: "В работе", color: "amber" },
+  { key: "done",        label: "Готово",   color: "emerald" },
+];
+
+const STATUS_COLORS: Record<string, { text: string; bg: string; dot: string }> = {
+  slate:   { text: "text-slate-500 dark:text-slate-400",     bg: "bg-slate-100 dark:bg-white/[0.06]",       dot: "bg-slate-400" },
+  amber:   { text: "text-amber-600 dark:text-amber-400",    bg: "bg-amber-100 dark:bg-amber-500/15",       dot: "bg-amber-500" },
+  emerald: { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-500/15",   dot: "bg-emerald-500" },
+  blue:    { text: "text-blue-600 dark:text-blue-400",      bg: "bg-blue-100 dark:bg-blue-500/15",         dot: "bg-blue-500" },
+  red:     { text: "text-red-600 dark:text-red-400",        bg: "bg-red-100 dark:bg-red-500/15",           dot: "bg-red-500" },
+  violet:  { text: "text-violet-600 dark:text-violet-400",  bg: "bg-violet-100 dark:bg-violet-500/15",     dot: "bg-violet-500" },
+  pink:    { text: "text-pink-600 dark:text-pink-400",      bg: "bg-pink-100 dark:bg-pink-500/15",         dot: "bg-pink-500" },
 };
+
+const AVAILABLE_COLORS = Object.keys(STATUS_COLORS);
+
+function getStatusStyle(color: string) {
+  return STATUS_COLORS[color] ?? STATUS_COLORS.slate;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,6 +100,9 @@ export default function ListDetailPage() {
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [copiedSlug, setCopiedSlug] = useState(false);
+  const [showStatusManager, setShowStatusManager] = useState(false);
+  const [newStatusLabel, setNewStatusLabel] = useState("");
+  const [newStatusColor, setNewStatusColor] = useState("slate");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [viewInited, setViewInited] = useState(false);
 
@@ -105,6 +131,16 @@ export default function ListDetailPage() {
   useEffect(() => {
     if (viewInited && viewMode !== "kanban") localStorage.setItem("list-view", viewMode);
   }, [viewMode, viewInited]);
+
+  // Statuses: custom if defined, otherwise defaults
+  const statuses: StatusDef[] = useMemo(
+    () => list?.custom_statuses?.length ? list.custom_statuses : DEFAULT_STATUSES,
+    [list?.custom_statuses]
+  );
+
+  function findStatus(key: string) {
+    return statuses.find((s) => s.key === key) ?? statuses[0] ?? DEFAULT_STATUSES[0];
+  }
 
   // ── Mutations ────────────────────────────────────────────────────────
 
@@ -256,6 +292,27 @@ export default function ListDetailPage() {
     setTimeout(() => setCopiedSlug(false), 2000);
   }
 
+  function addStatus() {
+    if (!newStatusLabel.trim() || !list) return;
+    const key = newStatusLabel.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-zа-яё0-9_]/g, "");
+    if (statuses.some((s) => s.key === key)) return;
+    const updated = [...statuses, { key, label: newStatusLabel.trim(), color: newStatusColor }];
+    toggleStatuses(updated);
+    setNewStatusLabel("");
+    setNewStatusColor("slate");
+  }
+
+  function removeStatus(key: string) {
+    if (statuses.length <= 1) return;
+    toggleStatuses(statuses.filter((s) => s.key !== key));
+  }
+
+  const { mutate: toggleStatuses } = useMutation({
+    mutationFn: (newStatuses: StatusDef[]) =>
+      api.patch(`/api/v2/lists/${listId}`, { custom_statuses: newStatuses }),
+    onSuccess: invalidate,
+  });
+
   const isWishOrGift = list?.list_type === "wishlist" || list?.list_type === "giftlist";
   const inputCls = "w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
   const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500";
@@ -402,7 +459,8 @@ export default function ListDetailPage() {
   }
 
   function KanbanCard({ item }: { item: ListItem }) {
-    const st = ROADMAP_STATUSES[item.status] ?? ROADMAP_STATUSES.open;
+    const sd = findStatus(item.status);
+    const sc = getStatusStyle(sd.color);
     const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: item.id });
     const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.4 : 1 } : undefined;
 
@@ -415,7 +473,6 @@ export default function ListDetailPage() {
         className="rounded-lg border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] p-2.5 group/card hover:shadow-md transition-all cursor-default"
       >
         <div className="flex items-start gap-1.5">
-          {/* Drag handle */}
           <button {...attributes} {...listeners} className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-manipulation" style={{ color: "var(--t-faint)" }}>
             <GripVertical size={12} />
           </button>
@@ -429,23 +486,23 @@ export default function ListDetailPage() {
           <button
             onClick={() => setShowStatusMenu((v) => !v)}
             onBlur={() => setTimeout(() => setShowStatusMenu(false), 150)}
-            className={clsx("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded transition-colors", st.color, st.bg)}
+            className={clsx("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded transition-colors", sc.text, sc.bg)}
           >
-            {st.label}
+            {sd.label}
           </button>
           {showStatusMenu && (
-            <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-[#0f1221] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl overflow-hidden w-36">
-              {(["open", "in_progress", "done"] as const).map((s) => {
-                const ss = ROADMAP_STATUSES[s];
+            <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-[#0f1221] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl overflow-hidden w-40">
+              {statuses.map((s) => {
+                const ssc = getStatusStyle(s.color);
                 return (
                   <button
-                    key={s}
-                    onMouseDown={() => { updateItem({ itemId: item.id, status: s }); setShowStatusMenu(false); }}
-                    className={clsx("w-full text-left px-3 py-2 text-[12px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04] flex items-center gap-2", item.status === s && "font-bold")}
+                    key={s.key}
+                    onMouseDown={() => { updateItem({ itemId: item.id, status: s.key }); setShowStatusMenu(false); }}
+                    className={clsx("w-full text-left px-3 py-2 text-[12px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04] flex items-center gap-2", item.status === s.key && "font-bold")}
                     style={{ color: "var(--t-primary)" }}
                   >
-                    <span className={clsx("w-2 h-2 rounded-full", ss.bg, ss.color.includes("emerald") ? "bg-emerald-500" : ss.color.includes("amber") ? "bg-amber-500" : "bg-slate-400")} />
-                    {ss.label}
+                    <span className={clsx("w-2 h-2 rounded-full", ssc.dot)} />
+                    {s.label}
                   </button>
                 );
               })}
@@ -741,6 +798,64 @@ export default function ListDetailPage() {
         </BottomSheet>
       )}
 
+      {/* Status manager modal */}
+      {showStatusManager && (
+        <BottomSheet open onClose={() => setShowStatusManager(false)} title="Настройка статусов">
+          <div className="space-y-3">
+            {/* Existing statuses */}
+            {statuses.map((s) => {
+              const sc = getStatusStyle(s.color);
+              return (
+                <div key={s.key} className="flex items-center gap-2 py-1.5">
+                  <span className={clsx("w-3 h-3 rounded-full shrink-0", sc.dot)} />
+                  <span className={clsx("text-[13px] font-medium flex-1", sc.text)}>{s.label}</span>
+                  <span className="text-[11px] font-mono" style={{ color: "var(--t-faint)" }}>{s.key}</span>
+                  <button
+                    onClick={() => removeStatus(s.key)}
+                    disabled={statuses.length <= 1}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 hover:text-red-500 disabled:opacity-20 transition-all shrink-0"
+                    style={{ color: "var(--t-faint)" }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Add new status */}
+            <div className="border-t border-slate-100 dark:border-white/[0.05] pt-3">
+              <p className="text-[11px] font-medium uppercase tracking-wider mb-2 text-slate-500">Добавить статус</p>
+              <div className="flex gap-2">
+                <input
+                  value={newStatusLabel}
+                  onChange={(e) => setNewStatusLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addStatus(); }}
+                  placeholder="Название"
+                  className="flex-1 px-3 h-9 text-[14px] rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
+                />
+                <button onClick={addStatus} disabled={!newStatusLabel.trim()} className="px-3 h-9 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                  +
+                </button>
+              </div>
+
+              {/* Color picker */}
+              <div className="flex gap-1.5 mt-2">
+                {AVAILABLE_COLORS.map((c) => {
+                  const sc = getStatusStyle(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setNewStatusColor(c)}
+                      className={clsx("w-6 h-6 rounded-full transition-all", sc.dot, newStatusColor === c && "ring-2 ring-offset-2 ring-indigo-500")}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
+
       <AppTopbar title={list?.title ?? "Список"} />
       <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
         <div className={viewMode === "kanban" ? "" : "max-w-[700px]"}>
@@ -784,6 +899,11 @@ export default function ListDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 ml-auto">
+                  {viewMode === "kanban" && (
+                    <button onClick={() => setShowStatusManager(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] hover:bg-slate-50" style={{ color: "var(--t-secondary)" }}>
+                      <Tags size={13} /><span className="hidden md:inline">Статусы</span>
+                    </button>
+                  )}
                   <button onClick={() => setShowAddGroup(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] hover:bg-slate-50" style={{ color: "var(--t-secondary)" }}>
                     <FolderPlus size={13} /><span className="hidden md:inline">Группа</span>
                   </button>
