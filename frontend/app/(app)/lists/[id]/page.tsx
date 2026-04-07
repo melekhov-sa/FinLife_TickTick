@@ -91,6 +91,47 @@ function imageUrl(item: ListItem): string | null {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+function QuickAdd({ listId, onAdded }: { listId: number; onAdded: () => void }) {
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!value.trim() || saving) return;
+    setSaving(true);
+    try {
+      await api.post(`/api/v2/lists/${listId}/items`, { title: value.trim() });
+      onAdded();
+      setValue("");
+    } catch { /* ignore */ }
+    setSaving(false);
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] px-3 py-2 focus-within:border-indigo-400 transition-colors">
+        <Plus size={15} className="shrink-0" style={{ color: "var(--t-faint)" }} />
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder="Добавить элемент..."
+          className="flex-1 text-[14px] bg-transparent outline-none placeholder-slate-400"
+          style={{ color: "var(--t-primary)" }}
+        />
+      </div>
+      {value.trim() && (
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="px-3 py-2 text-[13px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors shadow-sm shrink-0"
+        >
+          {saving ? "..." : "Добавить"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ListDetailPage() {
   const { id } = useParams<{ id: string }>();
   const listId = Number(id);
@@ -925,27 +966,32 @@ export default function ListDetailPage() {
               {viewMode === "kanban" ? (
                 renderKanban()
               ) : (
-                grouped.map(({ group, items }) => (
-                  <div key={group?.id ?? "ungrouped"} className="mb-4">
-                    {group && (
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-[13px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)", opacity: 0.6 }}>{group.title}</h3>
-                        <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{items.length}</span>
-                        <button onClick={() => deleteGroup(group.id)} className="ml-auto w-6 h-6 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить группу"><Trash2 size={12} /></button>
-                      </div>
-                    )}
+                <>
+                  {grouped.map(({ group, items }) => (
+                    <div key={group?.id ?? "ungrouped"} className="mb-4">
+                      {group && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-[13px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)", opacity: 0.6 }}>{group.title}</h3>
+                          <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{items.length}</span>
+                          <button onClick={() => deleteGroup(group.id)} className="ml-auto w-6 h-6 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить группу"><Trash2 size={12} /></button>
+                        </div>
+                      )}
 
-                    {viewMode === "list" ? (
-                      <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
-                        {items.map(renderListItem)}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                        {items.map(renderGridItem)}
-                      </div>
-                    )}
-                  </div>
-                ))
+                      {viewMode === "list" ? (
+                        <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
+                          {items.map(renderListItem)}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                          {items.map(renderGridItem)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Quick add */}
+                  <QuickAdd listId={listId} onAdded={invalidate} />
+                </>
               )}
             </>
           )}
