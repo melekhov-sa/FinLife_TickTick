@@ -123,6 +123,8 @@ export function CreateHabitModal({ onClose }: Props) {
     try {
       await api.post("/api/v2/habits", buildPayload());
       qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
