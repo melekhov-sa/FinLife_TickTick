@@ -6,7 +6,10 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clsx } from "clsx";
-import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3 } from "lucide-react";
+import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
+import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+
 import { api } from "@/lib/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -350,34 +353,162 @@ export default function ListDetailPage() {
     );
   }
 
-  function renderKanbanCard(item: ListItem) {
+  // ── Kanban DnD ──────────────────────────────────────────────────────
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [dragItem, setDragItem] = useState<ListItem | null>(null);
+  const [inlineAddGroupId, setInlineAddGroupId] = useState<number | null>(null);
+  const [inlineAddTitle, setInlineAddTitle] = useState("");
+
+  function handleDragStart(e: DragStartEvent) {
+    const item = list?.items.find((it) => it.id === e.active.id);
+    if (item) setDragItem(item);
+  }
+
+  function handleDragEnd(e: DragEndEvent) {
+    setDragItem(null);
+    if (!e.over || !list) return;
+    const itemId = e.active.id as number;
+    const overId = String(e.over.id);
+
+    // Dropped on a column (droppable id = "col-{groupId}")
+    if (overId.startsWith("col-")) {
+      const targetGroupId = Number(overId.replace("col-", ""));
+      const gid = targetGroupId === 0 ? null : targetGroupId;
+      const item = list.items.find((it) => it.id === itemId);
+      if (item && item.group_id !== gid) {
+        updateItem({ itemId, group_id: gid });
+      }
+    }
+  }
+
+  async function handleInlineAdd(groupId: number) {
+    if (!inlineAddTitle.trim()) { setInlineAddGroupId(null); return; }
+    try {
+      await api.post(`/api/v2/lists/${listId}/items`, {
+        title: inlineAddTitle.trim(),
+        group_id: groupId === 0 ? null : groupId,
+      });
+      invalidate();
+    } catch { /* ignore */ }
+    setInlineAddTitle("");
+    setInlineAddGroupId(null);
+  }
+
+  function KanbanCard({ item }: { item: ListItem }) {
     const st = ROADMAP_STATUSES[item.status] ?? ROADMAP_STATUSES.open;
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({ id: item.id });
+    const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.4 : 1 } : undefined;
+
+    const [showStatusMenu, setShowStatusMenu] = useState(false);
+
     return (
       <div
-        key={item.id}
-        className="rounded-lg border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] p-2.5 group/card hover:shadow-sm transition-all"
+        ref={setNodeRef}
+        style={style}
+        className="rounded-lg border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] p-2.5 group/card hover:shadow-md transition-all cursor-default"
       >
         <div className="flex items-start gap-1.5">
-          <p className="text-[13px] font-medium leading-snug flex-1 min-w-0" style={{ color: "var(--t-primary)" }}>
+          {/* Drag handle */}
+          <button {...attributes} {...listeners} className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-manipulation" style={{ color: "var(--t-faint)" }}>
+            <GripVertical size={12} />
+          </button>
+          <p className="text-[13px] font-medium leading-snug flex-1 min-w-0 cursor-pointer" style={{ color: "var(--t-primary)" }} onClick={() => openEdit(item)}>
             {item.title}
           </p>
-          <div className="flex gap-0.5 shrink-0 opacity-0 group-hover/card:opacity-100 transition-all">
-            <button onClick={() => openEdit(item)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }}><Pencil size={10} /></button>
-            <button onClick={() => deleteItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={10} /></button>
-          </div>
+          <button onClick={() => deleteItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center shrink-0 opacity-0 group-hover/card:opacity-100 transition-all hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={10} /></button>
         </div>
-        {item.note && <p className="text-[11px] mt-1 line-clamp-2" style={{ color: "var(--t-faint)" }}>{item.note}</p>}
-        <div className="flex items-center gap-1.5 mt-2">
+        {item.note && <p className="text-[11px] mt-1 pl-5 line-clamp-2" style={{ color: "var(--t-faint)" }}>{item.note}</p>}
+        <div className="flex items-center gap-1.5 mt-2 pl-5 relative">
           <button
-            onClick={() => {
-              const cycle = ["open", "in_progress", "done"];
-              const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length];
-              updateItem({ itemId: item.id, status: next });
-            }}
-            className={clsx("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded transition-colors", st.color, st.bg)}
+            onClick={() => setShowStatusMenu((v) => !v)}
+            onBlur={() => setTimeout(() => setShowStatusMenu(false), 150)}
+            className={clsx("text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded transition-colors", st.color, st.bg)}
           >
             {st.label}
           </button>
+          {showStatusMenu && (
+            <div className="absolute left-0 top-full mt-1 z-20 bg-white dark:bg-[#0f1221] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl overflow-hidden w-36">
+              {(["open", "in_progress", "done"] as const).map((s) => {
+                const ss = ROADMAP_STATUSES[s];
+                return (
+                  <button
+                    key={s}
+                    onMouseDown={() => { updateItem({ itemId: item.id, status: s }); setShowStatusMenu(false); }}
+                    className={clsx("w-full text-left px-3 py-2 text-[12px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04] flex items-center gap-2", item.status === s && "font-bold")}
+                    style={{ color: "var(--t-primary)" }}
+                  >
+                    <span className={clsx("w-2 h-2 rounded-full", ss.bg, ss.color.includes("emerald") ? "bg-emerald-500" : ss.color.includes("amber") ? "bg-amber-500" : "bg-slate-400")} />
+                    {ss.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function KanbanColumn({ group, items: colItems }: { group: { id: number; title: string }; items: ListItem[] }) {
+    const { setNodeRef, isOver } = useDroppable({ id: `col-${group.id}` });
+    const isAdding = inlineAddGroupId === group.id;
+
+    return (
+      <div key={group.id} className="w-[270px] md:w-[290px] shrink-0 flex flex-col">
+        {/* Column header */}
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <h3 className="text-[14px] font-bold" style={{ color: "var(--t-primary)" }}>{group.title}</h3>
+          <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
+          <button
+            onClick={() => { setInlineAddGroupId(group.id); setInlineAddTitle(""); }}
+            className="ml-auto w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+            style={{ color: "var(--t-faint)" }}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+
+        {/* Droppable area */}
+        <div
+          ref={setNodeRef}
+          className={clsx(
+            "flex-1 space-y-2 rounded-xl border p-2 min-h-[120px] transition-colors",
+            isOver
+              ? "bg-indigo-50/60 dark:bg-indigo-500/[0.06] border-indigo-200 dark:border-indigo-500/25"
+              : "bg-slate-50/80 dark:bg-white/[0.02] border-slate-100 dark:border-white/[0.04]"
+          )}
+        >
+          <SortableContext items={colItems.map((it) => it.id)} strategy={verticalListSortingStrategy}>
+            {colItems.map((item) => <KanbanCard key={item.id} item={item} />)}
+          </SortableContext>
+
+          {colItems.length === 0 && !isAdding && (
+            <p className="text-[12px] text-center py-6" style={{ color: "var(--t-faint)" }}>Перетащите сюда</p>
+          )}
+
+          {/* Inline add */}
+          {isAdding && (
+            <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-white/[0.04] p-2">
+              <input
+                value={inlineAddTitle}
+                onChange={(e) => setInlineAddTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleInlineAdd(group.id); if (e.key === "Escape") setInlineAddGroupId(null); }}
+                placeholder="Название..."
+                className="w-full text-[13px] bg-transparent outline-none placeholder-slate-400"
+                style={{ color: "var(--t-primary)" }}
+                autoFocus
+              />
+              <div className="flex gap-1.5 mt-1.5">
+                <button onClick={() => handleInlineAdd(group.id)} disabled={!inlineAddTitle.trim()} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                  Добавить
+                </button>
+                <button onClick={() => setInlineAddGroupId(null)} className="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors" style={{ color: "var(--t-faint)" }}>
+                  Отмена
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -385,37 +516,25 @@ export default function ListDetailPage() {
 
   function renderKanban() {
     if (!list) return null;
-    const groups = list.groups.length > 0 ? list.groups : [{ id: 0, title: "Все", sort_order: 0, color: null }];
-    return (
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-3 px-3 md:-mx-6 md:px-6">
-        {groups.map((group) => {
-          const colItems = group.id === 0
-            ? list.items
-            : list.items.filter((it) => it.group_id === group.id);
+    const groups = list.groups.length > 0
+      ? list.groups.map((g) => ({ ...g, _items: list.items.filter((it) => it.group_id === g.id) }))
+      : [{ id: 0, title: "Все", sort_order: 0, color: null, _items: list.items }];
 
-          return (
-            <div key={group.id} className="w-[260px] md:w-[280px] shrink-0 flex flex-col">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <h3 className="text-[13px] font-bold" style={{ color: "var(--t-primary)" }}>{group.title}</h3>
-                <span className="text-[10px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
-                <button
-                  onClick={() => { setItemGroupId(group.id === 0 ? null : group.id); setShowAddItem(true); }}
-                  className="ml-auto w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/[0.06]"
-                  style={{ color: "var(--t-faint)" }}
-                >
-                  <Plus size={12} />
-                </button>
-              </div>
-              <div className="flex-1 space-y-1.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.04] p-2 min-h-[100px]">
-                {colItems.map(renderKanbanCard)}
-                {colItems.length === 0 && (
-                  <p className="text-[11px] text-center py-4" style={{ color: "var(--t-faint)" }}>Пусто</p>
-                )}
-              </div>
+    return (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex gap-3 overflow-x-auto pb-4 -mx-3 px-3 md:-mx-6 md:px-6">
+          {groups.map((g) => (
+            <KanbanColumn key={g.id} group={g} items={g._items} />
+          ))}
+        </div>
+        <DragOverlay>
+          {dragItem && (
+            <div className="rounded-lg border border-indigo-300 bg-white dark:bg-[#0f1221] p-2.5 shadow-xl w-[260px] opacity-90">
+              <p className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>{dragItem.title}</p>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     );
   }
 
