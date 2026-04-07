@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { Check, ExternalLink, Gift, ShoppingBag, Map } from "lucide-react";
+import { Check, ExternalLink, Gift, ShoppingBag, Map, ImagePlus } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +28,12 @@ interface ListItem {
   status: string;
   reserved_by: string | null;
   sort_order: number;
+}
+
+function itemImageUrl(item: ListItem): string | null {
+  if (!item.image_url) return null;
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "";
+  return `${base}${item.image_url}`;
 }
 
 interface SharedListPublic {
@@ -183,77 +189,83 @@ export default function SharedListPage() {
             })}
           </div>
         ) : (
-        /* List view for wishlists/personal */
+        /* Grid card view for wishlists/personal */
         grouped.map(({ group, items }) => (
           <div key={group?.id ?? "ungrouped"} className="mb-5">
             {group && (
-              <h3 className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">
+              <h3 className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-2">
                 {group.title}
               </h3>
             )}
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className={clsx(
-                    "flex items-center gap-3 px-4 py-3 border-b last:border-0 border-slate-100",
-                    item.status === "done" && "opacity-50",
-                    item.status === "reserved" && "bg-pink-50/50"
-                  )}
-                >
-                  {/* Status */}
-                  <div className="shrink-0">
-                    {item.status === "done" ? (
-                      <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                        <Check size={12} className="text-white" strokeWidth={3} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {items.map((item) => {
+                const img = itemImageUrl(item);
+                return (
+                  <div
+                    key={item.id}
+                    className={clsx(
+                      "rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm transition-all hover:shadow-md",
+                      item.status === "done" && "opacity-50",
+                      item.status === "reserved" && "ring-2 ring-pink-200"
+                    )}
+                  >
+                    {/* Cover image */}
+                    <div className="aspect-[4/3] bg-slate-100 relative">
+                      {img ? (
+                        <img src={img} alt={item.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImagePlus size={24} className="text-slate-300" />
+                        </div>
+                      )}
+                      {/* Status badge */}
+                      {item.status === "done" && (
+                        <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                          <Check size={12} className="text-white" strokeWidth={3} />
+                        </div>
+                      )}
+                      {item.status === "reserved" && (
+                        <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center shadow">
+                          <span className="text-[10px]">🎁</span>
+                        </div>
+                      )}
+                      {/* URL link */}
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 w-6 h-6 rounded-md bg-white/80 flex items-center justify-center shadow text-indigo-500 hover:text-indigo-700 transition-colors">
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="p-3">
+                      <p className={clsx("text-[14px] font-medium text-slate-800 leading-snug", item.status === "done" && "line-through text-slate-400")}>
+                        {item.title}
+                      </p>
+                      {item.note && item.status !== "reserved" && (
+                        <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{item.note}</p>
+                      )}
+                      {item.status === "reserved" && item.reserved_by && (
+                        <p className="text-[11px] text-pink-500 font-medium mt-0.5">🎁 {item.reserved_by}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {item.price && (
+                          <span className="text-[13px] font-semibold tabular-nums text-slate-600">
+                            {parseFloat(item.price).toLocaleString("ru-RU")} ₽
+                          </span>
+                        )}
+                        {isGiftlist && item.status === "open" && (
+                          <button
+                            onClick={() => { setReservingId(item.id); setReserveName(""); }}
+                            className="ml-auto text-[10px] font-semibold px-2 py-1 rounded-lg bg-pink-100 text-pink-600 hover:bg-pink-200 transition-colors"
+                          >
+                            Я подарю
+                          </button>
+                        )}
                       </div>
-                    ) : item.status === "reserved" ? (
-                      <div className="w-5 h-5 rounded-full bg-pink-200 flex items-center justify-center">
-                        <span className="text-[10px]">🎁</span>
-                      </div>
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-slate-300" />
-                    )}
+                    </div>
                   </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={clsx("text-[15px] font-medium text-slate-800", item.status === "done" && "line-through text-slate-400")}>
-                      {item.title}
-                    </p>
-                    {item.note && item.status !== "reserved" && (
-                      <p className="text-[12px] text-slate-400 truncate">{item.note}</p>
-                    )}
-                    {item.status === "reserved" && item.reserved_by && (
-                      <p className="text-[12px] text-pink-500 font-medium">🎁 Зарезервировано: {item.reserved_by}</p>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  {item.price && (
-                    <span className="text-[14px] font-semibold tabular-nums text-slate-600 shrink-0">
-                      {parseFloat(item.price).toLocaleString("ru-RU")} ₽
-                    </span>
-                  )}
-
-                  {/* URL */}
-                  {item.url && (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-indigo-400 hover:text-indigo-600 transition-colors">
-                      <ExternalLink size={14} />
-                    </a>
-                  )}
-
-                  {/* Reserve button (giftlist only, open items only) */}
-                  {isGiftlist && item.status === "open" && (
-                    <button
-                      onClick={() => { setReservingId(item.id); setReserveName(""); }}
-                      className="shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-pink-100 text-pink-600 hover:bg-pink-200 transition-colors"
-                    >
-                      Я подарю
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))

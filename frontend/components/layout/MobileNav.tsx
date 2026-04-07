@@ -28,6 +28,7 @@ const MORE_ITEMS = [
   { href: "/budget",      label: "Бюджет" },
   { href: "/projects",    label: "Проекты" },
   { href: "/habits",      label: "Привычки" },
+  { href: "/lists",       label: "Списки" },
   { href: "/events",      label: "События" },
   { href: "/subscriptions", label: "Подписки" },
   { href: "/settings",    label: "Настройки" },
@@ -58,7 +59,7 @@ export function MobileNav({ onCreateTask, onCreateOperation }: MobileNavProps) {
     }
     if (href === "/more") {
       return ["/budget", "/analytics", "/efficiency", "/strategy", "/goals",
-              "/projects", "/habits", "/events", "/settings", "/profile",
+              "/projects", "/habits", "/events", "/lists", "/settings", "/profile",
               "/notifications", "/work-categories", "/task-presets"].some(p => pathname.startsWith(p));
     }
     return pathname.startsWith(href);

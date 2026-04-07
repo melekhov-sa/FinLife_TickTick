@@ -110,10 +110,7 @@ export default function ListDetailPage() {
     onSuccess: invalidate,
   });
 
-  const { mutate: createItem, isPending: creatingItem } = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.post(`/api/v2/lists/${listId}/items`, body),
-    onSuccess: () => { invalidate(); setShowAddItem(false); },
-  });
+  const [creatingItem, setCreatingItem] = useState(false);
 
   const { mutate: updateItem } = useMutation({
     mutationFn: ({ itemId, ...body }: { itemId: number } & Record<string, unknown>) =>
@@ -158,6 +155,8 @@ export default function ListDetailPage() {
   const [itemNote, setItemNote] = useState("");
   const [itemGroupId, setItemGroupId] = useState<number | null>(null);
   const [groupTitle, setGroupTitle] = useState("");
+  const [itemFile, setItemFile] = useState<File | null>(null);
+  const createFileRef = useRef<HTMLInputElement>(null);
 
   // ── Edit item form state ─────────────────────────────────────────────
 
@@ -177,16 +176,27 @@ export default function ListDetailPage() {
     setEditGroupId(item.group_id);
   }
 
-  function handleAddItem() {
+  async function handleAddItem() {
     if (!itemTitle.trim()) return;
-    createItem({
-      title: itemTitle.trim(),
-      price: itemPrice ? parseFloat(itemPrice) : null,
-      url: itemUrl.trim() || null,
-      note: itemNote.trim() || null,
-      group_id: itemGroupId,
-    });
-    setItemTitle(""); setItemPrice(""); setItemUrl(""); setItemNote(""); setItemGroupId(null);
+    setCreatingItem(true);
+    try {
+      const created = await api.post<{ id: number }>(`/api/v2/lists/${listId}/items`, {
+        title: itemTitle.trim(),
+        price: itemPrice ? parseFloat(itemPrice) : null,
+        url: itemUrl.trim() || null,
+        note: itemNote.trim() || null,
+        group_id: itemGroupId,
+      });
+      if (itemFile && created?.id) {
+        const fd = new FormData();
+        fd.append("file", itemFile);
+        await api.postForm(`/api/v2/lists/items/${created.id}/image`, fd);
+      }
+      invalidate();
+      setShowAddItem(false);
+    } catch { /* ignore */ }
+    setCreatingItem(false);
+    setItemTitle(""); setItemPrice(""); setItemUrl(""); setItemNote(""); setItemGroupId(null); setItemFile(null);
   }
 
   function handleEditSave() {
@@ -431,6 +441,27 @@ export default function ListDetailPage() {
                 </select>
               </div>
             )}
+            {/* Image */}
+            <div>
+              <label className={labelCls}>Обложка</label>
+              {itemFile ? (
+                <div className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03]">
+                  <img src={URL.createObjectURL(itemFile)} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  <span className="text-[13px] truncate flex-1" style={{ color: "var(--t-secondary)" }}>{itemFile.name}</span>
+                  <button onClick={() => setItemFile(null)} className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><X size={14} /></button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => createFileRef.current?.click()}
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex flex-col items-center gap-1 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <ImagePlus size={18} />
+                  <span className="text-[12px] font-medium">Загрузить фото</span>
+                </button>
+              )}
+              <input ref={createFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setItemFile(e.target.files[0]); e.target.value = ""; }} />
+            </div>
           </div>
         </BottomSheet>
       )}
