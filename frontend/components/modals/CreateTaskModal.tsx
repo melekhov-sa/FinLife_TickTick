@@ -14,6 +14,7 @@ import {
 
 interface Props {
   onClose: () => void;
+  initialDate?: string; // ISO date YYYY-MM-DD
 }
 
 interface TaskPreset {
@@ -86,7 +87,7 @@ function todayISO(): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function CreateTaskModal({ onClose }: Props) {
+export function CreateTaskModal({ onClose, initialDate }: Props) {
   const qc = useQueryClient();
 
   // Mode
@@ -99,8 +100,8 @@ export function CreateTaskModal({ onClose }: Props) {
   const [showNote, setShowNote] = useState(false);
 
   // One-time fields
-  const [dueKind, setDueKind] = useState("NONE");
-  const [dueDate, setDueDate] = useState("");
+  const [dueKind, setDueKind] = useState(initialDate ? "DATE" : "NONE");
+  const [dueDate, setDueDate] = useState(initialDate ?? "");
   const [dueTime, setDueTime] = useState("");
   const [dueStartTime, setDueStartTime] = useState("");
   const [dueEndTime, setDueEndTime] = useState("");

@@ -347,33 +347,22 @@ function DayGroupCard({
 
   const isEmpty = group.entries.length === 0;
 
-  // Empty day — compact single row
+  // Empty day — skip today (dashboard has "Фокус дня")
+  if (isEmpty && group.is_today) return null;
+
   if (isEmpty) {
     return (
-      <div className={clsx(
-        "rounded-xl border px-3 py-2.5",
-        group.is_today
-          ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
-          : "bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]"
-      )}>
+      <div className="rounded-xl border px-3 py-3.5 bg-white dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <h3 className={clsx(
-            "text-[14px] font-semibold leading-none",
-            group.is_today ? "text-indigo-600 dark:text-indigo-300/90" : "text-slate-800 dark:text-white/90"
-          )}>
+          <h3 className="text-[14px] font-semibold leading-none text-slate-800 dark:text-white/90">
             {label}
           </h3>
-          {group.is_today && (
-            <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
-              сегодня
-            </span>
-          )}
           <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
             — нет дел
           </span>
           <button
             onClick={onAddTask}
-            className="ml-auto text-[11px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
+            className="ml-auto text-[12px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
           >
             + добавить
           </button>
@@ -482,8 +471,8 @@ function DoneTodayBlock({
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done">("active");
   const [range, setRange] = useState(7);
-  const [showCreateTask, setShowCreateTask] = useState(false);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [createTaskDate, setCreateTaskDate] = useState<string | null>(null);
+  const [createEventDate, setCreateEventDate] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
@@ -567,8 +556,8 @@ export default function PlanPage() {
 
   return (
     <>
-      {showCreateTask && <CreateTaskModal onClose={() => setShowCreateTask(false)} />}
-      {showCreateEvent && <CreateEventModal onClose={() => setShowCreateEvent(false)} />}
+      {createTaskDate !== null && <CreateTaskModal initialDate={createTaskDate || undefined} onClose={() => setCreateTaskDate(null)} />}
+      {createEventDate !== null && <CreateEventModal initialDate={createEventDate || undefined} onClose={() => setCreateEventDate(null)} />}
       {detailEntry && <EntryDetailModal entry={detailEntry} onClose={() => setDetailEntry(null)} />}
       {rescheduleEntry && (
         <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
@@ -650,14 +639,14 @@ export default function PlanPage() {
                   className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-xl z-20 overflow-hidden bg-white dark:bg-[#0f1221] border-slate-200 dark:border-white/[0.08]"
                 >
                   <button
-                    onMouseDown={() => { setShowAddMenu(false); setShowCreateTask(true); }}
+                    onMouseDown={() => { setShowAddMenu(false); setCreateTaskDate(""); }}
                     className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
                     style={{ color: "var(--t-primary)" }}
                   >
                     Задача
                   </button>
                   <button
-                    onMouseDown={() => { setShowAddMenu(false); setShowCreateEvent(true); }}
+                    onMouseDown={() => { setShowAddMenu(false); setCreateEventDate(""); }}
                     className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
                     style={{ color: "var(--t-primary)" }}
                   >
@@ -691,7 +680,7 @@ export default function PlanPage() {
                 Ничего не запланировано на этот период
               </p>
               <button
-                onClick={() => setShowCreateTask(true)}
+                onClick={() => setCreateTaskDate("")}
                 className="mt-4 text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
               >
                 + Создать задачу
@@ -715,7 +704,7 @@ export default function PlanPage() {
                   onReschedule={setRescheduleEntry}
                   onExecuteOp={setExecuteEntry}
                   onSkipOp={handleSkipOp}
-                  onAddTask={() => setShowCreateTask(true)}
+                  onAddTask={() => setCreateTaskDate(g.date ?? "")}
                   onEntryClick={setDetailEntry}
                 />
               ))}

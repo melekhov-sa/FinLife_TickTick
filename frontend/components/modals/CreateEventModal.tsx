@@ -16,6 +16,7 @@ import {
 
 interface Props {
   onClose: () => void;
+  initialDate?: string;
 }
 
 const inputCls =
@@ -55,13 +56,13 @@ const REMINDER_OPTIONS = [
   { value: "1440", label: "За 1 день" },
 ];
 
-export function CreateEventModal({ onClose }: Props) {
+export function CreateEventModal({ onClose, initialDate }: Props) {
   const qc = useQueryClient();
 
   // ── Core fields ──────────────────────────────────────────────
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(initialDate ?? "");
 
   // ── Toggles ──────────────────────────────────────────────────
   const [hasTime, setHasTime] = useState(false);
