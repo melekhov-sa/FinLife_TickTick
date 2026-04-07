@@ -145,6 +145,12 @@ export default function ListDetailPage() {
     onSuccess: () => { invalidate(); setShowAddGroup(false); },
   });
 
+  const { mutate: updateGroup } = useMutation({
+    mutationFn: ({ groupId, ...body }: { groupId: number } & Record<string, unknown>) =>
+      api.patch(`/api/v2/lists/groups/${groupId}`, body),
+    onSuccess: invalidate,
+  });
+
   const { mutate: deleteGroup } = useMutation({
     mutationFn: (groupId: number) => api.delete(`/api/v2/lists/groups/${groupId}`),
     onSuccess: invalidate,
@@ -453,16 +459,53 @@ export default function ListDetailPage() {
   function KanbanColumn({ group, items: colItems }: { group: { id: number; title: string }; items: ListItem[] }) {
     const { setNodeRef, isOver } = useDroppable({ id: `col-${group.id}` });
     const isAdding = inlineAddGroupId === group.id;
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [colTitle, setColTitle] = useState(group.title);
+
+    function saveTitle() {
+      if (colTitle.trim() && colTitle.trim() !== group.title && group.id !== 0) {
+        updateGroup({ groupId: group.id, title: colTitle.trim() });
+      }
+      setEditingTitle(false);
+    }
 
     return (
       <div key={group.id} className="w-[270px] md:w-[290px] shrink-0 flex flex-col">
         {/* Column header */}
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <h3 className="text-[14px] font-bold" style={{ color: "var(--t-primary)" }}>{group.title}</h3>
-          <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
+        <div className="flex items-center gap-2 mb-2 px-1 group/col">
+          {editingTitle && group.id !== 0 ? (
+            <input
+              value={colTitle}
+              onChange={(e) => setColTitle(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); if (e.key === "Escape") { setColTitle(group.title); setEditingTitle(false); } }}
+              className="text-[14px] font-bold bg-transparent outline-none border-b-2 border-indigo-400 w-full"
+              style={{ color: "var(--t-primary)" }}
+              autoFocus
+            />
+          ) : (
+            <h3
+              className={clsx("text-[14px] font-bold", group.id !== 0 && "cursor-pointer hover:text-indigo-500 transition-colors")}
+              style={{ color: "var(--t-primary)" }}
+              onDoubleClick={() => { if (group.id !== 0) { setColTitle(group.title); setEditingTitle(true); } }}
+            >
+              {group.title}
+            </h3>
+          )}
+          <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full shrink-0" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
+          {group.id !== 0 && (
+            <button
+              onClick={() => deleteGroup(group.id)}
+              className="w-5 h-5 flex items-center justify-center rounded shrink-0 opacity-0 group-hover/col:opacity-100 transition-all hover:bg-red-50 hover:text-red-500"
+              style={{ color: "var(--t-faint)" }}
+              title="Удалить колонку"
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
           <button
             onClick={() => { setInlineAddGroupId(group.id); setInlineAddTitle(""); }}
-            className="ml-auto w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+            className="ml-auto w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors shrink-0"
             style={{ color: "var(--t-faint)" }}
           >
             <Plus size={14} />
@@ -514,18 +557,70 @@ export default function ListDetailPage() {
     );
   }
 
+  const [addingColumn, setAddingColumn] = useState(false);
+  const [newColTitle, setNewColTitle] = useState("");
+
+  async function handleAddColumn() {
+    if (!newColTitle.trim()) { setAddingColumn(false); return; }
+    try {
+      await api.post(`/api/v2/lists/${listId}/groups`, { title: newColTitle.trim() });
+      invalidate();
+    } catch { /* ignore */ }
+    setNewColTitle("");
+    setAddingColumn(false);
+  }
+
   function renderKanban() {
     if (!list) return null;
-    const groups = list.groups.length > 0
-      ? list.groups.map((g) => ({ ...g, _items: list.items.filter((it) => it.group_id === g.id) }))
-      : [{ id: 0, title: "Все", sort_order: 0, color: null, _items: list.items }];
+
+    // Build columns: existing groups + ungrouped items (if any and no groups)
+    const ungroupedItems = list.items.filter((it) => !it.group_id);
+    const columns = [
+      // Show "Без колонки" only if there are ungrouped items
+      ...(ungroupedItems.length > 0 ? [{ id: 0, title: "Без колонки", sort_order: -1, color: null, _items: ungroupedItems }] : []),
+      ...list.groups.map((g) => ({ ...g, _items: list.items.filter((it) => it.group_id === g.id) })),
+    ];
 
     return (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-3 px-3 md:-mx-6 md:px-6">
-          {groups.map((g) => (
+          {columns.map((g) => (
             <KanbanColumn key={g.id} group={g} items={g._items} />
           ))}
+
+          {/* Add column button */}
+          <div className="w-[270px] md:w-[290px] shrink-0">
+            {addingColumn ? (
+              <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-white/[0.04] p-3">
+                <input
+                  value={newColTitle}
+                  onChange={(e) => setNewColTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddColumn(); if (e.key === "Escape") setAddingColumn(false); }}
+                  placeholder="Название колонки..."
+                  className="w-full text-[14px] font-medium bg-transparent outline-none placeholder-slate-400 mb-2"
+                  style={{ color: "var(--t-primary)" }}
+                  autoFocus
+                />
+                <div className="flex gap-1.5">
+                  <button onClick={handleAddColumn} disabled={!newColTitle.trim()} className="text-[12px] font-semibold px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                    Создать
+                  </button>
+                  <button onClick={() => setAddingColumn(false)} className="text-[12px] font-medium px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors" style={{ color: "var(--t-faint)" }}>
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setAddingColumn(true); setNewColTitle(""); }}
+                className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex items-center justify-center gap-2 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/[0.04]"
+                style={{ color: "var(--t-faint)" }}
+              >
+                <Plus size={16} />
+                <span className="text-[13px] font-medium">Колонка</span>
+              </button>
+            )}
+          </div>
         </div>
         <DragOverlay>
           {dragItem && (
