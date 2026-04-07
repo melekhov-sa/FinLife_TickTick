@@ -326,6 +326,7 @@ export function CreateTaskModal({ onClose }: Props) {
       await api.post("/api/v2/tasks", buildPayload());
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
