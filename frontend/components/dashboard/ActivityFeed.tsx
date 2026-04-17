@@ -198,7 +198,7 @@ export function ActivityFeed({ feed }: Props) {
   const hiddenDayCount = feed.length - 2;
 
   return (
-    <div className="bg-white dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.06] p-3 md:p-4">
+    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-3 md:p-4">
       <h2 className="text-[15px] md:text-[16px] font-semibold mb-2" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Активность
       </h2>

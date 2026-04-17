@@ -68,7 +68,7 @@ export function UpcomingPayments({ payments }: Props) {
   const groupEntries = Object.entries(groups);
 
   return (
-    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-4">
+    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-4">
       {/* Header with toggle */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
