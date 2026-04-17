@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Check, CalendarDays } from "lucide-react";
+import { TaskReminders } from "@/components/tasks/TaskReminders";
 
 interface PlanEntry {
   id: number;
@@ -125,6 +126,19 @@ export function EntryDetailModal({ entry, onClose }: Props) {
           <div>
             <label className={labelCls}>Время</label>
             <p className="text-[14px]" style={{ color: "var(--t-secondary)" }}>{entry.time}</p>
+          </div>
+        )}
+
+        {/* Reminders — regular tasks only (task_occ reminders live on template) */}
+        {entry.kind === "task" && (
+          <div>
+            <label className={labelCls}>Напоминания</label>
+            <TaskReminders
+              taskId={entry.id}
+              dueDate={dueDate || null}
+              dueTime={(entry.meta.due_time as string) ?? null}
+              disabled={entry.is_done}
+            />
           </div>
         )}
 
