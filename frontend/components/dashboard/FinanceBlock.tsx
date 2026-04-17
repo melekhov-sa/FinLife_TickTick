@@ -79,7 +79,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
           {/* Financial result */}
           <div className="border-t border-white/[0.06] mt-2.5 md:mt-3 pt-2.5 md:pt-3 flex items-baseline justify-between gap-2">
-            <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Финансовый результат</span>
+            <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Фин. результат</span>
             <span className={clsx("text-[13px] md:text-[14px] font-semibold tabular-nums", resultPositive ? "money-income" : "money-expense")}>
               {resultPositive ? "" : "\u2212"}{fmt(Math.abs(result))} ₽
             </span>
