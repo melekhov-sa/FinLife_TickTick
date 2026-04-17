@@ -38,17 +38,17 @@ export default function DashboardPage() {
         )}
 
         {isLoading && (
-          <div className="space-y-3 md:grid md:grid-cols-[280px_1fr_290px] md:gap-4 md:space-y-0 max-w-[1400px]">
+          <div className="space-y-3 md:grid md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_290px] md:gap-4 md:space-y-0 max-w-[1400px]">
             <Skeleton className="h-32 md:h-40" />
             <Skeleton className="h-48 md:h-72" />
-            <Skeleton className="hidden lg:block h-36" />
+            <Skeleton className="hidden xl:block h-36" />
           </div>
         )}
 
         {data && (
           <div className="max-w-[1400px]">
-            {/* Desktop: 3-column grid */}
-            <div className="hidden md:grid md:grid-cols-[280px_1fr_290px] gap-4">
+            {/* Desktop / tablet: 2 or 3 column grid (3 columns on xl+) */}
+            <div className="hidden md:grid md:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_290px] gap-4">
               {/* Left */}
               <div className="space-y-4">
                 <FinanceBlock
@@ -71,12 +71,19 @@ export default function DashboardPage() {
                 <ActivityFeed feed={data.feed} />
               </div>
 
-              {/* Right */}
-              <div className="hidden lg:block space-y-4">
+              {/* Right (xl+ only) */}
+              <div className="hidden xl:block space-y-4">
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <WeekEventsCard events={data.week_events} />
                 <ExpiringSubsCard subs={data.expiring_subs} />
               </div>
+            </div>
+
+            {/* md-xl only: right-column content as a row below the main grid */}
+            <div className="hidden md:grid xl:hidden grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              <UpcomingPayments payments={data.upcoming_payments} />
+              <WeekEventsCard events={data.week_events} />
+              <ExpiringSubsCard subs={data.expiring_subs} />
             </div>
 
             {/* Mobile: reordered single column — action first */}
