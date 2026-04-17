@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
@@ -10,8 +8,6 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
-import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
-import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { useDashboard } from "@/hooks/useDashboard";
 
 function Skeleton({ className }: { className?: string }) {
@@ -20,8 +16,6 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showOpModal, setShowOpModal] = useState(false);
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -29,33 +23,11 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-  const quickActions = (
-    <div className="hidden md:flex items-center gap-2">
-      <button
-        onClick={() => setShowTaskModal(true)}
-        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium text-white/90 bg-white/10 hover:bg-white/20 transition-colors"
-        aria-label="Создать задачу"
-      >
-        <Plus size={14} strokeWidth={2.2} />
-        Задача
-      </button>
-      <button
-        onClick={() => setShowOpModal(true)}
-        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium text-white/90 bg-white/10 hover:bg-white/20 transition-colors"
-        aria-label="Создать операцию"
-      >
-        <Plus size={14} strokeWidth={2.2} />
-        Операция
-      </button>
-    </div>
-  );
-
   return (
     <>
       <AppTopbar
         title="Главная"
         subtitle={todayLabel}
-        actions={quickActions}
       />
 
       <main className="flex-1 overflow-auto p-3 md:p-6">
@@ -127,9 +99,6 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
-
-      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
-      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
     </>
   );
 }

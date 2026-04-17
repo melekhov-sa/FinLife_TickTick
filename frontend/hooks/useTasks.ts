@@ -14,7 +14,7 @@ export function useTasks(status = "ACTIVE") {
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { title: string; due_date?: string; category_id?: number }) =>
+    mutationFn: (data: { title: string; due_kind?: string; due_date?: string; category_id?: number }) =>
       api.post(`/api/v2/tasks`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });

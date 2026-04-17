@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, Play } from "lucide-react";
+import { CheckCircle2, SkipForward, Play, Plus } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useCreateTask } from "@/hooks/useTasks";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
+import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 
 interface Props {
@@ -178,7 +179,7 @@ function QuickAddTaskRow() {
     const trimmed = title.trim();
     if (!trimmed) return;
     createTask(
-      { title: trimmed, due_date: getTodayISO() },
+      { title: trimmed, due_kind: "DATE", due_date: getTodayISO() },
       {
         onSuccess: () => {
           setTitle("");
@@ -258,6 +259,30 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   const [showDone, setShowDone] = useState(false);
 
+  // Create menu (dropdown: task / operation) — desktop only
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showOpModal, setShowOpModal] = useState(false);
+  const createBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (createBtnRef.current && !createBtnRef.current.contains(e.target as Node)) {
+        setCreateMenuOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setCreateMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [createMenuOpen]);
+
   const { activeTasks, doneTasks, activeHabits, doneHabits, doneOps, isEmpty } = useMemo(() => {
     const _activeTasks = [
       ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
@@ -310,6 +335,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
           onClose={() => setConfirmItem(null)}
         />
       )}
+      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
+      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
       <div
         className="rounded-xl md:rounded-2xl border p-3.5 md:p-5 relative overflow-hidden"
@@ -319,33 +346,73 @@ export function TodayBlock({ today, plannedOps }: Props) {
         }}
       >
         {/* Header */}
-        <div className="mb-2.5">
-          <h2 className="text-[18px] md:text-[20px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
-            Сегодня
-          </h2>
-          {progress.total > 0 && (
-            <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
-              {progress.done} из {progress.total} выполнено
-            </p>
-          )}
+        <div className="mb-2.5 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[18px] md:text-[20px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
+              Сегодня
+            </h2>
+            {progress.total > 0 && (
+              <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
+                {progress.done} из {progress.total} выполнено
+              </p>
+            )}
+            {/* Progress bar */}
+            {progress.total > 0 && (
+              <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.12)" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: progressPct === 100
+                      ? "linear-gradient(90deg, #10b981, #34d399)"
+                      : "linear-gradient(90deg, #6366f1, #818cf8)",
+                    boxShadow: progressPct === 100
+                      ? "0 0 10px rgba(16,185,129,0.45)"
+                      : "0 0 10px rgba(99,102,241,0.4)",
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
-          {/* Progress bar */}
-          {progress.total > 0 && (
-            <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.12)" }}>
+          {/* Create menu — desktop only */}
+          <div ref={createBtnRef} className="relative hidden md:block shrink-0">
+            <button
+              onClick={() => setCreateMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-colors bg-indigo-500/15 hover:bg-indigo-500/25"
+              style={{ color: "var(--t-primary)" }}
+              aria-label="Создать"
+              aria-expanded={createMenuOpen}
+            >
+              <Plus size={14} strokeWidth={2.2} />
+              Создать
+            </button>
+
+            {createMenuOpen && (
               <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
+                className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-xl border shadow-xl overflow-hidden"
                 style={{
-                  width: `${progressPct}%`,
-                  background: progressPct === 100
-                    ? "linear-gradient(90deg, #10b981, #34d399)"
-                    : "linear-gradient(90deg, #6366f1, #818cf8)",
-                  boxShadow: progressPct === 100
-                    ? "0 0 10px rgba(16,185,129,0.45)"
-                    : "0 0 10px rgba(99,102,241,0.4)",
+                  background: "var(--t-card-bg, #ffffff)",
+                  borderColor: "rgba(0,0,0,0.08)",
                 }}
-              />
-            </div>
-          )}
+              >
+                <button
+                  onClick={() => { setCreateMenuOpen(false); setShowTaskModal(true); }}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
+                  style={{ color: "var(--t-primary)" }}
+                >
+                  Задача
+                </button>
+                <button
+                  onClick={() => { setCreateMenuOpen(false); setShowOpModal(true); }}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
+                  style={{ color: "var(--t-primary)" }}
+                >
+                  Операция
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Grouped sections ── */}
