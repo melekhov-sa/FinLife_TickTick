@@ -67,6 +67,15 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
     ? "OFFSET"
     : "FIXED_TIME";
 
+  // Hide legacy reminders that don't match current due_kind — they'll be
+  // auto-dropped on the next mutation anyway. Showing them would confuse
+  // the user (they see entries that can't be added/edited).
+  const visibleReminders = reminders.filter((r) => {
+    if (mode === "FIXED_TIME") return r.reminder_kind === "FIXED_TIME";
+    if (mode === "OFFSET") return r.reminder_kind === "OFFSET";
+    return false;
+  });
+
   function reminderLabel(r: TaskReminder): string {
     if (r.reminder_kind === "FIXED_TIME") {
       return `в ${r.fixed_time}`;
@@ -96,7 +105,7 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
 
         {mode !== "DISABLED" && (
           <div className="flex flex-wrap gap-1.5">
-            {reminders.map((r) => (
+            {visibleReminders.map((r) => (
               <span
                 key={r.id}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-[12px] font-medium"
@@ -114,12 +123,12 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
               </span>
             ))}
 
-            {!disabled && reminders.length < 5 && (
+            {!disabled && visibleReminders.length < 5 && (
               adding ? (
                 <div className="flex items-center gap-1 flex-wrap">
                   {mode === "FIXED_TIME" ? (
                     FIXED_TIME_PRESETS
-                      .filter((t) => !reminders.some((r) => r.reminder_kind === "FIXED_TIME" && r.fixed_time === t))
+                      .filter((t) => !visibleReminders.some((r) => r.reminder_kind === "FIXED_TIME" && r.fixed_time === t))
                       .map((t) => (
                         <button
                           key={t}
@@ -132,7 +141,7 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
                       ))
                   ) : (
                     presets
-                      .filter((p) => !reminders.some((r) => r.reminder_kind === "OFFSET" && r.offset_minutes === p.offset_minutes))
+                      .filter((p) => !visibleReminders.some((r) => r.reminder_kind === "OFFSET" && r.offset_minutes === p.offset_minutes))
                       .map((p) => (
                         <button
                           key={p.id}
@@ -165,7 +174,7 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
           </div>
         )}
 
-        {mode === "FIXED_TIME" && !disabled && reminders.length === 0 && !adding && (
+        {mode === "FIXED_TIME" && !disabled && visibleReminders.length === 0 && !adding && (
           <p className="text-[11px] mt-1.5" style={{ color: "var(--t-faint)" }}>
             Задача без времени — выбери час напоминания
           </p>

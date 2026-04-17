@@ -512,6 +512,19 @@ def _current_reminders_payload(db: Session, task_id: int) -> list[dict]:
     return result
 
 
+def _compatible_with_due_kind(rem: dict, due_kind: str) -> bool:
+    """Drop legacy reminders that don't match the current due_kind.
+
+    When due_kind changes (e.g. DATETIME → DATE) old OFFSET reminders are
+    kept in the DB but become invalid for validation. When the user mutates
+    reminders we silently drop them so the op succeeds.
+    """
+    kind = rem.get("reminder_kind", "OFFSET")
+    if kind == "FIXED_TIME":
+        return due_kind == "DATE"
+    return due_kind in ("DATETIME", "WINDOW")
+
+
 @router.get("/tasks/{task_id}/reminders", response_model=list[TaskReminderItem])
 def list_task_reminders(task_id: int, request: Request, db: Session = Depends(get_db)):
     from app.infrastructure.db.models import TaskReminderModel
@@ -541,6 +554,9 @@ def add_task_reminder(task_id: int, body: AddReminderRequest, request: Request, 
         raise HTTPException(status_code=404, detail="Задача не найдена")
 
     current = _current_reminders_payload(db, task_id)
+    # Drop legacy reminders incompatible with current due_kind so the update
+    # passes validation and the user doesn't get stuck with old entries
+    current = [r for r in current if _compatible_with_due_kind(r, task.due_kind)]
     new_rem: dict = {"reminder_kind": body.reminder_kind}
     if body.reminder_kind == "FIXED_TIME":
         if not body.fixed_time:
@@ -581,7 +597,8 @@ def delete_task_reminder(task_id: int, reminder_id: int, request: Request, db: S
     if not target:
         raise HTTPException(status_code=404, detail="Напоминание не найдено")
 
-    # Rebuild list without the deleted one
+    # Rebuild list without the deleted one, also dropping legacy reminders
+    # incompatible with the current due_kind (auto-migration on touch)
     current_rows = db.query(TaskReminderModel).filter(
         TaskReminderModel.task_id == task_id,
         TaskReminderModel.id != reminder_id,
@@ -589,15 +606,17 @@ def delete_task_reminder(task_id: int, reminder_id: int, request: Request, db: S
     new_list = []
     for r in current_rows:
         if r.reminder_kind == "FIXED_TIME":
-            new_list.append({
+            rem_dict = {
                 "reminder_kind": "FIXED_TIME",
                 "fixed_time": r.fixed_time.strftime("%H:%M") if r.fixed_time else None,
-            })
+            }
         else:
-            new_list.append({
+            rem_dict = {
                 "reminder_kind": "OFFSET",
                 "offset_minutes": r.offset_minutes,
-            })
+            }
+        if _compatible_with_due_kind(rem_dict, task.due_kind):
+            new_list.append(rem_dict)
 
     UpdateTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id, reminders=new_list)
     return {"ok": True}
