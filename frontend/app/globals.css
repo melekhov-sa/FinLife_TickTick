@@ -554,3 +554,172 @@ html.dark[data-color-theme="emerald"] {
   }
 }
 
+
+/* ── Habit celebration animations ─────────────────────────────────────────── */
+
+@keyframes streak-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.22); }
+  70%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes streak-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+  30%  { box-shadow: 0 0 0 6px rgba(251,191,36,0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(251,191,36,0); }
+}
+
+@keyframes card-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+  35%  { box-shadow: 0 0 0 8px rgba(99,102,241,0.25), 0 0 20px rgba(99,102,241,0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+}
+
+@keyframes milestone-in {
+  0%   { opacity: 0; transform: scale(0.88); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes milestone-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+
+@keyframes flame-burst {
+  0%   { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+  50%  { transform: scale(1.3) rotate(8deg);  opacity: 1; }
+  80%  { transform: scale(0.95) rotate(-3deg); opacity: 1; }
+  100% { transform: scale(1)   rotate(0deg);  opacity: 1; }
+}
+
+@keyframes particle-fly-1 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(-55px,-80px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-2 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(55px,-75px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-3 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(-30px,-100px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-4 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(30px,-95px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-5 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(-70px,-45px) scale(0); opacity: 0; }
+}
+@keyframes particle-fly-6 {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(70px,-50px) scale(0); opacity: 0; }
+}
+
+/* Utility classes for the animations */
+.habit-streak-bump {
+  animation: streak-bump 450ms cubic-bezier(0.34,1.56,0.64,1) forwards,
+             streak-flash 500ms ease-out forwards;
+}
+
+.habit-card-glow {
+  animation: card-glow 600ms ease-out forwards;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .habit-streak-bump,
+  .habit-card-glow {
+    animation: none;
+  }
+}
+
+/* Hide "Esc" hint on touch devices (no physical keyboard) */
+.hint-esc-only {
+  display: inline;
+}
+@media (hover: none) and (pointer: coarse) {
+  .hint-esc-only {
+    display: none;
+  }
+}
+
+/* ── Level-up celebration overlay animations ────────────────────────────── */
+
+@keyframes levelup-backdrop-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes levelup-card-in {
+  0%   { opacity: 0; transform: scale(0.82) translateY(24px); }
+  60%  { opacity: 1; transform: scale(1.04) translateY(-4px); }
+  80%  { transform: scale(0.98) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes levelup-crown {
+  0%   { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+  50%  { transform: scale(1.25) rotate(10deg);  opacity: 1; }
+  70%  { transform: scale(0.92) rotate(-4deg);  opacity: 1; }
+  100% { transform: scale(1)    rotate(0deg);   opacity: 1; }
+}
+
+@keyframes levelup-number-in {
+  0%   { opacity: 0; transform: scale(0.5); filter: blur(8px); }
+  70%  { opacity: 1; transform: scale(1.08); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes levelup-glow-pulse {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+
+@keyframes levelup-vignette-pulse {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  70%  { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* 12 particles — gold/amber/orange spectrum */
+@keyframes lu-p1  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-60px,-110px) scale(0); opacity: 0; } }
+@keyframes lu-p2  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(60px,-105px) scale(0); opacity: 0; } }
+@keyframes lu-p3  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-35px,-130px) scale(0); opacity: 0; } }
+@keyframes lu-p4  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(35px,-125px) scale(0); opacity: 0; } }
+@keyframes lu-p5  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-85px,-65px) scale(0); opacity: 0; } }
+@keyframes lu-p6  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(85px,-60px) scale(0); opacity: 0; } }
+@keyframes lu-p7  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-100px,-30px) scale(0); opacity: 0; } }
+@keyframes lu-p8  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(100px,-25px) scale(0); opacity: 0; } }
+@keyframes lu-p9  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-50px,70px) scale(0); opacity: 0; } }
+@keyframes lu-p10 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(50px,75px) scale(0); opacity: 0; } }
+@keyframes lu-p11 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-20px,90px) scale(0); opacity: 0; } }
+@keyframes lu-p12 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(20px,85px) scale(0); opacity: 0; } }
+
+@keyframes levelup-btn-appear {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Reduced-motion: disable level-up particles/crown/number animations */
+@media (prefers-reduced-motion: reduce) {
+  .levelup-crown-animated,
+  .levelup-number-animated,
+  .levelup-particle,
+  .levelup-card-animated,
+  .levelup-btn-animated {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .levelup-backdrop-animated {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

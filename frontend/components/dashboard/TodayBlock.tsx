@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { clsx } from "clsx";
 import { CheckCircle2, SkipForward, Play } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useCreateTask } from "@/hooks/useTasks";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -144,6 +145,106 @@ function GroupHeader({ label }: { label: string }) {
         {label}
       </p>
       <div className="flex-1 h-px bg-indigo-200/40 dark:bg-white/[0.06]" />
+    </div>
+  );
+}
+
+
+function QuickAddTaskRow() {
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { mutate: createTask, isPending } = useCreateTask();
+
+  const showError = useCallback((msg: string) => {
+    setError(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setError(null), 3000);
+  }, []);
+
+  function getTodayISO(): string {
+    // Use local date in YYYY-MM-DD format (matches Moscow timezone in browser)
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function submit() {
+    if (isPending) return;
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    createTask(
+      { title: trimmed, due_date: getTodayISO() },
+      {
+        onSuccess: () => {
+          setTitle("");
+          inputRef.current?.focus();
+        },
+        onError: (err: unknown) => {
+          const msg =
+            err instanceof Error ? err.message : "Не удалось создать задачу";
+          showError(msg);
+        },
+      }
+    );
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  return (
+    <div className="mt-2.5">
+      <div
+        className="flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors focus-within:border-indigo-400/70"
+        style={{
+          borderColor: "rgba(99,102,241,0.22)",
+          background: "rgba(255,255,255,0.06)",
+        }}
+      >
+        <button
+          onClick={submit}
+          disabled={isPending || !title.trim()}
+          aria-label="Добавить задачу на сегодня"
+          className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
+          style={{ color: isPending ? "var(--t-faint)" : "var(--t-muted)" }}
+        >
+          {isPending ? (
+            <span className="text-[11px] animate-pulse">•••</span>
+          ) : (
+            <span className="text-[17px] leading-none font-light" style={{ color: "var(--t-muted)" }}>+</span>
+          )}
+        </button>
+        <input
+          ref={inputRef}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isPending}
+          placeholder="Быстро добавить на сегодня…"
+          aria-label="Быстро добавить задачу на сегодня"
+          className="flex-1 bg-transparent outline-none text-[15px] placeholder:opacity-50 disabled:opacity-60"
+          style={{
+            color: "var(--t-primary)",
+            fontSize: "var(--fs-body, 15px)",
+          }}
+        />
+      </div>
+      {error && (
+        <p
+          className="mt-1 text-[13px] font-medium px-1"
+          style={{ color: "#ef4444" }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -345,6 +446,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
             </>
           );
         })()}
+
+        {/* Quick-add task */}
+        <QuickAddTaskRow />
 
         {/* Empty state */}
         {isEmpty && (

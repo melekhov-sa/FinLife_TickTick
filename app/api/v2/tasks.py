@@ -958,3 +958,20 @@ def restore_task_template(
     template.is_archived = False
     db.commit()
     return {"ok": True}
+
+
+# ── Task Occurrence skip ─────────────────────────────────────────────────────
+
+@router.post("/task-occurrences/{occurrence_id}/skip", status_code=200)
+def skip_task_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.task_templates import SkipTaskOccurrenceUseCase, TaskTemplateValidationError
+    user_id = get_user_id(request, db)
+    try:
+        SkipTaskOccurrenceUseCase(db).execute(
+            occurrence_id=occurrence_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+        )
+    except TaskTemplateValidationError:
+        raise HTTPException(status_code=404, detail="Вхождение не найдено")
+    return {"ok": True}

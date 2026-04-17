@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
@@ -11,7 +11,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown } from "lucide-react";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown, MoreVertical } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -168,12 +168,137 @@ function formatDayHeader(iso: string): string {
   return `${capitalized}, ${dayMonth}`;
 }
 
+
+// ── Row action menu ───────────────────────────────────────────────────────────
+
+interface RowMenuProps {
+  entry: PlanEntry;
+  onReschedule: () => void;
+  onArchiveTask: () => void;
+  onSkipTaskOcc: () => void;
+  onExecuteOp: () => void;
+  onSkipOp: () => void;
+}
+
+function RowMenu({
+  entry,
+  onReschedule,
+  onArchiveTask,
+  onSkipTaskOcc,
+  onExecuteOp,
+  onSkipOp,
+}: RowMenuProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const isTask = entry.kind === 'task';
+  const isTaskOcc = entry.kind === 'task_occ';
+  const isOp = entry.kind === 'planned_op';
+
+  // No menu for habits, events, and completed entries
+  const hasMenu = (isTask || isTaskOcc || isOp) && !entry.is_done;
+
+  // Click-away and Escape — must be declared before any early return (Rules of Hooks)
+  useEffect(() => {
+    if (!open || !hasMenu) return;
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, hasMenu]);
+
+  if (!hasMenu) return null;
+
+  function close() { setOpen(false); }
+
+  function handle(action: () => void) {
+    close();
+    action();
+  }
+
+  const itemCls = 'w-full text-left px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]';
+  const normalStyle: React.CSSProperties = { color: 'var(--t-primary)', fontSize: 'var(--fs-sm, 13px)' };
+  const dangerStyle: React.CSSProperties = { color: 'rgb(239 68 68)', fontSize: 'var(--fs-sm, 13px)' };
+
+  return (
+    <div ref={ref} className='relative'>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className={clsx(
+          'md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all',
+          'hover:bg-slate-100 dark:hover:bg-white/[0.08]',
+          open && 'opacity-100 bg-slate-100 dark:bg-white/[0.08]'
+        )}
+        style={{ color: 'var(--t-faint)' }}
+        title='Действия'
+        aria-haspopup='true'
+        aria-expanded={open}
+      >
+        <MoreVertical size={14} />
+      </button>
+
+      {open && (
+        <div className='absolute right-0 top-full mt-1 w-44 rounded-xl border shadow-xl z-30 overflow-hidden bg-white dark:bg-[#0f1221] border-slate-200 dark:border-white/[0.08]'>
+          {isTask && (
+            <>
+              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onReschedule)}>
+                <CalendarDays size={13} className='inline mr-2 opacity-60' />
+                Перенести
+              </button>
+              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onArchiveTask)}>
+                Архивировать
+              </button>
+            </>
+          )}
+
+          {isTaskOcc && (
+            <>
+              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onReschedule)}>
+                <CalendarDays size={13} className='inline mr-2 opacity-60' />
+                Перенести
+              </button>
+              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipTaskOcc)}>
+                Пропустить
+              </button>
+            </>
+          )}
+
+          {isOp && (
+            <>
+              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onExecuteOp)}>
+                <Play size={11} className='inline mr-2 opacity-60 fill-current' />
+                Выполнить
+              </button>
+              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipOp)}>
+                <SkipForward size={12} className='inline mr-2 opacity-60' />
+                Пропустить
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryRow({
   entry,
   onComplete,
   onReschedule,
   onExecuteOp,
   onSkipOp,
+  onArchiveTask,
+  onSkipTaskOcc,
   onEntryClick,
 }: {
   entry: PlanEntry;
@@ -181,10 +306,11 @@ function EntryRow({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
+  onArchiveTask: (entry: PlanEntry) => void;
+  onSkipTaskOcc: (entry: PlanEntry) => void;
   onEntryClick?: (entry: PlanEntry) => void;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
-  const isTask = entry.kind === "task" || entry.kind === "task_occ";
   const isOp = entry.kind === "planned_op";
   const opKind = entry.meta.op_kind as string | undefined;
   const amountFormatted = entry.meta.amount_formatted as string | undefined;
@@ -213,6 +339,8 @@ function EntryRow({
           </div>
         ) : isOp ? (
           <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0" />
+        ) : entry.kind === "event" ? (
+          <div className="w-[16px] h-[16px] shrink-0" aria-hidden="true" />
         ) : (
           <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-slate-200 dark:border-white/20 shrink-0" />
         )}
@@ -259,36 +387,15 @@ function EntryRow({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {isTask && !entry.is_done && (
-          <button
-            onClick={() => onReschedule(entry)}
-            className="md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
-            style={{ color: "var(--t-faint)" }}
-            title="Перенести"
-          >
-            <CalendarDays size={13} />
-          </button>
-        )}
-        {isOp && !entry.is_done && (
-          <>
-            <button
-              onClick={() => onExecuteOp(entry)}
-              className="md:opacity-0 md:group-hover/row:opacity-100 flex items-center gap-0.5 px-1.5 py-1 rounded bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all"
-              title="Выполнить"
-            >
-              <Play size={9} className="fill-current" />
-            </button>
-            <button
-              onClick={() => onSkipOp(entry)}
-              className="md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-red-50 dark:hover:bg-red-500/15 hover:text-red-500 dark:hover:text-red-400"
-              style={{ color: "var(--t-faint)" }}
-              title="Пропустить"
-            >
-              <SkipForward size={12} />
-            </button>
-          </>
-        )}
+      <div className="shrink-0">
+        <RowMenu
+          entry={entry}
+          onReschedule={() => onReschedule(entry)}
+          onArchiveTask={() => onArchiveTask(entry)}
+          onSkipTaskOcc={() => onSkipTaskOcc(entry)}
+          onExecuteOp={() => onExecuteOp(entry)}
+          onSkipOp={() => onSkipOp(entry)}
+        />
       </div>
     </div>
   );
@@ -322,6 +429,8 @@ function DayGroupCard({
   onReschedule,
   onExecuteOp,
   onSkipOp,
+  onArchiveTask,
+  onSkipTaskOcc,
   onAddTask,
   onEntryClick,
 }: {
@@ -330,6 +439,8 @@ function DayGroupCard({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
+  onArchiveTask: (entry: PlanEntry) => void;
+  onSkipTaskOcc: (entry: PlanEntry) => void;
   onAddTask: () => void;
   onEntryClick: (entry: PlanEntry) => void;
 }) {
@@ -415,7 +526,7 @@ function DayGroupCard({
         <div key={g.type}>
           {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} />
           ))}
         </div>
       ))}
@@ -429,6 +540,8 @@ function DoneTodayBlock({
   onReschedule,
   onExecuteOp,
   onSkipOp,
+  onArchiveTask,
+  onSkipTaskOcc,
   onEntryClick,
 }: {
   entries: PlanEntry[];
@@ -436,6 +549,8 @@ function DoneTodayBlock({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
+  onArchiveTask: (entry: PlanEntry) => void;
+  onSkipTaskOcc: (entry: PlanEntry) => void;
   onEntryClick: (entry: PlanEntry) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -460,7 +575,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onEntryClick={onEntryClick} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} />
           ))}
         </div>
       )}
@@ -482,7 +597,28 @@ export default function PlanPage() {
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
       api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
+  const { mutate: archiveTask, isPending: archivePending } = useMutation({
+    mutationFn: (taskId: number) =>
+      api.post(`/api/v2/tasks/${taskId}/archive`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
+  const { mutate: skipTaskOcc, isPending: skipTaskOccPending } = useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.post(`/api/v2/task-occurrences/${occurrenceId}/skip`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 
   const [detailEntry, setDetailEntry] = useState<PlanEntry | null>(null);
@@ -490,6 +626,17 @@ export default function PlanPage() {
   function handleSkipOp(entry: PlanEntry) {
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipOp(occurrenceId);
+  }
+
+  function handleArchiveTask(entry: PlanEntry) {
+    if (archivePending) return;
+    archiveTask(entry.id);
+  }
+
+  function handleSkipTaskOcc(entry: PlanEntry) {
+    if (skipTaskOccPending) return;
+    const occurrenceId = entry.meta.occurrence_id as number | undefined;
+    if (occurrenceId) skipTaskOcc(occurrenceId);
   }
 
   const { data, isLoading, isError } = useQuery<PlanData>({
@@ -690,7 +837,16 @@ export default function PlanPage() {
 
           {/* ── Done today (collapsible) ──────────────────────────────── */}
           {filteredData && tab === "active" && filteredData.done_today.length > 0 && (
-            <DoneTodayBlock entries={filteredData.done_today} onComplete={setConfirmEntry} onReschedule={setRescheduleEntry} onExecuteOp={setExecuteEntry} onSkipOp={handleSkipOp} onEntryClick={setDetailEntry} />
+            <DoneTodayBlock
+              entries={filteredData.done_today}
+              onComplete={setConfirmEntry}
+              onReschedule={setRescheduleEntry}
+              onExecuteOp={setExecuteEntry}
+              onSkipOp={handleSkipOp}
+              onArchiveTask={handleArchiveTask}
+              onSkipTaskOcc={handleSkipTaskOcc}
+              onEntryClick={setDetailEntry}
+            />
           )}
 
           {/* ── Day groups ────────────────────────────────────────────── */}
@@ -704,6 +860,8 @@ export default function PlanPage() {
                   onReschedule={setRescheduleEntry}
                   onExecuteOp={setExecuteEntry}
                   onSkipOp={handleSkipOp}
+                  onArchiveTask={handleArchiveTask}
+                  onSkipTaskOcc={handleSkipTaskOcc}
                   onAddTask={() => setCreateTaskDate(g.date ?? "")}
                   onEntryClick={setDetailEntry}
                 />
