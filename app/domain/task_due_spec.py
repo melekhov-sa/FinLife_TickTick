@@ -85,30 +85,47 @@ def validate_reminders(
     due_kind: str,
     reminders: list[dict[str, Any]],
 ) -> None:
-    """Validate ReminderSpec invariants."""
-    if reminders and due_kind not in ("DATETIME", "WINDOW"):
-        raise ReminderSpecValidationError(
-            "Напоминания доступны только для типов DATETIME и WINDOW"
-        )
+    """Validate ReminderSpec invariants.
+
+    - OFFSET kind: offset_minutes <= 0, for DATETIME/WINDOW tasks.
+    - FIXED_TIME kind: fixed_time HH:MM, for DATE-only tasks.
+    """
+    if reminders and due_kind == "NONE":
+        raise ReminderSpecValidationError("Напоминания недоступны для задач без даты")
 
     if len(reminders) > MAX_REMINDERS_PER_TASK:
         raise ReminderSpecValidationError(
             f"Максимум {MAX_REMINDERS_PER_TASK} напоминаний на задачу"
         )
 
-    seen_offsets = set()
+    seen_keys: set[tuple[str, Any]] = set()
     for rem in reminders:
-        offset = rem.get("offset_minutes")
-        if offset is None:
-            raise ReminderSpecValidationError("offset_minutes обязателен")
-        if not isinstance(offset, int):
-            raise ReminderSpecValidationError("offset_minutes должен быть целым числом")
-        if offset > 0:
-            raise ReminderSpecValidationError(
-                "offset_minutes должен быть <= 0 (в момент срока или до него)"
-            )
-        if offset in seen_offsets:
-            raise ReminderSpecValidationError(
-                f"Дублирующий offset_minutes: {offset}"
-            )
-        seen_offsets.add(offset)
+        kind = rem.get("reminder_kind", "OFFSET")
+        if kind == "FIXED_TIME":
+            if due_kind != "DATE":
+                raise ReminderSpecValidationError(
+                    "Напоминания с фиксированным временем — только для задач с датой без времени"
+                )
+            ft = rem.get("fixed_time")
+            if not ft or not isinstance(ft, str):
+                raise ReminderSpecValidationError("fixed_time обязателен (HH:MM)")
+            key: tuple[str, Any] = ("FIXED_TIME", ft)
+        else:
+            if due_kind not in ("DATETIME", "WINDOW"):
+                raise ReminderSpecValidationError(
+                    "Offset-напоминания доступны только для DATETIME и WINDOW"
+                )
+            offset = rem.get("offset_minutes")
+            if offset is None:
+                raise ReminderSpecValidationError("offset_minutes обязателен")
+            if not isinstance(offset, int):
+                raise ReminderSpecValidationError("offset_minutes должен быть целым числом")
+            if offset > 0:
+                raise ReminderSpecValidationError(
+                    "offset_minutes должен быть <= 0 (в момент срока или до него)"
+                )
+            key = ("OFFSET", offset)
+
+        if key in seen_keys:
+            raise ReminderSpecValidationError(f"Дублирующее напоминание: {key}")
+        seen_keys.add(key)

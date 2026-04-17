@@ -191,6 +191,8 @@ export interface TaskItem {
   note: string | null;
   status: string;
   due_date: string | null;
+  due_time?: string | null;
+  due_kind?: string | null;
   completed_at: string | null;
   project_id: number | null;
   category_id: number | null;

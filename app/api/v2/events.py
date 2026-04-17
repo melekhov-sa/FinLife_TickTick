@@ -446,6 +446,119 @@ def restore_event(event_id: int, request: Request, db: Session = Depends(get_db)
     return {"ok": True}
 
 
+# ── Event default reminders CRUD ─────────────────────────────────────────────
+
+class EventReminderItem(BaseModel):
+    id: int
+    channel: str
+    mode: str
+    offset_minutes: int | None
+    fixed_time: str | None
+    is_enabled: bool
+
+
+class AddEventReminderRequest(BaseModel):
+    mode: str = "offset"  # offset | fixed_time
+    offset_minutes: int | None = None
+    fixed_time: str | None = None  # "HH:MM"
+    channel: str = "ui"
+
+
+def _serialize_event_reminder(r) -> EventReminderItem:
+    return EventReminderItem(
+        id=r.id,
+        channel=r.channel,
+        mode=r.mode,
+        offset_minutes=r.offset_minutes,
+        fixed_time=r.fixed_time.strftime("%H:%M") if r.fixed_time else None,
+        is_enabled=r.is_enabled,
+    )
+
+
+@router.get("/events/{event_id}/reminders", response_model=list[EventReminderItem])
+def list_event_reminders(event_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import EventDefaultReminderModel
+    user_id = get_user_id(request, db)
+    evt = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not evt:
+        raise HTTPException(404, "Событие не найдено")
+    rows = db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.event_id == event_id
+    ).all()
+    return [_serialize_event_reminder(r) for r in rows]
+
+
+@router.post("/events/{event_id}/reminders", response_model=EventReminderItem)
+def add_event_reminder(event_id: int, body: AddEventReminderRequest, request: Request, db: Session = Depends(get_db)):
+    from app.application.events import CreateDefaultReminderUseCase
+    from app.infrastructure.db.models import EventDefaultReminderModel
+
+    user_id = get_user_id(request, db)
+    evt = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not evt:
+        raise HTTPException(404, "Событие не найдено")
+
+    if body.mode not in ("offset", "fixed_time"):
+        raise HTTPException(400, "mode должен быть offset или fixed_time")
+    if body.mode == "offset" and body.offset_minutes is None:
+        raise HTTPException(400, "offset_minutes обязателен")
+    if body.mode == "fixed_time" and not body.fixed_time:
+        raise HTTPException(400, "fixed_time обязателен")
+
+    try:
+        CreateDefaultReminderUseCase(db).execute(
+            event_id=event_id,
+            account_id=user_id,
+            channel=body.channel,
+            mode=body.mode,
+            offset_minutes=body.offset_minutes,
+            fixed_time=body.fixed_time,
+            actor_user_id=user_id,
+        )
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+    # Return the newly created reminder
+    row = db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.event_id == event_id
+    ).order_by(EventDefaultReminderModel.id.desc()).first()
+    return _serialize_event_reminder(row)
+
+
+@router.delete("/events/{event_id}/reminders/{reminder_id}")
+def delete_event_reminder(event_id: int, reminder_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.events import DeleteDefaultReminderUseCase
+    from app.infrastructure.db.models import EventDefaultReminderModel
+
+    user_id = get_user_id(request, db)
+    evt = db.query(CalendarEventModel).filter(
+        CalendarEventModel.event_id == event_id,
+        CalendarEventModel.account_id == user_id,
+    ).first()
+    if not evt:
+        raise HTTPException(404, "Событие не найдено")
+
+    rem = db.query(EventDefaultReminderModel).filter(
+        EventDefaultReminderModel.id == reminder_id,
+        EventDefaultReminderModel.event_id == event_id,
+    ).first()
+    if not rem:
+        raise HTTPException(404, "Напоминание не найдено")
+
+    DeleteDefaultReminderUseCase(db).execute(
+        reminder_id=reminder_id,
+        account_id=user_id,
+        actor_user_id=user_id,
+    )
+    return {"ok": True}
+
+
 @router.post("/events/rebuild-projector")
 def rebuild_projector(request: Request, db: Session = Depends(get_db)):
     """Re-run the events projector to fix missing occurrences."""

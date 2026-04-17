@@ -56,6 +56,20 @@ const REMINDER_OPTIONS = [
   { value: "1440", label: "За 1 день" },
 ];
 
+const EVENT_FIXED_TIME_PRESETS = ["09:00", "12:00", "15:00", "18:00", "20:00"];
+
+const EVENT_OFFSET_PRESETS: { minutes: number; label: string }[] = [
+  { minutes: 10, label: "За 10 мин" },
+  { minutes: 30, label: "За 30 мин" },
+  { minutes: 60, label: "За 1 час" },
+  { minutes: 180, label: "За 3 часа" },
+  { minutes: 1440, label: "За 1 день" },
+];
+
+type StagedReminder =
+  | { mode: "offset"; offset_minutes: number; label: string }
+  | { mode: "fixed_time"; fixed_time: string; label: string };
+
 export function CreateEventModal({ onClose, initialDate }: Props) {
   const qc = useQueryClient();
 
@@ -74,6 +88,8 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [showExtra, setShowExtra] = useState(false);
   const [repeat, setRepeat] = useState("");
   const [reminder, setReminder] = useState("");
+  const [stagedReminders, setStagedReminders] = useState<StagedReminder[]>([]);
+  const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [description, setDescription] = useState("");
   const [endTime, setEndTime] = useState("");
   const [recWeekdays, setRecWeekdays] = useState<string[]>([]);
@@ -163,7 +179,20 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
 
     setSaving(true);
     try {
-      await api.post("/api/v2/events", buildPayload());
+      const res = await api.post<{ id?: number }>("/api/v2/events", buildPayload());
+      // Create staged reminders (backend already handles single reminder_offset;
+      // we use the new v2 CRUD for the multi-reminder picker)
+      if (res?.id && stagedReminders.length > 0) {
+        for (const r of stagedReminders) {
+          try {
+            await api.post(`/api/v2/events/${res.id}/reminders`,
+              r.mode === "offset"
+                ? { mode: "offset", offset_minutes: r.offset_minutes }
+                : { mode: "fixed_time", fixed_time: r.fixed_time }
+            );
+          } catch { /* best-effort */ }
+        }
+      }
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -494,15 +523,86 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
               </div>
             )}
 
-            {/* Уведомление */}
+            {/* Напоминания */}
             <div>
-              <label className={labelCls}>Уведомление</label>
-              <Select
-                value={reminder}
-                onChange={(v) => setReminder(v)}
-                placeholder="Нет"
-                options={REMINDER_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-              />
+              <label className={labelCls}>Напоминания</label>
+              <div className="flex flex-wrap gap-1.5">
+                {stagedReminders.map((r, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 text-[12px] font-medium"
+                  >
+                    {r.label}
+                    <button
+                      type="button"
+                      onClick={() => setStagedReminders(stagedReminders.filter((_, i) => i !== idx))}
+                      className="hover:text-red-500 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                {showReminderPicker ? (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {hasTime ? (
+                      EVENT_OFFSET_PRESETS
+                        .filter((p) => !stagedReminders.some((r) => r.mode === "offset" && r.offset_minutes === p.minutes))
+                        .map((p) => (
+                          <button
+                            key={p.minutes}
+                            type="button"
+                            onClick={() => {
+                              setStagedReminders([...stagedReminders, { mode: "offset", offset_minutes: p.minutes, label: p.label }]);
+                              setShowReminderPicker(false);
+                            }}
+                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 transition-colors"
+                          >
+                            {p.label}
+                          </button>
+                        ))
+                    ) : (
+                      EVENT_FIXED_TIME_PRESETS
+                        .filter((t) => !stagedReminders.some((r) => r.mode === "fixed_time" && r.fixed_time === t))
+                        .map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => {
+                              setStagedReminders([...stagedReminders, { mode: "fixed_time", fixed_time: t, label: `в ${t}` }]);
+                              setShowReminderPicker(false);
+                            }}
+                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 transition-colors"
+                          >
+                            {t}
+                          </button>
+                        ))
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowReminderPicker(false)}
+                      className="px-2 py-1 text-[11px] font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                      style={{ color: "var(--t-faint)" }}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  stagedReminders.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReminderPicker(true)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.12] hover:border-indigo-400 text-[12px] font-medium transition-colors"
+                      style={{ color: "var(--t-muted)" }}
+                    >
+                      + Добавить
+                    </button>
+                  )
+                )}
+              </div>
+              <p className="text-[11px] mt-1.5" style={{ color: "var(--t-faint)" }}>
+                {hasTime ? "За сколько до начала события" : "В какое время напомнить в день события"}
+              </p>
             </div>
 
             {/* Описание */}

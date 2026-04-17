@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Calendar, Tag, CheckCircle2, Archive, Trash2, Paperclip } from "lucide-react";
 import { TaskAttachments } from "./TaskAttachments";
+import { TaskReminders } from "./TaskReminders";
 import { clsx } from "clsx";
 import type { TaskItem, WorkCategoryItem, ProjectTag } from "@/types/api";
 import { Select } from "@/components/ui/Select";
@@ -235,6 +236,16 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Reminders */}
+          {!task.is_recurring && (
+            <TaskReminders
+              taskId={task.task_id}
+              dueDate={task.due_date}
+              dueTime={task.due_time ?? null}
+              disabled={isDone || isArchived}
+            />
+          )}
 
           {/* Category */}
           <div className="flex items-start gap-3">

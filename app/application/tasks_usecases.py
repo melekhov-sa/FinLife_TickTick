@@ -122,15 +122,16 @@ class UpdateTaskUseCase:
             changes["due_start_time"] = dst
             changes["due_end_time"] = det
 
-        payload = Task.update(task_id, **changes)
-        self.event_repo.append_event(
-            account_id=account_id,
-            event_type="task_updated",
-            payload=payload,
-            actor_user_id=actor_user_id,
-        )
-        self.db.commit()
-        TasksProjector(self.db).run(account_id, event_types=["task_updated"])
+        if changes:
+            payload = Task.update(task_id, **changes)
+            self.event_repo.append_event(
+                account_id=account_id,
+                event_type="task_updated",
+                payload=payload,
+                actor_user_id=actor_user_id,
+            )
+            self.db.commit()
+            TasksProjector(self.db).run(account_id, event_types=["task_updated"])
 
         # Handle reminders
         if reminders is not None:

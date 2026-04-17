@@ -28,6 +28,8 @@ class TaskItem(BaseModel):
     note: str | None
     status: str
     due_date: date | None
+    due_time: str | None = None
+    due_kind: str | None = None
     completed_at: datetime | None
     project_id: int | None
     category_id: int | None
@@ -408,6 +410,8 @@ def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
         note=task.note,
         status=task.status,
         due_date=task.due_date,
+        due_time=task.due_time.strftime("%H:%M") if task.due_time else None,
+        due_kind=task.due_kind,
         completed_at=task.completed_at,
         project_id=task.project_id,
         category_id=task.category_id,
@@ -463,6 +467,139 @@ def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Ses
     if "category_id" in fields:
         task.category_id = body.category_id
     db.commit()
+    return {"ok": True}
+
+
+# ── Task reminders CRUD (event-sourced) ─────────────────────────────────────
+
+class TaskReminderItem(BaseModel):
+    id: int
+    reminder_kind: str  # OFFSET | FIXED_TIME
+    offset_minutes: int
+    fixed_time: str | None
+
+
+class AddReminderRequest(BaseModel):
+    reminder_kind: str = "OFFSET"
+    offset_minutes: int | None = None
+    fixed_time: str | None = None  # "HH:MM"
+
+
+def _serialize_reminder(r) -> TaskReminderItem:
+    return TaskReminderItem(
+        id=r.id,
+        reminder_kind=r.reminder_kind,
+        offset_minutes=r.offset_minutes,
+        fixed_time=r.fixed_time.strftime("%H:%M") if r.fixed_time else None,
+    )
+
+
+def _current_reminders_payload(db: Session, task_id: int) -> list[dict]:
+    from app.infrastructure.db.models import TaskReminderModel
+    rows = db.query(TaskReminderModel).filter(TaskReminderModel.task_id == task_id).all()
+    result = []
+    for r in rows:
+        if r.reminder_kind == "FIXED_TIME":
+            result.append({
+                "reminder_kind": "FIXED_TIME",
+                "fixed_time": r.fixed_time.strftime("%H:%M") if r.fixed_time else None,
+            })
+        else:
+            result.append({
+                "reminder_kind": "OFFSET",
+                "offset_minutes": r.offset_minutes,
+            })
+    return result
+
+
+@router.get("/tasks/{task_id}/reminders", response_model=list[TaskReminderItem])
+def list_task_reminders(task_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskReminderModel
+    user_id = get_user_id(request, db)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    rows = db.query(TaskReminderModel).filter(TaskReminderModel.task_id == task_id).all()
+    return [_serialize_reminder(r) for r in rows]
+
+
+@router.post("/tasks/{task_id}/reminders", response_model=list[TaskReminderItem])
+def add_task_reminder(task_id: int, body: AddReminderRequest, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskReminderModel
+    from app.application.tasks_usecases import UpdateTaskUseCase
+    from app.domain.task_due_spec import ReminderSpecValidationError
+
+    user_id = get_user_id(request, db)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    current = _current_reminders_payload(db, task_id)
+    new_rem: dict = {"reminder_kind": body.reminder_kind}
+    if body.reminder_kind == "FIXED_TIME":
+        if not body.fixed_time:
+            raise HTTPException(status_code=400, detail="fixed_time обязателен")
+        new_rem["fixed_time"] = body.fixed_time
+    else:
+        if body.offset_minutes is None:
+            raise HTTPException(status_code=400, detail="offset_minutes обязателен")
+        new_rem["offset_minutes"] = body.offset_minutes
+
+    new_list = current + [new_rem]
+    try:
+        UpdateTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id, reminders=new_list)
+    except ReminderSpecValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    rows = db.query(TaskReminderModel).filter(TaskReminderModel.task_id == task_id).all()
+    return [_serialize_reminder(r) for r in rows]
+
+
+@router.delete("/tasks/{task_id}/reminders/{reminder_id}")
+def delete_task_reminder(task_id: int, reminder_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.infrastructure.db.models import TaskReminderModel
+    from app.application.tasks_usecases import UpdateTaskUseCase
+
+    user_id = get_user_id(request, db)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    target = db.query(TaskReminderModel).filter(
+        TaskReminderModel.id == reminder_id,
+        TaskReminderModel.task_id == task_id,
+    ).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Напоминание не найдено")
+
+    # Rebuild list without the deleted one
+    current_rows = db.query(TaskReminderModel).filter(
+        TaskReminderModel.task_id == task_id,
+        TaskReminderModel.id != reminder_id,
+    ).all()
+    new_list = []
+    for r in current_rows:
+        if r.reminder_kind == "FIXED_TIME":
+            new_list.append({
+                "reminder_kind": "FIXED_TIME",
+                "fixed_time": r.fixed_time.strftime("%H:%M") if r.fixed_time else None,
+            })
+        else:
+            new_list.append({
+                "reminder_kind": "OFFSET",
+                "offset_minutes": r.offset_minutes,
+            })
+
+    UpdateTaskUseCase(db).execute(task_id, user_id, actor_user_id=user_id, reminders=new_list)
     return {"ok": True}
 
 

@@ -8,6 +8,7 @@ import type { EventItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
+import { EventReminders } from "./EventReminders";
 
 interface Props {
   event: EventItem;
@@ -275,6 +276,12 @@ export function EventDetailPanel({ event, onClose }: Props) {
           </div>
 
           {/* Description */}
+          {/* Reminders */}
+          <EventReminders
+            eventId={event.event_id}
+            startTime={event.start_time ?? null}
+          />
+
           <div className="flex items-start gap-3">
             <AlignLeft size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
             <div className="flex-1">

@@ -79,9 +79,13 @@ class TasksProjector(BaseProjector):
         ).delete(synchronize_session=False)
 
         for rem in payload.get("reminders", []):
+            kind = rem.get("reminder_kind", "OFFSET")
+            ft = rem.get("fixed_time")
             self.db.add(TaskReminderModel(
                 task_id=task_id,
-                offset_minutes=rem["offset_minutes"],
+                offset_minutes=rem.get("offset_minutes", 0),
+                reminder_kind=kind,
+                fixed_time=time.fromisoformat(ft) if ft else None,
             ))
         self.db.flush()
 

@@ -322,19 +322,22 @@ class TaskModel(Base):
 
 
 class TaskReminderModel(Base):
-    """Read model: Task reminders (offset-based or day-time, tied to task due date/time)"""
+    """Read model: Task reminders. reminder_kind='OFFSET' uses offset_minutes (minutes
+    before task due_time). reminder_kind='FIXED_TIME' uses fixed_time (absolute time on
+    task due_date, for date-only tasks)."""
     __tablename__ = "task_reminders"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     task_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    offset_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     reminder_kind: Mapped[str] = mapped_column(String(16), nullable=False, server_default="OFFSET")
+    fixed_time: Mapped[Time | None] = mapped_column(Time, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
     __table_args__ = (
-        UniqueConstraint('task_id', 'offset_minutes', 'reminder_kind', name='uq_task_reminder_offset'),
+        UniqueConstraint('task_id', 'offset_minutes', 'reminder_kind', 'fixed_time', name='uq_task_reminder'),
     )
 
 
