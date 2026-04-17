@@ -9,6 +9,9 @@ interface Props {
   id: number;
   title: string;
   onClose: () => void;
+  /** If provided, called after successful completion instead of invalidating queries directly.
+   *  The parent is responsible for delayed invalidation and animation. */
+  onCompleted?: (kind: "task" | "habit" | "task_occ", id: number) => void;
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -23,7 +26,7 @@ async function completeItem(kind: Props["kind"], id: number) {
   if (kind === "task_occ") return api.post(`/api/v2/task-occurrences/${id}/complete`);
 }
 
-export function ConfirmCompleteModal({ kind, id, title, onClose }: Props) {
+export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: Props) {
   const qc = useQueryClient();
   const overlayRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -34,9 +37,23 @@ export function ConfirmCompleteModal({ kind, id, title, onClose }: Props) {
     setError(null);
     try {
       await completeItem(kind, id);
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["plan"] });
-      onClose();
+      // Haptic feedback for mobile
+      try {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(10);
+        }
+      } catch { /* ignore — not supported on all platforms */ }
+
+      if (onCompleted) {
+        // Parent handles animation + delayed invalidation
+        onCompleted(kind, id);
+        onClose();
+      } else {
+        // Legacy path: immediate invalidation (used by habits and other callers)
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["plan"] });
+        onClose();
+      }
     } catch {
       setError("Не удалось подключиться к серверу");
     } finally {

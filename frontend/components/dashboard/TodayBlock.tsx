@@ -20,9 +20,11 @@ interface Props {
 function Item({
   item,
   onComplete,
+  isCompleting,
 }: {
   item: DashboardItem;
   onComplete: (item: DashboardItem) => void;
+  isCompleting?: boolean;
 }) {
   const { title, category_emoji: emoji, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const canComplete = isCompletable(kind) && !isDone;
@@ -32,7 +34,8 @@ function Item({
   return (
     <div
       className={clsx(
-        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1"
+        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
+        isCompleting && "task-row-completing"
       )}
     >
       {/* Checkbox / icon */}
@@ -43,13 +46,16 @@ function Item({
           </div>
         ) : canComplete ? (
           <button
-            onClick={() => onComplete(item)}
-            className="w-5 h-5 flex items-center justify-center touch-manipulation"
+            onClick={() => { if (!isCompleting) onComplete(item); }}
+            className="relative w-5 h-5 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] block transition-all",
-              kind === "habit" ? "border-violet-400 rounded-[3px]" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500"
-            )} />
+              "w-[16px] h-[16px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
+              kind === "habit" ? "border-violet-400 rounded-[3px]" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500",
+              (isCompleting && kind !== "habit") && "task-check-completing"
+            )}>
+              {(isCompleting && kind !== "habit") && <span className="task-check-mark" aria-hidden="true">✓</span>}
+            </span>
           </button>
         ) : (
           <div className="w-5 h-5 flex items-center justify-center">
@@ -66,7 +72,7 @@ function Item({
       {/* Content */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
         <span
-          className={clsx("text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone && "line-through decoration-slate-300 dark:decoration-white/20")}
+          className={clsx("task-title-text text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone && "line-through decoration-slate-300 dark:decoration-white/20")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
           title={title}
         >
@@ -256,10 +262,28 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   const [executeOp, setExecuteOp] = useState<UpcomingPayment | null>(null);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
+  const [completingKey, setCompletingKey] = useState<string | null>(null);
+  const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showDone, setShowDone] = useState(false);
 
   // Create menu (dropdown: task / operation) — desktop only
+  // Cleanup timer on unmount
+  useEffect(() => { return () => { if (completingTimerRef.current) clearTimeout(completingTimerRef.current); }; }, []);
+
+  function handleTodayCompleted(kind: "task" | "habit" | "task_occ", id: number) {
+    if (kind === "habit") { qc.invalidateQueries({ queryKey: ["dashboard"] }); qc.invalidateQueries({ queryKey: ["plan"] }); return; } // habits: immediate invalidate, they have their own animation
+    const key = kind + "-" + id;
+    setCompletingKey(key);
+    if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+    completingTimerRef.current = setTimeout(() => { setCompletingKey(null); qc.invalidateQueries({ queryKey: ["dashboard"] }); qc.invalidateQueries({ queryKey: ["plan"] }); }, 450);
+  }
+
+  function handleOpenCompleteItem(item: DashboardItem) {
+    if (completingKey === item.kind + "-" + item.id) return;
+    setConfirmItem(item);
+  }
+
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpModal, setShowOpModal] = useState(false);
@@ -333,6 +357,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
           id={confirmItem.id}
           title={confirmItem.title}
           onClose={() => setConfirmItem(null)}
+          onCompleted={handleTodayCompleted}
         />
       )}
       {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
@@ -434,7 +459,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               label: "Задачи",
               content: allTasks.map((item) => (
                 <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
-                  <Item item={item} onComplete={setConfirmItem} />
+                  <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
                 </div>
               )),
             });
@@ -446,7 +471,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               label: "Привычки",
               content: allHabits.map((item) => (
                 <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
-                  <Item item={item} onComplete={setConfirmItem} />
+                  <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
                 </div>
               )),
             });
@@ -457,7 +482,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               key: "events",
               label: "События",
               content: eventItems.map((item) => (
-                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={setConfirmItem} />
+                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
               )),
             });
           }
@@ -473,7 +498,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                   ))}
                   {completedOps.map((item) => (
                     <div key={`done-op-${item.id}`} className="opacity-70">
-                      <Item item={item} onComplete={setConfirmItem} />
+                      <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
                     </div>
                   ))}
                 </>

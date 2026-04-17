@@ -300,6 +300,7 @@ function EntryRow({
   onArchiveTask,
   onSkipTaskOcc,
   onEntryClick,
+  isCompleting,
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
@@ -309,6 +310,7 @@ function EntryRow({
   onArchiveTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onEntryClick?: (entry: PlanEntry) => void;
+  isCompleting?: boolean;
 }) {
   const canComplete = isCompletable(entry.kind) && !entry.is_done;
   const isOp = entry.kind === "planned_op";
@@ -319,20 +321,24 @@ function EntryRow({
     <div className={clsx(
       "flex items-center gap-2.5 py-[7px] border-t first:border-0 transition-colors cursor-default group/row",
       "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
+      isCompleting && "task-row-completing",
     )}>
       {/* Checkbox / icon */}
       <div className="shrink-0">
         {canComplete ? (
           <button
-            onClick={() => onComplete(entry)}
+            onClick={() => { if (!isCompleting) onComplete(entry); }}
             className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] transition-all hover:scale-110",
+              "relative w-[16px] h-[16px] rounded-full border-[1.5px] transition-all hover:scale-110 flex items-center justify-center",
               entry.is_overdue
                 ? "border-red-400 hover:bg-red-500/20"
-                : "border-slate-300 dark:border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400"
+                : "border-slate-300 dark:border-white/30 hover:bg-indigo-500/20 hover:border-indigo-400",
+              isCompleting && "task-check-completing",
             )}
             title="Отметить как выполненное"
-          />
+          >
+            <span className="task-check-mark" aria-hidden="true">✓</span>
+          </button>
         ) : entry.is_done && isCompletable(entry.kind) ? (
           <div className="w-[16px] h-[16px] rounded-full bg-emerald-500 flex items-center justify-center">
             <span className="text-[8px] text-white font-bold">✓</span>
@@ -349,7 +355,7 @@ function EntryRow({
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
         <div className="flex items-center gap-1.5">
           <span className={clsx(
-            "text-[14px] font-medium leading-snug truncate",
+            "task-title-text text-[14px] font-medium leading-snug truncate",
             entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
@@ -433,6 +439,7 @@ function DayGroupCard({
   onSkipTaskOcc,
   onAddTask,
   onEntryClick,
+  completingKey,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
@@ -443,6 +450,7 @@ function DayGroupCard({
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onAddTask: () => void;
   onEntryClick: (entry: PlanEntry) => void;
+  completingKey: string | null;
 }) {
   const label = group.date && !group.is_overdue_group
     ? formatDayHeader(group.date)
@@ -526,7 +534,7 @@ function DayGroupCard({
         <div key={g.type}>
           {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -543,6 +551,7 @@ function DoneTodayBlock({
   onArchiveTask,
   onSkipTaskOcc,
   onEntryClick,
+  completingKey,
 }: {
   entries: PlanEntry[];
   onComplete: (entry: PlanEntry) => void;
@@ -552,6 +561,7 @@ function DoneTodayBlock({
   onArchiveTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onEntryClick: (entry: PlanEntry) => void;
+  completingKey: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -575,7 +585,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       )}
@@ -593,6 +603,23 @@ export default function PlanPage() {
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
   const qc = useQueryClient();
+  const [completingKey, setCompletingKey] = useState<string | null>(null);
+  const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { return () => { if (completingTimerRef.current) clearTimeout(completingTimerRef.current); }; }, []);
+
+  function handleCompleted(kind: "task" | "habit" | "task_occ", id: number) {
+    if (kind === "habit") { qc.invalidateQueries({ queryKey: ["plan"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); return; }
+    const key = kind + "-" + id;
+    setCompletingKey(key);
+    if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+    completingTimerRef.current = setTimeout(() => { setCompletingKey(null); qc.invalidateQueries({ queryKey: ["plan"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); }, 450);
+  }
+
+  function handleOpenComplete(entry: PlanEntry) {
+    if (completingKey === entry.kind + "-" + entry.id) return;
+    setConfirmEntry(entry);
+  }
 
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
@@ -721,10 +748,8 @@ export default function PlanPage() {
           kind={confirmEntry.kind as CompletableKind}
           id={confirmEntry.id}
           title={confirmEntry.title}
-          onClose={() => {
-            setConfirmEntry(null);
-            qc.invalidateQueries({ queryKey: ["plan"] });
-          }}
+          onClose={() => setConfirmEntry(null)}
+          onCompleted={handleCompleted}
         />
       )}
 
@@ -839,13 +864,14 @@ export default function PlanPage() {
           {filteredData && tab === "active" && filteredData.done_today.length > 0 && (
             <DoneTodayBlock
               entries={filteredData.done_today}
-              onComplete={setConfirmEntry}
+              onComplete={handleOpenComplete}
               onReschedule={setRescheduleEntry}
               onExecuteOp={setExecuteEntry}
               onSkipOp={handleSkipOp}
               onArchiveTask={handleArchiveTask}
               onSkipTaskOcc={handleSkipTaskOcc}
               onEntryClick={setDetailEntry}
+              completingKey={completingKey}
             />
           )}
 
@@ -856,7 +882,7 @@ export default function PlanPage() {
                 <DayGroupCard
                   key={i}
                   group={g}
-                  onComplete={setConfirmEntry}
+                  onComplete={handleOpenComplete}
                   onReschedule={setRescheduleEntry}
                   onExecuteOp={setExecuteEntry}
                   onSkipOp={handleSkipOp}
@@ -864,6 +890,7 @@ export default function PlanPage() {
                   onSkipTaskOcc={handleSkipTaskOcc}
                   onAddTask={() => setCreateTaskDate(g.date ?? "")}
                   onEntryClick={setDetailEntry}
+                  completingKey={completingKey}
                 />
               ))}
             </div>
