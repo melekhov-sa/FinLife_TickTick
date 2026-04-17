@@ -156,7 +156,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               </div>
 
               {/* Content */}
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-6">
                 {data.content_md ? (
                   <div
                     className="text-sm text-white/60 leading-relaxed"
@@ -171,7 +171,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
 
               {/* Linked projects */}
               {data.linked_projects.length > 0 && (
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+                <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
                   <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
                     Связанные проекты
                   </p>

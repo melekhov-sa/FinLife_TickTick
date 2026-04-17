@@ -482,7 +482,7 @@ export default function TaskPresetsPage() {
         )}
 
         {!isLoading && !isError && (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
             {visible.length === 0 ? (
               <div
                 className="py-12 text-center text-sm"

@@ -52,7 +52,7 @@ function LifeScoreRing({ score }: { score: number }) {
 
 function ScoreCard({ item }: { item: StrategyScoreItem }) {
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 hover:bg-white/[0.04] transition-colors">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors">
       <div className="flex items-center justify-between mb-2.5">
         <span className="text-sm font-semibold text-white/80" style={{ letterSpacing: "-0.01em" }}>
           {item.label}
@@ -91,7 +91,7 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
   const last = pts[pts.length - 1];
 
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
       <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
         История (12 мес.)
       </p>
@@ -169,7 +169,7 @@ export default function StrategyPage() {
         {data && (
           <div className="space-y-5">
             {/* Life Score ring */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-6 text-center">
               <LifeScoreRing score={data.life_score} />
               <div
                 className={`mt-3 text-xl font-semibold ${scoreColor(data.life_score)}`}
@@ -207,7 +207,7 @@ export default function StrategyPage() {
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
                   Цели
                 </p>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5">
+                <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
                   {data.targets.map((t) => (
                     <TargetRow key={t.id} target={t} />
                   ))}

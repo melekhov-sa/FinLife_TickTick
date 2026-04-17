@@ -16,7 +16,7 @@ export function DoneSection({ habits, onOpen }: Props) {
   if (habits.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-colors"

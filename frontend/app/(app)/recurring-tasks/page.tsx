@@ -337,7 +337,7 @@ export default function RecurringTasksPage() {
 
         {/* List */}
         {!isLoading && !isError && (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
+          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
             {/* Empty state */}
             {templates && templates.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">

@@ -187,7 +187,7 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
   }
 
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 select-none">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 select-none">
       <div className="flex items-center justify-between mb-3">
         <button onClick={onPrevMonth} className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors" style={{ color: "var(--t-faint)" }}>
           <ChevronLeft size={14} />
@@ -389,7 +389,7 @@ export default function EventsPage() {
               }}
             />
             {/* Stats */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-2.5">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 space-y-2.5">
               <div className="flex items-center justify-between text-[12px]">
                 <span style={{ color: "var(--t-faint)" }}>Сегодня</span>
                 <span className="font-semibold tabular-nums" style={{ color: "var(--t-primary)" }}>{todayCount}</span>

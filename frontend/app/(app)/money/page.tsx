@@ -395,7 +395,7 @@ export default function MoneyPage() {
 
         {data && data.items.length > 0 && (
           <>
-            <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
               {data.items.map((tx, i) => (
                 <div
                   key={tx.transaction_id}

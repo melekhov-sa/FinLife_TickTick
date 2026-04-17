@@ -148,7 +148,7 @@ export default function KnowledgePage() {
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3 px-1">
                   Закреплённые
                 </p>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+                <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
                   {pinned.map((a) => <ArticleRow key={a.id} article={a} />)}
                 </div>
               </div>
@@ -160,7 +160,7 @@ export default function KnowledgePage() {
                     Остальные
                   </p>
                 )}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+                <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
                   {rest.map((a) => <ArticleRow key={a.id} article={a} />)}
                 </div>
               </div>

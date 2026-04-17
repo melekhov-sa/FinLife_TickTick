@@ -207,7 +207,7 @@ export default function TasksPage() {
 
         {/* Task list + quick-add */}
         {!isLoading && !isError && (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl md:rounded-2xl overflow-hidden">
+          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
 
             {/* Quick-add row (active tab only) */}
             {status === "ACTIVE" && (

@@ -115,7 +115,7 @@ function Section({
   if (isEmpty) return null;
 
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-[14px] p-5">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-[14px] p-5">
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[13px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
@@ -233,7 +233,7 @@ export default function BudgetPage() {
 
         {/* Balance summary */}
         {data && (
-          <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.03] p-5 mb-5">
+          <div className="rounded-[14px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-5 mb-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>

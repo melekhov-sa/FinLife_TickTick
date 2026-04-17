@@ -135,7 +135,7 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
   });
   const pendingCount = habits.filter((h) => !h.done_today).length;
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4">
       <h3 className="font-semibold uppercase tracking-widest mb-3" style={{ fontSize: "var(--fs-badge)", color: "var(--t-faint)" }}>
         Все привычки
       </h3>
