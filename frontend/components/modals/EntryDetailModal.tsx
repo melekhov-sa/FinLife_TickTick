@@ -11,6 +11,7 @@ interface PlanEntry {
   id: number;
   kind: string;
   title: string;
+  date?: string | null;
   time: string | null;
   is_done: boolean;
   is_overdue: boolean;
@@ -29,7 +30,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
   const isEvent = entry.kind === "event";
 
   const [title, setTitle] = useState(entry.title);
-  const [dueDate, setDueDate] = useState((entry.meta.due_date as string) ?? "");
+  const [dueDate, setDueDate] = useState((entry.date ?? (entry.meta.due_date as string) ?? ""));
 
   const { mutate: updateTask, isPending: updating } = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -47,7 +48,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
   function handleSave() {
     const body: Record<string, unknown> = {};
     if (title.trim() !== entry.title) body.title = title.trim();
-    if (dueDate !== ((entry.meta.due_date as string) ?? "")) body.due_date = dueDate || null;
+    if (dueDate !== ((entry.date ?? (entry.meta.due_date as string) ?? ""))) body.due_date = dueDate || null;
     if (Object.keys(body).length > 0) {
       updateTask(body);
     } else {
@@ -136,7 +137,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
             <TaskReminders
               taskId={entry.id}
               dueDate={dueDate || null}
-              dueTime={(entry.meta.due_time as string) ?? null}
+              dueTime={entry.time ?? (entry.meta.due_time as string) ?? null}
               disabled={entry.is_done}
             />
           </div>

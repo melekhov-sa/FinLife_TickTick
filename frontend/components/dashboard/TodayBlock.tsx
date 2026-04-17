@@ -260,6 +260,12 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const { overdue, active, done, events, progress } = today;
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
+  const todayLabel = new Date().toLocaleDateString("ru-RU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
   const [executeOp, setExecuteOp] = useState<UpcomingPayment | null>(null);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
   const [completingKey, setCompletingKey] = useState<string | null>(null);
@@ -371,34 +377,23 @@ export function TodayBlock({ today, plannedOps }: Props) {
         }}
       >
         {/* Header */}
-        <div className="mb-2.5 flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[18px] md:text-[20px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
-              Сегодня
-            </h2>
-            {progress.total > 0 && (
-              <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
-                {progress.done} из {progress.total} выполнено
-              </p>
-            )}
-            {/* Progress bar */}
-            {progress.total > 0 && (
-              <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.12)" }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{
-                    width: `${progressPct}%`,
-                    background: progressPct === 100
-                      ? "linear-gradient(90deg, #10b981, #34d399)"
-                      : "linear-gradient(90deg, #6366f1, #818cf8)",
-                    boxShadow: progressPct === 100
-                      ? "0 0 10px rgba(16,185,129,0.45)"
-                      : "0 0 10px rgba(99,102,241,0.4)",
-                  }}
-                />
+        <div className="mb-2.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline flex-wrap gap-x-2">
+                <h2 className="text-[18px] md:text-[20px] font-bold tracking-tight" style={{ color: "var(--t-primary)" }}>
+                  Сегодня
+                </h2>
+                <span className="text-[12px] md:text-[13px] font-medium" style={{ color: "var(--t-faint)" }}>
+                  {todayLabel}
+                </span>
               </div>
-            )}
-          </div>
+              {progress.total > 0 && (
+                <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
+                  {progress.done} из {progress.total} выполнено
+                </p>
+              )}
+            </div>
 
           {/* Create menu — desktop only */}
           <div ref={createBtnRef} className="relative hidden md:block shrink-0">
@@ -438,6 +433,25 @@ export function TodayBlock({ today, plannedOps }: Props) {
               </div>
             )}
           </div>
+          </div>
+
+          {/* Progress bar — full width, below the header row */}
+          {progress.total > 0 && (
+            <div className="mt-2 h-[6px] rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.12)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{
+                  width: `${progressPct}%`,
+                  background: progressPct === 100
+                    ? "linear-gradient(90deg, #10b981, #34d399)"
+                    : "linear-gradient(90deg, #6366f1, #818cf8)",
+                  boxShadow: progressPct === 100
+                    ? "0 0 10px rgba(16,185,129,0.45)"
+                    : "0 0 10px rgba(99,102,241,0.4)",
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Grouped sections ── */}

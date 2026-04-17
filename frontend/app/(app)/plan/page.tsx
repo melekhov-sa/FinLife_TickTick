@@ -176,6 +176,7 @@ interface RowMenuProps {
   onReschedule: () => void;
   onArchiveTask: () => void;
   onSkipTaskOcc: () => void;
+  onSkipEvent: () => void;
   onExecuteOp: () => void;
   onSkipOp: () => void;
 }
@@ -185,6 +186,7 @@ function RowMenu({
   onReschedule,
   onArchiveTask,
   onSkipTaskOcc,
+  onSkipEvent,
   onExecuteOp,
   onSkipOp,
 }: RowMenuProps) {
@@ -194,9 +196,10 @@ function RowMenu({
   const isTask = entry.kind === 'task';
   const isTaskOcc = entry.kind === 'task_occ';
   const isOp = entry.kind === 'planned_op';
+  const isEvent = entry.kind === 'event';
 
-  // No menu for habits, events, and completed entries
-  const hasMenu = (isTask || isTaskOcc || isOp) && !entry.is_done;
+  // No menu for habits and completed entries
+  const hasMenu = (isTask || isTaskOcc || isOp || isEvent) && !entry.is_done;
 
   // Click-away and Escape — must be declared before any early return (Rules of Hooks)
   useEffect(() => {
@@ -285,6 +288,13 @@ function RowMenu({
               </button>
             </>
           )}
+
+          {isEvent && (
+            <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipEvent)}>
+              <SkipForward size={12} className='inline mr-2 opacity-60' />
+              Пропустить
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -299,6 +309,7 @@ function EntryRow({
   onSkipOp,
   onArchiveTask,
   onSkipTaskOcc,
+  onSkipEvent,
   onEntryClick,
   isCompleting,
 }: {
@@ -309,6 +320,7 @@ function EntryRow({
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
+  onSkipEvent: (entry: PlanEntry) => void;
   onEntryClick?: (entry: PlanEntry) => void;
   isCompleting?: boolean;
 }) {
@@ -399,6 +411,7 @@ function EntryRow({
           onReschedule={() => onReschedule(entry)}
           onArchiveTask={() => onArchiveTask(entry)}
           onSkipTaskOcc={() => onSkipTaskOcc(entry)}
+          onSkipEvent={() => onSkipEvent(entry)}
           onExecuteOp={() => onExecuteOp(entry)}
           onSkipOp={() => onSkipOp(entry)}
         />
@@ -437,6 +450,7 @@ function DayGroupCard({
   onSkipOp,
   onArchiveTask,
   onSkipTaskOcc,
+  onSkipEvent,
   onAddTask,
   onEntryClick,
   completingKey,
@@ -448,6 +462,7 @@ function DayGroupCard({
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
+  onSkipEvent: (entry: PlanEntry) => void;
   onAddTask: () => void;
   onEntryClick: (entry: PlanEntry) => void;
   completingKey: string | null;
@@ -534,7 +549,7 @@ function DayGroupCard({
         <div key={g.type}>
           {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -550,6 +565,7 @@ function DoneTodayBlock({
   onSkipOp,
   onArchiveTask,
   onSkipTaskOcc,
+  onSkipEvent,
   onEntryClick,
   completingKey,
 }: {
@@ -560,6 +576,7 @@ function DoneTodayBlock({
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
+  onSkipEvent: (entry: PlanEntry) => void;
   onEntryClick: (entry: PlanEntry) => void;
   completingKey: string | null;
 }) {
@@ -585,7 +602,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       )}
@@ -648,6 +665,15 @@ export default function PlanPage() {
     },
   });
 
+  const { mutate: skipEventOcc, isPending: skipEventOccPending } = useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.delete(`/api/v2/events/occurrences/${occurrenceId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
   const [detailEntry, setDetailEntry] = useState<PlanEntry | null>(null);
 
   function handleSkipOp(entry: PlanEntry) {
@@ -664,6 +690,12 @@ export default function PlanPage() {
     if (skipTaskOccPending) return;
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipTaskOcc(occurrenceId);
+  }
+
+  function handleSkipEvent(entry: PlanEntry) {
+    if (skipEventOccPending) return;
+    const occurrenceId = entry.meta.occurrence_id as number | undefined;
+    if (occurrenceId) skipEventOcc(occurrenceId);
   }
 
   const { data, isLoading, isError } = useQuery<PlanData>({
@@ -870,6 +902,7 @@ export default function PlanPage() {
               onSkipOp={handleSkipOp}
               onArchiveTask={handleArchiveTask}
               onSkipTaskOcc={handleSkipTaskOcc}
+              onSkipEvent={handleSkipEvent}
               onEntryClick={setDetailEntry}
               completingKey={completingKey}
             />
@@ -888,6 +921,7 @@ export default function PlanPage() {
                   onSkipOp={handleSkipOp}
                   onArchiveTask={handleArchiveTask}
                   onSkipTaskOcc={handleSkipTaskOcc}
+                  onSkipEvent={handleSkipEvent}
                   onAddTask={() => setCreateTaskDate(g.date ?? "")}
                   onEntryClick={setDetailEntry}
                   completingKey={completingKey}
