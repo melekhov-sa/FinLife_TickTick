@@ -13,8 +13,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Pre-cleanup: delete duplicates grouped by the same expression columns.
-    # Keep MIN(id) per group.
+    # PostgreSQL rejects `date(timestamptz)` in indexes (STABLE, not IMMUTABLE).
+    # We use `(created_at AT TIME ZONE 'UTC')::date` which IS IMMUTABLE because
+    # the TZ literal is fixed. Cleanup query uses the same expression so it
+    # partitions on the same day-boundary as the index enforces.
+
+    # Pre-cleanup: delete duplicates, keep MIN(id) per group.
     op.execute("""
         DELETE FROM notifications WHERE id IN (
             SELECT id FROM (
@@ -24,15 +28,15 @@ def upgrade() -> None:
                         rule_code,
                         COALESCE(entity_type, ''),
                         COALESCE(entity_id, -1),
-                        date(created_at)
+                        (created_at AT TIME ZONE 'UTC')::date
                     ORDER BY id
                 ) AS rn FROM notifications
             ) x WHERE rn > 1
         )
     """)
 
-    # Create expression index — Alembic op.create_index doesn't support COALESCE
-    # across dialects cleanly, so raw SQL is used here.
+    # Create expression index. Raw SQL because op.create_index doesn't
+    # cleanly support COALESCE + AT TIME ZONE across dialects.
     op.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS uq_notification_dedup
         ON notifications (
@@ -40,7 +44,7 @@ def upgrade() -> None:
             rule_code,
             COALESCE(entity_type, ''),
             COALESCE(entity_id, -1),
-            date(created_at)
+            ((created_at AT TIME ZONE 'UTC')::date)
         )
     """)
 
