@@ -32,6 +32,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
 
   const [title, setTitle] = useState(entry.title);
   const [dueDate, setDueDate] = useState((entry.date ?? (entry.meta.due_date as string) ?? ""));
+  const [dueTime, setDueTime] = useState((entry.time ?? (entry.meta.due_time as string) ?? ""));
 
   const { mutate: updateTask, isPending: updating } = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -50,6 +51,8 @@ export function EntryDetailModal({ entry, onClose }: Props) {
     const body: Record<string, unknown> = {};
     if (title.trim() !== entry.title) body.title = title.trim();
     if (dueDate !== ((entry.date ?? (entry.meta.due_date as string) ?? ""))) body.due_date = dueDate || null;
+    const origTime = entry.time ?? (entry.meta.due_time as string) ?? "";
+    if (dueTime !== origTime) body.due_time = dueTime || null;
     if (Object.keys(body).length > 0) {
       updateTask(body);
     } else {
@@ -124,12 +127,22 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         )}
 
         {/* Time */}
-        {entry.time && (
+        {isTask && !entry.is_done ? (
+          <div>
+            <label className={labelCls}>Время (необязательно)</label>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+        ) : entry.time ? (
           <div>
             <label className={labelCls}>Время</label>
             <p className="text-[14px]" style={{ color: "var(--t-secondary)" }}>{entry.time}</p>
           </div>
-        )}
+        ) : null}
 
         {/* Reminders — regular tasks only (task_occ reminders live on template) */}
         {entry.kind === "task" && (
@@ -138,7 +151,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
             <TaskReminders
               taskId={entry.id}
               dueDate={dueDate || null}
-              dueTime={entry.time ?? (entry.meta.due_time as string) ?? null}
+              dueTime={dueTime || null}
               disabled={entry.is_done}
             />
           </div>
