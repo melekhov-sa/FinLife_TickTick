@@ -5,10 +5,10 @@ import pytest
 from datetime import datetime
 from decimal import Decimal
 
-from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, TaskValidationError
+from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase, DeleteTaskUseCase, TaskValidationError
 from app.application.task_templates import CreateTaskTemplateUseCase, TaskTemplateValidationError
 from app.application.transactions import CreateTransactionUseCase
-from app.infrastructure.db.models import TaskModel, TransactionFeed, User, WalletBalance, CategoryInfo
+from app.infrastructure.db.models import TaskModel, TransactionFeed, User, WalletBalance, CategoryInfo, EventLog, TaskReminderModel
 
 
 class TestOneOffTaskValidation:
@@ -292,3 +292,62 @@ class TestTaskExpenseLink:
         assert task.requires_expense is True
         assert task.suggested_expense_category_id == 10
         assert task.suggested_amount == Decimal("750.50")
+
+
+class TestEventSourcingFixes:
+    def test_create_with_reminders_single_commit(self, db_session, sample_account_id):
+        """CreateTaskUseCase with reminders produces exactly two events and one TaskReminderModel row."""
+        task_id = CreateTaskUseCase(db_session).execute(
+            account_id=sample_account_id,
+            title="Задача с напоминанием",
+            due_kind="DATETIME",
+            due_date="2026-05-01",
+            due_time="10:00",
+            reminders=[{"offset_minutes": -10, "reminder_kind": "OFFSET"}],
+        )
+        task = db_session.query(TaskModel).filter(TaskModel.task_id == task_id).first()
+        assert task is not None
+
+        reminder = db_session.query(TaskReminderModel).filter(
+            TaskReminderModel.task_id == task_id
+        ).first()
+        assert reminder is not None
+
+        events = db_session.query(EventLog).filter(
+            EventLog.account_id == sample_account_id,
+            EventLog.event_type.in_(["task_created", "task_reminders_changed"]),
+        ).all()
+        event_types = [e.event_type for e in events]
+        assert "task_created" in event_types
+        assert "task_reminders_changed" in event_types
+        assert len(events) == 2
+
+    def test_delete_task_writes_event(self, db_session, sample_account_id):
+        """DeleteTaskUseCase writes task_deleted event and removes TaskModel and TaskReminderModel."""
+        task_id = CreateTaskUseCase(db_session).execute(
+            account_id=sample_account_id,
+            title="Задача для удаления",
+            due_kind="DATETIME",
+            due_date="2026-05-01",
+            due_time="09:00",
+            reminders=[{"offset_minutes": -5, "reminder_kind": "OFFSET"}],
+        )
+        assert db_session.query(TaskModel).filter(TaskModel.task_id == task_id).first() is not None
+        assert db_session.query(TaskReminderModel).filter(TaskReminderModel.task_id == task_id).count() == 1
+
+        DeleteTaskUseCase(db_session).execute(task_id=task_id, account_id=sample_account_id)
+
+        deleted_event = db_session.query(EventLog).filter(
+            EventLog.account_id == sample_account_id,
+            EventLog.event_type == "task_deleted",
+        ).first()
+        assert deleted_event is not None
+        assert deleted_event.payload_json["task_id"] == task_id
+
+        assert db_session.query(TaskModel).filter(TaskModel.task_id == task_id).first() is None
+        assert db_session.query(TaskReminderModel).filter(TaskReminderModel.task_id == task_id).count() == 0
+
+    def test_delete_task_not_found_raises(self, db_session, sample_account_id):
+        """DeleteTaskUseCase raises TaskValidationError when task does not exist."""
+        with pytest.raises(TaskValidationError):
+            DeleteTaskUseCase(db_session).execute(task_id=99999, account_id=sample_account_id)

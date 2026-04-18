@@ -17,6 +17,7 @@ class TasksProjector(BaseProjector):
             "task_archived": self._handle_archived,
             "task_updated": self._handle_updated,
             "task_reminders_changed": self._handle_reminders_changed,
+            "task_deleted": self._handle_deleted,
         }
         handler = handlers.get(event.event_type)
         if handler:
@@ -106,6 +107,18 @@ class TasksProjector(BaseProjector):
         if task:
             task.status = "ACTIVE"
             task.completed_at = None
+
+    def _handle_deleted(self, event: EventLog) -> None:
+        payload = event.payload_json
+        task_id = payload["task_id"]
+        self.db.query(TaskReminderModel).filter(
+            TaskReminderModel.task_id == task_id
+        ).delete(synchronize_session=False)
+        self.db.query(TaskModel).filter(
+            TaskModel.task_id == task_id,
+            TaskModel.account_id == event.account_id,
+        ).delete(synchronize_session=False)
+        self.db.flush()
 
     def _handle_archived(self, event: EventLog) -> None:
         payload = event.payload_json

@@ -660,15 +660,12 @@ def delete_task_reminder(task_id: int, reminder_id: int, request: Request, db: S
 
 @router.delete("/tasks/{task_id}")
 def delete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.tasks_usecases import DeleteTaskUseCase, TaskValidationError
     user_id = get_user_id(request, db)
-    task = db.query(TaskModel).filter(
-        TaskModel.task_id == task_id,
-        TaskModel.account_id == user_id,
-    ).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Задача не найдена")
-    db.delete(task)
-    db.commit()
+    try:
+        DeleteTaskUseCase(db).execute(task_id=task_id, account_id=user_id, actor_user_id=user_id)
+    except TaskValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return {"ok": True}
 
 

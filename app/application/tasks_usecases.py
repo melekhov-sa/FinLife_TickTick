@@ -57,8 +57,7 @@ class CreateTaskUseCase:
             payload=payload,
             actor_user_id=actor_user_id,
         )
-        self.db.commit()
-        TasksProjector(self.db).run(account_id, event_types=["task_created"])
+        event_types = ["task_created"]
 
         # Set reminders if provided
         if reminders:
@@ -69,8 +68,10 @@ class CreateTaskUseCase:
                 payload=rem_payload,
                 actor_user_id=actor_user_id,
             )
-            self.db.commit()
-            TasksProjector(self.db).run(account_id, event_types=["task_reminders_changed"])
+            event_types.append("task_reminders_changed")
+
+        self.db.commit()
+        TasksProjector(self.db).run(account_id, event_types=event_types)
 
         return task_id
 
@@ -122,6 +123,8 @@ class UpdateTaskUseCase:
             changes["due_start_time"] = dst
             changes["due_end_time"] = det
 
+        event_types = []
+
         if changes:
             payload = Task.update(task_id, **changes)
             self.event_repo.append_event(
@@ -130,8 +133,7 @@ class UpdateTaskUseCase:
                 payload=payload,
                 actor_user_id=actor_user_id,
             )
-            self.db.commit()
-            TasksProjector(self.db).run(account_id, event_types=["task_updated"])
+            event_types.append("task_updated")
 
         # Handle reminders
         if reminders is not None:
@@ -143,8 +145,34 @@ class UpdateTaskUseCase:
                 payload=rem_payload,
                 actor_user_id=actor_user_id,
             )
+            event_types.append("task_reminders_changed")
+
+        if event_types:
             self.db.commit()
-            TasksProjector(self.db).run(account_id, event_types=["task_reminders_changed"])
+            TasksProjector(self.db).run(account_id, event_types=event_types)
+
+
+class DeleteTaskUseCase:
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, task_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        task = self.db.query(TaskModel).filter(
+            TaskModel.task_id == task_id,
+            TaskModel.account_id == account_id,
+        ).first()
+        if not task:
+            raise TaskValidationError(f"Задача #{task_id} не найдена")
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="task_deleted",
+            payload=Task.delete(task_id),
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        TasksProjector(self.db).run(account_id, event_types=["task_deleted"])
 
 
 class CompleteTaskUseCase:

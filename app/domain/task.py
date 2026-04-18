@@ -81,3 +81,7 @@ class Task:
     @staticmethod
     def archive(task_id: int) -> Dict[str, Any]:
         return {"task_id": task_id, "archived_at": datetime.utcnow().isoformat()}
+
+    @staticmethod
+    def delete(task_id: int) -> Dict[str, Any]:
+        return {"task_id": task_id, "deleted_at": datetime.utcnow().isoformat()}
