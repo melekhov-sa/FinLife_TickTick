@@ -1668,3 +1668,28 @@ class SharedListItem(Base):
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ============================================================================
+# Digests (weekly / future monthly / quarterly / yearly recaps)
+# ============================================================================
+
+class DigestModel(Base):
+    """Stored periodic digest (tasks, habits, finance, efficiency, XP summary)."""
+    __tablename__ = "digests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    period_type: Mapped[str] = mapped_column(String(16), nullable=False)   # 'week' | 'month' | 'quarter' | 'year'
+    period_key: Mapped[str] = mapped_column(String(16), nullable=False)    # e.g. '2026-W16'
+    generated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    ai_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    viewed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('account_id', 'period_type', 'period_key', name='uq_digest_account_period'),
+        Index('ix_digest_account_type_generated', 'account_id', 'period_type', 'generated_at'),
+    )

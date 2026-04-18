@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
 
+    # AI commentary for weekly digest
+    # Set OPENAI_API_KEY to enable automatic AI commentary on digests (uses gpt-4o-mini)
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Future-proof: Anthropic key placeholder (not used yet)
+    ANTHROPIC_API_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

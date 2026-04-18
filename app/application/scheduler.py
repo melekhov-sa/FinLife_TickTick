@@ -89,6 +89,45 @@ def _run_notification_engine():
         db.close()
 
 
+def _run_weekly_digest_job():
+    """Sunday 19:00 MSK (16:00 UTC) — generate weekly digests for all users."""
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.digests import generate_and_save_weekly_digest, iso_week_key
+    from datetime import date, timedelta
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        from app.infrastructure.db.models import User
+        users = db.query(User).all()
+        # The week that just ended is the previous Monday-Sunday
+        today = date.today()  # Sunday
+        # week_start = today - 6 days (back to Monday)
+        week_start = today - timedelta(days=6)
+        week_key = iso_week_key(week_start)
+        for user in users:
+            try:
+                from app.infrastructure.db.models import DigestModel
+                existing = (
+                    db.query(DigestModel)
+                    .filter(
+                        DigestModel.account_id == user.id,
+                        DigestModel.period_type == "week",
+                        DigestModel.period_key == week_key,
+                    )
+                    .first()
+                )
+                if not existing:
+                    generate_and_save_weekly_digest(db, user.id, week_start)
+                    logger.info("Generated weekly digest %s for user_id=%s", week_key, user.id)
+            except Exception:
+                logger.exception("Weekly digest generation failed for user_id=%s", user.id)
+    except Exception:
+        logger.exception("Weekly digest job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     from app.config import get_settings
@@ -137,10 +176,19 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Weekly digest — Sunday 19:00 MSK (16:00 UTC)
+    scheduler.add_job(
+        _run_weekly_digest_job,
+        CronTrigger(day_of_week="sun", hour=16, minute=0),
+        id="weekly_digest",
+        replace_existing=True,
+    )
+
     scheduler.start()
     logger.info(
         "Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), "
-        "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC)"
+        "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC), "
+        "weekly_digest (Sun 16:00 UTC)"
     )
 
 

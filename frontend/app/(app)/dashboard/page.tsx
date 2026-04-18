@@ -9,6 +9,7 @@ import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
 import { useDashboard } from "@/hooks/useDashboard";
+import { DigestCard } from "@/components/dashboard/DigestCard";
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`bg-white/[0.04] animate-pulse rounded-xl ${className ?? ""}`} />;
@@ -73,6 +74,7 @@ export default function DashboardPage() {
 
               {/* Right */}
               <div className="space-y-4">
+                <DigestCard />
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <WeekEventsCard events={data.week_events} />
                 <ExpiringSubsCard subs={data.expiring_subs} />
@@ -92,6 +94,7 @@ export default function DashboardPage() {
               <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />
               <ExpiringSubsCard subs={data.expiring_subs} />
+              <DigestCard />
               <ActivityFeed feed={data.feed} />
               <ProgressBlock
                 level={data.level}

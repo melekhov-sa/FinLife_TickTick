@@ -28,6 +28,7 @@ from app.infrastructure.db.models import (
     NotificationDelivery,
     UserNotificationSettings,
     TelegramSettings,
+    DigestModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,12 @@ _TEMPLATES: dict[str, dict] = {
         "title": "Просроченная задача",
         "body_inapp": "Задача «{title}» просрочена на {days} дн.",
         "body_telegram": "⚠️ <b>Просроченная задача</b>\n«{title}»\n📅 Просрочена на {days} дн.",
+    },
+    "WEEKLY_DIGEST_READY": {
+        "severity": "info",
+        "title": "Дайджест недели готов",
+        "body_inapp": "Дайджест недели {week}: {completed} задач · {habit_pct}% привычек · +{xp} XP",
+        "body_telegram": "📊 <b>Дайджест недели {week}</b>\n{completed} задач · {habit_pct}% привычек · +{xp} XP\nОткрыть → /digest/week/{week}",
     },
 }
 
@@ -240,6 +247,48 @@ def _run_task_overdue(db: Session, user_id: int, today: date, channels: list[str
             db.rollback()
 
 
+def _run_weekly_digest(db: Session, user_id: int, today: date, channels: list[str]) -> None:
+    """WEEKLY_DIGEST_READY: fire once on Sunday after digest is generated."""
+    from app.application.digests import iso_week_key
+    # Only fire on Sundays
+    if today.weekday() != 6:
+        return
+    # Find the digest for the current week (which ended today — Sunday)
+    week_key = iso_week_key(today)
+    digest = (
+        db.query(DigestModel)
+        .filter(
+            DigestModel.account_id == user_id,
+            DigestModel.period_type == "week",
+            DigestModel.period_key == week_key,
+        )
+        .first()
+    )
+    if not digest:
+        return
+    # Dedup: one notification per week per user (entity_type="digest", entity_id=digest.id, keyed on today)
+    if _is_duplicate(db, user_id, "WEEKLY_DIGEST_READY", "digest", digest.id, today):
+        return
+    payload = digest.payload or {}
+    tasks_data = payload.get("tasks", {})
+    habits_data = payload.get("habits", {})
+    xp_data = payload.get("xp", {})
+    completed = tasks_data.get("completed", 0)
+    habit_rate = habits_data.get("completion_rate", 0.0)
+    habit_pct = int(round(habit_rate * 100))
+    xp = xp_data.get("gained", 0)
+    ctx = {
+        "week": week_key,
+        "completed": completed,
+        "habit_pct": habit_pct,
+        "xp": xp,
+    }
+    try:
+        _create_notification(db, user_id, "WEEKLY_DIGEST_READY", "digest", digest.id, ctx, channels)
+    except Exception:
+        db.rollback()
+
+
 # ---------------------------------------------------------------------------
 # Main engine
 # ---------------------------------------------------------------------------
@@ -287,6 +336,8 @@ class NotificationEngine:
             _run_payment_due_tomorrow(self.db, user.id, today, channels)
         if "TASK_OVERDUE" in enabled_rules:
             _run_task_overdue(self.db, user.id, today, channels)
+        if "WEEKLY_DIGEST_READY" in enabled_rules:
+            _run_weekly_digest(self.db, user.id, today, channels)
 
 
 # ---------------------------------------------------------------------------

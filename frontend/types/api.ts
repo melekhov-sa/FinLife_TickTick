@@ -482,3 +482,80 @@ export interface BudgetMatrix {
   withdrawal_totals: BudgetSectionTotals;
   avg_months: number;
 }
+
+// ── Digests ──────────────────────────────────────────────────────────────────
+
+export interface DigestTaskPayload {
+  completed: number;
+  overdue_open: number;
+  rescheduled: number;
+  by_category_top: [string, number][];
+}
+
+export interface DigestHabitsPayload {
+  longest_streak: { name: string; days: number } | null;
+  broken_streaks: { name: string; days_before: number }[];
+  completion_rate: number;
+}
+
+export interface DigestFinancePayload {
+  income_total: number;
+  expense_total: number;
+  balance_delta: number;
+  top_expense_category: [string, number] | null;
+}
+
+export interface DigestEfficiencyPayload {
+  score: number;
+  delta_vs_prev: number;
+}
+
+export interface DigestXpPayload {
+  gained: number;
+  level_before: number;
+  level_after: number;
+}
+
+export interface DigestHighlightsPayload {
+  most_productive_day: string | null;
+  most_productive_count: number;
+}
+
+export interface DigestPeriodPayload {
+  type: string;
+  key: string;
+  from: string;
+  to: string;
+}
+
+export interface DigestPayload {
+  period: DigestPeriodPayload;
+  tasks: DigestTaskPayload;
+  habits: DigestHabitsPayload;
+  finance: DigestFinancePayload;
+  efficiency: DigestEfficiencyPayload;
+  xp: DigestXpPayload;
+  highlights: DigestHighlightsPayload;
+}
+
+export interface DigestListItem {
+  id: number;
+  period_type: string;
+  period_key: string;
+  generated_at: string;
+  viewed_at: string | null;
+  ai_comment: string | null;
+  tasks_completed: number;
+  habits_completion_rate: number;
+  xp_gained: number;
+}
+
+export interface DigestDetail {
+  id: number;
+  period_type: string;
+  period_key: string;
+  generated_at: string;
+  viewed_at: string | null;
+  ai_comment: string | null;
+  payload: DigestPayload;
+}

@@ -11,6 +11,7 @@ import {
   FolderKanban,
   Heart,
   ListChecks,
+  Sparkles,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/projects",   label: "Проекты",     icon: FolderKanban },
   { href: "/habits",     label: "Привычки",    icon: Heart },
   { href: "/lists",      label: "Списки",      icon: ListChecks },
+  { href: "/digest",     label: "Итоги",       icon: Sparkles },
 ];
 
 export function AppSidebar() {
