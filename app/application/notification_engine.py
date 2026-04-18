@@ -422,7 +422,13 @@ def _send_email(db: Session, notif: NotificationModel) -> bool:
 def dispatch_pending_deliveries(db: Session) -> None:
     """Process all pending deliveries, respecting quiet hours for external channels."""
     now = datetime.now(tz=ZoneInfo("Europe/Moscow"))
-    pending = db.query(NotificationDelivery).filter_by(status="pending").all()
+    pending = (
+        db.query(NotificationDelivery)
+        .filter_by(status="pending")
+        .order_by(NotificationDelivery.id.asc())
+        .limit(500)
+        .all()
+    )
     for delivery in pending:
         try:
             notif = db.get(NotificationModel, delivery.notification_id)

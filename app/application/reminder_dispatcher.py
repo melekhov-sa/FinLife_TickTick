@@ -59,12 +59,21 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
         .all()
     )
 
+    if not tasks:
+        return 0
+
+    task_ids = [t.task_id for t in tasks]
+    all_reminders = (
+        db.query(TaskReminderModel)
+        .filter(TaskReminderModel.task_id.in_(task_ids))
+        .all()
+    )
+    reminders_by_task: dict[int, list[TaskReminderModel]] = {}
+    for rem in all_reminders:
+        reminders_by_task.setdefault(rem.task_id, []).append(rem)
+
     for task in tasks:
-        reminders = (
-            db.query(TaskReminderModel)
-            .filter(TaskReminderModel.task_id == task.task_id)
-            .all()
-        )
+        reminders = reminders_by_task.get(task.task_id, [])
 
         for rem in reminders:
             kind = getattr(rem, "reminder_kind", "OFFSET")
@@ -145,6 +154,10 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
 
         if rem.mode == "offset" and rem.offset_minutes is not None:
             fire_at = start_dt - timedelta(minutes=rem.offset_minutes)
+        elif rem.mode == "fixed_time" and rem.fixed_time is not None:
+            if not occ.start_date:
+                continue
+            fire_at = datetime.combine(occ.start_date, rem.fixed_time, tzinfo=MSK)
         else:
             continue
 
