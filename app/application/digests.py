@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
     DigestModel, TaskModel, HabitModel, HabitOccurrence,
-    TransactionFeed, WorkCategory, XpEvent, UserXpState, TaskDueChangeLog,
+    TransactionFeed, CategoryInfo, XpEvent, UserXpState, TaskDueChangeLog,
 )
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,7 @@ def _top_expense_category(db: Session, account_id: int, start_dt, end_dt):
     if not rows:
         return None
     category_id, total = rows[0]
-    cat = db.query(WorkCategory).filter(WorkCategory.id == category_id).first()
+    cat = db.query(CategoryInfo).filter(CategoryInfo.category_id == category_id).first()
     name = cat.title if cat else "Category #{}".format(category_id)
     return [name, float(total or 0)]
 
