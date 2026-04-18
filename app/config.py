@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables
     """
     # Database
-    DATABASE_URL: str = "postgresql://finlife:finlife_password_change_me@localhost:5432/finlife"
+    DATABASE_URL: str
 
     # Security
-    SECRET_KEY: str = "super-secret-key-change-me"  # ВАЖНО: Заменить в продакшене!
+    SECRET_KEY: str
 
     # Application
     TIMEZONE: str = "Europe/Moscow"

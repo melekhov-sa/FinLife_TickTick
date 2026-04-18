@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_current_user
 from app.infrastructure.db.models import User
-from app.application.app_config import get_config, set_config, get_openai_key, OPENAI_KEY
+from app.application.app_config import get_config, set_openai_key, get_openai_key, OPENAI_KEY
+from app.infrastructure.crypto import decrypt
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -39,10 +40,17 @@ def _mask_key(key: str) -> str:
 
 
 def _get_source(db: Session) -> tuple[str | None, str]:
-    """Return (raw_key, source) where source is 'db'|'env'|'none'."""
+    """Return (raw_key, source) where source is 'db'|'env'|'none'.
+
+    If the DB row exists but decrypt fails (rotated SECRET_KEY or corrupted
+    ciphertext), we fall through to env instead of returning garbled ciphertext.
+    """
     db_val = get_config(db, OPENAI_KEY)
     if db_val:
-        return db_val, "db"
+        plain = decrypt(db_val)
+        if plain:
+            return plain, "db"
+        logger.warning("openai_api_key decrypt failed — falling back to env")
     env_val = get_settings().OPENAI_API_KEY
     if env_val:
         return env_val, "env"
@@ -89,7 +97,7 @@ def update_openai_config(
     _require_admin(request, db)
     # Empty string = clear DB entry (falls back to .env)
     new_val = body.api_key.strip() if body.api_key else None
-    set_config(db, OPENAI_KEY, new_val if new_val else None)
+    set_openai_key(db, new_val if new_val else None)
     raw, source = _get_source(db)
     return OpenAIConfigResponse(
         has_key=raw is not None,

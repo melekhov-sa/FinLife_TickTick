@@ -1,6 +1,10 @@
 """
 Pytest fixtures for testing
 """
+import os
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")  # tests override via db_session fixture anyway
+os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-prod-" + "x" * 32)
+
 import pytest
 from sqlalchemy import create_engine, event, JSON
 from sqlalchemy.orm import sessionmaker, Session

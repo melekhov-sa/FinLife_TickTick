@@ -35,6 +35,12 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
 
+    if "finlife_password_change_me" in settings.DATABASE_URL or settings.SECRET_KEY == "super-secret-key-change-me":
+        raise RuntimeError(
+            "FATAL: DATABASE_URL or SECRET_KEY is using a known insecure default. "
+            "Set both in .env before starting."
+        )
+
     app = FastAPI(
         title="FinLife",
         debug=True,
