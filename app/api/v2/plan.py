@@ -1,6 +1,7 @@
 """GET /api/v2/plan — Plan timeline view (tasks + events + habits + planned_ops)."""
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.application.plan import build_plan_view
+from app.config import get_settings
 
 router = APIRouter()
 
@@ -61,7 +63,7 @@ def get_plan(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(request, db)
-    today = date.today()
+    today = datetime.now(ZoneInfo(get_settings().TIMEZONE)).date()
     range_days = max(1, min(range, 90))
 
     view = build_plan_view(db, user_id, today, tab=tab, range_days=range_days)

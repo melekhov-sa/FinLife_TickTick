@@ -2,6 +2,7 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, field_serializer
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.application.dashboard import DashboardService
+from app.config import get_settings
 
 router = APIRouter()
 
@@ -189,7 +191,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
 
     user_id = get_user_id(request, db)
     svc = DashboardService(db)
-    today = date.today()
+    today = datetime.now(ZoneInfo(get_settings().TIMEZONE)).date()
 
     # ── Existing blocks ────────────────────────────────────────────────────────
     today_block_raw = svc.get_today_block(user_id, today)
