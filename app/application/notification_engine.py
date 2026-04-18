@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
@@ -110,7 +111,8 @@ def _create_notification(
     entity_id: int | None,
     ctx: dict,
     channels: list[str],
-) -> NotificationModel:
+) -> NotificationModel | None:
+    # _is_duplicate is a fast path; the DB index is the real safety net.
     tmpl = _TEMPLATES[rule_code]
     notif = NotificationModel(
         user_id=user_id,
@@ -123,7 +125,11 @@ def _create_notification(
         body_telegram=tmpl["body_telegram"].format(**ctx),
     )
     db.add(notif)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        return None
     for ch in channels:
         db.add(NotificationDelivery(notification_id=notif.id, channel=ch, status="pending"))
     db.commit()

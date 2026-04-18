@@ -1711,3 +1711,24 @@ class AppConfigModel(Base):
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+# ============================================================================
+# Digest Dispatch Log (idempotency guard for morning/evening push digests)
+# ============================================================================
+
+class DigestDispatchLog(Base):
+    """One row per (user_id, kind, sent_date) — prevents duplicate digest pushes."""
+    __tablename__ = "digest_dispatch_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)   # 'morning' | 'evening'
+    sent_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    sent_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'kind', 'sent_date', name='uq_digest_dispatch'),
+    )

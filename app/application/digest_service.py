@@ -8,9 +8,10 @@ import logging
 from datetime import date
 
 from sqlalchemy import distinct
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import User, PushSubscription
+from app.infrastructure.db.models import User, PushSubscription, DigestDispatchLog
 from app.application.occurrence_generator import OccurrenceGenerator
 from app.application.dashboard import DashboardService
 from app.application.push_service import send_push_to_user
@@ -46,6 +47,13 @@ def send_morning_digest(db: Session) -> int:
     total_sent = 0
 
     for user_id in user_ids:
+        try:
+            db.add(DigestDispatchLog(user_id=user_id, kind="morning", sent_date=today))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            continue  # already dispatched today
+
         try:
             OccurrenceGenerator(db).generate_all(user_id)
             block = DashboardService(db).get_today_block(user_id, today)
@@ -99,6 +107,13 @@ def send_evening_digest(db: Session) -> int:
     total_sent = 0
 
     for user_id in user_ids:
+        try:
+            db.add(DigestDispatchLog(user_id=user_id, kind="evening", sent_date=today))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            continue  # already dispatched today
+
         try:
             block = DashboardService(db).get_today_block(user_id, today)
             progress = block["progress"]

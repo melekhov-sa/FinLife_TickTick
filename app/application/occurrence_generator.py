@@ -5,6 +5,7 @@ Called when loading pages. Uses recurrence engine to compute dates,
 then inserts missing occurrences into the DB (idempotent - checks before insert).
 """
 from datetime import date, timedelta
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.domain.recurrence import rule_spec_from_db, generate_occurrence_dates
@@ -74,13 +75,19 @@ class OccurrenceGenerator:
             for d in dates:
                 if d in existing_dates:
                     continue
-                self.db.add(HabitOccurrence(
+                occurrence = HabitOccurrence(
                     account_id=account_id,
                     habit_id=habit.habit_id,
                     scheduled_date=d,
                     status="ACTIVE",
-                ))
-                count += 1
+                )
+                try:
+                    with self.db.begin_nested():  # SAVEPOINT
+                        self.db.add(occurrence)
+                        self.db.flush()
+                    count += 1
+                except IntegrityError:
+                    pass  # race: another request already inserted this occurrence
 
         if count > 0:
             self.db.commit()
@@ -129,13 +136,19 @@ class OccurrenceGenerator:
             for d in dates:
                 if d in existing_dates:
                     continue
-                self.db.add(TaskOccurrence(
+                occurrence = TaskOccurrence(
                     account_id=account_id,
                     template_id=tmpl.template_id,
                     scheduled_date=d,
                     status="ACTIVE",
-                ))
-                count += 1
+                )
+                try:
+                    with self.db.begin_nested():  # SAVEPOINT
+                        self.db.add(occurrence)
+                        self.db.flush()
+                    count += 1
+                except IntegrityError:
+                    pass  # race: another request already inserted this occurrence
 
         if count > 0:
             self.db.commit()
@@ -184,13 +197,19 @@ class OccurrenceGenerator:
             for d in dates:
                 if d in existing_dates:
                     continue
-                self.db.add(OperationOccurrence(
+                occurrence = OperationOccurrence(
                     account_id=account_id,
                     template_id=tmpl.template_id,
                     scheduled_date=d,
                     status="ACTIVE",
-                ))
-                count += 1
+                )
+                try:
+                    with self.db.begin_nested():  # SAVEPOINT
+                        self.db.add(occurrence)
+                        self.db.flush()
+                    count += 1
+                except IntegrityError:
+                    pass  # race: another request already inserted this occurrence
 
         if count > 0:
             self.db.commit()
@@ -251,20 +270,24 @@ class OccurrenceGenerator:
                     is_cancelled=False,
                     source="rule",
                 )
-                self.db.add(occ)
-                self.db.flush()  # get occ.id for reminders
+                try:
+                    with self.db.begin_nested():  # SAVEPOINT
+                        self.db.add(occ)
+                        self.db.flush()  # get occ.id for reminders
 
-                # Copy default reminders
-                for dr in default_reminders:
-                    self.db.add(EventReminderModel(
-                        occurrence_id=occ.id,
-                        channel=dr.channel,
-                        mode=dr.mode,
-                        offset_minutes=dr.offset_minutes,
-                        fixed_time=dr.fixed_time,
-                        is_enabled=dr.is_enabled,
-                    ))
-                count += 1
+                        # Copy default reminders
+                        for dr in default_reminders:
+                            self.db.add(EventReminderModel(
+                                occurrence_id=occ.id,
+                                channel=dr.channel,
+                                mode=dr.mode,
+                                offset_minutes=dr.offset_minutes,
+                                fixed_time=dr.fixed_time,
+                                is_enabled=dr.is_enabled,
+                            ))
+                    count += 1
+                except IntegrityError:
+                    pass  # race: another request already inserted this occurrence
 
         if count > 0:
             self.db.commit()

@@ -14,6 +14,7 @@ Covers:
 import pytest
 from datetime import date, datetime, time, timedelta, timezone
 from unittest.mock import patch
+from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.db.models import (
     User,
@@ -295,3 +296,60 @@ def test_settings_defaults(db_session):
     assert s.enabled is True
     assert s.channels_json.get("inapp") is True
     assert s.channels_json.get("telegram") is False
+
+
+# ---------------------------------------------------------------------------
+# _create_notification IntegrityError handling
+# ---------------------------------------------------------------------------
+
+def test_create_notification_returns_none_on_integrity_error(db_session):
+    """
+    When _create_notification's flush raises IntegrityError (DB dedup index),
+    it must return None without propagating the exception.
+    """
+    from unittest.mock import patch
+
+    _user(db_session)
+
+    with patch.object(db_session, "flush", side_effect=IntegrityError(
+        "UNIQUE constraint failed", params=None, orig=Exception()
+    )):
+        result = _create_notification(
+            db_session,
+            user_id=USER_ID,
+            rule_code="TASK_OVERDUE",
+            entity_type="task",
+            entity_id=99,
+            ctx={"title": "Test task", "days": 3},
+            channels=["inapp"],
+        )
+
+    assert result is None
+
+
+def test_create_notification_second_call_returns_none(db_session):
+    """
+    Second call with identical args returns None (fast-path via _is_duplicate),
+    no exception propagates.
+    """
+    _user(db_session)
+    _seed_rules(db_session)
+    _settings(db_session)
+
+    ctx = {"title": "Задача", "days": 2}
+    first = _create_notification(
+        db_session, USER_ID, "TASK_OVERDUE", "task", 55, ctx, ["inapp"]
+    )
+    assert first is not None
+
+    # Second call — _is_duplicate will return True in rule runners, but here
+    # we call _create_notification directly; it will attempt flush which
+    # may or may not raise depending on dialect. Patch flush to simulate index.
+    with patch.object(db_session, "flush", side_effect=IntegrityError(
+        "UNIQUE constraint failed", params=None, orig=Exception()
+    )):
+        second = _create_notification(
+            db_session, USER_ID, "TASK_OVERDUE", "task", 55, ctx, ["inapp"]
+        )
+
+    assert second is None
