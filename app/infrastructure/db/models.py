@@ -54,6 +54,9 @@ class User(Base):
     # Task reschedule reasons feature toggle
     enable_task_reschedule_reasons: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
+    # AI-generated commentary in weekly digests (opt-in; needs server OPENAI_API_KEY to actually work)
+    ai_digest_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
 
 class EventLog(Base):
     """

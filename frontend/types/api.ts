@@ -9,6 +9,8 @@ export interface UserMe {
   enable_task_expense_link: boolean;
   enable_task_templates: boolean;
   enable_task_reschedule_reasons: boolean;
+  ai_digest_enabled: boolean;
+  ai_digest_available: boolean;
 }
 
 // ── /api/v2/dashboard ─────────────────────────────────────────────────────────

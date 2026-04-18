@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
-  ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap,
+  ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap, Sparkles,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
@@ -161,6 +161,51 @@ function PushActions() {
   );
 }
 
+function AiDigestToggle() {
+  const qc = useQueryClient();
+  const { data: me } = useMe();
+  const { mutate: toggle, isPending } = useMutation({
+    mutationFn: (enabled: boolean) => api.patch("/api/v2/me/ai-digest", { enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["me"] }),
+  });
+
+  if (!me) return null;
+  const available = me.ai_digest_available;
+  const enabled = me.ai_digest_enabled;
+
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-xl border" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/10">
+        <Sparkles size={18} className="text-violet-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          AI-комментарий в дайджестах
+        </p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          {available
+            ? "OpenAI оценит твою неделю и даст короткий мотивирующий комментарий в конце каждого дайджеста."
+            : "Функция временно недоступна: администратор не настроил ключ OpenAI на сервере."}
+        </p>
+        <button
+          onClick={() => available && toggle(!enabled)}
+          disabled={!available || isPending}
+          className={clsx(
+            "mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all",
+            !available && "opacity-40 cursor-not-allowed",
+            enabled
+              ? "bg-violet-500/15 text-violet-600 dark:text-violet-300 hover:bg-violet-500/25"
+              : "bg-white/10 text-white/85 hover:bg-white/15",
+          )}
+          style={!enabled ? { background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", color: "#fff" } : undefined}
+        >
+          {isPending ? "..." : enabled ? "Отключить" : "Включить"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -286,6 +331,14 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ── AI Digest Toggle ── */}
+          <div
+            className="rounded-xl border p-5"
+            style={{ borderColor: cardBorder, background: cardBg }}
+          >
+            <AiDigestToggle />
           </div>
 
           {/* ── Settings Links ── */}

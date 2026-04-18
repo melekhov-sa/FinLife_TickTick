@@ -306,8 +306,15 @@ def save_digest(
 def generate_and_save_weekly_digest(db: Session, account_id: int, week_start: date) -> DigestModel:
     period_key = iso_week_key(week_start)
     payload = build_weekly_payload(db, account_id, week_start)
-    from app.infrastructure.ai import generate_digest_comment
-    ai_comment = generate_digest_comment(payload)
+
+    # AI commentary only if the user opted in
+    from app.infrastructure.db.models import User
+    user = db.query(User).filter(User.id == account_id).first()
+    ai_comment = None
+    if user and user.ai_digest_enabled:
+        from app.infrastructure.ai import generate_digest_comment
+        ai_comment = generate_digest_comment(payload)
+
     save_digest(db, account_id, "week", period_key, payload, ai_comment)
     return (
         db.query(DigestModel)

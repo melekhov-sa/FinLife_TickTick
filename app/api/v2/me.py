@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_current_user
 from app.infrastructure.db.models import User
+from app.config import get_settings
 
 router = APIRouter()
 
@@ -19,6 +20,8 @@ class UserMeResponse(BaseModel):
     enable_task_expense_link: bool
     enable_task_templates: bool
     enable_task_reschedule_reasons: bool
+    ai_digest_enabled: bool
+    ai_digest_available: bool
 
 
 @router.get("/me", response_model=UserMeResponse)
@@ -33,6 +36,8 @@ def get_me(request: Request, db: Session = Depends(get_db)):
         enable_task_expense_link=user.enable_task_expense_link,
         enable_task_templates=user.enable_task_templates,
         enable_task_reschedule_reasons=user.enable_task_reschedule_reasons,
+        ai_digest_enabled=user.ai_digest_enabled,
+        ai_digest_available=bool(get_settings().OPENAI_API_KEY),
     )
 
 
@@ -42,3 +47,15 @@ def mark_onboarding_done(request: Request, db: Session = Depends(get_db)):
     user.onboarding_done = True
     db.commit()
     return {"ok": True}
+
+
+class UpdateAiDigestRequest(BaseModel):
+    enabled: bool
+
+
+@router.patch("/me/ai-digest")
+def update_ai_digest(body: UpdateAiDigestRequest, request: Request, db: Session = Depends(get_db)):
+    user: User = get_current_user(request, db)
+    user.ai_digest_enabled = body.enabled
+    db.commit()
+    return {"ok": True, "ai_digest_enabled": user.ai_digest_enabled}
