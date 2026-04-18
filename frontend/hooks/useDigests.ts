@@ -47,8 +47,11 @@ export function useDigestMarkViewed() {
 export function useDigestBackfill() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (weeksBack: number) =>
-      api.post("/api/v2/digests/backfill", { weeks_back: weeksBack }),
+    mutationFn: (count: number) =>
+      api.post<{ generated: string[]; count: number; errors?: string[] }>(
+        "/api/v2/digests/backfill",
+        { count }
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["digests"] });
       qc.invalidateQueries({ queryKey: ["digest-unviewed-latest"] });

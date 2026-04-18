@@ -158,15 +158,18 @@ def backfill_digests(
     db: Session = Depends(get_db),
 ):
     """Generate past N completed weekly periods (skip if already exist)."""
+    import logging
+    logger = logging.getLogger(__name__)
+
     if body.period_type != "week":
         raise HTTPException(status_code=400, detail="Only week period_type is supported")
     from datetime import date
     count = min(body.count, 52)
     today = date.today()
-    # find most recent completed Sunday
     days_since_sunday = (today.weekday() + 1) % 7
     last_sunday = today - timedelta(days=days_since_sunday)
-    generated = []
+    generated: list[str] = []
+    errors: list[str] = []
     for i in range(count):
         week_end = last_sunday - timedelta(weeks=i)
         week_start = week_end - timedelta(days=6)
@@ -180,10 +183,13 @@ def backfill_digests(
             )
             .first()
         )
-        if not existing:
-            try:
-                generate_and_save_weekly_digest(db, user_id, week_start)
-                generated.append(week_key)
-            except Exception:
-                pass
-    return {"generated": generated, "count": len(generated)}
+        if existing:
+            continue
+        try:
+            generate_and_save_weekly_digest(db, user_id, week_start)
+            generated.append(week_key)
+        except Exception as exc:
+            logger.exception("Digest backfill failed for %s week=%s", user_id, week_key)
+            errors.append(f"{week_key}: {exc}")
+            db.rollback()
+    return {"generated": generated, "count": len(generated), "errors": errors}

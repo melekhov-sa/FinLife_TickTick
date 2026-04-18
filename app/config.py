@@ -49,8 +49,11 @@ class Settings(BaseSettings):
 
     # AI commentary for weekly digest
     # Set OPENAI_API_KEY to enable automatic AI commentary on digests (uses gpt-4o-mini)
+    # OPENAI_BASE_URL defaults to AITunnel (OpenAI-compatible proxy, reachable from RU).
+    # Override to "https://api.openai.com/v1/" to use OpenAI directly.
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_BASE_URL: str = "https://api.aitunnel.ru/v1/"
     # Future-proof: Anthropic key placeholder (not used yet)
     ANTHROPIC_API_KEY: str = ""
 

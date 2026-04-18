@@ -105,16 +105,10 @@ def test_openai_connection(request: Request, db: Session = Depends(get_db)):
     if not key:
         return TestConnectionResponse(ok=False, error="Ключ OpenAI не настроен")
 
-    try:
-        from openai import OpenAI
-        model = get_settings().OPENAI_MODEL
-        client = OpenAI(api_key=key, timeout=10.0)
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=5,
-        )
-        return TestConnectionResponse(ok=True, model_used=response.model)
-    except Exception as e:
-        logger.warning("OpenAI connection test failed: %s", e)
-        return TestConnectionResponse(ok=False, error=str(e))
+    from app.infrastructure.ai import ping
+    result = ping(key)
+    return TestConnectionResponse(
+        ok=result["ok"],
+        error=result.get("error"),
+        model_used=result.get("model"),
+    )
