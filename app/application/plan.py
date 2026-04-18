@@ -198,6 +198,7 @@ def _task_to_item(t: TaskModel, today: date, wc_map: dict) -> dict:
         "status": t.status,
         "category_emoji": _wc_emoji(wc_map, t.category_id),
         "category_title": _wc_title(wc_map, t.category_id),
+        "manual_order": t.manual_order,
         "meta": {"task_id": t.task_id},
     }
 
@@ -814,7 +815,10 @@ def _date_label(d: date, today: date) -> str:
 def _sort_key(item: dict) -> tuple:
     kind_order = KIND_SORT.get(item["kind"], 9)
     t = item["time"] if item["time"] is not None else _TIME_MAX
-    return (kind_order, t, item["title"])
+    # NULLS LAST for manual_order so drag-reordered tasks lead, others fall back to kind/time/title
+    mo = item.get("manual_order")
+    mo_key = mo if mo is not None else 10**9
+    return (mo_key, kind_order, t, item["title"])
 
 
 # ---------------------------------------------------------------------------

@@ -36,32 +36,6 @@ interface Props {
 
 // ── Chip helpers ──────────────────────────────────────────────────────────────
 
-const TYPE_CHIP_CLASSES: Record<string, string> = {
-  task:       "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
-  task_occ:   "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
-  habit:      "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
-  event:      "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  planned_op: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  task:       "Задача",
-  task_occ:   "Задача",
-  habit:      "Привычка",
-  event:      "Событие",
-  planned_op: "Операция",
-};
-
-function TypeChip({ kind }: { kind: string }) {
-  const cls = TYPE_CHIP_CLASSES[kind] ?? "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300";
-  const label = TYPE_LABEL[kind] ?? kind;
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none shrink-0 ${cls}`}>
-      {label}
-    </span>
-  );
-}
-
 function CategoryChip({ name }: { name: string }) {
   return (
     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none shrink-0 bg-slate-100/80 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
@@ -144,7 +118,6 @@ function Item({
           </span>
         )}
         {categoryName && <CategoryChip name={categoryName} />}
-        <TypeChip kind={kind} />
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
           isDone ? (
@@ -218,7 +191,6 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
         <span className="text-[14px] md:text-[15px] font-medium" style={{ color: "var(--t-primary)" }}>
           {op.title}
         </span>
-        <TypeChip kind="planned_op" />
         <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
           {op.amount_formatted}
         </span>

@@ -481,9 +481,13 @@ function DayGroupCard({
     .filter((g) => g.entries.length > 0), [group.entries]);
 
   const isEmpty = group.entries.length === 0;
+  const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local tz
+  const isPast = !group.is_today && !group.is_overdue_group && !!group.date && group.date < todayIso;
 
-  // Empty day — skip today (dashboard has "Фокус дня")
+  // Empty today — dashboard already has "Фокус дня"
   if (isEmpty && group.is_today) return null;
+  // Empty past day — no reason to show (overdue tasks appear in the overdue section)
+  if (isEmpty && isPast) return null;
 
   if (isEmpty) {
     return (
