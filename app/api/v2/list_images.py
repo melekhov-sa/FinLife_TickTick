@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import SharedListItem, SharedList
-from app.infrastructure.file_utils import detect_mime
+from app.infrastructure.file_utils import detect_mime, user_upload_total_bytes
 from app.config import get_settings
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
@@ -55,6 +55,12 @@ def upload_image(item_id: int, request: Request, file: UploadFile = File(...), d
     actual_mime = detect_mime(content)
     if actual_mime is not None and actual_mime not in ALLOWED_IMAGE_MIMES:
         raise HTTPException(400, f"File contents do not match an allowed image type ({actual_mime})")
+
+    # Quota check
+    quota_bytes = get_settings().USER_UPLOAD_QUOTA_MB * 1024 * 1024
+    current = user_upload_total_bytes(user_id, _uploads_dir())
+    if current + len(content) > quota_bytes:
+        raise HTTPException(400, f"Upload quota exceeded ({get_settings().USER_UPLOAD_QUOTA_MB} MB per user)")
 
     # Delete old image if exists
     _delete_file(item, user_id)

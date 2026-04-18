@@ -1,6 +1,6 @@
 """Task use cases - one-off tasks"""
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import TaskModel, EventLog
@@ -76,6 +76,9 @@ class CreateTaskUseCase:
         return task_id
 
     def _generate_id(self) -> int:
+        if self.db.bind.dialect.name == "postgresql":
+            return self.db.execute(text("SELECT nextval('task_id_seq')")).scalar()
+        # SQLite test fallback — MAX-based (no sequence support)
         max_id = self.db.query(
             func.max(func.cast(EventLog.payload_json['task_id'], TaskModel.task_id.type))
         ).filter(EventLog.event_type == 'task_created').scalar() or 0

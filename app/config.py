@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # File uploads
     UPLOADS_DIR: str = "uploads"
+    USER_UPLOAD_QUOTA_MB: int = 500  # total upload quota per user (task attachments + list images)
 
     # Supabase Auth
     SUPABASE_URL: str = ""

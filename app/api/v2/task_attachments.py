@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import TaskModel, TaskAttachmentModel
-from app.infrastructure.file_utils import detect_mime
+from app.infrastructure.file_utils import detect_mime, user_upload_total_bytes
 from app.config import get_settings
 
 
@@ -160,6 +160,15 @@ def upload_attachment(
         raise HTTPException(
             status_code=400,
             detail=f"Содержимое файла не соответствует допустимому типу ({actual_type})",
+        )
+
+    # Quota check
+    quota_bytes = get_settings().USER_UPLOAD_QUOTA_MB * 1024 * 1024
+    current = user_upload_total_bytes(user_id, _uploads_dir())
+    if current + len(data) > quota_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload quota exceeded ({get_settings().USER_UPLOAD_QUOTA_MB} MB per user)",
         )
 
     # Save to disk
