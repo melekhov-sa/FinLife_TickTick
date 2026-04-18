@@ -392,35 +392,44 @@ def dispatch_pending_deliveries(db: Session) -> None:
     now = datetime.now(tz=ZoneInfo("Europe/Moscow"))
     pending = db.query(NotificationDelivery).filter_by(status="pending").all()
     for delivery in pending:
-        notif = db.get(NotificationModel, delivery.notification_id)
-        if notif is None:
-            continue
-        settings = db.query(UserNotificationSettings).filter_by(user_id=notif.user_id).first()
-
-        if delivery.channel == "inapp":
-            delivery.status = "sent"
-            delivery.sent_at = now
-            # Also send push notification to all user devices
-            try:
-                from app.application.push_service import send_push_to_user
-                send_push_to_user(db, notif.user_id, {
-                    "title": notif.title,
-                    "body": notif.body_inapp,
-                    "url": "/notifications",
-                })
-            except Exception:
-                pass  # push is best-effort, don't fail the delivery
-        elif delivery.channel == "telegram":
-            if _in_quiet_hours(now.time(), settings):
+        try:
+            notif = db.get(NotificationModel, delivery.notification_id)
+            if notif is None:
                 continue
-            ok = _send_telegram(db, notif)
-            delivery.status = "sent" if ok else "failed"
-            delivery.sent_at = now
-        elif delivery.channel == "email":
-            if _in_quiet_hours(now.time(), settings):
-                continue
-            _send_email(db, notif)
-            delivery.status = "skipped"
-            delivery.sent_at = now
+            settings = db.query(UserNotificationSettings).filter_by(user_id=notif.user_id).first()
 
-    db.commit()
+            if delivery.channel == "inapp":
+                delivery.status = "sending"
+                delivery.sent_at = now
+                db.commit()
+                try:
+                    from app.application.push_service import send_push_to_user
+                    send_push_to_user(db, notif.user_id, {
+                        "title": notif.title,
+                        "body": notif.body_inapp,
+                        "url": "/notifications",
+                    })
+                except Exception:
+                    pass  # push is best-effort, don't fail the delivery
+                delivery.status = "sent"
+                db.commit()
+            elif delivery.channel == "telegram":
+                if _in_quiet_hours(now.time(), settings):
+                    continue
+                delivery.status = "sending"
+                db.commit()
+                ok = _send_telegram(db, notif)
+                delivery.status = "sent" if ok else "failed"
+                delivery.sent_at = now
+                db.commit()
+            elif delivery.channel == "email":
+                if _in_quiet_hours(now.time(), settings):
+                    continue
+                delivery.status = "sending"
+                db.commit()
+                _send_email(db, notif)
+                delivery.status = "skipped"
+                delivery.sent_at = now
+                db.commit()
+        except Exception:
+            logger.exception("dispatch_pending_deliveries failed for delivery_id=%s", delivery.id)

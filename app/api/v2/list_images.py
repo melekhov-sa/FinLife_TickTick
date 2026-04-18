@@ -68,7 +68,7 @@ async def upload_image(item_id: int, request: Request, file: UploadFile = File(.
 
 
 @router.get("/lists/items/{item_id}/image")
-def serve_image(item_id: int, db: Session = Depends(get_db)):
+def serve_image(item_id: int, request: Request, db: Session = Depends(get_db)):
     """Serve image — public if list is public, otherwise requires auth."""
     item = db.query(SharedListItem).filter(SharedListItem.id == item_id).first()
     if not item or not item.image_url:
@@ -77,6 +77,11 @@ def serve_image(item_id: int, db: Session = Depends(get_db)):
     lst = db.query(SharedList).filter(SharedList.id == item.list_id).first()
     if not lst:
         raise HTTPException(404, "No image")
+
+    if not lst.is_public:
+        user_id = get_user_id(request, db)
+        if user_id != lst.account_id:
+            raise HTTPException(403, "Forbidden")
 
     # Find the file on disk
     filepath = _find_image_file(item_id, lst.account_id)

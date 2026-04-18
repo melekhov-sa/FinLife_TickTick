@@ -247,9 +247,14 @@ def _dispatch_hourly_summary(db: Session, now_msk: datetime) -> int:
     if not tg_list:
         return 0
 
+    from app.infrastructure.crypto import decrypt
     sent = 0
     for tg in tg_list:
         if not tg.chat_id or not tg.bot_token:
+            continue
+        bot_token = decrypt(tg.bot_token)
+        chat_id = decrypt(tg.chat_id)
+        if not bot_token or not chat_id:
             continue
 
         notif_settings = db.query(UserNotificationSettings).filter_by(user_id=tg.user_id).first()
@@ -343,8 +348,8 @@ def _dispatch_hourly_summary(db: Session, now_msk: datetime) -> int:
         text = "\n".join(lines)
         try:
             resp = requests.post(
-                f"https://api.telegram.org/bot{tg.bot_token}/sendMessage",
-                json={"chat_id": tg.chat_id, "text": text, "parse_mode": "HTML"},
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
                 timeout=5,
             )
             if resp.status_code == 200:

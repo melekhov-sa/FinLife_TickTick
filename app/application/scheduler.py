@@ -81,10 +81,14 @@ def _run_notification_engine():
     Session = get_session_factory()
     db = Session()
     try:
-        NotificationEngine(db).run()
-        dispatch_pending_deliveries(db)
-    except Exception:
-        logger.exception("Notification engine job failed")
+        try:
+            NotificationEngine(db).run()
+        except Exception:
+            logger.exception("Notification engine run() failed")
+        try:
+            dispatch_pending_deliveries(db)
+        except Exception:
+            logger.exception("dispatch_pending_deliveries failed")
     finally:
         db.close()
 
@@ -138,17 +142,21 @@ def start_scheduler():
     # Morning digest — 08:00 MSK (05:00 UTC)
     scheduler.add_job(
         _run_morning_digest,
-        CronTrigger(hour=5, minute=0),
+        CronTrigger(hour=5, minute=0, timezone="UTC"),
         id="morning_digest",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     # Evening digest — 21:00 MSK (18:00 UTC)
     scheduler.add_job(
         _run_evening_digest,
-        CronTrigger(hour=18, minute=0),
+        CronTrigger(hour=18, minute=0, timezone="UTC"),
         id="evening_digest",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     # Reminder dispatcher — every 2 minutes
@@ -158,30 +166,38 @@ def start_scheduler():
         minutes=2,
         id="reminders",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     # Subscription expiration notifications — 09:00 MSK (06:00 UTC)
     scheduler.add_job(
         _run_subscription_notifications,
-        CronTrigger(hour=6, minute=0),
+        CronTrigger(hour=6, minute=0, timezone="UTC"),
         id="subscription_notifications",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     # Notification engine — 09:30 MSK (06:30 UTC)
     scheduler.add_job(
         _run_notification_engine,
-        CronTrigger(hour=6, minute=30),
+        CronTrigger(hour=6, minute=30, timezone="UTC"),
         id="notification_engine",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     # Weekly digest — Sunday 18:00 MSK (15:00 UTC)
     scheduler.add_job(
         _run_weekly_digest_job,
-        CronTrigger(day_of_week="sun", hour=15, minute=0),  # 18:00 MSK
+        CronTrigger(day_of_week="sun", hour=15, minute=0, timezone="UTC"),  # 18:00 MSK
         id="weekly_digest",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     scheduler.start()
