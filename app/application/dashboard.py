@@ -183,6 +183,7 @@ class DashboardService:
             "is_done": is_done or t.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, t.category_id),
+            "category_name": self._wc_name(wc_map, t.category_id),
             "manual_order": t.manual_order,
             "meta": {"task_id": t.task_id, "reminders": reminder_times},
         }
@@ -245,6 +246,7 @@ class DashboardService:
             "is_done": is_done or occ.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, tmpl.category_id),
+            "category_name": self._wc_name(wc_map, tmpl.category_id),
             "meta": {"occurrence_id": occ.id, "template_id": occ.template_id},
         }
 
@@ -308,6 +310,7 @@ class DashboardService:
             "is_done": is_done or occ.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, tmpl.work_category_id),
+            "category_name": self._wc_name(wc_map, tmpl.work_category_id),
             "meta": {
                 "occurrence_id": occ.id,
                 "template_id": occ.template_id,
@@ -354,6 +357,7 @@ class DashboardService:
                     "is_done": False,
                     "is_overdue": False,
                     "category_emoji": self._wc_emoji(wc_map, ev.category_id),
+                    "category_name": self._wc_name(wc_map, ev.category_id),
                     "meta": {
                         "occurrence_id": occ.id,
                         "event_id": occ.event_id,
@@ -389,6 +393,7 @@ class DashboardService:
                 "is_done": occ.status == "DONE",
                 "is_overdue": False,
                 "category_emoji": self._wc_emoji(wc_map, habit.category_id),
+                "category_name": self._wc_name(wc_map, habit.category_id),
                 "meta": {
                     "occurrence_id": occ.id,
                     "habit_id": occ.habit_id,
@@ -590,6 +595,11 @@ class DashboardService:
     def _wc_emoji(self, wc_map: dict, cat_id: int | None) -> str | None:
         if cat_id and cat_id in wc_map:
             return wc_map[cat_id].emoji
+        return None
+
+    def _wc_name(self, wc_map: dict, cat_id: int | None) -> str | None:
+        if cat_id and cat_id in wc_map:
+            return wc_map[cat_id].title
         return None
 
     def _load_wallet_currency_map(self, account_id: int) -> dict[int, str]:

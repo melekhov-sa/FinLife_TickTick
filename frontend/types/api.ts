@@ -22,6 +22,7 @@ export interface DashboardItem {
   is_done: boolean;
   is_overdue: boolean;
   category_emoji: string | null;
+  category_name: string | null;
   meta: Record<string, unknown>;
 }
 

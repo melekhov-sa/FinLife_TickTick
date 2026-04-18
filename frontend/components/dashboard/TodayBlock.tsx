@@ -34,6 +34,44 @@ interface Props {
   plannedOps: UpcomingPayment[];
 }
 
+// ── Chip helpers ──────────────────────────────────────────────────────────────
+
+const TYPE_CHIP_CLASSES: Record<string, string> = {
+  task:       "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
+  task_occ:   "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
+  habit:      "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  event:      "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+  planned_op: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  task:       "Задача",
+  task_occ:   "Задача",
+  habit:      "Привычка",
+  event:      "Событие",
+  planned_op: "Операция",
+};
+
+function TypeChip({ kind }: { kind: string }) {
+  const cls = TYPE_CHIP_CLASSES[kind] ?? "bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300";
+  const label = TYPE_LABEL[kind] ?? kind;
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none shrink-0 ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function CategoryChip({ name }: { name: string }) {
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none shrink-0 bg-slate-100/80 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+      {name}
+    </span>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 function Item({
   item,
   onComplete,
@@ -45,7 +83,8 @@ function Item({
   isCompleting?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
-  const { title, category_emoji: emoji, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
+  const { title, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
+  const categoryName = item.category_name ?? null;
   const canComplete = isCompletable(kind) && !isDone;
   const reminders = (item.meta?.reminders as string[]) ?? [];
   const timeStr = time ? String(time).slice(0, 5) : null;
@@ -91,13 +130,12 @@ function Item({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
         <span
-          className={clsx("task-title-text text-[14px] md:text-[15px] font-medium leading-snug truncate", isDone && "line-through decoration-slate-300 dark:decoration-white/20")}
+          className={clsx("task-title-text text-[14px] md:text-[15px] font-medium leading-snug", isDone && "line-through decoration-slate-300 dark:decoration-white/20")}
           style={{ color: isDone ? "var(--t-muted)" : "var(--t-primary)" }}
           title={title}
         >
-          {emoji && <span className="mr-0.5">{emoji}</span>}
           {title}
         </span>
         {isOverdue && !isDone && (
@@ -105,21 +143,23 @@ function Item({
             просроч.
           </span>
         )}
+        {categoryName && <CategoryChip name={categoryName} />}
+        <TypeChip kind={kind} />
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
           isDone ? (
             <span className="text-[11px] font-medium shrink-0 tabular-nums" style={{ color: "var(--t-muted)" }}>
-              🔥 {String(item.meta.current_streak)} дн.
+              {String(item.meta.current_streak)} дн.
             </span>
           ) : (
             <span className="text-[11px] font-semibold shrink-0 tabular-nums text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">
-              🔥 {String(item.meta.current_streak)} дн.
+              {String(item.meta.current_streak)} дн.
             </span>
           )
         )}
         {reminders.length > 0 && !isDone && (
           <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
-            🔔 {reminders.join(", ")}
+            {reminders.join(", ")}
           </span>
         )}
         {timeStr && (
@@ -131,6 +171,7 @@ function Item({
     </div>
   );
 }
+
 
 
 /** Drag-and-drop wrapper for a single task row (kind === "task" only). */
@@ -172,11 +213,12 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
       <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-indigo-300/60 dark:border-white/20 shrink-0" />
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left flex items-center gap-1.5"
+        className="flex-1 min-w-0 text-left flex flex-wrap items-center gap-1.5"
       >
-        <span className="text-[14px] md:text-[15px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
+        <span className="text-[14px] md:text-[15px] font-medium" style={{ color: "var(--t-primary)" }}>
           {op.title}
         </span>
+        <TypeChip kind="planned_op" />
         <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>
           {op.amount_formatted}
         </span>

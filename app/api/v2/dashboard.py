@@ -33,6 +33,7 @@ class DashboardItem(BaseModel):
     is_done: bool
     is_overdue: bool
     category_emoji: str | None
+    category_name: str | None = None
     meta: dict[str, Any]
 
     @field_serializer("date")
@@ -356,6 +357,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
             is_done=d["is_done"],
             is_overdue=d["is_overdue"],
             category_emoji=d.get("category_emoji"),
+            category_name=d.get("category_name"),
             meta={k: (str(v) if isinstance(v, Decimal) else v) for k, v in d.get("meta", {}).items()},
         )
 
