@@ -90,7 +90,7 @@ def _run_notification_engine():
 
 
 def _run_weekly_digest_job():
-    """Sunday 19:00 MSK (16:00 UTC) — generate weekly digests for all users."""
+    """Sunday 18:00 MSK (15:00 UTC) — generate weekly digests for all users."""
     from app.infrastructure.db.session import get_session_factory
     from app.application.digests import generate_and_save_weekly_digest, iso_week_key
     from datetime import date, timedelta
@@ -176,10 +176,10 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Weekly digest — Sunday 19:00 MSK (16:00 UTC)
+    # Weekly digest — Sunday 18:00 MSK (15:00 UTC)
     scheduler.add_job(
         _run_weekly_digest_job,
-        CronTrigger(day_of_week="sun", hour=16, minute=0),
+        CronTrigger(day_of_week="sun", hour=15, minute=0),  # 18:00 MSK
         id="weekly_digest",
         replace_existing=True,
     )
@@ -188,7 +188,7 @@ def start_scheduler():
     logger.info(
         "Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), "
         "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC), "
-        "weekly_digest (Sun 16:00 UTC)"
+        "weekly_digest (Sun 15:00 UTC)"
     )
 
 

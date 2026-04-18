@@ -29,6 +29,7 @@ import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
+import { DigestCtaBanner } from "./DigestCtaBanner";
 
 interface Props {
   today: TodayBlockType;
@@ -615,6 +616,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
             </div>
           )}
         </div>
+
+        {/* CTA banner — visible when there is an unviewed weekly digest */}
+        <DigestCtaBanner />
 
         {/* ── Grouped sections ── */}
         {(() => {
