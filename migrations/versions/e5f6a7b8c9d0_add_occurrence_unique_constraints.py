@@ -30,7 +30,9 @@ def upgrade() -> None:
         DO $$ BEGIN
             ALTER TABLE habit_occurrences ADD CONSTRAINT uq_habit_occurrence
                 UNIQUE (account_id, habit_id, scheduled_date);
-        EXCEPTION WHEN duplicate_object THEN NULL;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table THEN NULL;
         END $$
     """)
 
@@ -51,7 +53,9 @@ def upgrade() -> None:
         DO $$ BEGIN
             ALTER TABLE task_occurrences ADD CONSTRAINT uq_task_occurrence
                 UNIQUE (account_id, template_id, scheduled_date);
-        EXCEPTION WHEN duplicate_object THEN NULL;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table THEN NULL;
         END $$
     """)
 
@@ -72,7 +76,9 @@ def upgrade() -> None:
         DO $$ BEGIN
             ALTER TABLE operation_occurrences ADD CONSTRAINT uq_operation_occurrence
                 UNIQUE (account_id, template_id, scheduled_date);
-        EXCEPTION WHEN duplicate_object THEN NULL;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table THEN NULL;
         END $$
     """)
 
@@ -93,7 +99,9 @@ def upgrade() -> None:
         DO $$ BEGIN
             ALTER TABLE event_occurrences ADD CONSTRAINT uq_event_occurrence
                 UNIQUE (account_id, event_id, start_date, source);
-        EXCEPTION WHEN duplicate_object THEN NULL;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table THEN NULL;
         END $$
     """)
 
