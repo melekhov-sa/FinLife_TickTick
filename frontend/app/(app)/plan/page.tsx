@@ -32,6 +32,7 @@ interface DayGroup {
   date_label: string;
   is_today: boolean;
   is_overdue_group: boolean;
+  day_type?: string;
   entries: PlanEntry[];
 }
 
@@ -486,7 +487,16 @@ function DayGroupCard({
 
   if (isEmpty) {
     return (
-      <div className="rounded-xl border-[1.5px] px-3 py-3.5 bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]">
+      <div className={clsx(
+        "rounded-xl border-[1.5px] px-3 py-3.5",
+        group.day_type === "holiday"
+          ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
+          : group.day_type === "weekend"
+          ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+          : group.day_type === "preholiday"
+          ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
+          : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
+      )}>
         <div className="flex items-center gap-2">
           <h3 className="text-[14px] font-semibold leading-none text-slate-800 dark:text-white/90">
             {label}
@@ -512,6 +522,12 @@ function DayGroupCard({
         ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
         : group.is_today
         ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+        : group.day_type === "holiday"
+        ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
+        : group.day_type === "weekend"
+        ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+        : group.day_type === "preholiday"
+        ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
         : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
     )}>
       {/* Day header */}
@@ -731,6 +747,7 @@ export default function PlanPage() {
           date_label: formatDayHeader(iso),
           is_today: iso === today,
           is_overdue_group: false,
+          day_type: existing?.day_type,
           entries: [],
         });
       }

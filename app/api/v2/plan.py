@@ -51,6 +51,7 @@ def _serialize_group(group: dict) -> dict:
         "date_label": group["date_label"],
         "is_today": group["is_today"],
         "is_overdue_group": group["is_overdue_group"],
+        "day_type": group.get("day_type", "work"),
         "entries": [_serialize_item(e) for e in group["entries"]],
     }
 

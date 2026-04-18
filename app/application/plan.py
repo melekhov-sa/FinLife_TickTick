@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 
+from app.application.production_calendar import get_day_types
 from app.infrastructure.db.models import (
     TaskModel, TaskTemplateModel, TaskOccurrence,
     HabitModel, HabitOccurrence,
@@ -80,7 +81,8 @@ def build_plan_view(
     today_progress = _compute_today_progress(items, today)
 
     # Group by date
-    day_groups = _group_by_date(items, today)
+    day_types = get_day_types(date_from, date_to)
+    day_groups = _group_by_date(items, today, day_types)
 
     # Completed today (shown on active tab as a motivation section)
     done_today = _query_done_today(db, account_id, today, wc_map)
@@ -911,7 +913,7 @@ def _wish_to_item(wish: WishModel, display_date: date) -> dict:
     }
 
 
-def _group_by_date(items: list[dict], today: date) -> list[dict]:
+def _group_by_date(items: list[dict], today: date, day_types: dict | None = None) -> list[dict]:
     # Separate overdue from the rest
     overdue_items = [it for it in items if it["is_overdue"]]
     normal_items = [it for it in items if not it["is_overdue"]]
@@ -942,6 +944,7 @@ def _group_by_date(items: list[dict], today: date) -> list[dict]:
             "date_label": "Просрочено",
             "is_today": False,
             "is_overdue_group": True,
+            "day_type": "work",
             "entries": deduped_overdue,
         })
 
@@ -957,6 +960,7 @@ def _group_by_date(items: list[dict], today: date) -> list[dict]:
             "date_label": _date_label(d, today),
             "is_today": d == today,
             "is_overdue_group": False,
+            "day_type": (day_types or {}).get(d, "work"),
             "entries": by_date[d],
         })
 
