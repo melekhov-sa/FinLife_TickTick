@@ -286,6 +286,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
             db.query(SubscriptionMemberModel)
             .filter(
                 SubscriptionMemberModel.account_id == user_id,
+                SubscriptionMemberModel.is_archived == False,  # noqa: E712
                 SubscriptionMemberModel.paid_until != None,  # noqa: E711
                 SubscriptionMemberModel.paid_until <= member_horizon,
             )
