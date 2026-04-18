@@ -4,8 +4,25 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
 import { CheckCircle2, SkipForward, Play, Plus } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragEndEvent,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api";
-import { useCreateTask } from "@/hooks/useTasks";
+import { useCreateTask, useReorderTasks } from "@/hooks/useTasks";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -21,10 +38,12 @@ function Item({
   item,
   onComplete,
   isCompleting,
+  dragHandleProps,
 }: {
   item: DashboardItem;
   onComplete: (item: DashboardItem) => void;
   isCompleting?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const { title, category_emoji: emoji, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const canComplete = isCompletable(kind) && !isDone;
@@ -33,6 +52,7 @@ function Item({
 
   return (
     <div
+      {...(dragHandleProps ?? {})}
       className={clsx(
         "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
         isCompleting && "task-row-completing"
@@ -46,7 +66,8 @@ function Item({
           </div>
         ) : canComplete ? (
           <button
-            onClick={() => { if (!isCompleting) onComplete(item); }}
+            onClick={(e) => { e.stopPropagation(); if (!isCompleting) onComplete(item); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="relative w-5 h-5 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
@@ -107,6 +128,40 @@ function Item({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/** Drag-and-drop wrapper for a single task row (kind === "task" only). */
+function SortableTaskItem({
+  item,
+  onComplete,
+  isCompleting,
+}: {
+  item: DashboardItem;
+  onComplete: (item: DashboardItem) => void;
+  isCompleting?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={item.is_done ? "opacity-70" : undefined}>
+      <Item
+        item={item}
+        onComplete={onComplete}
+        isCompleting={isCompleting}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </div>
   );
 }
@@ -341,6 +396,51 @@ export function TodayBlock({ today, plannedOps }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard"] }),
   });
 
+  const { mutate: reorderTasks, isPending: isReordering } = useReorderTasks();
+
+  // Local order for optimistic DnD -- mirrors activeTasks, updated on drag
+  const [localTaskOrder, setLocalTaskOrder] = useState<DashboardItem[]>([]);
+
+  // Sync localTaskOrder whenever server data refreshes
+  useEffect(() => {
+    setLocalTaskOrder(activeTasks);
+  }, [activeTasks]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        // 5px movement threshold -- distinguishes drag from tap/click
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active: dragActive, over } = event;
+    if (!over || dragActive.id === over.id) return;
+
+    const oldIndex = localTaskOrder.findIndex((t) => t.id === dragActive.id);
+    const newIndex = localTaskOrder.findIndex((t) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrder = arrayMove(localTaskOrder, oldIndex, newIndex);
+    setLocalTaskOrder(newOrder);
+
+    // Send only kind === "task" IDs to backend; task_occ have their own ordering
+    const taskIds = newOrder.filter((t) => t.kind === "task").map((t) => t.id);
+    if (!isReordering && taskIds.length > 0) {
+      reorderTasks(taskIds);
+    }
+  }
+
+  // IDs used by SortableContext -- only draggable (non-done, kind === "task") items
+  const sortableIds = localTaskOrder
+    .filter((t) => t.kind === "task" && !t.is_done)
+    .map((t) => t.id);
+
   return (
     <>
       {executeOp && (
@@ -456,7 +556,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
         {/* ── Grouped sections ── */}
         {(() => {
-          const allTasks = [...activeTasks, ...(showDone ? doneTasks : [])];
+          const allTasks = [...localTaskOrder, ...(showDone ? doneTasks : [])];
           const allHabits = [...activeHabits, ...(showDone ? doneHabits : [])];
           const eventItems = events ?? [];
           const finOps = plannedOps ?? [];
@@ -471,11 +571,30 @@ export function TodayBlock({ today, plannedOps }: Props) {
             groups.push({
               key: "tasks",
               label: "Задачи",
-              content: allTasks.map((item) => (
-                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
-                  <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
-                </div>
-              )),
+              content: (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                    {allTasks.map((item) =>
+                      item.kind === "task" && !item.is_done ? (
+                        <SortableTaskItem
+                          key={`${item.kind}-${item.id}`}
+                          item={item}
+                          onComplete={handleOpenCompleteItem}
+                          isCompleting={completingKey === (item.kind + "-" + item.id)}
+                        />
+                      ) : (
+                        <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
+                          <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
+                        </div>
+                      )
+                    )}
+                  </SortableContext>
+                </DndContext>
+              ),
             });
           }
 

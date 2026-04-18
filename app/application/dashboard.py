@@ -87,8 +87,14 @@ class DashboardService:
         # Sort: tasks, then ops, then habits
         kind_sort = {"task": 1, "task_occ": 1, "planned_op": 2, "habit": 3}
         _sort = lambda it: (kind_sort.get(it["kind"], 9), it["title"])
+        # For active tasks (today): sort by manual_order first (NULLS LAST), then by title
+        _active_sort = lambda it: (
+            kind_sort.get(it["kind"], 9),
+            it["manual_order"] if it.get("manual_order") is not None else 999999,
+            it["title"],
+        )
         overdue.sort(key=_sort)
-        active.sort(key=_sort)
+        active.sort(key=_active_sort)
         done.sort(key=_sort)
         events.sort(key=lambda it: (it.get("time") or "", it["title"]))
 
@@ -177,6 +183,7 @@ class DashboardService:
             "is_done": is_done or t.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, t.category_id),
+            "manual_order": t.manual_order,
             "meta": {"task_id": t.task_id, "reminders": reminder_times},
         }
 

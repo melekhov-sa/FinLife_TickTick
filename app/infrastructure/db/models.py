@@ -311,6 +311,9 @@ class TaskModel(Base):
     )
     board_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="backlog")
 
+    # Manual sort order for dashboard today-block (NULL = not yet sorted)
+    manual_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Task-expense link
     requires_expense: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     suggested_expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

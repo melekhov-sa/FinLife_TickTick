@@ -141,3 +141,15 @@ export function useDeleteAttachment() {
     },
   });
 }
+
+export function useReorderTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: number[]) =>
+      api.post('/api/v2/tasks/reorder', { ordered_ids: orderedIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['plan'] });
+    },
+  });
+}

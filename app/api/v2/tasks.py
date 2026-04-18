@@ -362,6 +362,42 @@ def create_task(body: CreateTaskRequest, request: Request, db: Session = Depends
     return {"id": task_id}
 
 
+# ── Reorder tasks (manual sort order for dashboard today-block) ──────────────
+
+class ReorderTasksRequest(BaseModel):
+    ordered_ids: list[int]
+
+
+@router.post("/tasks/reorder")
+def reorder_tasks(body: ReorderTasksRequest, request: Request, db: Session = Depends(get_db)):
+    """Persist manual_order for a list of task IDs (0-based index).
+
+    Only tasks belonging to the authenticated user are accepted.
+    Tasks not in the list are left untouched.
+    """
+    user_id = get_user_id(request, db)
+    if not body.ordered_ids:
+        return {"ok": True}
+
+    # Verify ownership — fetch all tasks in one query
+    tasks = db.query(TaskModel).filter(
+        TaskModel.task_id.in_(body.ordered_ids),
+    ).all()
+
+    task_map = {t.task_id: t for t in tasks}
+    for tid in body.ordered_ids:
+        t = task_map.get(tid)
+        if t is None or t.account_id != user_id:
+            raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    # Assign 0-based positions
+    for idx, tid in enumerate(body.ordered_ids):
+        task_map[tid].manual_order = idx
+
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/tasks/{task_id}/complete")
 def complete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     from fastapi import HTTPException
