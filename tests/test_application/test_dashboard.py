@@ -756,3 +756,84 @@ class TestFocusDayEventsExcluded:
         assert len(block["events"]) == 2
         assert block["progress"]["total"] == 0
         assert block["progress"]["done"] == 0
+
+
+# ======================================================================
+# Event reminders in meta
+# ======================================================================
+
+class TestEventRemindersInMeta:
+    """Event items in today block must carry meta.reminders from EventDefaultReminderModel."""
+
+    def test_event_with_no_reminders(self, db_session):
+        """Event without reminders → meta.reminders == []."""
+        from app.infrastructure.db.models import EventDefaultReminderModel
+        _add_event(db_session, 1, title="Standup", category_id=1)
+        _add_event_occ(db_session, 1, 1, TODAY)
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+        assert len(block["events"]) == 1
+        assert block["events"][0]["meta"]["reminders"] == []
+
+    def test_event_with_fixed_time_reminder(self, db_session):
+        """Fixed-time reminder → formatted as HH:MM string."""
+        from app.infrastructure.db.models import EventDefaultReminderModel
+        from datetime import time as t_type
+        _add_event(db_session, 2, title="Meeting", category_id=1)
+        _add_event_occ(db_session, 2, 2, TODAY)
+        rem = EventDefaultReminderModel(
+            event_id=2,
+            channel="ui",
+            mode="fixed_time",
+            fixed_time=t_type(9, 0),
+            is_enabled=True,
+        )
+        db_session.add(rem)
+        db_session.flush()
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+        ev = next(e for e in block["events"] if e["title"] == "Meeting")
+        assert ev["meta"]["reminders"] == ["09:00"]
+
+    def test_event_with_offset_reminder(self, db_session):
+        """Offset reminder (15 min before) → 'за 15 мин'."""
+        from app.infrastructure.db.models import EventDefaultReminderModel
+        _add_event(db_session, 3, title="Call", category_id=1)
+        _add_event_occ(db_session, 3, 3, TODAY)
+        rem = EventDefaultReminderModel(
+            event_id=3,
+            channel="ui",
+            mode="offset",
+            offset_minutes=-15,
+            is_enabled=True,
+        )
+        db_session.add(rem)
+        db_session.flush()
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+        ev = next(e for e in block["events"] if e["title"] == "Call")
+        assert ev["meta"]["reminders"] == ["\u0437\u0430 15 \u043c\u0438\u043d"]
+
+    def test_event_reminders_batch_no_n_plus_1(self, db_session):
+        """Multiple events → all reminders loaded, no query-per-event."""
+        from app.infrastructure.db.models import EventDefaultReminderModel
+        from datetime import time as t_type
+        _add_event(db_session, 4, title="Event A", category_id=1)
+        _add_event_occ(db_session, 4, 4, TODAY)
+        _add_event(db_session, 5, title="Event B", category_id=1)
+        _add_event_occ(db_session, 5, 5, TODAY)
+        db_session.add(EventDefaultReminderModel(
+            event_id=4, channel="ui", mode="fixed_time",
+            fixed_time=t_type(9, 0), is_enabled=True,
+        ))
+        db_session.add(EventDefaultReminderModel(
+            event_id=5, channel="ui", mode="fixed_time",
+            fixed_time=t_type(18, 0), is_enabled=True,
+        ))
+        db_session.flush()
+
+        block = DashboardService(db_session).get_today_block(ACCOUNT, TODAY)
+        ev_a = next(e for e in block["events"] if e["title"] == "Event A")
+        ev_b = next(e for e in block["events"] if e["title"] == "Event B")
+        assert ev_a["meta"]["reminders"] == ["09:00"]
+        assert ev_b["meta"]["reminders"] == ["18:00"]

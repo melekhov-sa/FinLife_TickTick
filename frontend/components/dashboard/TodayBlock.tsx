@@ -28,6 +28,7 @@ import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } fro
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
+import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 
 interface Props {
   today: TodayBlockType;
@@ -51,28 +52,34 @@ function Item({
   onComplete,
   isCompleting,
   dragHandleProps,
+  onItemClick,
 }: {
   item: DashboardItem;
   onComplete: (item: DashboardItem) => void;
   isCompleting?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  onItemClick?: (item: DashboardItem) => void;
 }) {
   const { title, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const categoryName = item.category_name ?? null;
   const canComplete = isCompletable(kind) && !isDone;
   const reminders = (item.meta?.reminders as string[]) ?? [];
   const timeStr = time ? String(time).slice(0, 5) : null;
+  const isClickable = !!(onItemClick && (kind === "task" || kind === "task_occ" || kind === "event") && !isDone);
 
   return (
     <div
       {...(dragHandleProps ?? {})}
       className={clsx(
         "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
-        isCompleting && "task-row-completing"
+        isCompleting && "task-row-completing",
+        isClickable && "cursor-pointer"
       )}
+      onClick={isClickable ? (e) => { e.stopPropagation(); onItemClick!(item); } : undefined}
+      title={isClickable ? "Открыть" : undefined}
     >
       {/* Checkbox / icon */}
-      <div className="shrink-0">
+      <div className="shrink-0" onClick={isClickable ? (e) => e.stopPropagation() : undefined}>
         {kind === "event" ? (
           <div className="w-5 h-5 flex items-center justify-center">
             <span className="text-[14px]">📅</span>
@@ -152,10 +159,12 @@ function SortableTaskItem({
   item,
   onComplete,
   isCompleting,
+  onItemClick,
 }: {
   item: DashboardItem;
   onComplete: (item: DashboardItem) => void;
   isCompleting?: boolean;
+  onItemClick?: (item: DashboardItem) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -175,6 +184,7 @@ function SortableTaskItem({
         onComplete={onComplete}
         isCompleting={isCompleting}
         dragHandleProps={{ ...attributes, ...listeners }}
+        onItemClick={onItemClick}
       />
     </div>
   );
@@ -337,6 +347,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   const [executeOp, setExecuteOp] = useState<UpcomingPayment | null>(null);
   const [confirmItem, setConfirmItem] = useState<DashboardItem | null>(null);
+  const [detailItem, setDetailItem] = useState<DashboardItem | null>(null);
   const [completingKey, setCompletingKey] = useState<string | null>(null);
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -480,6 +491,22 @@ export function TodayBlock({ today, plannedOps }: Props) {
           onCompleted={handleTodayCompleted}
         />
       )}
+      {detailItem && (detailItem.kind === "task" || detailItem.kind === "task_occ" || detailItem.kind === "event") && (
+        <EntryDetailModal
+          entry={{
+            id: detailItem.id,
+            kind: detailItem.kind,
+            title: detailItem.title,
+            date: detailItem.date,
+            time: detailItem.time,
+            is_done: detailItem.is_done,
+            is_overdue: detailItem.is_overdue,
+            category_emoji: detailItem.category_emoji,
+            meta: detailItem.meta,
+          }}
+          onClose={() => { setDetailItem(null); qc.invalidateQueries({ queryKey: ["dashboard"] }); qc.invalidateQueries({ queryKey: ["plan"] }); }}
+        />
+      )}
       {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
       {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
@@ -599,10 +626,11 @@ export function TodayBlock({ today, plannedOps }: Props) {
                           item={item}
                           onComplete={handleOpenCompleteItem}
                           isCompleting={completingKey === (item.kind + "-" + item.id)}
+                          onItemClick={setDetailItem}
                         />
                       ) : (
                         <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
-                          <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
+                          <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} onItemClick={setDetailItem} />
                         </div>
                       )
                     )}
@@ -629,7 +657,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               key: "events",
               label: "События",
               content: eventItems.map((item) => (
-                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
+                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} onItemClick={setDetailItem} />
               )),
             });
           }

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Check, CalendarDays } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
+import { EventReminders } from "@/components/events/EventReminders";
 
 interface PlanEntry {
   id: number;
@@ -139,6 +140,17 @@ export function EntryDetailModal({ entry, onClose }: Props) {
               dueDate={dueDate || null}
               dueTime={entry.time ?? (entry.meta.due_time as string) ?? null}
               disabled={entry.is_done}
+            />
+          </div>
+        )}
+
+        {/* Reminders — events */}
+        {entry.kind === "event" && typeof entry.meta.event_id === "number" && (
+          <div>
+            <label className={labelCls}>Напоминания</label>
+            <EventReminders
+              eventId={entry.meta.event_id as number}
+              startTime={entry.time ?? null}
             />
           </div>
         )}

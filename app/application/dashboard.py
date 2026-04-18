@@ -19,7 +19,7 @@ from app.infrastructure.db.models import (
     TaskModel, TaskTemplateModel, TaskOccurrence, TaskReminderModel,
     HabitModel, HabitOccurrence,
     OperationTemplateModel, OperationOccurrence,
-    CalendarEventModel, EventOccurrenceModel,
+    CalendarEventModel, EventOccurrenceModel, EventDefaultReminderModel,
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
     EventLog, CategoryInfo, ProjectModel,
@@ -339,6 +339,30 @@ class DashboardService:
             ),
         ).all()
 
+        # Batch-load event reminders for all event_ids (avoid N+1)
+        event_ids = list({occ.event_id for occ in rows})
+        reminders_by_event: dict[int, list[str]] = {}
+        if event_ids:
+            rem_rows = self.db.query(EventDefaultReminderModel).filter(
+                EventDefaultReminderModel.event_id.in_(event_ids)
+            ).all()
+            for rem in rem_rows:
+                if rem.mode == "fixed_time" and rem.fixed_time:
+                    label: str = rem.fixed_time.strftime("%H:%M")
+                elif rem.mode == "offset" and rem.offset_minutes is not None:
+                    m = abs(rem.offset_minutes)
+                    if m == 0:
+                        label = "в момент"
+                    elif m < 60:
+                        label = f"за {m} мин"
+                    elif m < 1440:
+                        label = f"за {m // 60} ч"
+                    else:
+                        label = f"за {m // 1440} д"
+                else:
+                    continue
+                reminders_by_event.setdefault(rem.event_id, []).append(label)
+
         ev_cache: dict[int, CalendarEventModel] = {}
         for occ in rows:
             if occ.event_id not in ev_cache:
@@ -361,6 +385,7 @@ class DashboardService:
                     "meta": {
                         "occurrence_id": occ.id,
                         "event_id": occ.event_id,
+                        "reminders": reminders_by_event.get(occ.event_id, []),
                     },
                 })
 
