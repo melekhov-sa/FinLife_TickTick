@@ -104,10 +104,13 @@ def _run_weekly_digest_job():
     try:
         from app.infrastructure.db.models import User
         users = db.query(User).all()
-        # The week that just ended is the previous Monday-Sunday
-        today = date.today()  # Sunday
-        # week_start = today - 6 days (back to Monday)
-        week_start = today - timedelta(days=6)
+        # The week that just ended is the previous Monday-Sunday.
+        # Snap to last Sunday regardless of which weekday the job actually fires
+        # (guards against container restart drift into Monday).
+        today = date.today()
+        days_since_last_sunday = (today.weekday() + 1) % 7  # 0 if Sun, 1 if Mon, ...
+        last_sunday = today - timedelta(days=days_since_last_sunday)
+        week_start = last_sunday - timedelta(days=6)
         week_key = iso_week_key(week_start)
         for user in users:
             try:

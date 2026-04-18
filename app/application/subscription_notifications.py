@@ -65,17 +65,21 @@ def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int
         trigger_date = sub.paid_until_self - notify_date_offset
         if today == trigger_date:
             if not _already_notified(db, sub.id, None, sub.paid_until_self):
-                # Send push if possible
-                if user_ids:
-                    payload = {
-                        "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
-                        "body": f"{sub.name}\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {sub.paid_until_self.strftime('%d.%m.%Y')}",
-                        "url": f"/subscriptions/{sub.id}",
-                    }
-                    for uid in user_ids:
-                        sent += send_push_to_user(db, uid, payload)
-                # Always log to prevent duplicate checks
-                _log_notification(db, sub.id, None, sub.paid_until_self)
+                try:
+                    # Send push if possible
+                    if user_ids:
+                        payload = {
+                            "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
+                            "body": f"{sub.name}\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {sub.paid_until_self.strftime('%d.%m.%Y')}",
+                            "url": f"/subscriptions/{sub.id}",
+                        }
+                        for uid in user_ids:
+                            sent += send_push_to_user(db, uid, payload)
+                    # Always log to prevent duplicate checks
+                    _log_notification(db, sub.id, None, sub.paid_until_self)
+                except Exception:
+                    db.rollback()
+                    logger.exception("Subscription self-notification failed for sub_id=%s", sub.id)
 
     # Check each member's paid_until
     members = db.query(SubscriptionMemberModel).filter(
@@ -95,17 +99,22 @@ def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int
         trigger_date = member.paid_until - notify_date_offset
         if today == trigger_date:
             if not _already_notified(db, sub.id, member.id, member.paid_until):
-                if user_ids:
-                    contact = contact_map.get(member.contact_id)
-                    contact_name = contact.name if contact else "?"
-                    payload = {
-                        "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
-                        "body": f"{sub.name} ({contact_name})\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {member.paid_until.strftime('%d.%m.%Y')}",
-                        "url": f"/subscriptions/{sub.id}",
-                    }
-                    for uid in user_ids:
-                        sent += send_push_to_user(db, uid, payload)
-                _log_notification(db, sub.id, member.id, member.paid_until)
+                try:
+                    if user_ids:
+                        contact = contact_map.get(member.contact_id)
+                        contact_name = contact.name if contact else "?"
+                        payload = {
+                            "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
+                            "body": f"{sub.name} ({contact_name})\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {member.paid_until.strftime('%d.%m.%Y')}",
+                            "url": f"/subscriptions/{sub.id}",
+                        }
+                        for uid in user_ids:
+                            sent += send_push_to_user(db, uid, payload)
+                    _log_notification(db, sub.id, member.id, member.paid_until)
+                except Exception:
+                    db.rollback()
+                    logger.exception("Subscription notification failed for member_id=%s", member.id)
+                    continue
 
     db.commit()
     return sent

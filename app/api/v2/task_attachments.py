@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import TaskModel, TaskAttachmentModel
+from app.infrastructure.file_utils import detect_mime
 from app.config import get_settings
 
 
@@ -54,31 +55,6 @@ ALLOWED_MIME_TYPES = {
 }
 
 EXTENSIONS_LABEL = ", ".join(sorted(ALLOWED_EXTENSIONS))
-
-# Magic byte signatures for file type detection
-_MAGIC_SIGS: list[tuple[bytes, str]] = [
-    (b"\x89PNG\r\n\x1a\n", "image/png"),
-    (b"\xff\xd8\xff", "image/jpeg"),
-    (b"GIF87a", "image/gif"),
-    (b"GIF89a", "image/gif"),
-    (b"RIFF", "image/webp"),  # RIFF....WEBP
-    (b"%PDF", "application/pdf"),
-    (b"PK\x03\x04", "application/zip"),  # also docx/xlsx
-]
-
-
-def _detect_mime(data: bytes) -> str | None:
-    """Detect MIME type from file magic bytes. Returns None if unknown."""
-    for sig, mime in _MAGIC_SIGS:
-        if data[:len(sig)] == sig:
-            if sig == b"RIFF" and b"WEBP" not in data[:16]:
-                continue
-            if sig == b"PK\x03\x04":
-                # ZIP-based: could be docx, xlsx, or plain zip — all allowed
-                return "application/zip"
-            return mime
-    # Text-like files (txt, csv) — no reliable magic, trust extension
-    return None
 
 
 # ── Response schema ──────────────────────────────────────────────────────────
@@ -133,7 +109,7 @@ def list_attachments(task_id: int, request: Request, db: Session = Depends(get_d
 
 
 @router.post("/tasks/{task_id}/attachments", response_model=AttachmentItem, status_code=201)
-async def upload_attachment(
+def upload_attachment(
     task_id: int,
     request: Request,
     file: UploadFile = File(...),
@@ -171,7 +147,7 @@ async def upload_attachment(
         )
 
     # Read file content and check size
-    data = await file.read()
+    data = file.file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
@@ -179,7 +155,7 @@ async def upload_attachment(
         )
 
     # Verify actual file type via magic bytes
-    actual_type = _detect_mime(data)
+    actual_type = detect_mime(data)
     if actual_type and actual_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=400,

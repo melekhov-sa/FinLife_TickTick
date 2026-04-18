@@ -120,6 +120,11 @@ class BaseProjector(ABC):
             >>> projector = WalletBalancesProjector(db)
             >>> count = projector.run(account_id=1)
             >>> print(f"Processed {count} events")
+
+        IMPORTANT: this method calls db.commit() at the end of each batch.
+        Callers must have either already committed their own changes or must
+        want those changes committed as part of this run(). Do not call inside
+        an enclosing transaction you plan to roll back.
         """
         checkpoint = self.get_checkpoint(account_id)
         processed_count = 0

@@ -355,8 +355,17 @@ def _in_quiet_hours(now_time, settings: UserNotificationSettings | None) -> bool
     return now_time >= s or now_time <= e
 
 
-def _send_telegram(db: Session, notif: NotificationModel) -> bool:
-    """Send a Telegram message using the user's own bot token. Returns True on success."""
+_TELEGRAM_RETRY = object()  # sentinel compared by identity; leaves delivery as pending
+
+
+def _send_telegram(db: Session, notif: NotificationModel):
+    """Send a Telegram message using the user's own bot token.
+
+    Returns:
+        True  — message delivered successfully.
+        False — permanent failure (4xx other than 429); mark delivery failed.
+        _TELEGRAM_RETRY sentinel — transient failure (429 or 5xx); leave pending.
+    """
     from app.infrastructure.crypto import decrypt
     tg = db.query(TelegramSettings).filter_by(user_id=notif.user_id, connected=True).first()
     if not tg or not tg.chat_id or not tg.bot_token:
@@ -375,7 +384,24 @@ def _send_telegram(db: Session, notif: NotificationModel) -> bool:
             },
             timeout=5,
         )
-        return resp.status_code == 200
+        if resp.status_code == 200:
+            return True
+        if resp.status_code == 429:
+            retry_after = resp.headers.get("Retry-After", "unknown")
+            logger.warning(
+                "Telegram rate-limited for user_id=%s; Retry-After=%s s — leaving delivery pending",
+                notif.user_id, retry_after,
+            )
+            return _TELEGRAM_RETRY
+        if resp.status_code >= 500:
+            logger.warning(
+                "Telegram server error %s for user_id=%s — leaving delivery pending for next cycle",
+                resp.status_code, notif.user_id,
+            )
+            return _TELEGRAM_RETRY
+        # 4xx other than 429 — permanent error
+        logger.error("Telegram permanent error %s for user_id=%s", resp.status_code, notif.user_id)
+        return False
     except Exception:
         logger.exception("Telegram send failed for user_id=%s", notif.user_id)
         return False
@@ -418,10 +444,15 @@ def dispatch_pending_deliveries(db: Session) -> None:
                     continue
                 delivery.status = "sending"
                 db.commit()
-                ok = _send_telegram(db, notif)
-                delivery.status = "sent" if ok else "failed"
-                delivery.sent_at = now
-                db.commit()
+                result = _send_telegram(db, notif)
+                if result is _TELEGRAM_RETRY:
+                    # Transient failure — revert to pending so next cycle retries
+                    delivery.status = "pending"
+                    db.commit()
+                else:
+                    delivery.status = "sent" if result else "failed"
+                    delivery.sent_at = now
+                    db.commit()
             elif delivery.channel == "email":
                 if _in_quiet_hours(now.time(), settings):
                     continue

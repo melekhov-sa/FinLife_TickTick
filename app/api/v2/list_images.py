@@ -12,9 +12,11 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import SharedListItem, SharedList
+from app.infrastructure.file_utils import detect_mime
 from app.config import get_settings
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_SIZE = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter()
@@ -38,7 +40,7 @@ def _get_item_with_auth(item_id: int, user_id: int, db: Session) -> SharedListIt
 
 
 @router.post("/lists/items/{item_id}/image")
-async def upload_image(item_id: int, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+def upload_image(item_id: int, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
     item = _get_item_with_auth(item_id, user_id, db)
 
@@ -46,9 +48,13 @@ async def upload_image(item_id: int, request: Request, file: UploadFile = File(.
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {ext}")
 
-    content = await file.read()
+    content = file.file.read()
     if len(content) > MAX_SIZE:
         raise HTTPException(400, "File too large (max 5 MB)")
+
+    actual_mime = detect_mime(content)
+    if actual_mime is not None and actual_mime not in ALLOWED_IMAGE_MIMES:
+        raise HTTPException(400, f"File contents do not match an allowed image type ({actual_mime})")
 
     # Delete old image if exists
     _delete_file(item, user_id)
