@@ -79,7 +79,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* < xl: single column, action block first */}
+            {/* < xl: single column, action block first, Productivity last */}
             <div className="xl:hidden space-y-3 md:space-y-4">
               <TodayBlock
                 today={data.today}
@@ -89,15 +89,15 @@ export default function DashboardPage() {
                 finState={data.fin_state}
                 financialSummary={data.financial_summary}
               />
+              <UpcomingPayments payments={data.upcoming_payments} />
+              <WeekEventsCard events={data.week_events} />
+              <ExpiringSubsCard subs={data.expiring_subs} />
+              <ActivityFeed feed={data.feed} />
               <ProgressBlock
                 level={data.level}
                 efficiency={data.efficiency}
                 cells={data.habit_heatmap}
               />
-              <UpcomingPayments payments={data.upcoming_payments} />
-              <WeekEventsCard events={data.week_events} />
-              <ExpiringSubsCard subs={data.expiring_subs} />
-              <ActivityFeed feed={data.feed} />
             </div>
           </div>
         )}
