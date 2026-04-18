@@ -7,6 +7,7 @@ from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_current_user
 from app.infrastructure.db.models import User
 from app.config import get_settings
+from app.application.app_config import get_openai_key
 
 router = APIRouter()
 
@@ -37,7 +38,7 @@ def get_me(request: Request, db: Session = Depends(get_db)):
         enable_task_templates=user.enable_task_templates,
         enable_task_reschedule_reasons=user.enable_task_reschedule_reasons,
         ai_digest_enabled=user.ai_digest_enabled,
-        ai_digest_available=bool(get_settings().OPENAI_API_KEY),
+        ai_digest_available=bool(get_openai_key(db)),
     )
 
 

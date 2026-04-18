@@ -313,7 +313,8 @@ def generate_and_save_weekly_digest(db: Session, account_id: int, week_start: da
     ai_comment = None
     if user and user.ai_digest_enabled:
         from app.infrastructure.ai import generate_digest_comment
-        ai_comment = generate_digest_comment(payload)
+        from app.application.app_config import get_openai_key
+        ai_comment = generate_digest_comment(payload, api_key=get_openai_key(db))
 
     save_digest(db, account_id, "week", period_key, payload, ai_comment)
     return (

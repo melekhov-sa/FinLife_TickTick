@@ -1,7 +1,7 @@
 """
 AI commentary client for weekly digests.
 
-Uses OpenAI API when OPENAI_API_KEY is set.
+Uses OpenAI API when an api_key is provided (DB override or .env fallback).
 Returns None gracefully when the key is absent or any error occurs —
 the digest works fine without AI commentary.
 """
@@ -16,28 +16,37 @@ _PROMPT_TEMPLATE = """\
 Данные: {payload_json}"""
 
 
-def generate_digest_comment(payload: dict) -> str | None:
+def generate_digest_comment(payload: dict, api_key: str | None = None) -> str | None:
     """
     Generate an AI commentary for the digest payload.
 
+    Args:
+        payload: The digest metrics dictionary.
+        api_key: OpenAI API key. If None, falls back to OPENAI_API_KEY env var.
+
     Returns a Russian-language string with 2-3 paragraphs, or None if:
-    - OPENAI_API_KEY is not set in the environment
+    - No API key is available
     - The API call fails for any reason
     """
-    from app.config import get_settings
-    settings = get_settings()
+    # Resolve key: explicit arg first, then .env fallback
+    key = api_key
+    if not key:
+        from app.config import get_settings
+        key = get_settings().OPENAI_API_KEY or None
 
-    if not settings.OPENAI_API_KEY:
+    if not key:
         return None
 
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=15.0)
+        from app.config import get_settings
+        model = get_settings().OPENAI_MODEL
+        client = OpenAI(api_key=key, timeout=15.0)
         prompt = _PROMPT_TEMPLATE.format(
             payload_json=json.dumps(payload, ensure_ascii=False, indent=2)
         )
         response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=600,
             temperature=0.7,

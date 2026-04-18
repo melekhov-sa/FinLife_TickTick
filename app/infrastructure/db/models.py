@@ -1696,3 +1696,18 @@ class DigestModel(Base):
         UniqueConstraint('account_id', 'period_type', 'period_key', name='uq_digest_account_period'),
         Index('ix_digest_account_type_generated', 'account_id', 'period_type', 'generated_at'),
     )
+
+
+# ============================================================================
+# App Config (admin-managed key-value settings, e.g. OpenAI API key)
+# ============================================================================
+
+class AppConfigModel(Base):
+    """Admin-managed application configuration (key-value store)."""
+    __tablename__ = "app_config"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

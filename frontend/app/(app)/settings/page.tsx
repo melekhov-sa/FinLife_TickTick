@@ -388,6 +388,23 @@ export default function SettingsPage() {
                 <ChevronRight size={16} style={{ color: "var(--t-faint)" }} className="shrink-0" />
               </Link>
             )}
+            {/* AI Settings -- admin only */}
+            {me?.is_admin && (
+              <Link
+                href="/settings/ai"
+                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01]"
+                style={{ borderColor: cardBorder, background: cardBg }}
+              >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#8b5cf612" }}>
+                  <Sparkles size={18} style={{ color: "#8b5cf6" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>AI настройки</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>OpenAI API ключ, тест соединения</p>
+                </div>
+                <ChevronRight size={16} style={{ color: "var(--t-faint)" }} className="shrink-0" />
+              </Link>
+            )}
           </div>
 
         </div>
