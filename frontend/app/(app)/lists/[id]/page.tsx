@@ -614,7 +614,7 @@ export default function ListDetailPage() {
         <div
           ref={setNodeRef}
           className={clsx(
-            "flex-1 space-y-2 rounded-xl border p-2 min-h-[120px] transition-colors",
+            "flex-1 min-h-0 overflow-y-auto space-y-2 rounded-xl border p-2 min-h-[120px] transition-colors",
             isOver
               ? "bg-indigo-50/60 dark:bg-indigo-500/[0.06] border-indigo-200 dark:border-indigo-500/25"
               : "bg-slate-50/80 dark:bg-white/[0.02] border-slate-100 dark:border-white/[0.04]"
@@ -681,7 +681,7 @@ export default function ListDetailPage() {
 
     return (
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-3 px-3 md:-mx-6 md:px-6">
+        <div className="flex gap-3 h-full px-3 md:px-6">
           {columns.map((g) => (
             <KanbanColumn key={g.id} group={g} items={g._items} />
           ))}
@@ -898,11 +898,16 @@ export default function ListDetailPage() {
       )}
 
       <AppTopbar title={list?.title ?? "Список"} />
-      <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
-        <div className={viewMode === "kanban" ? "" : "max-w-[700px]"}>
+      <main className={clsx(
+        "touch-manipulation",
+        viewMode === "kanban"
+          ? "h-[calc(100dvh-56px)] flex flex-col overflow-hidden"
+          : "flex-1 overflow-auto p-3 md:p-6"
+      )}>
+        <div className={viewMode === "kanban" ? "flex flex-col flex-1 min-h-0" : "max-w-[700px] p-3 md:p-6"}>
 
           {isLoading && (
-            <div className="space-y-3">
+            <div className={clsx("space-y-3", viewMode === "kanban" && "px-3 md:px-6 pt-3 md:pt-6")}>
               {[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 dark:bg-white/[0.02] rounded-xl animate-pulse" />)}
             </div>
           )}
@@ -910,7 +915,7 @@ export default function ListDetailPage() {
           {list && (
             <>
               {/* Header actions */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
+              <div className={clsx("flex flex-wrap items-center gap-2 mb-4", viewMode === "kanban" && "px-3 md:px-6 pt-3 md:pt-6 flex-none")}>
                 <button
                   onClick={() => togglePublic(!list.is_public)}
                   className={clsx(
@@ -954,17 +959,19 @@ export default function ListDetailPage() {
                 </div>
               </div>
 
-              {list.description && <p className="text-[13px] mb-4" style={{ color: "var(--t-muted)" }}>{list.description}</p>}
+              {list.description && <p className={clsx("text-[13px] mb-4", viewMode === "kanban" && "px-3 md:px-6 flex-none")} style={{ color: "var(--t-muted)" }}>{list.description}</p>}
 
               {grouped.length === 0 && (
-                <div className="text-center py-16">
+                <div className={clsx("text-center py-16", viewMode === "kanban" && "px-3 md:px-6")}>
                   <p className="text-[14px]" style={{ color: "var(--t-muted)" }}>Список пуст</p>
                   <button onClick={() => setShowAddItem(true)} className="mt-3 text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">+ Добавить первый элемент</button>
                 </div>
               )}
 
               {viewMode === "kanban" ? (
-                renderKanban()
+                <div className="flex-1 min-h-0 overflow-x-auto pb-[calc(env(safe-area-inset-bottom)+8px)]">
+                  {renderKanban()}
+                </div>
               ) : (
                 <>
                   {grouped.map(({ group, items }) => (
