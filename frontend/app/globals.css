@@ -749,16 +749,19 @@ html.dark[data-color-theme="emerald"] {
   text-decoration: line-through;
   text-decoration-color: rgba(100,116,139,0.4);
 }
+/* Checkmark is hidden by default — only appears during the completion animation */
+.task-check-mark {
+  opacity: 0;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
 .task-check-completing {
   animation: task-check-fill 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   color: rgba(100,116,139,0.5);
 }
 .task-check-completing .task-check-mark {
   animation: task-check-mark 250ms ease-out 100ms forwards;
-  opacity: 0;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
 }
 
 @media (prefers-reduced-motion: reduce) {
