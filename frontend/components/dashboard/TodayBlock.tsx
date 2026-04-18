@@ -37,9 +37,30 @@ interface Props {
 
 // ── Chip helpers ──────────────────────────────────────────────────────────────
 
+// Stable pastel palette — same category name always maps to the same colour
+const CATEGORY_COLORS = [
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
+  "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+  "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+  "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+];
+
+function categoryColorClass(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
+}
+
 function CategoryChip({ name }: { name: string }) {
+  const colorCls = categoryColorClass(name);
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none shrink-0 bg-slate-100/80 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium leading-none shrink-0 ${colorCls}`}>
       {name}
     </span>
   );
