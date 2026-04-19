@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { clsx } from "clsx";
 import type { LevelBlock, EfficiencyBlock, HeatmapCell } from "@/types/api";
@@ -61,69 +61,71 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
         Продуктивность
       </h2>
 
-      {/* ── Level ─────────────────────────────────────────── */}
-      {level && (
-        <div>
-          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1.5 md:mb-2" style={{ color: "var(--t-faint)" }}>
-            Уровень
-          </p>
-          <div className="flex items-end gap-2.5 md:gap-3 mb-1.5 md:mb-2">
-            <span
-              className="text-[24px] md:text-[28px] font-bold tabular-nums leading-none"
-              style={{ letterSpacing: "-0.04em", color: "var(--t-primary)" }}
-            >
-              {level.level}
-            </span>
-            <div className="pb-0.5">
-              <p className="text-[11px] md:text-[12px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
-                {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)} XP
+      {/* ── Level + Efficiency: compact two-column layout ─────────── */}
+      {(level || efficiency) && (
+        <div className="flex gap-4 items-stretch">
+          {/* Level column */}
+          {level && (
+            <div className="flex-1 min-w-0 flex flex-col">
+              <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+                Уровень
               </p>
-              <p className="text-[10px] md:text-[11px]" style={{ color: "var(--t-faint)" }}>
-                +{fmt(level.xp_this_month)} XP этот месяц
-              </p>
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span
+                  className="text-[26px] md:text-[28px] font-bold tabular-nums leading-none"
+                  style={{ letterSpacing: "-0.04em", color: "var(--t-primary)" }}
+                >
+                  {level.level}
+                </span>
+                <span className="text-[11px] tabular-nums font-medium" style={{ color: "var(--t-faint)" }}>
+                  {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)}
+                </span>
+              </div>
+              <div className="mt-auto h-1 md:h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${levelPct}%`,
+                    background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                    boxShadow: levelPct > 5 ? "0 0 8px rgba(99,102,241,0.6)" : "none",
+                  }}
+                />
+              </div>
             </div>
-          </div>
-          <div className="h-1 md:h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${levelPct}%`,
-                background: "linear-gradient(90deg, #6366f1, #818cf8)",
-                boxShadow: levelPct > 5 ? "0 0 8px rgba(99,102,241,0.6)" : "none",
-              }}
-            />
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* ── Efficiency ────────────────────────────────────── */}
-      {efficiency && (
-        <div className={level ? "border-t border-white/[0.05] pt-3 md:pt-4" : ""}>
-          <div className="flex items-center justify-between mb-1.5 md:mb-2">
-            <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Эффективность
-            </p>
-            <span className={clsx("text-[10px] md:text-[11px] font-semibold", effTier.color)}>{effTier.label}</span>
-          </div>
-          <div className="flex items-end gap-1.5 md:gap-2 mb-1.5 md:mb-2">
-            <span className={clsx("text-[24px] md:text-[28px] font-bold tabular-nums leading-none", effScoreColor)} style={{ letterSpacing: "-0.04em" }}>
-              {effScore}
-            </span>
-            <span className="text-[12px] md:text-[13px] pb-0.5 font-medium" style={{ color: "var(--t-muted)" }}>/ 100</span>
-          </div>
-          <div className="flex gap-0.5 md:gap-1">
-            {Array.from({ length: SCORE_BARS }).map((_, i) => (
-              <div
-                key={i}
-                className={clsx("flex-1 h-3 md:h-4 rounded transition-all", i < effFilledBars ? effBarColor : "bg-white/[0.05]")}
-                style={i < effFilledBars ? { boxShadow: `0 0 5px ${effBarGlow}` } : undefined}
-              />
-            ))}
-          </div>
-          {efficiency.snapshot_date && (
-            <p className="text-[10px] md:text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
-              Индекс за 7 дней · {efficiency.snapshot_date}
-            </p>
+          {/* Divider */}
+          {level && efficiency && (
+            <div className="w-px bg-slate-200 dark:bg-white/[0.06] self-stretch" />
+          )}
+
+          {/* Efficiency column */}
+          {efficiency && (
+            <div className="flex-1 min-w-0 flex flex-col">
+              <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+                Эффективность
+              </p>
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span className={clsx("text-[26px] md:text-[28px] font-bold tabular-nums leading-none", effScoreColor)} style={{ letterSpacing: "-0.04em" }}>
+                  {effScore}
+                </span>
+                <span className="text-[11px] font-medium tabular-nums" style={{ color: "var(--t-faint)" }}>
+                  / 100
+                </span>
+                <span className={clsx("ml-auto text-[10px] md:text-[11px] font-semibold", effTier.color)}>
+                  {effTier.label}
+                </span>
+              </div>
+              <div className="mt-auto flex gap-0.5 md:gap-1">
+                {Array.from({ length: SCORE_BARS }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={clsx("flex-1 h-3 md:h-4 rounded transition-all", i < effFilledBars ? effBarColor : "bg-white/[0.05]")}
+                    style={i < effFilledBars ? { boxShadow: `0 0 5px ${effBarGlow}` } : undefined}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -143,14 +145,6 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
                 style={{ boxShadow: LEVEL_GLOW[cell.level] }}
               />
             ))}
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px] md:text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-              {cells[0]?.date?.slice(5)}
-            </span>
-            <span className="text-[10px] md:text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-              {cells[cells.length - 1]?.date?.slice(5)}
-            </span>
           </div>
         </div>
       )}

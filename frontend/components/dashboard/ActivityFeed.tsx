@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import { clsx } from "clsx";
@@ -194,8 +194,8 @@ export function ActivityFeed({ feed }: Props) {
 
   if (feed.length === 0) return null;
 
-  const visibleDays = showAll ? feed : feed.slice(0, 2);
-  const hiddenDayCount = feed.length - 2;
+  const visibleDays = showAll ? feed : feed.slice(0, 1);
+  const hiddenDayCount = feed.length - 1;
 
   return (
     <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-3 md:p-4">
@@ -218,7 +218,7 @@ export function ActivityFeed({ feed }: Props) {
           Показать всю историю →
         </button>
       )}
-      {showAll && feed.length > 2 && (
+      {showAll && feed.length > 1 && (
         <button
           onClick={() => setShowAll(false)}
           className="w-full text-center py-1 mt-1.5 text-[12px] font-medium transition-colors hover:text-indigo-500"

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
@@ -94,6 +94,7 @@ function Item({
       {...(dragHandleProps ?? {})}
       className={clsx(
         "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
+        isOverdue && !isDone && "bg-red-50/60 dark:bg-red-500/[0.06]",
         isCompleting && "task-row-completing",
         isClickable && "cursor-pointer"
       )}
