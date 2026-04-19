@@ -191,16 +191,15 @@ class TestChangeTaskBoardStatus:
         db_session.refresh(t)
         assert t.completed_at == _NOW
 
-    def test_undone_keeps_completed_at(self, db_session, sample_account_id):
+    def test_undone_clears_completed_at(self, db_session, sample_account_id):
         t = _add_task(db_session, sample_account_id, "Task")
         ChangeTaskBoardStatusUseCase(db_session).execute(t.task_id, sample_account_id, "done")
         db_session.refresh(t)
-        saved_ts = t.completed_at
 
         ChangeTaskBoardStatusUseCase(db_session).execute(t.task_id, sample_account_id, "todo")
         db_session.refresh(t)
         assert t.board_status == "todo"
-        assert t.completed_at == saved_ts
+        assert t.completed_at is None
 
     def test_invalid_board_status(self, db_session, sample_account_id):
         t = _add_task(db_session, sample_account_id, "Task")

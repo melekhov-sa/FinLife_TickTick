@@ -40,7 +40,7 @@ from app.application.notification_engine import (
 
 
 _tz = timezone.utc
-TODAY = date(2026, 2, 27)
+TODAY = date.today()
 USER_ID = 1
 
 
@@ -105,7 +105,7 @@ def _notif(db, *, user_id=USER_ID, rule_code="TASK_OVERDUE",
         body_inapp="body",
         body_telegram="body_tg",
         is_read=False,
-        created_at=created_at or datetime(2026, 2, 27, 10, 0, tzinfo=_tz),
+        created_at=created_at or datetime.combine(TODAY, time(10, 0), tzinfo=_tz),
     )
     db.add(n)
     db.flush()
@@ -133,13 +133,13 @@ def _settings(db, *, user_id=USER_ID, enabled=True,
 
 def test_dedup_same_day(db_session):
     """Same entity + same day → _is_duplicate returns True after first creation."""
-    _notif(db_session, entity_id=42, created_at=datetime(2026, 2, 27, 9, 0, tzinfo=_tz))
+    _notif(db_session, entity_id=42, created_at=datetime.combine(TODAY, time(9, 0), tzinfo=_tz))
     assert _is_duplicate(db_session, USER_ID, "TASK_OVERDUE", "task", 42, TODAY) is True
 
 
 def test_dedup_different_day(db_session):
     """Notification on a different day → _is_duplicate returns False."""
-    _notif(db_session, entity_id=42, created_at=datetime(2026, 2, 26, 9, 0, tzinfo=_tz))
+    _notif(db_session, entity_id=42, created_at=datetime.combine(TODAY - timedelta(days=1), time(9, 0), tzinfo=_tz))
     # Yesterday's notification should not block today
     assert _is_duplicate(db_session, USER_ID, "TASK_OVERDUE", "task", 42, TODAY) is False
 
@@ -259,6 +259,7 @@ def test_payment_rule(db_session):
         active_from=TODAY,
         kind="EXPENSE",
         amount=5000,
+        is_archived=False,
     )
     db_session.add(tmpl)
     db_session.flush()

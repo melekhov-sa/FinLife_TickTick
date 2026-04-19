@@ -1,6 +1,6 @@
 """Tests for Subscriptions module — CRUD, coverages, overlap, distribution, extend, compensate, notifications, analytics."""
 import pytest
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from app.infrastructure.db.models import (
@@ -1088,7 +1088,7 @@ class TestCompensateSubscription:
         assert cov.start_date == date(2026, 4, 1)  # day after old paid_until
 
     def test_compensate_date_must_be_later_than_current(self, db_session, wallet, subscription, member):
-        member.paid_until = date(2026, 3, 31)
+        member.paid_until = date.today() + timedelta(days=30)
         db_session.commit()
 
         with pytest.raises(SubscriptionValidationError, match="позже текущей"):
@@ -1098,7 +1098,7 @@ class TestCompensateSubscription:
                 wallet_id=wallet.wallet_id,
                 amount=Decimal("300"),
                 member_id=member.id,
-                new_paid_until=date(2026, 3, 31),
+                new_paid_until=date.today() + timedelta(days=30),
                 actor_user_id=ACCOUNT,
             )
 

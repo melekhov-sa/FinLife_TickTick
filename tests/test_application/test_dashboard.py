@@ -706,7 +706,7 @@ class TestFocusDayEventsExcluded:
         # Event in separate list
         assert len(block["events"]) == 1
         assert block["events"][0]["title"] == "Dentist"
-        assert block["events"][0]["time"] == time(10, 0)
+        assert block["events"][0]["time"] == "10:00"
 
         # Not in active/done
         assert len(block["active"]) == 0

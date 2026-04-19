@@ -348,7 +348,7 @@ class TestCreateEventE2E:
             account_id=ACCT,
             title="Тестовое событие",
             category_id=cat.category_id,
-            occ_start_date="2026-04-04",
+            occ_start_date=(date.today() - timedelta(days=1)).isoformat(),
             occ_start_time="10:00",
             actor_user_id=ACCT,
         )

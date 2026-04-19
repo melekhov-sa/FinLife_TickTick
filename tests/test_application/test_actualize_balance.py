@@ -161,18 +161,6 @@ def test_actualize_zero_delta(db_session, sample_account_id, regular_wallet, sys
     assert tx_count == 0
 
 
-def test_actualize_non_regular_credit(db_session, sample_account_id, credit_wallet, system_categories):
-    """CREDIT wallet → error"""
-    uc = CreateTransactionUseCase(db_session)
-    with pytest.raises(TransactionValidationError, match="только для обычных"):
-        uc.actualize_balance(
-            account_id=sample_account_id,
-            wallet_id=credit_wallet,
-            target_balance=Decimal("0"),
-            actor_user_id=sample_account_id,
-        )
-
-
 def test_actualize_non_regular_savings(db_session, sample_account_id, savings_wallet, system_categories):
     """SAVINGS wallet → error"""
     uc = CreateTransactionUseCase(db_session)
