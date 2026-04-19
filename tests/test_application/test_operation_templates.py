@@ -85,14 +85,14 @@ class TestIncomeValidation:
 
 
 class TestTransferRejected:
-    def test_transfer_kind_rejected(self, db_session, sample_account_id, setup_wallets, setup_category):
-        """TRANSFER kind -> ошибка (больше не поддерживается)."""
+    def test_transfer_requires_destination(self, db_session, sample_account_id, setup_wallets, setup_category):
+        """TRANSFER без destination_wallet_id -> ошибка."""
         uc = CreateOperationTemplateUseCase(db_session)
-        with pytest.raises(OperationTemplateValidationError, match="Неверный тип операции"):
+        with pytest.raises(OperationTemplateValidationError, match="Кошелёк назначения обязателен"):
             uc.execute(
                 account_id=sample_account_id, title="Перевод", freq="MONTHLY",
                 interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="1000", wallet_id=1, category_id=1,
+                amount="1000", wallet_id=1, category_id=None,
             )
 
 

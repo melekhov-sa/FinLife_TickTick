@@ -38,7 +38,7 @@ class Wallet:
         wallet_id: int,
         title: str,
         currency: str,
-        wallet_type: str,
+        wallet_type: str = WALLET_TYPE_REGULAR,
         initial_balance: str = "0"
     ) -> Dict[str, Any]:
         """

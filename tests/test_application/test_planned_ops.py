@@ -141,12 +141,12 @@ class TestCreateIncome:
 # ======================================================================
 
 class TestNoTransfer:
-    def test_transfer_kind_rejected(self, db_session, wallets, category):
-        with pytest.raises(OperationTemplateValidationError, match="Неверный тип операции"):
+    def test_transfer_requires_destination(self, db_session, wallets, category):
+        with pytest.raises(OperationTemplateValidationError, match="Кошелёк назначения обязателен"):
             CreateOperationTemplateUseCase(db_session).execute(
                 account_id=ACCOUNT, title="Перевод", freq="MONTHLY",
                 interval=1, start_date="2026-03-01", kind="TRANSFER",
-                amount="1000", wallet_id=1, category_id=1,
+                amount="1000", wallet_id=1, category_id=None,
             )
 
 

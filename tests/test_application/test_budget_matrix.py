@@ -90,6 +90,7 @@ def _add_operation_template(db, template_id, rule_id, kind, amount, category_id)
         active_from=date(2026, 1, 1),
         kind=kind, amount=Decimal(str(amount)),
         category_id=category_id,
+        is_archived=False,
     )
     db.add(tmpl)
     db.flush()
@@ -307,7 +308,7 @@ class TestCategoryFilter:
         view = BudgetMatrixService(db_session).build(
             account_id=ACCOUNT, grain="month", range_count=1,
             anchor_year=2026, anchor_month=1,
-            category_ids=[3],
+            hidden_category_ids={4},
         )
 
         cat_ids = [r["category_id"] for r in view["expense_rows"]]

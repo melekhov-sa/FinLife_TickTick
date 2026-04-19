@@ -550,7 +550,7 @@ class BudgetMatrixService:
             q = q.filter(BudgetMonth.budget_variant_id == budget_variant_id)
         budget_months = q.all()
         if not budget_months:
-            return {}
+            return {}, {}
 
         # Map each budget_month to the period(s) it falls into
         bm_to_periods: Dict[int, List[int]] = {}

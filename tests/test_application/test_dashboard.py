@@ -378,7 +378,7 @@ class TestUpcomingPayments:
         assert pay["kind"] == "INCOME"
         assert pay["kind_label"] == "Доход"
         assert pay["amount"] == Decimal("100000")
-        assert pay["amount_formatted"] == "100 000"
+        assert pay["amount_formatted"] == "100 000 руб."
 
 
 # ======================================================================
@@ -469,6 +469,7 @@ class TestHabitHeatmap:
 class TestFinancialSummary:
     def test_empty(self, db_session):
         result = DashboardService(db_session).get_financial_summary(ACCOUNT, TODAY)
+        result = result["RUB"]
         assert result["income"] == Decimal("0")
         assert result["expense"] == Decimal("0")
         assert result["difference"] == Decimal("0")
@@ -482,6 +483,7 @@ class TestFinancialSummary:
         _add_tx(db_session, 4, "INCOME", 999999, datetime(2026, 1, 15, 10, 0))
 
         result = DashboardService(db_session).get_financial_summary(ACCOUNT, TODAY)
+        result = result["RUB"]
         assert result["income"] == Decimal("150000")
         assert result["expense"] == Decimal("30000")
         assert result["difference"] == Decimal("120000")
@@ -490,6 +492,7 @@ class TestFinancialSummary:
         """Transfers don't affect income or expense."""
         _add_tx(db_session, 1, "TRANSFER", 50000, datetime(2026, 2, 5, 10, 0))
         result = DashboardService(db_session).get_financial_summary(ACCOUNT, TODAY)
+        result = result["RUB"]
         assert result["income"] == Decimal("0")
         assert result["expense"] == Decimal("0")
 
