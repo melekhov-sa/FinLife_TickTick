@@ -141,11 +141,6 @@ function Item({
         >
           {title}
         </span>
-        {isOverdue && !isDone && (
-          <span className="text-[8px] font-bold text-red-500 bg-red-50 dark:bg-red-500/10 px-1 py-px rounded shrink-0">
-            просроч.
-          </span>
-        )}
         {categoryName && <CategoryChip name={categoryName} />}
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
@@ -710,7 +705,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
             <>
               {groups.map((g, idx) => (
                 <div key={g.key}>
-                  {idx > 0 && <div className="h-px bg-indigo-200/30 dark:bg-white/[0.05] my-0.5" />}
+                  {idx > 0 && <div className="h-px bg-slate-200/70 dark:bg-white/[0.06] my-2" />}
                   <GroupHeader label={g.label} />
                   {g.content}
                 </div>

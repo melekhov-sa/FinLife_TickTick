@@ -87,11 +87,25 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
           {/* Debt load */}
           {finState.debt_load_pct !== null && finState.debt_load_pct !== undefined && (
-            <div className="flex items-baseline justify-between gap-2 mt-1">
-              <span className="text-[11px] md:text-[12px]" style={{ color: "var(--t-faint)" }}>Долговая нагрузка</span>
-              <span className="text-[11px] md:text-[12px] tabular-nums" style={{ color: "var(--t-secondary)" }}>
-                {finState.debt_load_pct}%
-              </span>
+            <div className="mt-1.5">
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <span className="text-[11px] md:text-[12px]" style={{ color: "var(--t-faint)" }}>Долговая нагрузка</span>
+                <span className="text-[11px] md:text-[12px] font-semibold tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                  {finState.debt_load_pct}%
+                </span>
+              </div>
+              <div className="h-1 rounded-full overflow-hidden bg-slate-200 dark:bg-white/[0.07]">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, finState.debt_load_pct)}%`,
+                    background:
+                      finState.debt_load_pct >= 50 ? "#EF4444" :
+                      finState.debt_load_pct >= 30 ? "#F59E0B" :
+                      "#10B981",
+                  }}
+                />
+              </div>
             </div>
           )}
 
