@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
+import Link from "next/link";
+import { Plus, Settings2 } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
-import { HeroBlock } from "@/components/habits/HeroBlock";
-import { DoTodayCard } from "@/components/habits/DoTodayCard";
-import { ProtectStreakBlock } from "@/components/habits/ProtectStreakBlock";
+import { HabitRow } from "@/components/habits/HabitRow";
 import { DoneSection } from "@/components/habits/DoneSection";
-import { AdminBlock } from "@/components/habits/AdminBlock";
 import { MilestoneOverlay, MILESTONE_STREAKS } from "@/components/habits/MilestoneOverlay";
 import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
@@ -24,7 +23,6 @@ function haptic(pattern: number | number[]) {
   }
 }
 
-// Check if user prefers reduced motion
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -34,15 +32,12 @@ export default function HabitsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<HabitItem | null>(null);
 
-  // Celebration state
   const [bumpHabitId, setBumpHabitId] = useState<number | null>(null);
   const [glowHabitId, setGlowHabitId] = useState<number | null>(null);
   const [milestoneStreak, setMilestoneStreak] = useState<number | null>(null);
 
-  // Guard against double-tap: track in-flight completions
   const inFlightRef = useRef<Set<number>>(new Set());
 
-  // dateSubtitle computed once on client
   const dateSubtitle = useMemo(
     () => typeof window !== "undefined"
       ? new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })
@@ -50,12 +45,11 @@ export default function HabitsPage() {
     []
   );
 
-  const { data, isPending, isError } = useHabits(true); // fetch all incl archived
+  const { data, isPending, isError } = useHabits(true);
   const { mutate: complete } = useCompleteHabitToday();
 
   const allHabits = data ?? [];
   const activeHabits = allHabits.filter((h) => !h.is_archived);
-  const archivedHabits = allHabits.filter((h) => h.is_archived);
 
   const scheduledToday = activeHabits.filter((h) => h.scheduled_today);
   const pendingToday = scheduledToday
@@ -63,13 +57,13 @@ export default function HabitsPage() {
     .sort((a, b) => b.current_streak - a.current_streak);
   const doneToday = scheduledToday.filter((h) => h.done_today);
 
-  // Protect streak: habits with >= 14 day streak, not done today, sorted by streak desc, max 3
-  const protectStreak = pendingToday
-    .filter((h) => h.current_streak >= 14)
-    .slice(0, 3);
+  const total = scheduledToday.length;
+  const doneCount = doneToday.length;
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const allDone = total > 0 && doneCount === total;
+  const noneScheduled = total === 0;
 
   const handleComplete = useCallback((habit: HabitItem) => {
-    // Guard: don't fire twice for the same habit if already in-flight
     if (inFlightRef.current.has(habit.habit_id)) return;
     inFlightRef.current.add(habit.habit_id);
 
@@ -80,38 +74,36 @@ export default function HabitsPage() {
     const reduced = prefersReducedMotion();
 
     if (!reduced) {
-      // Level 1: streak bump + card glow
       setBumpHabitId(habit.habit_id);
       setGlowHabitId(habit.habit_id);
       setTimeout(() => setBumpHabitId(null), 600);
       setTimeout(() => setGlowHabitId(null), 700);
 
-      // Level 2: milestone overlay
       if (isMilestone) {
-        // Slight delay so bump animation starts first
         setTimeout(() => setMilestoneStreak(expectedNewStreak), 300);
       }
     }
 
-    // Haptic
     if (isMilestone) {
       haptic([15, 40, 15, 40, 50]);
     } else {
       haptic(12);
     }
 
-    // Fire mutation
     complete(habit.habit_id, {
       onSettled: () => {
-        // Release the guard after mutation resolves (success or error)
         inFlightRef.current.delete(habit.habit_id);
       },
     });
   }, [complete]);
 
+  // Topbar subtitle: shows today's progress
+  const topbarSubtitle = noneScheduled
+    ? dateSubtitle
+    : `${doneCount} / ${total} сегодня`;
+
   return (
     <>
-      {/* Milestone overlay — mounted at top level, above everything */}
       <MilestoneOverlay
         streak={milestoneStreak}
         onDismiss={() => setMilestoneStreak(null)}
@@ -122,13 +114,37 @@ export default function HabitsPage() {
       )}
       {showCreateModal && <CreateHabitModal onClose={() => setShowCreateModal(false)} />}
 
-      <AppTopbar title="Привычки" subtitle={dateSubtitle} />
+      <AppTopbar
+        title="Привычки"
+        subtitle={topbarSubtitle}
+        actions={
+          <Link
+            href="/habits/all"
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium hover:bg-white/10 transition-colors"
+            style={{ color: "var(--app-topbar-text)" }}
+            title="Управление привычками"
+          >
+            <Settings2 size={13} />
+            Управление
+          </Link>
+        }
+      />
+
+      {/* Slim progress strip under the topbar */}
+      {!noneScheduled && (
+        <div className="h-[3px] bg-white/[0.06] shrink-0">
+          <div
+            className={clsx_progress(allDone)}
+            style={{ width: `${pct}%`, transition: "width 0.5s" }}
+          />
+        </div>
+      )}
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
         {isPending && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <div key={i} className="h-16 bg-white/[0.03] rounded-xl animate-pulse" />
             ))}
           </div>
         )}
@@ -141,61 +157,90 @@ export default function HabitsPage() {
 
         {!isPending && !isError && (
           <div className="space-y-4">
-
-            {/* Hero block */}
-            <HeroBlock total={scheduledToday.length} doneCount={doneToday.length} />
-
-            {/* Do Today */}
-            {pendingToday.length > 0 && (
-              <section>
-                <h2
-                  className="font-semibold uppercase tracking-widest mb-2"
-                  style={{ fontSize: "var(--fs-badge)", color: "var(--t-faint)" }}
+            {/* Empty state */}
+            {noneScheduled && activeHabits.length === 0 && (
+              <div className="text-center py-12 space-y-3">
+                <p style={{ fontSize: "var(--fs-body)", color: "var(--t-muted)" }}>
+                  У вас ещё нет привычек
+                </p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
+                  style={{ fontSize: "var(--fs-secondary)" }}
                 >
-                  Сделать сегодня
-                </h2>
-                <div className="space-y-3">
-                  {pendingToday.map((h) => (
-                    <DoTodayCard
-                      key={h.habit_id}
-                      habit={h}
-                      onComplete={() => handleComplete(h)}
-                      onOpen={() => setSelectedHabit(h)}
-                      animateBump={bumpHabitId === h.habit_id}
-                      animateGlow={glowHabitId === h.habit_id}
-                    />
-                  ))}
-                </div>
+                  <Plus size={14} /> Создать первую
+                </button>
+              </div>
+            )}
+
+            {noneScheduled && activeHabits.length > 0 && (
+              <div className="text-center py-8">
+                <p style={{ fontSize: "var(--fs-body)", color: "var(--t-muted)" }}>
+                  Сегодня нет запланированных привычек
+                </p>
+              </div>
+            )}
+
+            {/* All-done celebration */}
+            {allDone && (
+              <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-4 text-center">
+                <p style={{ fontSize: "var(--fs-title)", color: "var(--t-primary)" }} className="font-bold">
+                  🎉 Все привычки выполнены!
+                </p>
+                <p style={{ fontSize: "var(--fs-caption)", color: "var(--t-muted)" }} className="mt-0.5">
+                  {doneCount} из {total} сегодня
+                </p>
+              </div>
+            )}
+
+            {/* Pending today */}
+            {pendingToday.length > 0 && (
+              <section className="space-y-2">
+                {pendingToday.map((h) => (
+                  <HabitRow
+                    key={h.habit_id}
+                    habit={h}
+                    onComplete={() => handleComplete(h)}
+                    onOpen={() => setSelectedHabit(h)}
+                    animateBump={bumpHabitId === h.habit_id}
+                    animateGlow={glowHabitId === h.habit_id}
+                  />
+                ))}
               </section>
             )}
 
-            {/* Protect streak */}
-            {protectStreak.length > 0 && (
-              <ProtectStreakBlock
-                habits={protectStreak}
-                onComplete={(id) => {
-                  const habit = allHabits.find((h) => h.habit_id === id);
-                  if (habit) handleComplete(habit);
-                  else complete(id);
-                }}
-                onOpen={(h) => setSelectedHabit(h)}
-              />
-            )}
-
-            {/* Done today */}
+            {/* Done today (collapsed) */}
             <DoneSection habits={doneToday} onOpen={(h) => setSelectedHabit(h)} />
 
-            {/* Admin block */}
-            <AdminBlock
-              habits={activeHabits}
-              archivedHabits={archivedHabits}
-              onOpen={(h) => setSelectedHabit(h)}
-              onCreateNew={() => setShowCreateModal(true)}
-            />
-
+            {/* Footer actions */}
+            {activeHabits.length > 0 && (
+              <div className="flex items-center justify-between pt-2 gap-3">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.10] hover:bg-white/[0.05] transition-colors"
+                  style={{ fontSize: "var(--fs-secondary)", color: "var(--t-secondary)" }}
+                >
+                  <Plus size={14} /> Создать привычку
+                </button>
+                <Link
+                  href="/habits/all"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 hover:text-indigo-400 transition-colors"
+                  style={{ fontSize: "var(--fs-secondary)", color: "var(--t-muted)" }}
+                >
+                  <Settings2 size={14} /> Все привычки
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </main>
     </>
   );
+}
+
+// Simple helper instead of importing clsx for one usage in JSX
+function clsx_progress(allDone: boolean): string {
+  return allDone
+    ? "h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+    : "h-full bg-gradient-to-r from-indigo-500 to-indigo-400";
 }
