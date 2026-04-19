@@ -114,8 +114,8 @@ function Item({
             className="relative w-5 h-5 flex items-center justify-center touch-manipulation"
           >
             <span className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
-              kind === "habit" ? "border-violet-400 rounded-[3px]" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500",
+              "w-[16px] h-[16px] rounded-[5px] border-[1.5px] flex items-center justify-center transition-all",
+              kind === "habit" ? "border-violet-400" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500",
               (isCompleting && kind !== "habit") && "task-check-completing"
             )}>
               {(isCompleting && kind !== "habit") && <span className="task-check-mark" aria-hidden="true">✓</span>}
@@ -124,7 +124,7 @@ function Item({
         ) : (
           <div className="w-5 h-5 flex items-center justify-center">
             <span className={clsx(
-              "w-[16px] h-[16px] rounded-full border-[1.5px] flex items-center justify-center",
+              "w-[16px] h-[16px] rounded-[5px] border-[1.5px] flex items-center justify-center",
               isDone ? "bg-emerald-500 border-emerald-500" : "border-slate-200"
             )}>
               {isDone && <span className="text-white text-[7px] font-bold">✓</span>}
@@ -209,9 +209,16 @@ function SortableTaskItem({
 }
 
 function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: () => void; onSkip: () => void }) {
+  const isOverdue = op.days_until < 0;
   return (
-    <div className="group/fi flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1">
-      <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-indigo-300/60 dark:border-white/20 shrink-0" />
+    <div className={clsx(
+      "group/fi flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
+      isOverdue && "bg-red-50/60 dark:bg-red-500/[0.06]"
+    )}>
+      <div className={clsx(
+        "w-[16px] h-[16px] rounded-[5px] border-[1.5px] shrink-0",
+        isOverdue ? "border-red-400" : "border-indigo-300/60 dark:border-white/20"
+      )} />
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left flex flex-wrap items-center gap-1.5"
