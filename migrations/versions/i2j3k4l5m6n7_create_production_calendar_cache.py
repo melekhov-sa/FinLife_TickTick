@@ -5,8 +5,7 @@ Revises: h1i2j3k4l5m6
 Create Date: 2026-04-19
 """
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+
 
 revision = 'i2j3k4l5m6n7'
 down_revision = 'h1i2j3k4l5m6'
@@ -15,18 +14,27 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "production_calendar_cache",
-        sa.Column("year", sa.Integer(), primary_key=True),
-        sa.Column("day_types_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column(
-            "fetched_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.func.now(),
-            nullable=False,
-        ),
-    )
+    # Raw SQL with IF NOT EXISTS + DO/EXCEPTION wrap handles two cases:
+    #   1. Prod already has this table from a partial previous run
+    #      (CREATE TABLE IF NOT EXISTS handles it cleanly)
+    #   2. Prod has an orphan pg_type row but no table — rare but possible
+    #      after an interrupted CREATE; the EXCEPTION clauses eat it.
+    # Also: year is a plain INTEGER primary key (we insert 2026, 2027, ...),
+    # NOT a SERIAL — Alembic's autoincrement="auto" default generated SERIAL
+    # on the previous revision of this migration, which was wrong.
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TABLE IF NOT EXISTS production_calendar_cache (
+                year INTEGER PRIMARY KEY,
+                day_types_json JSONB NOT NULL,
+                fetched_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table THEN NULL;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
-    op.drop_table("production_calendar_cache")
+    op.execute("DROP TABLE IF EXISTS production_calendar_cache")
