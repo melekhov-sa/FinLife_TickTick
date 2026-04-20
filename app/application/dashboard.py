@@ -211,7 +211,7 @@ class DashboardService:
             "category_emoji": self._wc_emoji(wc_map, t.category_id),
             "category_name": self._wc_name(wc_map, t.category_id),
             "manual_order": t.manual_order,
-            "meta": {"task_id": t.task_id, "reminders": reminder_times},
+            "meta": {"task_id": t.task_id, "reminders": reminder_times, "category_id": t.category_id},
         }
 
     # --- Task occurrences ---

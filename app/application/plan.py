@@ -200,7 +200,7 @@ def _task_to_item(t: TaskModel, today: date, wc_map: dict) -> dict:
         "category_emoji": _wc_emoji(wc_map, t.category_id),
         "category_title": _wc_title(wc_map, t.category_id),
         "manual_order": t.manual_order,
-        "meta": {"task_id": t.task_id},
+        "meta": {"task_id": t.task_id, "category_id": t.category_id},
     }
 
 
