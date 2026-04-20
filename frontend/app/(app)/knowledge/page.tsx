@@ -91,7 +91,7 @@ export default function KnowledgePage() {
   return (
     <>
       <AppTopbar title="База знаний" />
-      <main className="flex-1 overflow-auto p-6 max-w-2xl mx-auto w-full">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {/* Controls */}
         <div className="flex gap-2 mb-6">
           <div className="relative flex-1">

@@ -239,8 +239,8 @@ export default function SubscriptionsPage() {
         { href: "/subscriptions", label: "Подписки" },
         { href: "/categories", label: "Категории" },
       ]} />
-      <main className="flex-1 overflow-auto p-6">
-        <div className="max-w-[960px]">
+      <main className="flex-1 overflow-auto p-3 md:p-6">
+        <div className="max-w-3xl mx-auto w-full">
 
           {/* ── Header actions ──────────────────────────────────────── */}
           <div className="flex items-center justify-between mb-6">

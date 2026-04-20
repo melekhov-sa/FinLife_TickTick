@@ -155,7 +155,7 @@ export default function StrategyPage() {
   return (
     <>
       <AppTopbar title="Аналитика" subtitle={dateSubtitle} />
-      <main className="flex-1 overflow-auto p-6 max-w-2xl mx-auto w-full">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <div className="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />

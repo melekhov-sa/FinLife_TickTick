@@ -290,7 +290,7 @@ export default function RecurringTasksPage() {
     <>
       <AppTopbar title="Повторяющиеся задачи" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {/* Tabs + count */}
         <div className="flex items-center justify-between mb-3 md:mb-5">
           <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">

@@ -281,7 +281,7 @@ export default function WorkCategoriesPage() {
         subtitle="Для задач, привычек и событий"
       />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
 
         {/* Controls */}
         <div className="flex items-center gap-3 mb-4">

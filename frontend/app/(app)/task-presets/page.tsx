@@ -455,7 +455,7 @@ export default function TaskPresetsPage() {
         subtitle="Быстрое заполнение формы создания задачи"
       />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-4">
           {tabBtn("active", "Активные", activeCount)}

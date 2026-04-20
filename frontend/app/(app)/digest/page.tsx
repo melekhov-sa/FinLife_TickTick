@@ -95,7 +95,7 @@ export default function DigestListPage() {
       />
 
       <main className="flex-1 overflow-auto p-3 md:p-6">
-        <div className="max-w-2xl mx-auto space-y-3">
+        <div className="max-w-3xl mx-auto w-full space-y-3">
           {isPending && (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (

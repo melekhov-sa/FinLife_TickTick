@@ -479,8 +479,8 @@ export default function PlannedOpsPage() {
     <>
       {showCreateOp && <CreateOperationModal onClose={() => setShowCreateOp(false)} />}
       <AppTopbar title="Плановые операции" />
-      <main className="flex-1 overflow-auto p-6">
-        <div className="max-w-[760px]">
+      <main className="flex-1 overflow-auto p-3 md:p-6">
+        <div className="max-w-3xl mx-auto w-full">
 
           {/* Header */}
           <div className="flex items-center justify-between mb-6">

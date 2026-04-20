@@ -178,7 +178,7 @@ export default function NotificationsPage() {
   return (
     <>
       <AppTopbar title="Уведомления" />
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
 
         {/* Header bar */}
         <div className="flex items-center justify-between mb-5">

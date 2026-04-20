@@ -251,7 +251,7 @@ export default function WalletsPage() {
         { href: "/categories", label: "Категории" },
       ]} />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
