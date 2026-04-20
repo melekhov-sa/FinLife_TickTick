@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { Check, CalendarDays, Tag } from "lucide-react";
+import { CalendarDays, Tag } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem } from "@/types/api";
@@ -52,12 +52,14 @@ export function EntryDetailModal({ entry, onClose }: Props) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["plan"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); onClose(); },
   });
 
-  const { mutate: completeTask, isPending: completing } = useMutation({
-    mutationFn: () => api.post(`/api/v2/tasks/${entry.id}/complete`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["plan"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); onClose(); },
-  });
-
-  const busy = updating || completing;
+  // Title textarea — auto-resize to fit content so long titles wrap and stay fully visible
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [title]);
 
   function handleSave() {
     const body: Record<string, unknown> = {};
@@ -83,22 +85,13 @@ export function EntryDetailModal({ entry, onClose }: Props) {
       title={isEvent ? "Событие" : "Задача"}
       footer={
         isTask && !entry.is_done ? (
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={busy || !title.trim()}
-              className="flex-1 py-2.5 rounded-xl text-[14px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
-            >
-              {updating ? "..." : "Сохранить"}
-            </button>
-            <button
-              onClick={() => completeTask()}
-              disabled={busy}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[14px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 transition-colors"
-            >
-              <Check size={16} /> {completing ? "..." : "Выполнить"}
-            </button>
-          </div>
+          <button
+            onClick={handleSave}
+            disabled={updating || !title.trim()}
+            className="w-full py-2.5 rounded-xl text-[14px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+          >
+            {updating ? "..." : "Сохранить"}
+          </button>
         ) : isTask && entry.is_done ? (
           <p className="text-center text-[13px] text-emerald-600 dark:text-emerald-400 font-medium">Задача выполнена</p>
         ) : null
@@ -109,11 +102,12 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         <div>
           <label className={labelCls}>Название</label>
           {isTask && !entry.is_done ? (
-            <input
+            <textarea
+              ref={titleRef}
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className={inputCls}
-              autoFocus
+              rows={1}
+              className="w-full px-3 py-2 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 resize-none overflow-hidden leading-snug"
             />
           ) : (
             <p className="text-[15px] font-medium" style={{ color: "var(--t-primary)" }}>
