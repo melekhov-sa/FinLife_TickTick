@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, Play, Plus } from "lucide-react";
+import { CheckCircle2, SkipForward, Play, Plus, Bell } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -156,8 +156,13 @@ function Item({
           )
         )}
         {reminders.length > 0 && !isDone && (
-          <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
-            {reminders.join(", ")}
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 tabular-nums shrink-0"
+            style={{ fontSize: "11px", color: "var(--t-muted)" }}
+            title={`Напоминания: ${reminders.join(", ")}`}
+          >
+            <Bell size={9} strokeWidth={2.2} className="opacity-70" />
+            {reminders.join(" · ")}
           </span>
         )}
         {timeStr && (

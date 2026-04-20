@@ -128,51 +128,69 @@ class DashboardService:
             return q
 
         # Overdue: active, due_date < today
-        rows = _exclude(self.db.query(TaskModel).filter(
+        overdue_rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date != None,  # noqa: E711
             TaskModel.due_date < today,
         )).all()
-        for t in rows:
-            overdue.append(self._task_item(t, today, wc_map, is_overdue=True))
 
-        # Active today: due_date == today only (tasks without due_date excluded)
-        rows = _exclude(self.db.query(TaskModel).filter(
+        # Active today
+        active_rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "ACTIVE",
             TaskModel.due_date == today,
         )).all()
-        for t in rows:
-            active.append(self._task_item(t, today, wc_map, is_overdue=False))
 
         # Done today
-        rows = _exclude(self.db.query(TaskModel).filter(
+        done_rows = _exclude(self.db.query(TaskModel).filter(
             TaskModel.account_id == account_id,
             TaskModel.status == "DONE",
             func.date(TaskModel.completed_at) == today,
         )).all()
-        for t in rows:
-            done.append(self._task_item(t, today, wc_map, is_overdue=False, is_done=True))
+
+        # Batch-load reminders for all tasks in one query (avoid N+1)
+        all_task_ids = [t.task_id for t in (*overdue_rows, *active_rows, *done_rows)]
+        rems_by_task: dict[int, list[TaskReminderModel]] = {}
+        if all_task_ids:
+            rems = self.db.query(TaskReminderModel).filter(
+                TaskReminderModel.task_id.in_(all_task_ids)
+            ).all()
+            for r in rems:
+                rems_by_task.setdefault(r.task_id, []).append(r)
+
+        for t in overdue_rows:
+            overdue.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=True))
+        for t in active_rows:
+            active.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=False))
+        for t in done_rows:
+            done.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=False, is_done=True))
 
     def _task_item(self, t: TaskModel, today: date, wc_map: dict,
+                   reminders: list,
                    is_overdue: bool = False, is_done: bool = False) -> dict:
         # Build time string (HH:MM, no seconds)
         task_time = None
-        if hasattr(t, 'due_time') and t.due_time:
+        if t.due_time:
             task_time = t.due_time.strftime("%H:%M") if hasattr(t.due_time, 'strftime') else str(t.due_time)[:5]
 
-        # Get reminder times
-        reminder_times = []
-        if hasattr(t, 'due_time') and t.due_time and t.due_date:
+        # Compute reminder display times — handle both OFFSET and FIXED_TIME kinds.
+        # Sort chronologically (earliest fire-time first) so the UI reads naturally.
+        reminder_times: list[str] = []
+        if reminders and t.due_date:
             from datetime import datetime, timedelta
-            reminders = self.db.query(TaskReminderModel).filter(
-                TaskReminderModel.task_id == t.task_id
-            ).order_by(TaskReminderModel.offset_minutes.desc()).all()
-            base_dt = datetime.combine(t.due_date, t.due_time)
+            base_dt = datetime.combine(t.due_date, t.due_time) if t.due_time else None
+            times: list[tuple[datetime, str]] = []
             for r in reminders:
-                rt = base_dt + timedelta(minutes=r.offset_minutes)
-                reminder_times.append(rt.strftime("%H:%M"))
+                kind = getattr(r, "reminder_kind", "OFFSET")
+                if kind == "FIXED_TIME" and getattr(r, "fixed_time", None) is not None:
+                    dt = datetime.combine(t.due_date, r.fixed_time)
+                    times.append((dt, r.fixed_time.strftime("%H:%M")))
+                elif kind == "OFFSET" and base_dt and r.offset_minutes is not None:
+                    dt = base_dt + timedelta(minutes=r.offset_minutes)
+                    times.append((dt, dt.strftime("%H:%M")))
+            times.sort(key=lambda x: x[0])
+            reminder_times = [label for _, label in times]
 
         return {
             "kind": "task",
