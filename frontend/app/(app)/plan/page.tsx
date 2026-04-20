@@ -2,6 +2,21 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import {
+  DndContext,
+  closestCorners,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DraggableAttributes,
+} from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
@@ -11,7 +26,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown, MoreVertical } from "lucide-react";
+import { CalendarDays, Play, SkipForward, Plus, ChevronDown, MoreVertical, GripVertical } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -325,6 +340,21 @@ function RowMenu({
   );
 }
 
+function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes; listeners: SyntheticListenerMap | undefined }) {
+  return (
+    <button
+      {...attributes}
+      {...listeners}
+      className="shrink-0 w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover/row:opacity-50 md:opacity-0 md:group-hover/row:opacity-50 opacity-30 md:touch-none cursor-grab active:cursor-grabbing transition-opacity"
+      style={{ color: "var(--t-faint)", touchAction: "none" }}
+      tabIndex={-1}
+      aria-label="Перетащить"
+    >
+      <GripVertical size={12} />
+    </button>
+  );
+}
+
 function EntryRow({
   entry,
   onComplete,
@@ -353,12 +383,23 @@ function EntryRow({
   const opKind = entry.meta.op_kind as string | undefined;
   const amountFormatted = entry.meta.amount_formatted as string | undefined;
 
+  const canDrag = (entry.kind === "task" || entry.kind === "event" || entry.kind === "planned_op") && !entry.is_done;
+  const draggableId = `${entry.kind}-${entry.id}`;
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: draggableId,
+    disabled: !canDrag,
+  });
+
   return (
-    <div className={clsx(
-      "flex items-center gap-2.5 py-[7px] border-t first:border-0 transition-colors cursor-default group/row",
-      "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
-      isCompleting && "task-row-completing",
-    )}>
+    <div
+      ref={setNodeRef}
+      className={clsx(
+        "flex items-center gap-2.5 py-[7px] border-t first:border-0 transition-colors cursor-default group/row",
+        "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
+        isCompleting && "task-row-completing",
+        isDragging && "opacity-30",
+      )}
+    >
       {/* Checkbox / icon */}
       <div className="shrink-0">
         {canComplete ? (
@@ -440,6 +481,13 @@ function EntryRow({
           onSkipOp={() => onSkipOp(entry)}
         />
       </div>
+
+      {canDrag && (
+        <DragHandle
+          attributes={attributes}
+          listeners={listeners}
+        />
+      )}
     </div>
   );
 }
@@ -507,6 +555,11 @@ function DayGroupCard({
   const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local tz
   const isPast = !group.is_today && !group.is_overdue_group && !!group.date && group.date < todayIso;
 
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `date-${group.date}`,
+    disabled: group.is_overdue_group || !group.date,
+  });
+
   // Empty today — dashboard already has "Фокус дня"
   if (isEmpty && group.is_today) return null;
   // Empty past day — no reason to show (overdue tasks appear in the overdue section)
@@ -515,18 +568,22 @@ function DayGroupCard({
   if (isEmpty) {
     const hTheme = group.holiday ? holidayTheme(group.holiday.theme) : null;
     return (
-      <div className={clsx(
-        "rounded-xl border-[1.5px] px-3 py-3.5",
-        hTheme
-          ? `${hTheme.bg} ${hTheme.border}`
-          : group.day_type === "holiday"
-          ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
-          : group.day_type === "weekend"
-          ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
-          : group.day_type === "preholiday"
-          ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
-          : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
-      )}>
+      <div
+        ref={setDropRef}
+        className={clsx(
+          "rounded-xl border-[1.5px] px-3 py-3.5 transition-all",
+          isOver && "ring-2 ring-indigo-400/50 bg-indigo-50/60 dark:bg-indigo-500/[0.08]",
+          !isOver && (hTheme
+            ? `${hTheme.bg} ${hTheme.border}`
+            : group.day_type === "holiday"
+            ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
+            : group.day_type === "weekend"
+            ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+            : group.day_type === "preholiday"
+            ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
+            : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"),
+        )}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-[14px] font-semibold leading-none text-slate-800 dark:text-white/90">
             {label}
@@ -552,22 +609,26 @@ function DayGroupCard({
 
   const hTheme = group.holiday && !group.is_overdue_group && !group.is_today ? holidayTheme(group.holiday.theme) : null;
   return (
-    <div className={clsx(
-      "rounded-xl border-[1.5px] px-3 py-2.5",
-      group.is_overdue_group
-        ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
-        : group.is_today
-        ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
-        : hTheme
-        ? `${hTheme.bg} ${hTheme.border}`
-        : group.day_type === "holiday"
-        ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
-        : group.day_type === "weekend"
-        ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
-        : group.day_type === "preholiday"
-        ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
-        : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
-    )}>
+    <div
+      ref={setDropRef}
+      className={clsx(
+        "rounded-xl border-[1.5px] px-3 py-2.5 transition-all",
+        isOver && !group.is_overdue_group && "ring-2 ring-indigo-400/50",
+        group.is_overdue_group
+          ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
+          : group.is_today
+          ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+          : hTheme
+          ? `${hTheme.bg} ${hTheme.border}`
+          : group.day_type === "holiday"
+          ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
+          : group.day_type === "weekend"
+          ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+          : group.day_type === "preholiday"
+          ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
+          : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
+      )}
+    >
       {/* Day header */}
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         <h3 className={clsx(
@@ -686,9 +747,15 @@ export default function PlanPage() {
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
+  const [activeEntry, setActiveEntry] = useState<PlanEntry | null>(null);
   const qc = useQueryClient();
   const [completingKey, setCompletingKey] = useState<string | null>(null);
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
 
   useEffect(() => { return () => { if (completingTimerRef.current) clearTimeout(completingTimerRef.current); }; }, []);
 
@@ -763,6 +830,86 @@ export default function PlanPage() {
     if (skipEventOccPending) return;
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipEventOcc(occurrenceId);
+  }
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ kind, id, newDate }: { kind: string; id: number; newDate: string }) => {
+      if (kind === "task") {
+        return api.patch(`/api/v2/tasks/${id}`, { due_date: newDate });
+      }
+      if (kind === "event") {
+        return api.patch(`/api/v2/events/occurrences/${id}`, { start_date: newDate });
+      }
+      if (kind === "planned_op") {
+        return api.patch(`/api/v2/planned-ops/occurrences/${id}`, { scheduled_date: newDate });
+      }
+      throw new Error("Unsupported kind: " + kind);
+    },
+    onMutate: async ({ kind, id, newDate }) => {
+      await qc.cancelQueries({ queryKey: ["plan"] });
+      const snapshot = qc.getQueryData<PlanData>(["plan", tab, range]);
+      if (snapshot) {
+        const updated: PlanData = {
+          ...snapshot,
+          day_groups: snapshot.day_groups.map((g) => {
+            // Remove from source group
+            if (g.entries.some((e) => e.kind === kind && e.id === id)) {
+              return { ...g, entries: g.entries.filter((e) => !(e.kind === kind && e.id === id)) };
+            }
+            // Add to target group
+            if (g.date === newDate) {
+              const movingEntry = snapshot.day_groups
+                .flatMap((dg) => dg.entries)
+                .find((e) => e.kind === kind && e.id === id);
+              if (movingEntry) {
+                return { ...g, entries: [...g.entries, { ...movingEntry, date: newDate, is_overdue: false }] };
+              }
+            }
+            return g;
+          }),
+        };
+        qc.setQueryData<PlanData>(["plan", tab, range], updated);
+      }
+      return { snapshot };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.snapshot) qc.setQueryData<PlanData>(["plan", tab, range], ctx.snapshot);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
+  function handleDragStart(e: DragStartEvent) {
+    const activeId = String(e.active.id);
+    const dashIdx = activeId.indexOf("-");
+    const kind = activeId.slice(0, dashIdx);
+    const id = Number(activeId.slice(dashIdx + 1));
+    const allEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const entry = allEntries.find((en) => en.kind === kind && en.id === id) ?? null;
+    setActiveEntry(entry);
+  }
+
+  function handleDragEnd(e: DragEndEvent) {
+    setActiveEntry(null);
+    const { active, over } = e;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (!overId.startsWith("date-")) return;
+    const newDate = overId.slice(5);
+
+    const dashIdx = activeId.indexOf("-");
+    const kind = activeId.slice(0, dashIdx);
+    const id = Number(activeId.slice(dashIdx + 1));
+
+    const allEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const entry = allEntries.find((en) => en.kind === kind && en.id === id);
+    if (!entry || entry.date === newDate) return;
+
+    rescheduleMutation.mutate({ kind, id, newDate });
   }
 
   const { data, isLoading, isError } = useQuery<PlanData>({
@@ -976,26 +1123,44 @@ export default function PlanPage() {
             />
           )}
 
-          {/* ── Day groups ────────────────────────────────────────────── */}
+          {/* ── Day groups (with DnD) ─────────────────────────────────── */}
           {filteredData && (
-            <div className="space-y-2">
-              {filteredData.day_groups.map((g, i) => (
-                <DayGroupCard
-                  key={i}
-                  group={g}
-                  onComplete={handleOpenComplete}
-                  onReschedule={setRescheduleEntry}
-                  onExecuteOp={setExecuteEntry}
-                  onSkipOp={handleSkipOp}
-                  onArchiveTask={handleArchiveTask}
-                  onSkipTaskOcc={handleSkipTaskOcc}
-                  onSkipEvent={handleSkipEvent}
-                  onAddTask={() => setCreateTaskDate(g.date ?? "")}
-                  onEntryClick={setDetailEntry}
-                  completingKey={completingKey}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="space-y-2">
+                {filteredData.day_groups.map((g, i) => (
+                  <DayGroupCard
+                    key={i}
+                    group={g}
+                    onComplete={handleOpenComplete}
+                    onReschedule={setRescheduleEntry}
+                    onExecuteOp={setExecuteEntry}
+                    onSkipOp={handleSkipOp}
+                    onArchiveTask={handleArchiveTask}
+                    onSkipTaskOcc={handleSkipTaskOcc}
+                    onSkipEvent={handleSkipEvent}
+                    onAddTask={() => setCreateTaskDate(g.date ?? "")}
+                    onEntryClick={setDetailEntry}
+                    completingKey={completingKey}
+                  />
+                ))}
+              </div>
+
+              <DragOverlay>
+                {activeEntry && (
+                  <div className="px-3 py-2 rounded-xl border shadow-lg bg-white dark:bg-[#0f1221] border-indigo-300 dark:border-indigo-500/40 max-w-xs">
+                    <span className="text-[13px] font-medium truncate block" style={{ color: "var(--t-primary)" }}>
+                      {activeEntry.category_emoji && <span className="mr-1">{activeEntry.category_emoji}</span>}
+                      {activeEntry.title}
+                    </span>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
           )}
 
         </div>

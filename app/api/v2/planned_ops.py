@@ -149,6 +149,30 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
     ]
 
 
+class UpdateOccurrenceRequest(BaseModel):
+    scheduled_date: str  # YYYY-MM-DD
+
+
+@router.patch("/planned-ops/occurrences/{occurrence_id}")
+def update_planned_op_occurrence(
+    occurrence_id: int,
+    body: UpdateOccurrenceRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    occ = _get_occurrence_or_404(occurrence_id, user_id, db)
+    if occ.status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Можно переносить только активные операции")
+    try:
+        new_date = date.fromisoformat(body.scheduled_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректная дата")
+    occ.scheduled_date = new_date
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/planned-ops/occurrences/{occurrence_id}/skip")
 def skip_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)

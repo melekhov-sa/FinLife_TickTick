@@ -2,6 +2,10 @@
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
+from unittest.mock import patch, MagicMock
+
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from app.infrastructure.db.models import (
     WalletBalance, CategoryInfo, OperationTemplateModel, OperationOccurrence,
