@@ -1,5 +1,5 @@
 """GET /api/v2/plan — Plan timeline view (tasks + events + habits + planned_ops)."""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -46,12 +46,17 @@ def _serialize_item(item: dict) -> dict:
 
 
 def _serialize_group(group: dict) -> dict:
+    holiday = group.get("holiday")
     return {
         "date": group["date"].isoformat() if group.get("date") else None,
         "date_label": group["date_label"],
         "is_today": group["is_today"],
         "is_overdue_group": group["is_overdue_group"],
         "day_type": group.get("day_type", "work"),
+        "holiday": (
+            {"name": holiday["name"], "icon": holiday["icon"], "theme": holiday["theme"]}
+            if holiday else None
+        ),
         "entries": [_serialize_item(e) for e in group["entries"]],
     }
 
@@ -61,13 +66,26 @@ def get_plan(
     request: Request,
     tab: str = Query("active", regex="^(active|done|archive)$"),
     range: int = Query(7),
+    start_date: str = Query(None),
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(request, db)
     today = datetime.now(ZoneInfo(get_settings().TIMEZONE)).date()
     range_days = max(1, min(range, 90))
 
-    view = build_plan_view(db, user_id, today, tab=tab, range_days=range_days)
+    # Calendar mode: explicit start_date (may be before today)
+    view_from = today
+    if start_date:
+        try:
+            view_from = date.fromisoformat(start_date)
+            # Allow up to 31 days in the past for calendar windows
+            min_date = today - timedelta(days=31)
+            if view_from < min_date:
+                view_from = min_date
+        except ValueError:
+            view_from = today
+
+    view = build_plan_view(db, user_id, today, tab=tab, range_days=range_days, date_from=view_from)
 
     return {
         "tab": view["tab"],

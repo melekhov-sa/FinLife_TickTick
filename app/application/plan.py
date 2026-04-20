@@ -48,11 +48,12 @@ def build_plan_view(
     today: date,
     tab: str = "active",
     range_days: int = 7,
+    date_from: date | None = None,
 ) -> dict:
     """Build the complete Plan view model for template rendering."""
 
-    date_from = today
-    date_to = today + timedelta(days=range_days - 1)
+    date_from = date_from if date_from is not None else today
+    date_to = date_from + timedelta(days=range_days - 1)
 
     # Pre-fetch work categories map
     wc_map = _load_wc_map(db, account_id)

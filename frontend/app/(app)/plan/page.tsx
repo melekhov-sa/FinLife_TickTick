@@ -24,9 +24,11 @@ import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
+import { DayListModal } from "@/components/modals/DayListModal";
+import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
-import { CalendarDays, Play, SkipForward, Plus, ChevronDown, MoreVertical, GripVertical } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface PlanEntry {
@@ -42,13 +44,13 @@ interface PlanEntry {
   meta: Record<string, unknown>;
 }
 
-interface HolidayInfo {
+export interface HolidayInfo {
   name: string;
   icon: string;
   theme: string;
 }
 
-interface DayGroup {
+export interface DayGroup {
   date: string | null;
   date_label: string;
   is_today: boolean;
@@ -738,6 +740,49 @@ function DoneTodayBlock({
   );
 }
 
+/** Returns Date object for the first day of a given month. */
+function monthStartOf(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** Returns ISO string YYYY-MM-DD for a local Date (first of month). */
+function monthToISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}-01`;
+}
+
+/** Returns the Monday of the week containing the first of the month (for calendar start). */
+function calendarGridStart(monthStart: Date): Date {
+  const first = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+  const dow = first.getDay(); // 0=Sun
+  const diff = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(first);
+  monday.setDate(first.getDate() + diff);
+  return monday;
+}
+
+/** Returns the Sunday of the week containing the last of the month. */
+function calendarGridEnd(monthStart: Date): Date {
+  const last = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  const dow = last.getDay(); // 0=Sun
+  const diff = dow === 0 ? 0 : 7 - dow;
+  const sunday = new Date(last);
+  sunday.setDate(last.getDate() + diff);
+  return sunday;
+}
+
+function toISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatMonthLabel(d: Date): string {
+  return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+}
+
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done">("active");
   const [range, setRange] = useState(7);
@@ -748,9 +793,39 @@ export default function PlanPage() {
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
   const [activeEntry, setActiveEntry] = useState<PlanEntry | null>(null);
+  const [dayModalDate, setDayModalDate] = useState<string | null>(null);
   const qc = useQueryClient();
   const [completingKey, setCompletingKey] = useState<string | null>(null);
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── View mode: list | calendar ─────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<"list" | "calendar">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("plan-view-mode");
+      if (stored === "calendar") return "calendar";
+    }
+    return "list";
+  });
+
+  function setAndPersistViewMode(mode: "list" | "calendar") {
+    setViewMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("plan-view-mode", mode);
+    }
+  }
+
+  // ── Calendar month state ───────────────────────────────────────────────
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => monthStartOf(new Date()));
+
+  function goToPrevMonth() {
+    setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+  }
+  function goToNextMonth() {
+    setCalendarMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+  }
+  function goToToday() {
+    setCalendarMonth(monthStartOf(new Date()));
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -877,6 +952,7 @@ export default function PlanPage() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["plan-calendar"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -886,7 +962,10 @@ export default function PlanPage() {
     const dashIdx = activeId.indexOf("-");
     const kind = activeId.slice(0, dashIdx);
     const id = Number(activeId.slice(dashIdx + 1));
-    const allEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    // Try list query first, then calendar query
+    const listEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const calEntries = qc.getQueryData<PlanData>(["plan-calendar", calendarMonthKey, tab])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const allEntries = [...listEntries, ...calEntries];
     const entry = allEntries.find((en) => en.kind === kind && en.id === id) ?? null;
     setActiveEntry(entry);
   }
@@ -905,7 +984,9 @@ export default function PlanPage() {
     const kind = activeId.slice(0, dashIdx);
     const id = Number(activeId.slice(dashIdx + 1));
 
-    const allEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const listEntries = qc.getQueryData<PlanData>(["plan", tab, range])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const calEntries = qc.getQueryData<PlanData>(["plan-calendar", calendarMonthKey, tab])?.day_groups.flatMap((g) => g.entries) ?? [];
+    const allEntries = [...listEntries, ...calEntries];
     const entry = allEntries.find((en) => en.kind === kind && en.id === id);
     if (!entry || entry.date === newDate) return;
 
@@ -916,6 +997,25 @@ export default function PlanPage() {
     queryKey: ["plan", tab, range],
     queryFn: () => api.get<PlanData>(`/api/v2/plan?tab=${tab}&range=${range}`),
     staleTime: 30_000,
+  });
+
+  // Calendar-specific query: full month window (up to 42 days from grid start)
+  const calendarGridStartDate = calendarGridStart(calendarMonth);
+  const calendarGridEndDate = calendarGridEnd(calendarMonth);
+  const calendarRangeDays = Math.round(
+    (calendarGridEndDate.getTime() - calendarGridStartDate.getTime()) / 86_400_000
+  ) + 1;
+  const calendarStartISO = toISODate(calendarGridStartDate);
+  const calendarMonthKey = monthToISO(calendarMonth);
+
+  const { data: calendarData, isLoading: calendarLoading } = useQuery<PlanData>({
+    queryKey: ["plan-calendar", calendarMonthKey, tab],
+    queryFn: () =>
+      api.get<PlanData>(
+        `/api/v2/plan?tab=${tab}&range=${calendarRangeDays}&start_date=${calendarStartISO}`,
+      ),
+    staleTime: 30_000,
+    enabled: viewMode === "calendar",
   });
 
   // Filter wishes, then fill in empty days within the range
@@ -980,6 +1080,17 @@ export default function PlanPage() {
       {createTaskDate !== null && <CreateTaskModal initialDate={createTaskDate || undefined} onClose={() => setCreateTaskDate(null)} />}
       {createEventDate !== null && <CreateEventModal initialDate={createEventDate || undefined} onClose={() => setCreateEventDate(null)} />}
       {detailEntry && <EntryDetailModal entry={detailEntry} onClose={() => setDetailEntry(null)} />}
+      {dayModalDate && (
+        <DayListModal
+          dateISO={dayModalDate}
+          entries={
+            (calendarData ?? data)?.day_groups.find((g) => g.date === dayModalDate)?.entries.filter((e) => e.kind !== "wish") ?? []
+          }
+          onClose={() => setDayModalDate(null)}
+          onEntryClick={(entry) => { setDayModalDate(null); setDetailEntry(entry); }}
+          onAddTask={() => { setDayModalDate(null); setCreateTaskDate(dayModalDate ?? ""); }}
+        />
+      )}
       {rescheduleEntry && (
         <RescheduleModal entry={rescheduleEntry} onClose={() => setRescheduleEntry(null)} />
       )}
@@ -1024,22 +1135,52 @@ export default function PlanPage() {
               ))}
             </div>
 
-            {/* Period: Неделя / Месяц */}
+            {/* Period: Неделя / Месяц (list mode only) */}
+            {viewMode === "list" && (
+              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+                {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setRange(r.value)}
+                    className={clsx(
+                      "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
+                      range === r.value
+                        ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
+                        : "text-slate-500 dark:text-white/50 hover:text-slate-700"
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* View mode toggle: Список / Календарь */}
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-              {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
-                <button
-                  key={r.value}
-                  onClick={() => setRange(r.value)}
-                  className={clsx(
-                    "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
-                    range === r.value
-                      ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
-                      : "text-slate-500 dark:text-white/50 hover:text-slate-700"
-                  )}
-                >
-                  {r.label}
-                </button>
-              ))}
+              <button
+                onClick={() => setAndPersistViewMode("list")}
+                title="Список"
+                className={clsx(
+                  "w-7 h-7 flex items-center justify-center rounded-md transition-all",
+                  viewMode === "list"
+                    ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-white/50 hover:text-slate-700",
+                )}
+              >
+                <List size={13} />
+              </button>
+              <button
+                onClick={() => setAndPersistViewMode("calendar")}
+                title="Календарь"
+                className={clsx(
+                  "w-7 h-7 flex items-center justify-center rounded-md transition-all",
+                  viewMode === "calendar"
+                    ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-white/50 hover:text-slate-700",
+                )}
+              >
+                <CalendarDays size={13} />
+              </button>
             </div>
 
             {/* Add button */}
@@ -1075,6 +1216,38 @@ export default function PlanPage() {
               )}
             </div>
           </div>
+
+          {/* ── Calendar navigation ───────────────────────────────── */}
+          {viewMode === "calendar" && (
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={goToPrevMonth}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                style={{ color: "var(--t-secondary)" }}
+                title="Предыдущий месяц"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="flex-1 text-center text-[13px] font-semibold capitalize" style={{ color: "var(--t-primary)" }}>
+                {formatMonthLabel(calendarMonth)}
+              </span>
+              <button
+                onClick={goToNextMonth}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                style={{ color: "var(--t-secondary)" }}
+                title="Следующий месяц"
+              >
+                <ChevronRight size={14} />
+              </button>
+              <button
+                onClick={goToToday}
+                className="px-2.5 py-1 text-[12px] font-semibold rounded-lg border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                Сегодня
+              </button>
+            </div>
+          )}
 
           {/* ── Loading ───────────────────────────────────────────────── */}
           {isLoading && (
@@ -1123,14 +1296,15 @@ export default function PlanPage() {
             />
           )}
 
-          {/* ── Day groups (with DnD) ─────────────────────────────────── */}
-          {filteredData && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCorners}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
+          {/* ── Day groups / Calendar (with DnD) ──────────────────────── */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            {/* List view */}
+            {viewMode === "list" && filteredData && (
               <div className="space-y-2">
                 {filteredData.day_groups.map((g, i) => (
                   <DayGroupCard
@@ -1149,19 +1323,40 @@ export default function PlanPage() {
                   />
                 ))}
               </div>
+            )}
 
-              <DragOverlay>
-                {activeEntry && (
-                  <div className="px-3 py-2 rounded-xl border shadow-lg bg-white dark:bg-[#0f1221] border-indigo-300 dark:border-indigo-500/40 max-w-xs">
-                    <span className="text-[13px] font-medium truncate block" style={{ color: "var(--t-primary)" }}>
-                      {activeEntry.category_emoji && <span className="mr-1">{activeEntry.category_emoji}</span>}
-                      {activeEntry.title}
-                    </span>
+            {/* Calendar view */}
+            {viewMode === "calendar" && (
+              <>
+                {calendarLoading && (
+                  <div className="grid grid-cols-7 gap-px bg-slate-200 dark:bg-white/[0.08] rounded-lg overflow-hidden animate-pulse">
+                    {[...Array(42)].map((_, i) => (
+                      <div key={i} className="min-h-[72px] md:min-h-[100px] bg-white dark:bg-[#0f1221]" />
+                    ))}
                   </div>
                 )}
-              </DragOverlay>
-            </DndContext>
-          )}
+                {!calendarLoading && calendarData && (
+                  <CalendarMonthView
+                    monthStart={calendarMonth}
+                    data={calendarData}
+                    onDayClick={setDayModalDate}
+                    onEntryClick={setDetailEntry}
+                  />
+                )}
+              </>
+            )}
+
+            <DragOverlay>
+              {activeEntry && (
+                <div className="px-3 py-2 rounded-xl border shadow-lg bg-white dark:bg-[#0f1221] border-indigo-300 dark:border-indigo-500/40 max-w-xs">
+                  <span className="text-[13px] font-medium truncate block" style={{ color: "var(--t-primary)" }}>
+                    {activeEntry.category_emoji && <span className="mr-1">{activeEntry.category_emoji}</span>}
+                    {activeEntry.title}
+                  </span>
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
 
         </div>
       </main>
