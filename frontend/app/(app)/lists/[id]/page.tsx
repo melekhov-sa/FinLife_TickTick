@@ -7,7 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clsx } from "clsx";
 import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags } from "lucide-react";
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { api } from "@/lib/api";
@@ -680,7 +680,7 @@ export default function ListDetailPage() {
     ];
 
     return (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-3 h-full px-3 md:px-6">
           {columns.map((g) => (
             <KanbanColumn key={g.id} group={g} items={g._items} />
