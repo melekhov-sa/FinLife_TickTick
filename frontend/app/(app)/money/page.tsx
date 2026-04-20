@@ -291,7 +291,7 @@ export default function MoneyPage() {
         ]} />
       </div>
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
 
         {/* ── Mobile: type filter + add button ── */}
         <div className="md:hidden flex items-center gap-2 mb-3">

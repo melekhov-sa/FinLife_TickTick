@@ -855,7 +855,7 @@ export default function PlanPage() {
 
       <AppTopbar title="План" />
       <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
-        <div className="max-w-[860px]">
+        <div className="max-w-3xl mx-auto w-full">
 
           {/* ── Controls — compact ────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2 mb-3">

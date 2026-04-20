@@ -190,7 +190,7 @@ export default function BudgetPage() {
 
       <AppTopbar title="Бюджет" />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
 
         {/* Extended budget link */}
         <div className="mb-4">

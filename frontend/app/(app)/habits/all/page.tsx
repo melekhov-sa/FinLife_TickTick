@@ -28,7 +28,7 @@ export default function HabitsAllPage() {
 
       <AppTopbar title="Все привычки" subtitle={`${activeHabits.length} активных · ${archivedHabits.length} в архиве`} />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {/* Back link */}
         <Link
           href="/habits"

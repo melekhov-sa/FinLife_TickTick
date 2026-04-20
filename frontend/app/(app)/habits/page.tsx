@@ -140,7 +140,7 @@ export default function HabitsPage() {
         </div>
       )}
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 max-w-2xl">
+      <main className="flex-1 overflow-auto p-3 md:p-6 max-w-3xl mx-auto w-full">
         {isPending && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
