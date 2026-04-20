@@ -135,6 +135,18 @@ def _run_weekly_digest_job():
         db.close()
 
 
+def _run_calendar_refresh():
+    """Refresh the production-calendar DB cache for current + next year."""
+    from datetime import date
+    from app.application.production_calendar import refresh_year
+    today = date.today()
+    for year in (today.year, today.year + 1):
+        try:
+            refresh_year(year)
+        except Exception:
+            logger.exception("calendar_refresh failed for year %d", year)
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     from app.config import get_settings
@@ -203,11 +215,23 @@ def start_scheduler():
         coalesce=True,
     )
 
+    # Production calendar refresh — Monday 03:00 UTC
+    # Refreshes xmlcalendar.ru data for current + next year so request path
+    # stays instant and survives if xmlcalendar.ru goes down later in the week.
+    scheduler.add_job(
+        _run_calendar_refresh,
+        CronTrigger(day_of_week="mon", hour=3, minute=0, timezone="UTC"),
+        id="calendar_refresh",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
     scheduler.start()
     logger.info(
         "Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), "
         "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC), "
-        "weekly_digest (Sun 15:00 UTC)"
+        "weekly_digest (Sun 15:00 UTC), calendar_refresh (Mon 03:00 UTC)"
     )
 
 

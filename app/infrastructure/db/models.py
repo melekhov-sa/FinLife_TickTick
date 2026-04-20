@@ -1732,3 +1732,19 @@ class DigestDispatchLog(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'kind', 'sent_date', name='uq_digest_dispatch'),
     )
+
+
+class ProductionCalendarCache(Base):
+    """Persistent cache of Russian production calendar (from xmlcalendar.ru).
+
+    day_types_json is a map {"YYYY-MM-DD": "work|weekend|holiday|preholiday"}
+    for the whole year. Survives container restarts so we don't re-fetch on
+    every boot and stay correct when xmlcalendar.ru is unreachable.
+    """
+    __tablename__ = "production_calendar_cache"
+
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    day_types_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    fetched_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
