@@ -27,13 +27,36 @@ interface PlanEntry {
   meta: Record<string, unknown>;
 }
 
+interface HolidayInfo {
+  name: string;
+  icon: string;
+  theme: string;
+}
+
 interface DayGroup {
   date: string | null;
   date_label: string;
   is_today: boolean;
   is_overdue_group: boolean;
   day_type?: string;
+  holiday?: HolidayInfo | null;
   entries: PlanEntry[];
+}
+
+// Federal-holiday theme → Tailwind classes for card, border and badge
+const HOLIDAY_THEME_CLS: Record<string, { bg: string; border: string; badgeBg: string; badgeText: string }> = {
+  winter:    { bg: "bg-sky-50 dark:bg-sky-500/[0.07]",       border: "border-sky-300/60 dark:border-sky-500/25",       badgeBg: "bg-sky-100 dark:bg-sky-500/15",       badgeText: "text-sky-700 dark:text-sky-300" },
+  christmas: { bg: "bg-amber-50 dark:bg-amber-500/[0.07]",   border: "border-amber-300/60 dark:border-amber-500/25",   badgeBg: "bg-amber-100 dark:bg-amber-500/15",   badgeText: "text-amber-700 dark:text-amber-300" },
+  military:  { bg: "bg-emerald-50 dark:bg-emerald-500/[0.07]", border: "border-emerald-300/60 dark:border-emerald-500/25", badgeBg: "bg-emerald-100 dark:bg-emerald-500/15", badgeText: "text-emerald-700 dark:text-emerald-300" },
+  rose:      { bg: "bg-rose-50 dark:bg-rose-500/[0.07]",     border: "border-rose-300/60 dark:border-rose-500/25",     badgeBg: "bg-rose-100 dark:bg-rose-500/15",     badgeText: "text-rose-700 dark:text-rose-300" },
+  spring:    { bg: "bg-lime-50 dark:bg-lime-500/[0.07]",     border: "border-lime-300/60 dark:border-lime-500/25",     badgeBg: "bg-lime-100 dark:bg-lime-500/15",     badgeText: "text-lime-700 dark:text-lime-300" },
+  victory:   { bg: "bg-orange-50 dark:bg-orange-500/[0.07]", border: "border-orange-300/60 dark:border-orange-500/25", badgeBg: "bg-orange-100 dark:bg-orange-500/15", badgeText: "text-orange-700 dark:text-orange-300" },
+  tricolor:  { bg: "bg-indigo-50 dark:bg-indigo-500/[0.07]", border: "border-indigo-300/60 dark:border-indigo-500/25", badgeBg: "bg-indigo-100 dark:bg-indigo-500/15", badgeText: "text-indigo-700 dark:text-indigo-300" },
+  unity:     { bg: "bg-blue-50 dark:bg-blue-500/[0.07]",     border: "border-blue-300/60 dark:border-blue-500/25",     badgeBg: "bg-blue-100 dark:bg-blue-500/15",     badgeText: "text-blue-700 dark:text-blue-300" },
+};
+
+function holidayTheme(theme: string): typeof HOLIDAY_THEME_CLS[string] {
+  return HOLIDAY_THEME_CLS[theme] ?? HOLIDAY_THEME_CLS.winter;
 }
 
 interface PlanSummary {
@@ -490,10 +513,13 @@ function DayGroupCard({
   if (isEmpty && isPast) return null;
 
   if (isEmpty) {
+    const hTheme = group.holiday ? holidayTheme(group.holiday.theme) : null;
     return (
       <div className={clsx(
         "rounded-xl border-[1.5px] px-3 py-3.5",
-        group.day_type === "holiday"
+        hTheme
+          ? `${hTheme.bg} ${hTheme.border}`
+          : group.day_type === "holiday"
           ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
           : group.day_type === "weekend"
           ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
@@ -501,10 +527,15 @@ function DayGroupCard({
           ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
           : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
       )}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-[14px] font-semibold leading-none text-slate-800 dark:text-white/90">
             {label}
           </h3>
+          {group.holiday && hTheme && (
+            <span className={clsx("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium", hTheme.badgeBg, hTheme.badgeText)}>
+              <span>{group.holiday.icon}</span>{group.holiday.name}
+            </span>
+          )}
           <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
             — нет дел
           </span>
@@ -519,6 +550,7 @@ function DayGroupCard({
     );
   }
 
+  const hTheme = group.holiday && !group.is_overdue_group && !group.is_today ? holidayTheme(group.holiday.theme) : null;
   return (
     <div className={clsx(
       "rounded-xl border-[1.5px] px-3 py-2.5",
@@ -526,6 +558,8 @@ function DayGroupCard({
         ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
         : group.is_today
         ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+        : hTheme
+        ? `${hTheme.bg} ${hTheme.border}`
         : group.day_type === "holiday"
         ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
         : group.day_type === "weekend"
@@ -535,7 +569,7 @@ function DayGroupCard({
         : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
     )}>
       {/* Day header */}
-      <div className="flex items-center gap-2 mb-1">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
         <h3 className={clsx(
           "text-[14px] font-semibold leading-none",
           group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
@@ -547,6 +581,19 @@ function DayGroupCard({
         {group.is_today && (
           <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
             сегодня
+          </span>
+        )}
+        {group.holiday && (
+          <span
+            className={clsx(
+              "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium",
+              hTheme
+                ? `${hTheme.badgeBg} ${hTheme.badgeText}`
+                : `${holidayTheme(group.holiday.theme).badgeBg} ${holidayTheme(group.holiday.theme).badgeText}`
+            )}
+            title={group.holiday.name}
+          >
+            <span>{group.holiday.icon}</span>{group.holiday.name}
           </span>
         )}
         <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>

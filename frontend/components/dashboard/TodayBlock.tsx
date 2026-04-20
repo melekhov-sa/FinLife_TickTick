@@ -36,6 +36,18 @@ interface Props {
   plannedOps: UpcomingPayment[];
 }
 
+// Federal-holiday theme → Tailwind classes
+const HOLIDAY_THEME_CLS: Record<string, { bg: string; border: string; text: string }> = {
+  winter:    { bg: "bg-sky-50 dark:bg-sky-500/[0.08]",         border: "border-sky-300/60 dark:border-sky-500/25",         text: "text-sky-700 dark:text-sky-300" },
+  christmas: { bg: "bg-amber-50 dark:bg-amber-500/[0.08]",     border: "border-amber-300/60 dark:border-amber-500/25",     text: "text-amber-700 dark:text-amber-300" },
+  military:  { bg: "bg-emerald-50 dark:bg-emerald-500/[0.08]", border: "border-emerald-300/60 dark:border-emerald-500/25", text: "text-emerald-700 dark:text-emerald-300" },
+  rose:      { bg: "bg-rose-50 dark:bg-rose-500/[0.08]",       border: "border-rose-300/60 dark:border-rose-500/25",       text: "text-rose-700 dark:text-rose-300" },
+  spring:    { bg: "bg-lime-50 dark:bg-lime-500/[0.08]",       border: "border-lime-300/60 dark:border-lime-500/25",       text: "text-lime-700 dark:text-lime-300" },
+  victory:   { bg: "bg-orange-50 dark:bg-orange-500/[0.08]",   border: "border-orange-300/60 dark:border-orange-500/25",   text: "text-orange-700 dark:text-orange-300" },
+  tricolor:  { bg: "bg-indigo-50 dark:bg-indigo-500/[0.08]",   border: "border-indigo-300/60 dark:border-indigo-500/25",   text: "text-indigo-700 dark:text-indigo-300" },
+  unity:     { bg: "bg-blue-50 dark:bg-blue-500/[0.08]",       border: "border-blue-300/60 dark:border-blue-500/25",       text: "text-blue-700 dark:text-blue-300" },
+};
+
 // ── Chip helpers ──────────────────────────────────────────────────────────────
 
 // Stable pastel palette — same category name always maps to the same colour
@@ -624,6 +636,25 @@ export function TodayBlock({ today, plannedOps }: Props) {
             </div>
           )}
         </div>
+
+        {/* Holiday banner — today is a federal RF holiday */}
+        {today.holiday && (() => {
+          const t = HOLIDAY_THEME_CLS[today.holiday.theme] ?? HOLIDAY_THEME_CLS.winter;
+          return (
+            <div
+              className={clsx(
+                "mt-2 mb-1.5 px-3 py-2 rounded-lg border flex items-center gap-2",
+                t.bg, t.border
+              )}
+              title={today.holiday.name}
+            >
+              <span className="text-[18px] leading-none shrink-0">{today.holiday.icon}</span>
+              <span className={clsx("text-[13px] font-semibold", t.text)}>
+                {today.holiday.name}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* CTA banner — visible when there is an unviewed weekly digest */}
         <DigestCtaBanner />

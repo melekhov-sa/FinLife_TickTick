@@ -34,12 +34,19 @@ export interface ProgressBlock {
   left: number;
 }
 
+export interface HolidayInfo {
+  name: string;
+  icon: string;
+  theme: string;  // "winter" | "christmas" | "military" | "rose" | "spring" | "victory" | "tricolor" | "unity"
+}
+
 export interface TodayBlock {
   overdue: DashboardItem[];
   active: DashboardItem[];
   done: DashboardItem[];
   events: DashboardItem[];
   progress: ProgressBlock;
+  holiday: HolidayInfo | null;
 }
 
 export interface UpcomingPayment {

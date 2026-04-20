@@ -12,6 +12,7 @@ from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 
 from app.application.production_calendar import get_day_types
+from app.application.holidays import get_holiday_ru
 from app.infrastructure.db.models import (
     TaskModel, TaskTemplateModel, TaskOccurrence,
     HabitModel, HabitOccurrence,
@@ -959,12 +960,17 @@ def _group_by_date(items: list[dict], today: date, day_types: dict | None = None
 
     for d in sorted(by_date.keys()):
         by_date[d].sort(key=_sort_key)
+        holiday = get_holiday_ru(d)
         groups.append({
             "date": d,
             "date_label": _date_label(d, today),
             "is_today": d == today,
             "is_overdue_group": False,
             "day_type": (day_types or {}).get(d, "work"),
+            "holiday": (
+                {"name": holiday.name, "icon": holiday.icon, "theme": holiday.theme}
+                if holiday else None
+            ),
             "entries": by_date[d],
         })
 

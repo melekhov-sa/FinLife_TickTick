@@ -104,12 +104,20 @@ class DashboardService:
         done_count = len(done)
         progress = {"total": total, "done": done_count, "left": total - done_count}
 
+        # Federal holiday for today (if any)
+        from app.application.holidays import get_holiday_ru
+        holiday = get_holiday_ru(today)
+
         return {
             "overdue": overdue,
             "active": active,
             "done": done,
             "events": events,
             "progress": progress,
+            "holiday": (
+                {"name": holiday.name, "icon": holiday.icon, "theme": holiday.theme}
+                if holiday else None
+            ),
         }
 
     # --- One-off tasks ---
