@@ -18,9 +18,6 @@ const nextConfig: NextConfig = {
       // v1 JSON API (wallets, categories, transactions, push, notifications badge)
       { source: "/api/v1/:path*", destination: `${BACKEND}/api/v1/:path*` },
       { source: "/api/:path*", destination: `${BACKEND}/api/:path*` },
-      // Session auth endpoints
-      { source: "/login", destination: `${BACKEND}/login` },
-      { source: "/logout", destination: `${BACKEND}/logout` },
       // Legacy SSR pages — open in same tab, user sees old UI until migrated
       {
         source: "/legacy/:path*",
