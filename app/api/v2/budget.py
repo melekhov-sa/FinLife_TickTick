@@ -262,7 +262,7 @@ class SaveGoalPlanRequest(BaseModel):
 
 @router.post("/budget/goal-plan")
 def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = Depends(get_db)):
-    from app.application.budget import SaveGoalPlansUseCase, SaveWithdrawalPlansUseCase, get_active_variant
+    from app.application.budget import SaveGoalPlansUseCase, SaveGoalWithdrawalPlansUseCase, get_active_variant
     user_id = get_user_id(request, db)
 
     variant = get_active_variant(db, user_id, body.variant_id)
@@ -273,7 +273,7 @@ def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = De
         for l in body.lines
     ]
 
-    UseCase = SaveWithdrawalPlansUseCase if body.plan_type == "withdrawal" else SaveGoalPlansUseCase
+    UseCase = SaveGoalWithdrawalPlansUseCase if body.plan_type == "withdrawal" else SaveGoalPlansUseCase
     UseCase(db).execute(
         account_id=user_id,
         year=body.year,
