@@ -9,7 +9,7 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic = isPublicPath(pathname);
 
@@ -39,12 +39,12 @@ export async function middleware(request: NextRequest) {
     const { data } = await supabase.auth.getUser();
     user = data.user;
   } catch (err) {
-    console.error("[middleware] getUser failed:", err);
+    console.error("[proxy] getUser failed:", err);
     // Fail-safe: treat as unauthenticated
     user = null;
   }
 
-  console.log(`[middleware] ${pathname} user=${user?.id ?? "null"} public=${isPublic}`);
+  console.log(`[proxy] ${pathname} user=${user?.id ?? "null"} public=${isPublic}`);
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
