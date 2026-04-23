@@ -10,6 +10,9 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isPublic = isPublicPath(pathname);
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -31,15 +34,28 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
-  const isPublic = isPublicPath(pathname);
+  let user: { id: string } | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    console.error("[middleware] getUser failed:", err);
+    // Fail-safe: treat as unauthenticated
+    user = null;
+  }
+
+  console.log(`[middleware] ${pathname} user=${user?.id ?? "null"} public=${isPublic}`);
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("from", pathname);
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    // Forward any cookies the supabase client set during getUser (e.g. refresh)
+    response.cookies.getAll().forEach((c) => {
+      redirect.cookies.set(c.name, c.value);
+    });
+    return redirect;
   }
 
   if (user && (pathname === "/login" || pathname === "/register")) {
