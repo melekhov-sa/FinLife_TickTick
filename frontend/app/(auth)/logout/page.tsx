@@ -31,11 +31,17 @@ function clearSupabaseCookies() {
 export default function LogoutPage() {
   useEffect(() => {
     (async () => {
+      // scope: "local" drops the session on this device without a network
+      // round-trip to Supabase — fast and can't hang.
+      // Race with a short timeout as a final safety net.
       try {
-        await supabase.auth.signOut();
+        await Promise.race([
+          supabase.auth.signOut({ scope: "local" }),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]);
       } catch { /* proceed with hard reset regardless */ }
       clearSupabaseCookies();
-      window.location.href = "/login";
+      window.location.replace("/login");
     })();
   }, []);
 
