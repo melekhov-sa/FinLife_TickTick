@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { clsx } from "clsx";
 import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags } from "lucide-react";
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
@@ -140,6 +141,7 @@ export default function ListDetailPage() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ListItem | null>(null);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [showStatusManager, setShowStatusManager] = useState(false);
   const [newStatusLabel, setNewStatusLabel] = useState("");
@@ -198,7 +200,7 @@ export default function ListDetailPage() {
     onSuccess: () => { invalidate(); setEditingItem(null); },
   });
 
-  const { mutate: deleteItem } = useMutation({
+  const { mutateAsync: deleteItem } = useMutation({
     mutationFn: (itemId: number) => api.delete(`/api/v2/lists/items/${itemId}`),
     onSuccess: invalidate,
   });
@@ -400,7 +402,7 @@ export default function ListDetailPage() {
         {item.price && <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>{parseFloat(item.price).toLocaleString("ru-RU")} ₽</span>}
         {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-indigo-50 dark:hover:bg-indigo-500/10" style={{ color: "var(--t-faint)" }}><ExternalLink size={13} /></a>}
         <button onClick={() => openEdit(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }} title="Редактировать"><Pencil size={13} /></button>
-        <button onClick={() => deleteItem(item.id)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить"><Trash2 size={13} /></button>
+        <button onClick={() => setDeleteTarget(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить"><Trash2 size={13} /></button>
       </div>
     );
   }
@@ -440,7 +442,7 @@ export default function ListDetailPage() {
           {/* Actions */}
           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
             <button onClick={() => openEdit(item)} className="w-6 h-6 rounded-md bg-white/80 dark:bg-black/40 flex items-center justify-center shadow hover:bg-white" style={{ color: "var(--t-secondary)" }}><Pencil size={11} /></button>
-            <button onClick={() => deleteItem(item.id)} className="w-6 h-6 rounded-md bg-white/80 dark:bg-black/40 flex items-center justify-center shadow hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-secondary)" }}><Trash2 size={11} /></button>
+            <button onClick={() => setDeleteTarget(item)} className="w-6 h-6 rounded-md bg-white/80 dark:bg-black/40 flex items-center justify-center shadow hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-secondary)" }}><Trash2 size={11} /></button>
           </div>
         </div>
         {/* Info */}
@@ -540,7 +542,7 @@ export default function ListDetailPage() {
           <p className="text-[13px] font-medium leading-snug flex-1 min-w-0 cursor-pointer" style={{ color: "var(--t-primary)" }} onClick={() => openEdit(item)}>
             {item.title}
           </p>
-          <button onClick={() => deleteItem(item.id)} className="w-5 h-5 rounded flex items-center justify-center shrink-0 opacity-0 group-hover/card:opacity-100 transition-all hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={10} /></button>
+          <button onClick={() => setDeleteTarget(item)} className="w-5 h-5 rounded flex items-center justify-center shrink-0 opacity-0 group-hover/card:opacity-100 transition-all hover:bg-red-50 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={10} /></button>
         </div>
         {item.note && <p className="text-[11px] mt-1 pl-5 line-clamp-2" style={{ color: "var(--t-faint)" }}>{item.note}</p>}
         <div className="flex items-center gap-1.5 mt-2 pl-5 relative">
@@ -850,6 +852,18 @@ export default function ListDetailPage() {
             </div>
           </div>
         </BottomSheet>
+      )}
+
+      {/* Delete item confirmation */}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          entityName="элемент"
+          title={deleteTarget.title}
+          onConfirm={async () => {
+            await deleteItem(deleteTarget.id);
+          }}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
 
       {/* Add group modal */}
