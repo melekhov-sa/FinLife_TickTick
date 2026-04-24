@@ -217,10 +217,20 @@ def test_search_task_case_insensitive(db_session):
     assert len(result["tasks"]) == 1
 
 
-def test_search_task_not_return_archived(db_session):
+def test_search_task_archived_hidden_when_active_exists(db_session):
+    _task(db_session, title="Активная задача хлеб")
     _task(db_session, title="Архивная задача хлеб", status="ARCHIVED")
     result = svc(db_session).search(ACCT, "хлеб", 30)
-    assert result["tasks"] == []
+    assert len(result["tasks"]) == 1
+    assert "Активная" in result["tasks"][0]["title"]
+    assert result["tasks"][0]["is_archived"] is False
+
+
+def test_search_task_archive_fallback_when_no_active(db_session):
+    _task(db_session, title="Только архив хлеб", status="ARCHIVED")
+    result = svc(db_session).search(ACCT, "хлеб", 30)
+    assert len(result["tasks"]) == 1
+    assert result["tasks"][0]["is_archived"] is True
 
 
 def test_search_task_not_return_other_account(db_session):
@@ -297,10 +307,20 @@ def test_search_operation_by_note(db_session):
     assert len(result["operations"]) == 1
 
 
-def test_search_operation_not_return_archived(db_session):
+def test_search_operation_archived_hidden_when_active_exists(db_session):
+    _op_template(db_session, title="Активная аренда")
     _op_template(db_session, title="Архивная аренда", is_archived=True)
     result = svc(db_session).search(ACCT, "аренда", 30)
-    assert result["operations"] == []
+    assert len(result["operations"]) == 1
+    assert "Активная" in result["operations"][0]["title"]
+    assert result["operations"][0]["is_archived"] is False
+
+
+def test_search_operation_archive_fallback_when_no_active(db_session):
+    _op_template(db_session, title="Только архив аренда", is_archived=True)
+    result = svc(db_session).search(ACCT, "аренда", 30)
+    assert len(result["operations"]) == 1
+    assert result["operations"][0]["is_archived"] is True
 
 
 def test_search_operation_not_return_other_account(db_session):

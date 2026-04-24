@@ -48,17 +48,27 @@ class SearchService:
         dialect = self._dialect()
         per_type = max(1, min(10, limit // 4)) if limit < 40 else 10
 
-        tasks = self._search_tasks(user_id, query, dialect, per_type)
+        # Primary pass — only active records.
+        tasks = self._search_tasks(user_id, query, dialect, per_type, archived=False)
         events = self._search_events(user_id, query, dialect, per_type)
-        operations = self._search_operations(user_id, query, dialect, per_type)
+        operations = self._search_operations(user_id, query, dialect, per_type, archived=False)
         transactions = self._search_transactions(user_id, query, dialect, per_type)
+
+        total = len(tasks) + len(events) + len(operations) + len(transactions)
+
+        # Fallback — if nothing was found, look inside the archive and mark
+        # each result with is_archived so the UI can label them.
+        if total == 0:
+            tasks = self._search_tasks(user_id, query, dialect, per_type, archived=True)
+            operations = self._search_operations(user_id, query, dialect, per_type, archived=True)
+            total = len(tasks) + len(operations)
 
         return {
             "tasks": tasks,
             "events": events,
             "operations": operations,
             "transactions": transactions,
-            "total": len(tasks) + len(events) + len(operations) + len(transactions),
+            "total": total,
         }
 
     # ── dialect helper ───────────────────────────────────────────────────────
@@ -72,15 +82,13 @@ class SearchService:
     # ── tasks ────────────────────────────────────────────────────────────────
 
     def _search_tasks(
-        self, user_id: int, query: str, dialect: str, limit: int
+        self, user_id: int, query: str, dialect: str, limit: int, *, archived: bool
     ) -> list[dict[str, Any]]:
-        base = (
-            self.db.query(TaskModel)
-            .filter(
-                TaskModel.account_id == user_id,
-                TaskModel.status != "ARCHIVED",
-            )
-        )
+        base = self.db.query(TaskModel).filter(TaskModel.account_id == user_id)
+        if archived:
+            base = base.filter(TaskModel.status == "ARCHIVED")
+        else:
+            base = base.filter(TaskModel.status != "ARCHIVED")
 
         if dialect == "postgresql":
             base = base.filter(
@@ -100,9 +108,9 @@ class SearchService:
             candidates = base.order_by(TaskModel.task_id.desc()).all()
             rows = [r for r in candidates if _matches(q_lower, r.title, r.note)][:limit]
 
-        return [self._task_item(t) for t in rows]
+        return [self._task_item(t, archived) for t in rows]
 
-    def _task_item(self, t: TaskModel) -> dict[str, Any]:
+    def _task_item(self, t: TaskModel, archived: bool) -> dict[str, Any]:
         subtitle = (
             t.due_date.strftime("%d.%m.%Y") if t.due_date else "Без даты"
         )
@@ -112,6 +120,7 @@ class SearchService:
             "subtitle": subtitle,
             "date": t.due_date,
             "url": f"/plan?task={t.task_id}",
+            "is_archived": archived,
         }
 
     # ── events ───────────────────────────────────────────────────────────────
@@ -164,20 +173,22 @@ class SearchService:
             "subtitle": subtitle,
             "date": occ.start_date if occ else None,
             "url": f"/events?id={e.event_id}",
+            "is_archived": False,
         }
 
     # ── operation templates ──────────────────────────────────────────────────
 
     def _search_operations(
-        self, user_id: int, query: str, dialect: str, limit: int
+        self, user_id: int, query: str, dialect: str, limit: int, *, archived: bool
     ) -> list[dict[str, Any]]:
         base = (
             self.db.query(OperationTemplateModel)
-            .filter(
-                OperationTemplateModel.account_id == user_id,
-                OperationTemplateModel.is_archived.is_(False),
-            )
+            .filter(OperationTemplateModel.account_id == user_id)
         )
+        if archived:
+            base = base.filter(OperationTemplateModel.is_archived.is_(True))
+        else:
+            base = base.filter(OperationTemplateModel.is_archived.is_(False))
 
         if dialect == "postgresql":
             base = base.filter(
@@ -197,9 +208,9 @@ class SearchService:
             candidates = base.order_by(OperationTemplateModel.template_id.desc()).all()
             rows = [r for r in candidates if _matches(q_lower, r.title, r.note)][:limit]
 
-        return [self._operation_item(t) for t in rows]
+        return [self._operation_item(t, archived) for t in rows]
 
-    def _operation_item(self, t: OperationTemplateModel) -> dict[str, Any]:
+    def _operation_item(self, t: OperationTemplateModel, archived: bool) -> dict[str, Any]:
         occ = (
             self.db.query(OperationOccurrence)
             .filter(
@@ -222,6 +233,7 @@ class SearchService:
             "subtitle": subtitle,
             "date": nearest_date,
             "url": f"/planned-ops?id={t.template_id}",
+            "is_archived": archived,
         }
 
     # ── transactions ─────────────────────────────────────────────────────────
@@ -262,4 +274,5 @@ class SearchService:
             "subtitle": subtitle,
             "date": tx.occurred_at,
             "url": f"/money?id={tx.transaction_id}",
+            "is_archived": False,
         }

@@ -13,6 +13,7 @@ interface SearchResultItem {
   subtitle: string | null;
   date: string | null;
   url: string;
+  is_archived: boolean;
 }
 
 interface SearchResponse {
@@ -41,6 +42,13 @@ const KIND_LABELS: Record<ResultKind, string> = {
   event: "События",
   operation: "Операции",
   transaction: "Транзакции",
+};
+
+const KIND_BADGE: Record<ResultKind, { label: string; className: string }> = {
+  task: { label: "Задача", className: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300" },
+  event: { label: "Событие", className: "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300" },
+  operation: { label: "Операция", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  transaction: { label: "Транзакция", className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
 };
 
 export function SearchBar() {
@@ -306,6 +314,7 @@ function ResultGroups({
               const globalIdx = groupStart + i;
               const isActive = globalIdx === activeIdx;
               const isActiveFlat = flat[activeIdx ?? -1]?.id === it.id && flat[activeIdx ?? -1]?.kind === kind;
+              const badge = KIND_BADGE[kind];
               return (
                 <button
                   key={`${kind}-${it.id}`}
@@ -336,6 +345,21 @@ function ResultGroups({
                       >
                         {it.subtitle}
                       </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                        badge.className
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                    {it.is_archived && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                        Архив
+                      </span>
                     )}
                   </div>
                 </button>
