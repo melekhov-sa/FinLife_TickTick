@@ -7,7 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clsx } from "clsx";
 import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags } from "lucide-react";
-import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { api } from "@/lib/api";
@@ -461,30 +461,43 @@ export default function ListDetailPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const [dragItem, setDragItem] = useState<ListItem | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<number | null | undefined>(undefined);
   const [inlineAddGroupId, setInlineAddGroupId] = useState<number | null>(null);
   const [inlineAddTitle, setInlineAddTitle] = useState("");
+
+  // Resolve target group_id from a drop target (column droppable "col-{gid}"
+  // or a card — take its group_id). Used both by onDragOver (for highlight)
+  // and onDragEnd (for the actual reassign).
+  function resolveTargetGroupId(overId: string | number): number | null | undefined {
+    if (!list) return undefined;
+    if (typeof overId === "string" && overId.startsWith("col-")) {
+      const gid = Number(overId.replace("col-", ""));
+      return gid === 0 ? null : gid;
+    }
+    const overItem = list.items.find((it) => it.id === overId);
+    return overItem ? overItem.group_id : undefined;
+  }
 
   function handleDragStart(e: DragStartEvent) {
     const item = list?.items.find((it) => it.id === e.active.id);
     if (item) setDragItem(item);
   }
 
+  function handleDragOver(e: DragOverEvent) {
+    if (!e.over) {
+      setDragOverGroupId(undefined);
+      return;
+    }
+    setDragOverGroupId(resolveTargetGroupId(e.over.id));
+  }
+
   function handleDragEnd(e: DragEndEvent) {
     setDragItem(null);
+    setDragOverGroupId(undefined);
     if (!e.over || !list) return;
     const itemId = e.active.id as number;
-    const overId = e.over.id;
 
-    // Resolve target group_id from either the column droppable ("col-{gid}")
-    // or from the card the cursor landed on (take its group).
-    let targetGroupId: number | null | undefined;
-    if (typeof overId === "string" && overId.startsWith("col-")) {
-      const gid = Number(overId.replace("col-", ""));
-      targetGroupId = gid === 0 ? null : gid;
-    } else {
-      const overItem = list.items.find((it) => it.id === overId);
-      if (overItem) targetGroupId = overItem.group_id;
-    }
+    const targetGroupId = resolveTargetGroupId(e.over.id);
     if (targetGroupId === undefined) return;
 
     const item = list.items.find((it) => it.id === itemId);
@@ -562,7 +575,11 @@ export default function ListDetailPage() {
   }
 
   function KanbanColumn({ group, items: colItems }: { group: { id: number; title: string }; items: ListItem[] }) {
-    const { setNodeRef, isOver } = useDroppable({ id: `col-${group.id}` });
+    const { setNodeRef, isOver: isDirectlyOver } = useDroppable({ id: `col-${group.id}` });
+    // Full highlight: either the cursor is directly over our droppable area,
+    // or it is over a card belonging to this group (resolved upstream).
+    const groupKey = group.id === 0 ? null : group.id;
+    const isOver = isDirectlyOver || (dragItem !== null && dragOverGroupId === groupKey);
     const isAdding = inlineAddGroupId === group.id;
     const [editingTitle, setEditingTitle] = useState(false);
     const [colTitle, setColTitle] = useState(group.title);
@@ -687,7 +704,7 @@ export default function ListDetailPage() {
     ];
 
     return (
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => { setDragItem(null); setDragOverGroupId(undefined); }}>
         <div className="flex gap-3 h-full px-3 md:px-6">
           {columns.map((g) => (
             <KanbanColumn key={g.id} group={g} items={g._items} />
