@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppSidebar, NAV_ITEMS } from "@/components/layout/AppSidebar";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
-import { AppTopbar } from "@/components/layout/AppTopbar";
 import { OnboardingModal } from "@/components/layout/OnboardingModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -17,7 +15,6 @@ import type { UserMe } from "@/types/api";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
-  const pathname = usePathname();
 
   const { data: me } = useQuery<UserMe>({
     queryKey: ["me"],
@@ -52,17 +49,6 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   // Level-up celebration
   const { celebrateLevel, dismiss } = useLevelUpWatcher();
 
-  // Section title from current pathname
-  const current = NAV_ITEMS.find(
-    (i) => pathname === i.href || pathname?.startsWith(i.href + "/")
-  );
-  const title = current?.label;
-  const subtitle = new Date().toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
   return (
     <AuthGuard>
       <div
@@ -77,17 +63,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           />
         </div>
 
-        {/* Main column */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <AppTopbar title={title} subtitle={subtitle} />
-
-          <main
-            className="flex-1 overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0"
-            style={{ background: "var(--app-bg)" }}
-          >
-            {children}
-          </main>
-        </div>
+        {/* Main column — pages render their own AppTopbar */}
+        <main
+          className="flex-1 flex flex-col min-w-0 overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0"
+          style={{ background: "var(--app-bg)" }}
+        >
+          {children}
+        </main>
 
         {/* Bottom nav — mobile only */}
         <MobileNav
