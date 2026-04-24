@@ -6,6 +6,7 @@ import type { WorkCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
@@ -851,13 +852,14 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
           {showNote ? "▾ Заметка" : "▸ Заметка"}
         </button>
         {showNote && (
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Заметка к задаче"
-            rows={2}
-            className="w-full mt-2 px-3 py-2 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
-          />
+          <div className="mt-2">
+            <RichNoteEditor
+              value={note}
+              onChange={setNote}
+              placeholder="Заметка к задаче"
+              minHeight={100}
+            />
+          </div>
         )}
       </div>
 

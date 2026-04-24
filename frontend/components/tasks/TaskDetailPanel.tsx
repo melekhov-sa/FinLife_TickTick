@@ -8,6 +8,7 @@ import { TaskReminders } from "./TaskReminders";
 import { clsx } from "clsx";
 import type { TaskItem, WorkCategoryItem, ProjectTag } from "@/types/api";
 import { Select } from "@/components/ui/Select";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { api } from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
@@ -294,14 +295,12 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
           {/* Note */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Заметка</p>
-            <textarea
+            <RichNoteEditor
               value={note}
-              onChange={(e) => { setNote(e.target.value); debounceSave("note", e.target.value); }}
+              onChange={(md) => { setNote(md); debounceSave("note", md); }}
               disabled={isDone || isArchived}
-              placeholder="Добавить заметку..."
-              rows={4}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25 disabled:opacity-50"
-              style={{ color: "var(--t-secondary)" }}
+              placeholder="Добавить заметку…"
+              minHeight={120}
             />
           </div>
 

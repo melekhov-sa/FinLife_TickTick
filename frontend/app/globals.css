@@ -858,3 +858,103 @@ html.dark[data-color-theme="emerald"] {
   background: rgba(255, 255, 255, .04);
   color: var(--t-primary);
 }
+
+/* ── RichNoteEditor (TipTap) content styles ──────────────────────────────── */
+
+.rne-content {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--t-secondary);
+  word-break: break-word;
+}
+
+.rne-content p { margin: 0 0 0.5em; }
+.rne-content p:last-child { margin-bottom: 0; }
+
+.rne-content h1 { font-size: 20px; font-weight: 700; margin: 0.6em 0 0.3em; color: var(--t-primary); }
+.rne-content h2 { font-size: 17px; font-weight: 700; margin: 0.5em 0 0.25em; color: var(--t-primary); }
+.rne-content h3 { font-size: 15px; font-weight: 700; margin: 0.4em 0 0.2em; color: var(--t-primary); }
+.rne-content h1:first-child, .rne-content h2:first-child, .rne-content h3:first-child { margin-top: 0; }
+
+.rne-content ul, .rne-content ol { margin: 0.25em 0 0.5em; padding-left: 1.4em; }
+.rne-content li { margin: 0.1em 0; }
+
+.rne-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.rne-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+  margin: 0.15em 0;
+}
+.rne-content ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.25em;
+  user-select: none;
+}
+.rne-content ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rne-content ul[data-type="taskList"] li > label > input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #6366F1;
+}
+.rne-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--t-faint);
+}
+
+.rne-content blockquote {
+  border-left: 3px solid var(--app-accent);
+  padding-left: 0.75em;
+  margin: 0.5em 0;
+  color: var(--t-muted);
+}
+
+.rne-content code {
+  background: rgba(99,102,241,0.08);
+  color: var(--app-accent-ink);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.92em;
+}
+.dark .rne-content code { color: #C7D2FE; background: rgba(129,140,248,0.14); }
+
+.rne-content pre {
+  background: #0F172A;
+  color: #E2E8F0;
+  padding: 0.75em 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.rne-content pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.rne-content a {
+  color: var(--app-accent);
+  text-decoration: underline;
+}
+
+/* Placeholder когда редактор пуст */
+.rne-content.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--t-faint);
+  pointer-events: none;
+  height: 0;
+}
+.rne-content.ProseMirror:empty::before {
+  content: attr(data-placeholder);
+  color: var(--t-faint);
+  pointer-events: none;
+}
