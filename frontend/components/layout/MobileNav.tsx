@@ -42,13 +42,12 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden fixed left-3 right-3 rounded-2xl flex items-end justify-between px-2 pt-2"
+        className="md:hidden fixed left-0 right-0 bottom-0 flex items-end justify-between px-2 pt-2"
         style={{
-          bottom: "max(12px, env(safe-area-inset-bottom, 12px))",
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
-          border: "1px solid var(--app-border)",
-          paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
+          borderTop: "1px solid var(--app-border)",
+          paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
           zIndex: 20,
         }}
       >
@@ -79,15 +78,15 @@ export function MobileNav({
           aria-label="Создать"
           className="flex flex-col items-center justify-center rounded-full select-none transition-transform active:scale-95"
           style={{
-            width: 52,
-            height: 52,
-            marginTop: -26,
+            width: 44,
+            height: 44,
+            marginTop: -14,
             background: "linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)",
             boxShadow: "var(--shadow-fab)",
             color: "#FFF",
           }}
         >
-          <Plus size={22} strokeWidth={2.3} />
+          <Plus size={20} strokeWidth={2.3} />
         </button>
 
         <BottomItem
