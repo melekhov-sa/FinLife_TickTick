@@ -6,6 +6,7 @@ import { User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { SearchBar } from "@/components/layout/SearchBar";
 
 interface AppTopbarProps {
   /** Заголовок раздела (белым). Если не передан — ничего не рендерим. */
@@ -88,6 +89,8 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
       {/* Правая часть */}
       <div className="flex items-center gap-1.5 sm:gap-2 relative">
         {actions}
+
+        <SearchBar />
 
         {/* Существующий компонент уведомлений */}
         <NotificationBell />
