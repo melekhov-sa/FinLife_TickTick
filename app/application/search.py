@@ -162,14 +162,45 @@ class SearchService:
     def _search_events(
         self, user_id: int, query: str, dialect: str, limit: int, *, archived: bool
     ) -> list[dict[str, Any]]:
+        # Event is "live" if it has at least one non-cancelled occurrence.
+        # Resolve to a concrete Python set — works across dialects without
+        # subquery/exists quirks.
+        live_event_ids: set[int] = {
+            row[0]
+            for row in (
+                self.db.query(EventOccurrenceModel.event_id)
+                .filter(
+                    EventOccurrenceModel.account_id == user_id,
+                    EventOccurrenceModel.is_cancelled.isnot(True),
+                )
+                .distinct()
+                .all()
+            )
+        }
+
         base = (
             self.db.query(CalendarEventModel)
             .filter(CalendarEventModel.account_id == user_id)
         )
         if archived:
-            base = base.filter(CalendarEventModel.is_active.is_(False))
+            # Archived bucket: is_active=False OR active-but-empty (no live
+            # occurrence). Both are effectively dead from the user's POV.
+            if live_event_ids:
+                base = base.filter(
+                    (CalendarEventModel.is_active.is_(False))
+                    | (~CalendarEventModel.event_id.in_(live_event_ids))
+                )
+            # else: everything the user owns has no live occurrence → anything
+            # active-but-empty or inactive qualifies, so no id filter needed.
         else:
-            base = base.filter(CalendarEventModel.is_active.is_(True))
+            # Primary pass: active AND has at least one non-cancelled occurrence.
+            # If nothing is live for this user, the primary pass is empty.
+            if not live_event_ids:
+                return []
+            base = base.filter(
+                CalendarEventModel.is_active.is_(True),
+                CalendarEventModel.event_id.in_(live_event_ids),
+            )
 
         if dialect == "postgresql":
             base = base.filter(

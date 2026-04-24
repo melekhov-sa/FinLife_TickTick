@@ -377,12 +377,23 @@ def test_search_event_subtitle_with_occurrence(db_session):
 
 
 def test_search_event_archived_hidden_when_active_exists(db_session):
-    _event(db_session, title="Активный матч Зенит")
+    e_active = _event(db_session, title="Активный матч Зенит")
+    _occ_event(db_session, e_active.event_id)
     _event(db_session, title="Архивный матч Зенит", is_active=False)
     result = svc(db_session).search(ACCT, "зенит", 30)
     assert len(result["events"]) == 1
     assert "Активный" in result["events"][0]["title"]
     assert result["events"][0]["is_archived"] is False
+
+
+def test_search_active_event_without_occurrence_treated_as_archive(db_session):
+    # Active event that has no live EventOccurrence is a dead record — it
+    # must be hidden from the primary pass and only surface via the archive
+    # fallback with is_archived=True.
+    _event(db_session, title="Зенит пустое событие")
+    result = svc(db_session).search(ACCT, "зенит пустое", 30)
+    assert len(result["events"]) == 1
+    assert result["events"][0]["is_archived"] is True
 
 
 def test_search_event_archive_fallback_when_no_active(db_session):
