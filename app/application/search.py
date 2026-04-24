@@ -50,7 +50,7 @@ class SearchService:
 
         # Primary pass — only active records.
         tasks = self._search_tasks(user_id, query, dialect, per_type, archived=False)
-        events = self._search_events(user_id, query, dialect, per_type)
+        events = self._search_events(user_id, query, dialect, per_type, archived=False)
         operations = self._search_operations(user_id, query, dialect, per_type, archived=False)
         transactions = self._search_transactions(user_id, query, dialect, per_type)
 
@@ -60,8 +60,9 @@ class SearchService:
         # each result with is_archived so the UI can label them.
         if total == 0:
             tasks = self._search_tasks(user_id, query, dialect, per_type, archived=True)
+            events = self._search_events(user_id, query, dialect, per_type, archived=True)
             operations = self._search_operations(user_id, query, dialect, per_type, archived=True)
-            total = len(tasks) + len(operations)
+            total = len(tasks) + len(events) + len(operations)
 
         return {
             "tasks": tasks,
@@ -126,12 +127,16 @@ class SearchService:
     # ── events ───────────────────────────────────────────────────────────────
 
     def _search_events(
-        self, user_id: int, query: str, dialect: str, limit: int
+        self, user_id: int, query: str, dialect: str, limit: int, *, archived: bool
     ) -> list[dict[str, Any]]:
         base = (
             self.db.query(CalendarEventModel)
             .filter(CalendarEventModel.account_id == user_id)
         )
+        if archived:
+            base = base.filter(CalendarEventModel.is_active.is_(False))
+        else:
+            base = base.filter(CalendarEventModel.is_active.is_(True))
 
         if dialect == "postgresql":
             base = base.filter(
@@ -151,9 +156,9 @@ class SearchService:
             candidates = base.order_by(CalendarEventModel.event_id.desc()).all()
             rows = [r for r in candidates if _matches(q_lower, r.title, r.description)][:limit]
 
-        return [self._event_item(e) for e in rows]
+        return [self._event_item(e, archived) for e in rows]
 
-    def _event_item(self, e: CalendarEventModel) -> dict[str, Any]:
+    def _event_item(self, e: CalendarEventModel, archived: bool) -> dict[str, Any]:
         occ = (
             self.db.query(EventOccurrenceModel)
             .filter(EventOccurrenceModel.event_id == e.event_id)
@@ -173,7 +178,7 @@ class SearchService:
             "subtitle": subtitle,
             "date": occ.start_date if occ else None,
             "url": f"/events?id={e.event_id}",
-            "is_archived": False,
+            "is_archived": archived,
         }
 
     # ── operation templates ──────────────────────────────────────────────────

@@ -71,7 +71,7 @@ def _category(db, *, account_id=ACCT):
     return c
 
 
-def _event(db, *, title="event", description=None, account_id=ACCT):
+def _event(db, *, title="event", description=None, account_id=ACCT, is_active=True):
     cat = _category(db, account_id=account_id)
     eid = db.query(CalendarEventModel).count() + 1
     e = CalendarEventModel(
@@ -80,7 +80,7 @@ def _event(db, *, title="event", description=None, account_id=ACCT):
         title=title,
         description=description,
         category_id=cat.category_id,
-        is_active=True,
+        is_active=is_active,
     )
     db.add(e)
     db.flush()
@@ -282,6 +282,22 @@ def test_search_event_subtitle_with_occurrence(db_session):
     _occ_event(db_session, e.event_id, start_date=date(2026, 6, 15))
     result = svc(db_session).search(ACCT, "с датой", 30)
     assert result["events"][0]["subtitle"] == "15.06.2026"
+
+
+def test_search_event_archived_hidden_when_active_exists(db_session):
+    _event(db_session, title="Активный матч Зенит")
+    _event(db_session, title="Архивный матч Зенит", is_active=False)
+    result = svc(db_session).search(ACCT, "зенит", 30)
+    assert len(result["events"]) == 1
+    assert "Активный" in result["events"][0]["title"]
+    assert result["events"][0]["is_archived"] is False
+
+
+def test_search_event_archive_fallback_when_no_active(db_session):
+    _event(db_session, title="Только архив матч Зенит", is_active=False)
+    result = svc(db_session).search(ACCT, "зенит", 30)
+    assert len(result["events"]) == 1
+    assert result["events"][0]["is_archived"] is True
 
 
 def test_search_event_subtitle_no_occurrence(db_session):
