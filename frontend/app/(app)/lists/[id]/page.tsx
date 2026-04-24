@@ -473,16 +473,23 @@ export default function ListDetailPage() {
     setDragItem(null);
     if (!e.over || !list) return;
     const itemId = e.active.id as number;
-    const overId = String(e.over.id);
+    const overId = e.over.id;
 
-    // Dropped on a column (droppable id = "col-{groupId}")
-    if (overId.startsWith("col-")) {
-      const targetGroupId = Number(overId.replace("col-", ""));
-      const gid = targetGroupId === 0 ? null : targetGroupId;
-      const item = list.items.find((it) => it.id === itemId);
-      if (item && item.group_id !== gid) {
-        updateItem({ itemId, group_id: gid });
-      }
+    // Resolve target group_id from either the column droppable ("col-{gid}")
+    // or from the card the cursor landed on (take its group).
+    let targetGroupId: number | null | undefined;
+    if (typeof overId === "string" && overId.startsWith("col-")) {
+      const gid = Number(overId.replace("col-", ""));
+      targetGroupId = gid === 0 ? null : gid;
+    } else {
+      const overItem = list.items.find((it) => it.id === overId);
+      if (overItem) targetGroupId = overItem.group_id;
+    }
+    if (targetGroupId === undefined) return;
+
+    const item = list.items.find((it) => it.id === itemId);
+    if (item && item.group_id !== targetGroupId) {
+      updateItem({ itemId, group_id: targetGroupId });
     }
   }
 
