@@ -142,6 +142,7 @@ export default function ListDetailPage() {
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ListItem | null>(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ id: number; title: string } | null>(null);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [showStatusManager, setShowStatusManager] = useState(false);
   const [newStatusLabel, setNewStatusLabel] = useState("");
@@ -230,7 +231,7 @@ export default function ListDetailPage() {
     onSuccess: invalidate,
   });
 
-  const { mutate: deleteGroup } = useMutation({
+  const { mutateAsync: deleteGroup } = useMutation({
     mutationFn: (groupId: number) => api.delete(`/api/v2/lists/groups/${groupId}`),
     onSuccess: invalidate,
   });
@@ -619,10 +620,18 @@ export default function ListDetailPage() {
           <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full shrink-0" style={{ color: "var(--t-muted)" }}>{colItems.length}</span>
           {group.id !== 0 && (
             <button
-              onClick={() => deleteGroup(group.id)}
-              className="w-5 h-5 flex items-center justify-center rounded shrink-0 opacity-0 group-hover/col:opacity-100 transition-all hover:bg-red-50 hover:text-red-500"
+              onClick={() => {
+                if (colItems.length === 0) setDeleteGroupTarget({ id: group.id, title: group.title });
+              }}
+              disabled={colItems.length > 0}
+              className={clsx(
+                "w-5 h-5 flex items-center justify-center rounded shrink-0 transition-all",
+                colItems.length > 0
+                  ? "opacity-25 cursor-not-allowed"
+                  : "opacity-0 group-hover/col:opacity-100 hover:bg-red-50 hover:text-red-500"
+              )}
               style={{ color: "var(--t-faint)" }}
-              title="Удалить колонку"
+              title={colItems.length > 0 ? "Сначала переместите или удалите элементы" : "Удалить колонку"}
             >
               <Trash2 size={11} />
             </button>
@@ -866,6 +875,18 @@ export default function ListDetailPage() {
         />
       )}
 
+      {/* Delete group confirmation */}
+      {deleteGroupTarget && (
+        <ConfirmDeleteModal
+          entityName="группу"
+          title={deleteGroupTarget.title}
+          onConfirm={async () => {
+            await deleteGroup(deleteGroupTarget.id);
+          }}
+          onClose={() => setDeleteGroupTarget(null)}
+        />
+      )}
+
       {/* Add group modal */}
       {showAddGroup && (
         <BottomSheet open onClose={() => setShowAddGroup(false)} title="Новая группа" footer={
@@ -1018,7 +1039,22 @@ export default function ListDetailPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-[13px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)", opacity: 0.6 }}>{group.title}</h3>
                           <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>{items.length}</span>
-                          <button onClick={() => deleteGroup(group.id)} className="ml-auto w-6 h-6 flex items-center justify-center rounded opacity-0 hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить группу"><Trash2 size={12} /></button>
+                          <button
+                            onClick={() => {
+                              if (items.length === 0) setDeleteGroupTarget({ id: group.id, title: group.title });
+                            }}
+                            disabled={items.length > 0}
+                            className={clsx(
+                              "ml-auto w-6 h-6 flex items-center justify-center rounded transition-all",
+                              items.length > 0
+                                ? "opacity-25 cursor-not-allowed"
+                                : "opacity-0 hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
+                            )}
+                            style={{ color: "var(--t-faint)" }}
+                            title={items.length > 0 ? "Сначала переместите или удалите элементы" : "Удалить группу"}
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       )}
 
