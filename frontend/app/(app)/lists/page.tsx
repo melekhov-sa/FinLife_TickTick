@@ -137,7 +137,7 @@ export default function ListsPage() {
 
       <AppTopbar title="Списки" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
-        <div className="max-w-3xl mx-auto w-full">
+        <div className="w-full">
 
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>

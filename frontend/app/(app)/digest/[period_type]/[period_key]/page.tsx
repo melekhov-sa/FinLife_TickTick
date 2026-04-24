@@ -432,7 +432,7 @@ export default function DigestDetailPage() {
       />
 
       <main className="flex-1 overflow-auto p-3 md:p-6">
-        <div className="max-w-3xl mx-auto w-full">
+        <div className="w-full">
           {isPending && (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (

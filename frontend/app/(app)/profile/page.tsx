@@ -72,7 +72,7 @@ export default function ProfilePage() {
     <>
       <AppTopbar title="Профиль" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
-        <div className="max-w-3xl mx-auto w-full">
+        <div className="w-full">
           {isLoading && (
             <div className="space-y-4">
               {[...Array(4)].map((_, i) => (
