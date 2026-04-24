@@ -47,7 +47,7 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
       style={{
         background: "var(--app-topbar-bg)",
         boxShadow: "var(--shadow-topbar)",
-        height: 56,
+        minHeight: "calc(56px + env(safe-area-inset-top, 0px))",
         paddingTop: "env(safe-area-inset-top, 0px)",
         zIndex: 30,
       }}
