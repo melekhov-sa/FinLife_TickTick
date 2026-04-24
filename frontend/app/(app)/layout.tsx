@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppSidebar, NAV_ITEMS } from "@/components/layout/AppSidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
+import { AppTopbar } from "@/components/layout/AppTopbar";
 import { OnboardingModal } from "@/components/layout/OnboardingModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -15,6 +17,7 @@ import type { UserMe } from "@/types/api";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
+  const pathname = usePathname();
 
   const { data: me } = useQuery<UserMe>({
     queryKey: ["me"],
@@ -31,6 +34,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     qc.invalidateQueries({ queryKey: ["me"] });
   }
 
+  // Persist custom color theme (user's data-color-theme attribute)
   useEffect(() => {
     const savedTheme = localStorage.getItem("finlife_color_theme");
     if (savedTheme) {
@@ -38,45 +42,70 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Modal state — lives in layout, survives MobileNav re-renders
+  // Create modals — triggered from MobileNav FAB
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showOpModal, setShowOpModal] = useState(false);
+
+  // Sidebar collapse state (desktop)
+  const [collapsed, setCollapsed] = useState(false);
 
   // Level-up celebration
   const { celebrateLevel, dismiss } = useLevelUpWatcher();
 
+  // Section title from current pathname
+  const current = NAV_ITEMS.find(
+    (i) => pathname === i.href || pathname?.startsWith(i.href + "/")
+  );
+  const title = current?.label;
+  const subtitle = new Date().toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <AuthGuard>
-      <div className="flex min-h-[100dvh]" style={{ background: "var(--app-bg)" }}>
-        {/* Sidebar — desktop only, sticky so it stays in place while body scrolls */}
-        <div className="hidden md:flex sticky top-0 h-screen">
-          <AppSidebar />
+      <div
+        className="h-[100dvh] w-full flex"
+        style={{ background: "var(--app-bg)" }}
+      >
+        {/* Desktop sidebar */}
+        <div className="hidden md:flex">
+          <AppSidebar
+            collapsed={collapsed}
+            onToggle={() => setCollapsed((v) => !v)}
+          />
         </div>
 
-        {/* Main content — no internal scroll; page-level scroll on body shows scrollbar at viewport edge */}
-        <div className="flex-1 flex flex-col min-w-0 md:pb-0 pb-[calc(56px+env(safe-area-inset-bottom))]">
-          {children}
-        </div>
-      </div>
+        {/* Main column */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <AppTopbar title={title} subtitle={subtitle} />
 
-      {/* Bottom nav — mobile only */}
-      <div className="md:hidden">
+          <main
+            className="flex-1 overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0"
+            style={{ background: "var(--app-bg)" }}
+          >
+            {children}
+          </main>
+        </div>
+
+        {/* Bottom nav — mobile only */}
         <MobileNav
           onCreateTask={() => setShowTaskModal(true)}
           onCreateOperation={() => setShowOpModal(true)}
         />
       </div>
 
-      {/* Modals — rendered at layout level, never unmounted by MobileNav */}
-      {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
-      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
-
-      {/* Onboarding */}
+      {/* Modals and overlays */}
+      {showTaskModal && (
+        <CreateTaskModal onClose={() => setShowTaskModal(false)} />
+      )}
+      {showOpModal && (
+        <CreateOperationModal onClose={() => setShowOpModal(false)} />
+      )}
       {showOnboarding && (
         <OnboardingModal onComplete={handleOnboardingComplete} />
       )}
-
-      {/* Level-up celebration overlay — global, above everything */}
       {celebrateLevel !== null && (
         <LevelUpOverlay level={celebrateLevel} onDismiss={dismiss} />
       )}

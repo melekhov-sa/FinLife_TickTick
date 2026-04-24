@@ -1,154 +1,208 @@
 "use client";
 
-import { useState } from "react";
-import { useTheme } from "next-themes";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { User, Settings, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { User, Settings, LogOut } from "lucide-react";
-import Link from "next/link";
-import { clsx } from "clsx";
 
 interface AppTopbarProps {
+  /** Заголовок раздела (белым). Если не передан — ничего не рендерим. */
   title?: string;
+  /** Мелкая белая подпись справа от заголовка, 50% opacity */
   subtitle?: string;
-  actions?: React.ReactNode;
+  /** Доп. действия между actions и иконками (колокольчик/аватар) */
+  actions?: ReactNode;
 }
 
 export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const { data: me } = useMe();
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const textPrimary = "var(--app-topbar-text)";
-  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.7)";
-
-  const initial = me?.email?.[0]?.toUpperCase() ?? "?";
   const email = me?.email ?? "";
-  const name = email.split("@")[0];
+  const initial = email[0]?.toUpperCase() ?? "?";
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <header
-      className="pt-[env(safe-area-inset-top)] min-h-14 md:h-14 flex items-center justify-between px-4 md:px-6 shrink-0 border-b relative z-30"
+      className="relative shrink-0 flex items-center justify-between px-4 sm:px-6"
       style={{
         background: "var(--app-topbar-bg)",
-        borderColor: isDark ? "var(--app-border)" : "transparent",
-        boxShadow: isDark ? "0 1px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(99,102,241,0.15)",
+        boxShadow: "var(--shadow-topbar)",
+        height: 56,
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        zIndex: 30,
       }}
     >
-      {(title || subtitle) && (
-        <div className="flex items-baseline gap-2 md:gap-3 min-w-0">
-          {title && (
-            <h1 className="text-[13px] md:text-sm font-semibold truncate" style={{ color: textPrimary, letterSpacing: "-0.01em" }}>
-              {title}
-            </h1>
-          )}
-          {subtitle && (
-            <span className="text-[11px] md:text-xs shrink-0" style={{ color: textMuted }}>
-              {subtitle}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="flex items-center gap-3 md:gap-2 ml-auto shrink-0">
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {/* Декоративный блик */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(600px 120px at 20% 0%, rgba(255,255,255,.14), transparent 70%)",
+        }}
+      />
+
+      {/* Заголовок + подпись */}
+      <div className="flex items-baseline gap-3 min-w-0 relative">
+        {title && (
+          <h1
+            className="text-[15px] sm:text-[16px] font-semibold truncate"
+            style={{
+              color: "var(--app-topbar-text)",
+              letterSpacing: "-0.015em",
+            }}
+          >
+            {title}
+          </h1>
+        )}
+        {subtitle && (
+          <span
+            className="hidden sm:inline text-[12px] truncate"
+            style={{ color: "rgba(255,255,255,.6)" }}
+          >
+            {subtitle}
+          </span>
+        )}
+      </div>
+
+      {/* Правая часть */}
+      <div className="flex items-center gap-1.5 sm:gap-2 relative">
+        {actions}
+
+        {/* Существующий компонент уведомлений */}
         <NotificationBell />
 
-        {/* Avatar button — opens menu on both mobile and desktop */}
-        <div className="relative z-[80]">
+        {/* Аватар + dropdown */}
+        <div className="relative" ref={menuRef}>
           <button
+            type="button"
+            aria-label="Профиль"
             onClick={() => setMenuOpen((v) => !v)}
-            className={clsx(
-              "w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center transition-colors touch-manipulation",
-              isDark ? "bg-indigo-500/20 active:bg-indigo-500/40" : "bg-white/20 active:bg-white/30"
-            )}
-            aria-label="Профиль и настройки"
-            style={{ WebkitTapHighlightColor: "transparent" }}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-[1.04]"
+            style={{
+              background: "#FFFFFF",
+              boxShadow:
+                "0 1px 2px rgba(16,24,40,.1), 0 4px 12px -4px rgba(16,24,40,.2)",
+            }}
           >
-            <span className={clsx(
-              "text-[12px] md:text-[13px] font-bold select-none pointer-events-none",
-              isDark ? "text-indigo-400" : "text-white"
-            )}>
+            <span
+              className="text-[13px] font-bold"
+              style={{ color: "#6366F1" }}
+            >
               {initial}
             </span>
           </button>
 
           {menuOpen && (
-            <>
-              {/* Overlay */}
-              <div
-                className="fixed inset-0 z-[80] bg-black/0 md:bg-transparent"
-                onClick={() => setMenuOpen(false)}
-                aria-hidden
-              />
-
-              {/* Menu: bottom sheet on mobile, dropdown on desktop */}
-              <div
-                className={clsx(
-                  "fixed md:absolute z-[90] overflow-hidden border shadow-2xl",
-                  // Mobile: bottom sheet
-                  "inset-x-0 bottom-0 rounded-t-2xl md:rounded-2xl",
-                  // Desktop: dropdown
-                  "md:inset-auto md:right-0 md:top-full md:mt-1 md:w-56",
-                )}
-                style={{
-                  background: isDark ? "#0f1221" : "#ffffff",
-                  borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-                  paddingBottom: "env(safe-area-inset-bottom, 0px)",
-                }}
-              >
-                {/* User info */}
-                <div className="px-4 py-3 border-b" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
-                  <p className="text-[13px] font-semibold truncate" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)" }}>
-                    {name}
-                  </p>
-                  <p className="text-[11px] truncate mt-0.5" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>
+            <div
+              role="menu"
+              className="absolute right-0 top-full mt-2 w-56 rounded-xl overflow-hidden border"
+              style={{
+                background: "var(--app-card-bg)",
+                borderColor: "var(--app-border)",
+                boxShadow:
+                  "0 1px 2px rgba(16,24,40,.04), 0 16px 40px -8px rgba(16,24,40,.2)",
+                zIndex: 50,
+              }}
+            >
+              {email && (
+                <div
+                  className="px-4 py-3 border-b"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <p
+                    className="text-[11px] truncate"
+                    style={{ color: "var(--t-muted)" }}
+                  >
                     {email}
                   </p>
                 </div>
+              )}
 
-                {/* Menu items */}
-                <div className="py-1">
-                  <Link
-                    href="/profile"
-                    onClick={() => setMenuOpen(false)}
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors",
-                      isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
-                    )}
-                  >
-                    <User size={14} className="opacity-50" /> Мой профиль
-                  </Link>
-                  <Link
-                    href="/settings"
-                    onClick={() => setMenuOpen(false)}
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors",
-                      isDark ? "text-white/70 hover:bg-white/[0.05] hover:text-white/90" : "text-black/60 hover:bg-black/[0.04] hover:text-black/85"
-                    )}
-                  >
-                    <Settings size={14} className="opacity-50" /> Настройки
-                  </Link>
-                </div>
-
-                {/* Logout */}
-                <div className="border-t py-1" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
-                  <a
-                    href="/logout"
-                    onClick={() => setMenuOpen(false)}
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3 text-[13px] font-medium transition-colors",
-                      isDark ? "text-white/50 hover:text-red-400 hover:bg-red-500/[0.07]" : "text-black/40 hover:text-red-600 hover:bg-red-50"
-                    )}
-                  >
-                    <LogOut size={14} className="opacity-50" /> Выйти
-                  </a>
-                </div>
+              <div className="py-1">
+                <MenuLink
+                  href="/profile"
+                  icon={<User size={15} strokeWidth={1.8} />}
+                  onNavigate={() => setMenuOpen(false)}
+                >
+                  Мой профиль
+                </MenuLink>
+                <MenuLink
+                  href="/settings"
+                  icon={<Settings size={15} strokeWidth={1.8} />}
+                  onNavigate={() => setMenuOpen(false)}
+                >
+                  Настройки
+                </MenuLink>
               </div>
-            </>
+
+              <div
+                className="py-1 border-t"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                <Link
+                  href="/logout"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium text-left transition-colors",
+                    "hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  )}
+                  style={{ color: "#DC2626" }}
+                >
+                  <LogOut size={15} strokeWidth={1.8} />
+                  <span>Выйти</span>
+                </Link>
+              </div>
+            </div>
           )}
         </div>
       </div>
     </header>
+  );
+}
+
+function MenuLink({
+  href,
+  icon,
+  children,
+  onNavigate,
+}: {
+  href: string;
+  icon: ReactNode;
+  children: ReactNode;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      onClick={onNavigate}
+      className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium nav-hover text-left transition-colors"
+      style={{ color: "var(--t-secondary)" }}
+    >
+      {icon}
+      <span>{children}</span>
+    </Link>
   );
 }
