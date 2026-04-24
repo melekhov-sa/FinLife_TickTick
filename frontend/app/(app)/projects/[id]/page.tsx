@@ -6,6 +6,7 @@ import { ArrowLeft, ExternalLink, Settings, Plus, X, Check } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { KanbanBoard } from "@/components/projects/KanbanBoard";
+import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { useProject } from "@/hooks/useProjects";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
@@ -75,11 +76,13 @@ function ProjectSettingsPopover({
     onSuccess: () => { setEditingTagId(null); invalidate(); },
   });
 
-  const { mutate: deleteTag } = useMutation({
+  const { mutateAsync: deleteTag } = useMutation({
     mutationFn: (id: number) =>
       api.delete(`/api/v2/projects/${projectId}/tags/${id}`),
     onSuccess: invalidate,
   });
+
+  const [deleteTagTarget, setDeleteTagTarget] = useState<ProjectTag | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -165,7 +168,7 @@ function ProjectSettingsPopover({
                       ✎
                     </button>
                     <button
-                      onClick={() => deleteTag(tag.id)}
+                      onClick={() => setDeleteTagTarget(tag)}
                       className="opacity-0 group-hover/tag:opacity-100 text-white/30 hover:text-red-400 transition-all"
                     >
                       <X size={10} />
@@ -204,6 +207,17 @@ function ProjectSettingsPopover({
             </div>
           </div>
         </div>
+      )}
+
+      {deleteTagTarget && (
+        <ConfirmDeleteModal
+          entityName="тег"
+          title={deleteTagTarget.name}
+          onConfirm={async () => {
+            await deleteTag(deleteTagTarget.id);
+          }}
+          onClose={() => setDeleteTagTarget(null)}
+        />
       )}
     </div>
   );

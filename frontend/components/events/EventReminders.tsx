@@ -4,6 +4,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Bell, X, Plus } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 
 interface EventReminder {
   id: number;
@@ -53,10 +54,12 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
     onError: (err: Error) => alert(err.message.replace(/^API error \d+: /, "")),
   });
 
-  const { mutate: deleteReminder } = useMutation({
+  const { mutateAsync: deleteReminder } = useMutation({
     mutationFn: (reminderId: number) => api.delete(`/api/v2/events/${eventId}/reminders/${reminderId}`),
     onSuccess: invalidate,
   });
+
+  const [deleteTarget, setDeleteTarget] = useState<EventReminder | null>(null);
 
   const isAllDay = !startTime;
 
@@ -91,7 +94,7 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
               {reminderLabel(r)}
               {!disabled && (
                 <button
-                  onClick={() => deleteReminder(r.id)}
+                  onClick={() => setDeleteTarget(r)}
                   className="hover:text-red-500 transition-colors"
                   title="Удалить"
                 >
@@ -151,6 +154,17 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
           )}
         </div>
       </div>
+
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          entityName="напоминание"
+          title={reminderLabel(deleteTarget)}
+          onConfirm={async () => {
+            await deleteReminder(deleteTarget.id);
+          }}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
