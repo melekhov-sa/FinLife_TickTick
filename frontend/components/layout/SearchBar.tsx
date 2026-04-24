@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X, ClipboardList, Calendar, Wallet, CircleDollarSign } from "lucide-react";
+import { Search, X, ClipboardList, Calendar, Wallet, CircleDollarSign, Heart, Target, Repeat, Users, FileText } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -21,20 +21,65 @@ interface SearchResponse {
   events: SearchResultItem[];
   operations: SearchResultItem[];
   transactions: SearchResultItem[];
+  habits: SearchResultItem[];
+  goals: SearchResultItem[];
+  subscriptions: SearchResultItem[];
+  contacts: SearchResultItem[];
+  articles: SearchResultItem[];
   total: number;
 }
 
-type ResultKind = "task" | "event" | "operation" | "transaction";
+type ResultKind =
+  | "task"
+  | "event"
+  | "operation"
+  | "transaction"
+  | "habit"
+  | "goal"
+  | "subscription"
+  | "contact"
+  | "article";
 
 interface FlatResult extends SearchResultItem {
   kind: ResultKind;
 }
+
+// Response key for each kind (events → "events", task → "tasks" etc.)
+const KIND_TO_KEY: Record<ResultKind, keyof Omit<SearchResponse, "total">> = {
+  task: "tasks",
+  event: "events",
+  operation: "operations",
+  transaction: "transactions",
+  habit: "habits",
+  goal: "goals",
+  subscription: "subscriptions",
+  contact: "contacts",
+  article: "articles",
+};
+
+// Display order in the dropdown
+const KIND_ORDER: ResultKind[] = [
+  "task",
+  "event",
+  "operation",
+  "transaction",
+  "habit",
+  "goal",
+  "subscription",
+  "contact",
+  "article",
+];
 
 const KIND_ICONS: Record<ResultKind, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
   task: ClipboardList,
   event: Calendar,
   operation: CircleDollarSign,
   transaction: Wallet,
+  habit: Heart,
+  goal: Target,
+  subscription: Repeat,
+  contact: Users,
+  article: FileText,
 };
 
 const KIND_LABELS: Record<ResultKind, string> = {
@@ -42,6 +87,11 @@ const KIND_LABELS: Record<ResultKind, string> = {
   event: "События",
   operation: "Операции",
   transaction: "Транзакции",
+  habit: "Привычки",
+  goal: "Цели",
+  subscription: "Подписки",
+  contact: "Контакты",
+  article: "Заметки",
 };
 
 const KIND_BADGE: Record<ResultKind, { label: string; className: string }> = {
@@ -49,6 +99,11 @@ const KIND_BADGE: Record<ResultKind, { label: string; className: string }> = {
   event: { label: "Событие", className: "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300" },
   operation: { label: "Операция", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
   transaction: { label: "Транзакция", className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  habit: { label: "Привычка", className: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+  goal: { label: "Цель", className: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  subscription: { label: "Подписка", className: "bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300" },
+  contact: { label: "Контакт", className: "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300" },
+  article: { label: "Заметка", className: "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200" },
 };
 
 export function SearchBar() {
@@ -82,12 +137,12 @@ export function SearchBar() {
 
   const flat = useMemo<FlatResult[]>(() => {
     if (!data) return [];
-    return [
-      ...data.tasks.map((r) => ({ ...r, kind: "task" as const })),
-      ...data.events.map((r) => ({ ...r, kind: "event" as const })),
-      ...data.operations.map((r) => ({ ...r, kind: "operation" as const })),
-      ...data.transactions.map((r) => ({ ...r, kind: "transaction" as const })),
-    ];
+    const out: FlatResult[] = [];
+    for (const kind of KIND_ORDER) {
+      const items = data[KIND_TO_KEY[kind]] ?? [];
+      for (const it of items) out.push({ ...it, kind });
+    }
+    return out;
   }, [data]);
 
   // Close desktop dropdown on outside click
@@ -294,9 +349,9 @@ function ResultGroups({
   let offset = 0;
   return (
     <div className="py-1">
-      {(["task", "event", "operation", "transaction"] as ResultKind[]).map((kind) => {
-        const items = data[(`${kind}s` as const) as keyof SearchResponse] as SearchResultItem[];
-        if (!items || items.length === 0) {
+      {KIND_ORDER.map((kind) => {
+        const items = data[KIND_TO_KEY[kind]] ?? [];
+        if (items.length === 0) {
           return null;
         }
         const groupStart = offset;
