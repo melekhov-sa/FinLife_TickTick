@@ -12,6 +12,7 @@ export interface StatProps {
   size?: "sm" | "md" | "lg";
   align?: "left" | "center";
   className?: string;
+  valueClassName?: string;
 }
 
 export function Stat({
@@ -22,6 +23,7 @@ export function Stat({
   size = "md",
   align = "left",
   className,
+  valueClassName,
 }: StatProps) {
   const valueCls =
     size === "sm" ? "text-[14px]" : size === "lg" ? "text-[26px]" : "text-[18px]";
@@ -53,6 +55,7 @@ export function Stat({
           className={cn(
             valueCls,
             "font-semibold tabular-nums text-slate-900 dark:text-[#fff]",
+            valueClassName,
           )}
         >
           {value}

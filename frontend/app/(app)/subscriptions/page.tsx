@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { SectionHeader } from "@/components/primitives/SectionHeader";
+import { Stat } from "@/components/primitives/Stat";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -284,40 +285,38 @@ export default function SubscriptionsPage() {
                   {
                     value: visibleData.length,
                     label: "Подписок",
-                    color: "var(--t-primary)",
-                    border: "border-white/[0.07]",
-                    bg: "bg-white/[0.04]",
+                    valueClass: "",
+                    border: "border-slate-200 dark:border-white/[0.07]",
+                    bg: "bg-white dark:bg-white/[0.04]",
                   },
                   {
                     value: monthlyExpense > 0
                       ? monthlyExpense.toLocaleString("ru-RU") + " ₽"
                       : "—",
                     label: "Расход в месяц",
-                    color: "#ff6b6b",
+                    valueClass: "text-red-600 dark:text-red-400",
                     border: "border-red-500/20",
-                    bg: "bg-red-500/[0.04]",
+                    bg: "bg-red-50 dark:bg-red-500/[0.04]",
                   },
                   {
                     value: expiringCount,
                     label: "Истекают ≤14д",
-                    color: expiringCount > 0 ? "#fbbf24" : "var(--t-primary)",
-                    border: expiringCount > 0 ? "border-amber-500/20" : "border-white/[0.07]",
-                    bg: expiringCount > 0 ? "bg-amber-500/[0.04]" : "bg-white/[0.04]",
+                    valueClass: expiringCount > 0 ? "text-amber-600 dark:text-amber-400" : "",
+                    border: expiringCount > 0 ? "border-amber-500/20" : "border-slate-200 dark:border-white/[0.07]",
+                    bg: expiringCount > 0 ? "bg-amber-50 dark:bg-amber-500/[0.04]" : "bg-white dark:bg-white/[0.04]",
                   },
                 ].map((kpi) => (
                   <div
                     key={kpi.label}
-                    className={clsx("rounded-[14px] border p-4 text-center min-h-[72px] flex flex-col items-center justify-center gap-1", kpi.border, kpi.bg)}
+                    className={clsx("rounded-[14px] border p-4 min-h-[72px] flex items-center justify-center", kpi.border, kpi.bg)}
                   >
-                    <p
-                      className="text-[24px] font-bold tabular-nums leading-none"
-                      style={{ color: kpi.color, letterSpacing: "-0.03em" }}
-                    >
-                      {kpi.value}
-                    </p>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                      {kpi.label}
-                    </p>
+                    <Stat
+                      label={kpi.label}
+                      value={kpi.value}
+                      align="center"
+                      size="lg"
+                      valueClassName={kpi.valueClass}
+                    />
                   </div>
                 ))}
               </div>

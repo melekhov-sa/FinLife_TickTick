@@ -14,6 +14,7 @@ import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { SectionHeader } from "@/components/primitives/SectionHeader";
+import { Stat } from "@/components/primitives/Stat";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -387,42 +388,40 @@ function UpcomingTab() {
             {
               value: data.length,
               label: "Ближайших",
-              color: "var(--t-primary)",
-              border: "border-white/[0.07]",
-              bg: "bg-white/[0.04]",
+              valueClass: "",
+              border: "border-slate-200 dark:border-white/[0.07]",
+              bg: "bg-white dark:bg-white/[0.04]",
             },
             {
               value: todayCount,
               label: "Сегодня",
-              color: todayCount > 0 ? "#34d399" : "var(--t-primary)",
-              border: todayCount > 0 ? "border-emerald-500/20" : "border-white/[0.07]",
-              bg: todayCount > 0 ? "bg-emerald-500/[0.04]" : "bg-white/[0.04]",
+              valueClass: todayCount > 0 ? "text-emerald-600 dark:text-emerald-400" : "",
+              border: todayCount > 0 ? "border-emerald-500/20" : "border-slate-200 dark:border-white/[0.07]",
+              bg: todayCount > 0 ? "bg-emerald-50 dark:bg-emerald-500/[0.04]" : "bg-white dark:bg-white/[0.04]",
             },
             {
               value: overdueCount,
               label: "Просрочено",
-              color: overdueCount > 0 ? "#f87171" : "var(--t-primary)",
-              border: overdueCount > 0 ? "border-red-500/25" : "border-white/[0.07]",
-              bg: overdueCount > 0 ? "bg-red-500/[0.04]" : "bg-white/[0.04]",
+              valueClass: overdueCount > 0 ? "text-red-600 dark:text-red-400" : "",
+              border: overdueCount > 0 ? "border-red-500/25" : "border-slate-200 dark:border-white/[0.07]",
+              bg: overdueCount > 0 ? "bg-red-50 dark:bg-red-500/[0.04]" : "bg-white dark:bg-white/[0.04]",
             },
           ].map((kpi) => (
             <div
               key={kpi.label}
               className={clsx(
-                "rounded-[14px] border p-4 text-center min-h-[72px] flex flex-col items-center justify-center gap-1",
+                "rounded-[14px] border p-4 min-h-[72px] flex items-center justify-center",
                 kpi.border,
                 kpi.bg,
               )}
             >
-              <p
-                className="text-[26px] font-bold tabular-nums leading-none"
-                style={{ color: kpi.color, letterSpacing: "-0.03em" }}
-              >
-                {kpi.value}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                {kpi.label}
-              </p>
+              <Stat
+                label={kpi.label}
+                value={kpi.value}
+                align="center"
+                size="lg"
+                valueClassName={kpi.valueClass}
+              />
             </div>
           ))}
         </div>

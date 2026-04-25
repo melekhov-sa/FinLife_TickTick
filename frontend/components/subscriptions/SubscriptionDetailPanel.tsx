@@ -10,6 +10,8 @@ import {
   useUpdateMember, useArchiveMember,
 } from "@/hooks/useSubscriptions";
 import { useMe } from "@/hooks/useMe";
+import { Stat } from "@/components/primitives/Stat";
+import { Divider } from "@/components/primitives/Divider";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -270,22 +272,18 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           {/* Stats */}
           <div className={clsx("grid gap-3", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
             {isAdmin && (
-              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
-                <div className="text-[20px] font-bold tabular-nums leading-none text-white/85" style={{ letterSpacing: "-0.04em" }}>
-                  {sub.total_members}
-                </div>
-                <div className="text-[10px] mt-1 font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                  Участников
-                </div>
+              <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
+                <Stat label="Участников" value={sub.total_members} align="center" size="lg" />
               </div>
             )}
-            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
-              <div className="text-[20px] font-bold tabular-nums leading-none text-red-400" style={{ letterSpacing: "-0.04em" }}>
-                {monthlyTotal > 0 ? `${monthlyTotal.toLocaleString("ru-RU")} ₽` : "—"}
-              </div>
-              <div className="text-[10px] mt-1 font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                / месяц
-              </div>
+            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
+              <Stat
+                label="/ месяц"
+                value={monthlyTotal > 0 ? `${monthlyTotal.toLocaleString("ru-RU")} ₽` : "—"}
+                align="center"
+                size="lg"
+                valueClassName="text-red-600 dark:text-red-400"
+              />
             </div>
           </div>
 
