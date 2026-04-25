@@ -20,9 +20,9 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm " +
-    "hover:from-indigo-500 hover:to-violet-400 hover:shadow-md " +
-    "active:from-indigo-600 active:to-violet-600",
+    "bg-gradient-to-br from-indigo-600 to-violet-600 text-[#fff] shadow-sm " +
+    "hover:from-indigo-500 hover:to-violet-500 hover:shadow-md " +
+    "active:from-indigo-700 active:to-violet-700",
   secondary:
     "bg-slate-100 text-slate-900 hover:bg-slate-200 active:bg-slate-300 " +
     "dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 dark:active:bg-white/15",
@@ -33,7 +33,7 @@ const variantClasses: Record<Variant, string> = {
     "border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 " +
     "dark:border-white/15 dark:bg-transparent dark:text-slate-300 dark:hover:border-white/25 dark:hover:bg-white/5",
   destructive:
-    "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 shadow-sm",
+    "bg-red-600 text-[#fff] hover:bg-red-500 active:bg-red-700 shadow-sm",
   link:
     "bg-transparent text-indigo-600 hover:text-indigo-500 underline underline-offset-4 " +
     "dark:text-indigo-400 dark:hover:text-indigo-300",
