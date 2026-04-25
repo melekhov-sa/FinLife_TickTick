@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -633,17 +634,18 @@ function CategoryDataRow({
             {row.title}
           </span>
           {editing.showHidden && editing.toggleVisibility && row.category_id && (
-            <button
-              onClick={(e) => { e.stopPropagation(); editing.toggleVisibility!(row.category_id!); }}
-              className="opacity-0 group-hover/cat:opacity-100 ml-1 shrink-0 transition-opacity"
-              title={editing.hiddenCatIds?.has(row.category_id) ? "Показать в бюджете" : "Скрыть из бюджета"}
-            >
-              {editing.hiddenCatIds?.has(row.category_id) ? (
-                <EyeOff size={11} className="text-red-400" />
-              ) : (
-                <Eye size={11} className="text-slate-400 hover:text-slate-600" />
-              )}
-            </button>
+            <Tooltip content={editing.hiddenCatIds?.has(row.category_id) ? "Показать в бюджете" : "Скрыть из бюджета"}>
+              <button
+                onClick={(e) => { e.stopPropagation(); editing.toggleVisibility!(row.category_id!); }}
+                className="opacity-0 group-hover/cat:opacity-100 ml-1 shrink-0 transition-opacity"
+              >
+                {editing.hiddenCatIds?.has(row.category_id) ? (
+                  <EyeOff size={11} className="text-red-400" />
+                ) : (
+                  <Eye size={11} className="text-slate-400 hover:text-slate-600" />
+                )}
+              </button>
+            </Tooltip>
           )}
         </span>
       </td>
@@ -745,13 +747,14 @@ function GoalDataRow({
           <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
           <span className={isHidden ? "opacity-40 line-through" : ""}>{row.title}</span>
           {onToggleVisibility && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }}
-              className="opacity-0 group-hover/goal:opacity-100 ml-1 shrink-0 transition-opacity"
-              title={isHidden ? "Показать в бюджете" : "Скрыть из бюджета"}
-            >
-              {isHidden ? <EyeOff size={11} className="text-red-400" /> : <Eye size={11} className="text-slate-400 hover:text-slate-600" />}
-            </button>
+            <Tooltip content={isHidden ? "Показать в бюджете" : "Скрыть из бюджета"}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }}
+                className="opacity-0 group-hover/goal:opacity-100 ml-1 shrink-0 transition-opacity"
+              >
+                {isHidden ? <EyeOff size={11} className="text-red-400" /> : <Eye size={11} className="text-slate-400 hover:text-slate-600" />}
+              </button>
+            </Tooltip>
           )}
         </span>
       </td>
@@ -1057,26 +1060,30 @@ export default function BudgetMatrixPage() {
         >
           {/* Navigation */}
           <div className="flex items-center gap-1">
-            <button
-              onClick={goBack}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
-              style={{ color: "var(--t-secondary)" }}
-            >
-              <ChevronLeft size={16} />
-            </button>
+            <Tooltip content="Назад">
+              <button
+                onClick={goBack}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+            </Tooltip>
             <span
               className="text-[13px] font-semibold tabular-nums min-w-[130px] text-center"
               style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}
             >
               {periodLabel}
             </span>
-            <button
-              onClick={goForward}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
-              style={{ color: "var(--t-secondary)" }}
-            >
-              <ChevronRight size={16} />
-            </button>
+            <Tooltip content="Вперёд">
+              <button
+                onClick={goForward}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </Tooltip>
           </div>
 
           {/* Period count selector */}

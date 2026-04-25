@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { useToast } from "@/components/primitives/Toast";
 import { api } from "@/lib/api";
 import { CreateHabitRequestSchema } from "@/schemas/api.generated";
 import {
@@ -46,6 +47,7 @@ const LEVELS = [
 
 export function CreateHabitModal({ onClose }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   const [title, setTitle] = useState("");
   const [freq, setFreq] = useState("DAILY");
@@ -127,6 +129,7 @@ export function CreateHabitModal({ onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["habits"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      toast({ title: "Привычка создана", variant: "success" });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";

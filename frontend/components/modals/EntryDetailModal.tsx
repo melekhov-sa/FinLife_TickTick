@@ -15,6 +15,7 @@ import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { useToast } from "@/components/primitives/Toast";
 
 interface PlanEntry {
   id: number;
@@ -41,6 +42,7 @@ interface Props {
 
 export function EntryDetailModal({ entry, onClose }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
   const isEvent = entry.kind === "event";
   const editable = isTask && !entry.is_done;
@@ -103,7 +105,11 @@ export function EntryDetailModal({ entry, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["task", entry.id] });
+      toast({ title: "Сохранено", variant: "success" });
       onClose();
+    },
+    onError: (err: Error) => {
+      toast({ title: "Ошибка", description: err.message, variant: "danger" });
     },
   });
 

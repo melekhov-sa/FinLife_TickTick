@@ -10,6 +10,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Switch } from "@/components/primitives/Switch";
+import { useToast } from "@/components/primitives/Toast";
 import { api } from "@/lib/api";
 import { CreateEventRequestSchema } from "@/schemas/api.generated";
 import {
@@ -75,6 +76,7 @@ type StagedReminder =
 
 export function CreateEventModal({ onClose, initialDate }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   // ── Core fields ──────────────────────────────────────────────
   const [title, setTitle] = useState("");
@@ -199,6 +201,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast({ title: "Событие создано", variant: "success" });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";

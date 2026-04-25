@@ -21,6 +21,7 @@ import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { useToast } from "@/components/primitives/Toast";
 
 interface Props {
   onClose: () => void;
@@ -103,6 +104,7 @@ function todayISO(): string {
 
 export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // Mode
@@ -361,6 +363,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
         qc.invalidateQueries({ queryKey: ["list-tasks", Number(listId)] });
         qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
       }
+      toast({ title: "Задача создана", variant: "success" });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";

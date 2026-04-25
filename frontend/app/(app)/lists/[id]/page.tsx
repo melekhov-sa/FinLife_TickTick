@@ -16,6 +16,7 @@ import { TripDashboard } from "@/components/lists/TripDashboard";
 import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { useToast } from "@/components/primitives/Toast";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,7 @@ export default function ListDetailPage() {
   const { id } = useParams<{ id: string }>();
   const listId = Number(id);
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
@@ -341,6 +343,7 @@ export default function ListDetailPage() {
     const url = `${window.location.origin}/share/${list.slug}`;
     navigator.clipboard.writeText(url);
     setCopiedSlug(true);
+    toast({ title: "Скопировано", variant: "success" });
     setTimeout(() => setCopiedSlug(false), 2000);
   }
 

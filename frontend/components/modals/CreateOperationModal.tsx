@@ -17,6 +17,7 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { DateTimeInput } from "@/components/primitives/DateTimeInput";
+import { useToast } from "@/components/primitives/Toast";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -61,6 +62,7 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
 
 export function CreateOperationModal({ onClose, initialValues, occurrenceId, initialListId }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const formRef = useRef<HTMLFormElement | null>(null);
 
   const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? "EXPENSE");
@@ -289,6 +291,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
         qc.invalidateQueries({ queryKey: ["list-transactions", Number(listId)] });
         qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
       }
+      toast({
+        title: occurrenceId ? "Операция выполнена" : "Операция создана",
+        variant: "success",
+      });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
