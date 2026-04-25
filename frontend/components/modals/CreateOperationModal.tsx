@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WalletItem, FinCategoryItem, SubscriptionItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { FormRow } from "@/components/ui/FormRow";
+import { X } from "lucide-react";
 import { CreateTransactionRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
-  inputErrorBorder, errTextCls, type FieldErrors,
+  inputErrorBorder, type FieldErrors,
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
 
@@ -46,10 +48,9 @@ interface TripListOption {
 
 const inputCls =
   "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
-const labelCls = "block text-[11px] md:text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/72";
 const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
 const chipActiveCls = "bg-indigo-600 border-indigo-500 text-white";
-const chipInactiveCls = "bg-white/[0.03] border-white/[0.08] text-white/68 hover:text-white/85 hover:bg-white/[0.05]";
+const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 
 const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
   { value: "INCOME",   label: "Доход",       activeColor: "bg-emerald-600 border-emerald-500 text-white" },
@@ -59,6 +60,7 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
 
 export function CreateOperationModal({ onClose, initialValues, occurrenceId, initialListId }: Props) {
   const qc = useQueryClient();
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? "EXPENSE");
   const [amount, setAmount] = useState(initialValues?.amount ?? "");
@@ -190,7 +192,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
   useEffect(() => {
     if (!initialValues?.categoryId) setCategoryId("");
-  }, [opType]);
+  }, [opType, initialValues?.categoryId]);
 
   // Reset subscription section when opType changes away from EXPENSE
   useEffect(() => {
@@ -308,6 +310,18 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     }
   }
 
+  // Ctrl/Cmd + Enter
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const headerTitle = opType
     ? `Новая операция · ${OP_TYPES.find((o) => o.value === opType)!.label}`
     : "Новая операция";
@@ -324,7 +338,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
       >
         Отмена
       </button>
@@ -339,254 +353,258 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       footer={footer}
       onSubmit={handleSubmit}
     >
-      {/* Type picker */}
-      <div>
-        <div className="flex gap-1.5">
-          {OP_TYPES.map((op) => (
-            <button
-              key={op.value}
-              type="button"
-              onPointerUp={() => { setOpType(op.value); setError(null); }}
-              className={`flex-1 py-2.5 text-[12px] md:text-xs font-semibold rounded-xl border transition-colors touch-manipulation ${
-                opType === op.value
-                  ? op.activeColor
-                  : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68"
-              }`}
-            >
-              {op.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {opType && (
-        <>
-          {/* Amount */}
-          <div>
-            <label className={labelCls}>Сумма *</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
-              placeholder="0.00"
-              className={`${inputCls} h-10 text-base font-semibold ${fieldErrors.amount ? inputErrorBorder : ""}`}
-              autoFocus={!initialValues?.amount}
-            />
-            {fieldErrors.amount && <p className={errTextCls}>{fieldErrors.amount}</p>}
-          </div>
-
-          {/* Wallet(s) */}
-          {opType !== "TRANSFER" ? (
-            <div>
-              <label className={labelCls}>Кошелёк *</label>
-              <Select
-                value={walletId}
-                onChange={(v) => { setWalletId(v ? Number(v) : ""); clearFieldError("wallet_id"); }}
-                options={walletOptions}
-                placeholder="— выберите кошелёк —"
-              />
-              {fieldErrors.wallet_id && <p className={errTextCls}>{fieldErrors.wallet_id}</p>}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Откуда *</label>
-                <Select
-                  value={fromWalletId}
-                  onChange={(v) => { setFromWalletId(v ? Number(v) : ""); clearFieldError("from_wallet_id"); }}
-                  options={allWalletOptions}
-                  placeholder="— кошелёк —"
-                />
-                {fieldErrors.from_wallet_id && <p className={errTextCls}>{fieldErrors.from_wallet_id}</p>}
-              </div>
-              <div>
-                <label className={labelCls}>Куда *</label>
-                <Select
-                  value={toWalletId}
-                  onChange={(v) => { setToWalletId(v ? Number(v) : ""); clearFieldError("to_wallet_id"); }}
-                  options={allWalletOptions}
-                  placeholder="— кошелёк —"
-                />
-                {fieldErrors.to_wallet_id && <p className={errTextCls}>{fieldErrors.to_wallet_id}</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Goal selectors for TRANSFER — only shown when the wallet is SAVINGS */}
-          {opType === "TRANSFER" && (showFromGoal || showToGoal) && (
-            <div className="grid grid-cols-2 gap-3">
-              {showFromGoal && (
-                <div>
-                  <label className={labelCls}>Цель (откуда)</label>
-                  <Select
-                    value={fromGoalId}
-                    onChange={(v) => setFromGoalId(v ? Number(v) : "")}
-                    options={goalOptions}
-                    placeholder="— без цели —"
-                  />
-                </div>
-              )}
-              {showToGoal && (
-                <div>
-                  <label className={labelCls}>Цель (куда)</label>
-                  <Select
-                    value={toGoalId}
-                    onChange={(v) => setToGoalId(v ? Number(v) : "")}
-                    options={goalOptions}
-                    placeholder="— без цели —"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Category */}
-          {(opType === "INCOME" || opType === "EXPENSE") && (
-            <div>
-              <label className={labelCls}>Категория</label>
-              <Select
-                value={categoryId}
-                onChange={(v) => setCategoryId(v ? Number(v) : "")}
-                options={categoryOptions}
-                placeholder="— без категории —"
-                searchable
-              />
-            </div>
-          )}
-
-          {/* Trip list link */}
-          {tripLists && tripLists.length > 0 && (
-            <div>
-              <label className={labelCls}>К списку (поездка)</label>
-              <Select
-                value={listId}
-                onChange={(v) => setListId(v ? Number(v) : "")}
-                options={[
-                  { value: "", label: "— без списка —" },
-                  ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
-                ]}
-                placeholder="— без списка —"
-              />
-            </div>
-          )}
-
-          {/* Description */}
-          <div>
-            <label className={labelCls}>Описание</label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Необязательно"
-              className={inputCls}
-            />
-          </div>
-
-          {/* Occurred at */}
-          <div>
-            <label className={labelCls}>Дата и время</label>
-            <input
-              type="datetime-local"
-              value={occurredAt}
-              onChange={(e) => setOccurredAt(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-
-          {/* Subscription coverage (EXPENSE only) */}
-          {opType === "EXPENSE" && (
-            <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+      <div
+        className="space-y-3 md:space-y-4"
+        ref={(el) => {
+          if (el && !formRef.current) {
+            const f = el.closest("form");
+            if (f instanceof HTMLFormElement) formRef.current = f;
+          }
+        }}
+      >
+        {/* Type picker */}
+        <FormRow label="Тип">
+          <div className="flex gap-1.5">
+            {OP_TYPES.map((op) => (
               <button
+                key={op.value}
                 type="button"
-                onClick={() => setSubOpen((v) => !v)}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-white/68 hover:text-white/85 hover:bg-white/[0.03] transition-colors text-left"
+                onPointerUp={() => { setOpType(op.value); setError(null); }}
+                className={`flex-1 py-2.5 text-[12px] md:text-xs font-semibold rounded-xl border transition-colors touch-manipulation ${
+                  opType === op.value
+                    ? op.activeColor
+                    : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68"
+                }`}
               >
-                <span>{subOpen ? "▾" : "▸"}</span>
-                <span>Привязать к подписке</span>
+                {op.label}
               </button>
+            ))}
+          </div>
+        </FormRow>
 
-              {subOpen && (
-                <div className="px-3 pb-3 flex flex-col gap-3 border-t border-white/[0.08] pt-3">
-                  {/* Subscription select */}
-                  <div>
-                    <label className={labelCls}>Подписка</label>
-                    <Select
-                      value={subSubscriptionId}
-                      onChange={(v) => { setSubSubscriptionId(v ? Number(v) : ""); setSubMemberId(""); }}
-                      options={subscriptionOptions}
-                      placeholder="— выберите подписку —"
-                    />
-                  </div>
+        {opType && (
+          <>
+            {/* Amount */}
+            <FormRow label="Сумма" required error={fieldErrors.amount}>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
+                placeholder="0.00"
+                className={`${inputCls} text-base font-semibold ${fieldErrors.amount ? inputErrorBorder : ""}`}
+                autoFocus={!initialValues?.amount}
+              />
+            </FormRow>
 
-                  {/* Payer type chips */}
-                  <div>
-                    <label className={labelCls}>Плательщик</label>
-                    <div className="flex gap-2">
-                      {(["SELF", "MEMBER"] as const).map((pt) => (
-                        <button
-                          key={pt}
-                          type="button"
-                          onClick={() => setSubPayerType(pt)}
-                          className={`${chipBaseCls} ${subPayerType === pt ? chipActiveCls : chipInactiveCls}`}
-                        >
-                          {pt === "SELF" ? "Сам" : "Участник"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Wallet(s) */}
+            {opType !== "TRANSFER" ? (
+              <FormRow label="Кошелёк" required error={fieldErrors.wallet_id}>
+                <Select
+                  value={walletId}
+                  onChange={(v) => { setWalletId(v ? Number(v) : ""); clearFieldError("wallet_id"); }}
+                  options={walletOptions}
+                  placeholder="— выберите кошелёк —"
+                />
+              </FormRow>
+            ) : (
+              <>
+                <FormRow label="Откуда" required error={fieldErrors.from_wallet_id}>
+                  <Select
+                    value={fromWalletId}
+                    onChange={(v) => { setFromWalletId(v ? Number(v) : ""); clearFieldError("from_wallet_id"); }}
+                    options={allWalletOptions}
+                    placeholder="— кошелёк —"
+                  />
+                </FormRow>
+                <FormRow label="Куда" required error={fieldErrors.to_wallet_id}>
+                  <Select
+                    value={toWalletId}
+                    onChange={(v) => { setToWalletId(v ? Number(v) : ""); clearFieldError("to_wallet_id"); }}
+                    options={allWalletOptions}
+                    placeholder="— кошелёк —"
+                  />
+                </FormRow>
+              </>
+            )}
 
-                  {/* Member select (only when MEMBER payer type) */}
-                  {subPayerType === "MEMBER" && (
-                    <div>
-                      <label className={labelCls}>Участник</label>
-                      <Select
-                        value={subMemberId}
-                        onChange={(v) => setSubMemberId(v ? Number(v) : "")}
-                        options={memberOptions}
-                        placeholder="— участник —"
-                      />
+            {/* Goal selectors for TRANSFER — only shown when the wallet is SAVINGS */}
+            {opType === "TRANSFER" && showFromGoal && (
+              <FormRow label="Цель (откуда)">
+                <Select
+                  value={fromGoalId}
+                  onChange={(v) => setFromGoalId(v ? Number(v) : "")}
+                  options={goalOptions}
+                  placeholder="— без цели —"
+                />
+              </FormRow>
+            )}
+            {opType === "TRANSFER" && showToGoal && (
+              <FormRow label="Цель (куда)">
+                <Select
+                  value={toGoalId}
+                  onChange={(v) => setToGoalId(v ? Number(v) : "")}
+                  options={goalOptions}
+                  placeholder="— без цели —"
+                />
+              </FormRow>
+            )}
+
+            {/* Category */}
+            {(opType === "INCOME" || opType === "EXPENSE") && (
+              <FormRow label="Категория">
+                <Select
+                  value={categoryId}
+                  onChange={(v) => setCategoryId(v ? Number(v) : "")}
+                  options={categoryOptions}
+                  placeholder="— без категории —"
+                  searchable
+                />
+              </FormRow>
+            )}
+
+            {/* Trip list link */}
+            {tripLists && tripLists.length > 0 && (
+              <FormRow label="Поездка" hint="Опционально — привязать к списку поездки">
+                <Select
+                  value={listId}
+                  onChange={(v) => setListId(v ? Number(v) : "")}
+                  options={[
+                    { value: "", label: "— без списка —" },
+                    ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
+                  ]}
+                  placeholder="— без списка —"
+                />
+              </FormRow>
+            )}
+
+            {/* Description */}
+            <FormRow label="Описание">
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Необязательно"
+                className={inputCls}
+              />
+            </FormRow>
+
+            {/* Occurred at */}
+            <FormRow label="Дата и время">
+              <div className="flex items-center gap-2">
+                <input
+                  type="datetime-local"
+                  value={occurredAt}
+                  onChange={(e) => setOccurredAt(e.target.value)}
+                  className={inputCls}
+                />
+                {occurredAt && (
+                  <button
+                    type="button"
+                    onClick={() => setOccurredAt("")}
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
+                    aria-label="Очистить дату/время"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </FormRow>
+
+            {/* Subscription coverage (EXPENSE only) */}
+            {opType === "EXPENSE" && (
+              <FormRow label="Подписка">
+                <div className="rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setSubOpen((v) => !v)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-white/68 hover:text-slate-800 dark:hover:text-white/85 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors text-left"
+                  >
+                    <span>{subOpen ? "▾" : "▸"}</span>
+                    <span>Привязать к подписке</span>
+                  </button>
+
+                  {subOpen && (
+                    <div className="px-3 pb-3 flex flex-col gap-3 border-t border-slate-200 dark:border-white/[0.08] pt-3">
+                      {/* Subscription select */}
+                      <div>
+                        <Select
+                          value={subSubscriptionId}
+                          onChange={(v) => { setSubSubscriptionId(v ? Number(v) : ""); setSubMemberId(""); }}
+                          options={subscriptionOptions}
+                          placeholder="— выберите подписку —"
+                        />
+                      </div>
+
+                      {/* Payer type chips */}
+                      <div>
+                        <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Плательщик</div>
+                        <div className="flex gap-2">
+                          {(["SELF", "MEMBER"] as const).map((pt) => (
+                            <button
+                              key={pt}
+                              type="button"
+                              onClick={() => setSubPayerType(pt)}
+                              className={`${chipBaseCls} ${subPayerType === pt ? chipActiveCls : chipInactiveCls}`}
+                            >
+                              {pt === "SELF" ? "Сам" : "Участник"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Member select (only when MEMBER payer type) */}
+                      {subPayerType === "MEMBER" && (
+                        <div>
+                          <Select
+                            value={subMemberId}
+                            onChange={(v) => setSubMemberId(v ? Number(v) : "")}
+                            options={memberOptions}
+                            placeholder="— участник —"
+                          />
+                        </div>
+                      )}
+
+                      {/* Coverage dates */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Начало периода</div>
+                          <input
+                            type="date"
+                            value={subStartDate}
+                            onChange={(e) => setSubStartDate(e.target.value)}
+                            className={inputCls}
+                          />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Конец периода</div>
+                          <input
+                            type="date"
+                            value={subEndDate}
+                            onChange={(e) => setSubEndDate(e.target.value)}
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
-
-                  {/* Coverage dates */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Начало периода</label>
-                      <input
-                        type="date"
-                        value={subStartDate}
-                        onChange={(e) => setSubStartDate(e.target.value)}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Конец периода</label>
-                      <input
-                        type="date"
-                        value={subEndDate}
-                        onChange={(e) => setSubEndDate(e.target.value)}
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
+              </FormRow>
+            )}
+          </>
+        )}
 
-      {!opType && (
-        <p className="text-xs text-white/55 text-center py-2">Выберите тип операции выше</p>
-      )}
+        {!opType && (
+          <p className="text-xs text-slate-500 dark:text-white/55 text-center py-2">Выберите тип операции выше</p>
+        )}
 
-      {error && (
-        <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-3 py-2.5">
+            {error}
+          </p>
+        )}
+      </div>
     </BottomSheet>
   );
 }

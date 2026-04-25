@@ -4,10 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { CalendarDays, Tag } from "lucide-react";
+import { FormRow } from "@/components/ui/FormRow";
+import { Select } from "@/components/ui/Select";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
+import { Tag, X } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
-import type { WorkCategoryItem } from "@/types/api";
+import type { WorkCategoryItem, TaskItem } from "@/types/api";
 
 interface PlanEntry {
   id: number;
@@ -21,6 +24,12 @@ interface PlanEntry {
   meta: Record<string, unknown>;
 }
 
+interface TripListOption {
+  id: number;
+  title: string;
+  list_type: string;
+}
+
 interface Props {
   entry: PlanEntry;
   onClose: () => void;
@@ -30,26 +39,68 @@ export function EntryDetailModal({ entry, onClose }: Props) {
   const qc = useQueryClient();
   const isTask = entry.kind === "task" || entry.kind === "task_occ";
   const isEvent = entry.kind === "event";
+  const editable = isTask && !entry.is_done;
 
   const initialCategoryId = typeof entry.meta.category_id === "number" ? entry.meta.category_id : null;
+  const initialListId = typeof entry.meta.list_id === "number" ? (entry.meta.list_id as number) : null;
+  const metaNote = typeof entry.meta.note === "string" ? (entry.meta.note as string) : "";
 
   const [title, setTitle] = useState(entry.title);
   const [dueDate, setDueDate] = useState((entry.date ?? (entry.meta.due_date as string) ?? ""));
   const [dueTime, setDueTime] = useState((entry.time ?? (entry.meta.due_time as string) ?? ""));
   const [categoryId, setCategoryId] = useState<number | null>(initialCategoryId);
+  const [listId, setListId] = useState<number | "">(initialListId ?? "");
+  const [note, setNote] = useState(metaNote);
+  const [noteEdited, setNoteEdited] = useState(false);
+  const [initialNote, setInitialNote] = useState(metaNote);
+
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  // Fetch full task to get note (only for `task`, occurrence note lives on template).
+  const { data: taskFull } = useQuery<TaskItem>({
+    queryKey: ["task", entry.id],
+    queryFn: () => api.get<TaskItem>(`/api/v2/tasks/${entry.id}`),
+    staleTime: 30_000,
+    enabled: entry.kind === "task" && !entry.is_done && !metaNote,
+  });
+
+  // Hydrate the note from full task once it arrives (only if user hasn't started editing).
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (taskFull && taskFull.note !== null && !noteEdited) {
+      setInitialNote(taskFull.note);
+      setNote(taskFull.note);
+    }
+  }, [taskFull, noteEdited]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
     queryKey: ["work-categories"],
     queryFn: () => api.get<WorkCategoryItem[]>("/api/v2/work-categories"),
     staleTime: 5 * 60_000,
-    enabled: isTask && !entry.is_done,
+    enabled: editable,
   });
   const activeCategories = categories ?? [];
+
+  const { data: tripLists } = useQuery<TripListOption[]>({
+    queryKey: ["shared-lists", "trip"],
+    queryFn: async () => {
+      const all = await api.get<TripListOption[]>("/api/v2/lists");
+      return all.filter((l) => l.list_type === "trip");
+    },
+    staleTime: 60_000,
+    enabled: editable,
+  });
 
   const { mutate: updateTask, isPending: updating } = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api.patch(`/api/v2/tasks/${entry.id}`, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["plan"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); onClose(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["task", entry.id] });
+      onClose();
+    },
   });
 
   // Title textarea — auto-resize to fit content so long titles wrap and stay fully visible
@@ -68,6 +119,8 @@ export function EntryDetailModal({ entry, onClose }: Props) {
     const origTime = entry.time ?? (entry.meta.due_time as string) ?? "";
     if (dueTime !== origTime) body.due_time = dueTime || null;
     if (categoryId !== initialCategoryId) body.category_id = categoryId;
+    if ((listId || null) !== initialListId) body.list_id = listId || null;
+    if (note !== initialNote) body.note = note || null;
     if (Object.keys(body).length > 0) {
       updateTask(body);
     } else {
@@ -75,18 +128,44 @@ export function EntryDetailModal({ entry, onClose }: Props) {
     }
   }
 
-  const inputCls = "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
-  const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/50";
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editable) return;
+    handleSave();
+  }
+
+  // Ctrl/Cmd + Enter
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!editable) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [editable]);
+
+  const inputCls =
+    "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
+  const catChipBase =
+    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors border";
+  const catChipActive =
+    "bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300";
+  const catChipInactive =
+    "bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70 hover:border-slate-300 dark:hover:border-white/[0.15]";
 
   return (
     <BottomSheet
       open
       onClose={onClose}
       title={isEvent ? "Событие" : "Задача"}
+      onSubmit={editable ? handleSubmit : undefined}
       footer={
-        isTask && !entry.is_done ? (
+        editable ? (
           <button
-            onClick={handleSave}
+            type="submit"
             disabled={updating || !title.trim()}
             className="w-full py-2.5 rounded-xl text-[14px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
           >
@@ -97,11 +176,18 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         ) : null
       }
     >
-      <div className="space-y-4">
+      <div
+        className="space-y-3 md:space-y-4"
+        ref={(el) => {
+          if (el && !formRef.current) {
+            const f = el.closest("form");
+            if (f instanceof HTMLFormElement) formRef.current = f;
+          }
+        }}
+      >
         {/* Title */}
-        <div>
-          <label className={labelCls}>Название</label>
-          {isTask && !entry.is_done ? (
+        <FormRow label="Название" required={editable}>
+          {editable ? (
             <textarea
               ref={titleRef}
               value={title}
@@ -110,60 +196,61 @@ export function EntryDetailModal({ entry, onClose }: Props) {
               className="w-full px-3 py-2 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 resize-none overflow-hidden leading-snug"
             />
           ) : (
-            <p className="text-[15px] font-medium" style={{ color: "var(--t-primary)" }}>
+            <p className="text-[15px] font-medium pt-1.5" style={{ color: "var(--t-primary)" }}>
               {entry.category_emoji && <span className="mr-1.5">{entry.category_emoji}</span>}
               {entry.title}
             </p>
           )}
-        </div>
+        </FormRow>
 
         {/* Due date — tasks only */}
-        {isTask && !entry.is_done && (
-          <div>
-            <label className={labelCls}>Дата</label>
-            <div className="flex items-center gap-2">
-              <CalendarDays size={16} style={{ color: "var(--t-faint)" }} />
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className={`flex-1 ${inputCls}`}
-              />
-            </div>
-          </div>
+        {editable && (
+          <FormRow label="Дата">
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className={inputCls}
+            />
+          </FormRow>
         )}
 
         {/* Time */}
-        {isTask && !entry.is_done ? (
-          <div>
-            <label className={labelCls}>Время (необязательно)</label>
-            <input
-              type="time"
-              value={dueTime}
-              onChange={(e) => setDueTime(e.target.value)}
-              className={inputCls}
-            />
-          </div>
+        {editable ? (
+          <FormRow label="Время" hint="Необязательно">
+            <div className="flex items-center gap-2">
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+                className={inputCls}
+              />
+              {dueTime && (
+                <button
+                  type="button"
+                  onClick={() => setDueTime("")}
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
+                  aria-label="Очистить время"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </FormRow>
         ) : entry.time ? (
-          <div>
-            <label className={labelCls}>Время</label>
-            <p className="text-[14px]" style={{ color: "var(--t-secondary)" }}>{entry.time}</p>
-          </div>
+          <FormRow label="Время">
+            <p className="text-[14px] pt-2" style={{ color: "var(--t-secondary)" }}>{entry.time}</p>
+          </FormRow>
         ) : null}
 
         {/* Category — tasks only */}
-        {isTask && !entry.is_done && (
-          <div>
-            <label className={labelCls}>Категория</label>
+        {editable && (
+          <FormRow label="Категория">
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => setCategoryId(null)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors border ${
-                  categoryId === null
-                    ? "bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300"
-                    : "bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/50 hover:border-slate-300 dark:hover:border-white/[0.15]"
-                }`}
+                className={`${catChipBase} ${categoryId === null ? catChipActive : catChipInactive}`}
               >
                 <Tag size={11} /> Без категории
               </button>
@@ -172,51 +259,64 @@ export function EntryDetailModal({ entry, onClose }: Props) {
                   key={c.category_id}
                   type="button"
                   onClick={() => setCategoryId(c.category_id)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors border ${
-                    categoryId === c.category_id
-                      ? "bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300"
-                      : "bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70 hover:border-slate-300 dark:hover:border-white/[0.15]"
-                  }`}
+                  className={`${catChipBase} ${categoryId === c.category_id ? catChipActive : catChipInactive}`}
                 >
                   {c.emoji && <span>{c.emoji}</span>}
                   {c.title}
                 </button>
               ))}
             </div>
-          </div>
+          </FormRow>
+        )}
+
+        {/* Trip list — tasks only */}
+        {editable && tripLists && tripLists.length > 0 && (
+          <FormRow label="Поездка" hint="Опционально — привязать к списку поездки">
+            <Select
+              value={listId}
+              onChange={(v) => setListId(v ? Number(v) : "")}
+              placeholder="— без списка —"
+              options={[
+                { value: "", label: "— без списка —" },
+                ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
+              ]}
+            />
+          </FormRow>
+        )}
+
+        {/* Note — tasks only */}
+        {editable && (
+          <FormRow label="Заметка">
+            <RichNoteEditor
+              value={note}
+              onChange={(v) => { setNote(v); setNoteEdited(true); }}
+              placeholder="Опишите задачу…"
+              minHeight={100}
+            />
+          </FormRow>
         )}
 
         {/* Reminders — regular tasks only (task_occ reminders live on template) */}
         {entry.kind === "task" && (
-          <div>
-            <label className={labelCls}>Напоминания</label>
+          <FormRow label="Напоминания">
             <TaskReminders
               taskId={entry.id}
               dueDate={dueDate || null}
               dueTime={dueTime || null}
               disabled={entry.is_done}
             />
-          </div>
+          </FormRow>
         )}
 
         {/* Reminders — events */}
         {entry.kind === "event" && typeof entry.meta.event_id === "number" && (
-          <div>
-            <label className={labelCls}>Напоминания</label>
+          <FormRow label="Напоминания">
             <EventReminders
               eventId={entry.meta.event_id as number}
               startTime={entry.time ?? null}
             />
-          </div>
+          </FormRow>
         )}
-
-        {/* Kind badge */}
-        <div>
-          <label className={labelCls}>Тип</label>
-          <span className="inline-flex text-[12px] font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-white/60">
-            {isEvent ? "Событие" : entry.kind === "habit" ? "Привычка" : entry.kind === "planned_op" ? "Плановая операция" : "Задача"}
-          </span>
-        </div>
 
         {/* Overdue warning */}
         {entry.is_overdue && !entry.is_done && (
