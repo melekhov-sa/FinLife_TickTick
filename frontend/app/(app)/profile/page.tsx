@@ -8,6 +8,7 @@ import { clsx } from "clsx";
 import { ArrowRight, Star, Zap, TrendingUp, Settings, Bell, Wallet, Lock } from "lucide-react";
 import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface XpProfile {
   xp_total: number;
@@ -77,7 +78,7 @@ export default function ProfilePage() {
           {isLoading && (
             <div className="space-y-4">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-28 bg-white/[0.03] rounded-2xl animate-pulse" />
+                <Skeleton key={i} variant="rect" height={112} className="rounded-2xl" />
               ))}
             </div>
           )}

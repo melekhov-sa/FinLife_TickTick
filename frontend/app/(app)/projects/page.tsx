@@ -7,6 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 const STATUSES = [
   { value: undefined, label: "Активные" },
@@ -60,7 +61,7 @@ export default function ProjectsPage() {
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-44 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={176} className="rounded-2xl" />
             ))}
           </div>
         )}

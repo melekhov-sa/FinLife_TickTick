@@ -9,6 +9,8 @@ import type { WalletItem } from "@/types/api";
 import { CreateWalletModal } from "@/components/modals/CreateWalletModal";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { Checkbox } from "@/components/primitives/Checkbox";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -248,15 +250,12 @@ export default function WalletsPage() {
             Кошельки
           </h1>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                className="rounded"
-              />
-              Архивные
-            </label>
+            <Checkbox
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              label="Архивные"
+              size="sm"
+            />
             {!showArchived && (
               <Button onClick={() => setShowCreateModal(true)} variant="primary" size="sm">
                 + Создать
@@ -268,7 +267,7 @@ export default function WalletsPage() {
         {isLoading && (
           <div className="space-y-px">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 bg-white/[0.02] animate-pulse" />
+              <Skeleton key={i} variant="rect" height={48} />
             ))}
           </div>
         )}

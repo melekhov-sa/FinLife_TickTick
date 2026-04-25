@@ -8,6 +8,7 @@ import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
 import type { TaskItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
@@ -194,7 +195,7 @@ export default function TasksPage() {
         {isLoading && (
           <div className="space-y-1">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-10 md:h-11 bg-white/[0.02] rounded-xl animate-pulse" />
+              <Skeleton key={i} variant="rect" className="h-10 md:h-11 rounded-xl" />
             ))}
           </div>
         )}

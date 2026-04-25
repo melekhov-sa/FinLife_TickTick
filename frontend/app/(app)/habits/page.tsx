@@ -12,6 +12,7 @@ import { MilestoneOverlay, MILESTONE_STREAKS } from "@/components/habits/Milesto
 import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // Safely fire haptic — no-op on Safari / unsupported devices
 function haptic(pattern: number | number[]) {
@@ -145,7 +146,7 @@ export default function HabitsPage() {
         {isPending && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 bg-white/[0.03] rounded-xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={64} className="rounded-xl" />
             ))}
           </div>
         )}

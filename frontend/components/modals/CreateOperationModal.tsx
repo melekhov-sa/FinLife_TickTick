@@ -7,7 +7,6 @@ import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
-import { X } from "lucide-react";
 import { CreateTransactionRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
@@ -17,6 +16,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
+import { DateTimeInput } from "@/components/primitives/DateTimeInput";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -497,24 +497,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
             {/* Occurred at */}
             <FormRow label="Дата и время">
-              <div className="flex items-center gap-2">
-                <Input
-                  type="datetime-local"
-                  value={occurredAt}
-                  onChange={(e) => setOccurredAt(e.target.value)}
-                  className="flex-1"
-                />
-                {occurredAt && (
-                  <button
-                    type="button"
-                    onClick={() => setOccurredAt("")}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-                    aria-label="Очистить дату/время"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
+              <DateTimeInput
+                value={occurredAt}
+                onChange={setOccurredAt}
+              />
             </FormRow>
 
             {/* Subscription coverage (EXPENSE only) */}

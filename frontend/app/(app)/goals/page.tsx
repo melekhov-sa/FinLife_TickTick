@@ -6,6 +6,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Target } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
+import { Checkbox } from "@/components/primitives/Checkbox";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -126,15 +128,12 @@ export default function GoalsPage() {
             Накопительные цели
           </p>
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                className="rounded"
-              />
-              Архивные
-            </label>
+            <Checkbox
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              label="Архивные"
+              size="sm"
+            />
             <a
               href="/legacy/goals"
               className="text-[12px] font-medium transition-colors hover:text-indigo-400"
@@ -149,7 +148,7 @@ export default function GoalsPage() {
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-36 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={144} className="rounded-2xl" />
             ))}
           </div>
         )}

@@ -12,6 +12,7 @@ import {
 import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
+import { Switch } from "@/components/primitives/Switch";
 
 // ── PWA Install Hook ─────────────────────────────────────────────────────────
 
@@ -187,20 +188,16 @@ function AiDigestToggle() {
             ? "OpenAI оценит твою неделю и даст короткий мотивирующий комментарий в конце каждого дайджеста."
             : "Функция временно недоступна: администратор не настроил ключ OpenAI на сервере."}
         </p>
-        <button
-          onClick={() => available && toggle(!enabled)}
-          disabled={!available || isPending}
-          className={clsx(
-            "mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all",
-            !available && "opacity-40 cursor-not-allowed",
-            enabled
-              ? "bg-violet-500/15 text-violet-600 dark:text-violet-300 hover:bg-violet-500/25"
-              : "bg-white/10 text-white/85 hover:bg-white/15",
-          )}
-          style={!enabled ? { background: "linear-gradient(135deg,#8b5cf6,#7c3aed)", color: "#fff" } : undefined}
-        >
-          {isPending ? "..." : enabled ? "Отключить" : "Включить"}
-        </button>
+        <div className="mt-3 flex items-center gap-3">
+          <Switch
+            checked={enabled}
+            onChange={(v) => available && toggle(v)}
+            disabled={!available || isPending}
+          />
+          <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
+            {isPending ? "..." : enabled ? "Включено" : "Выключено"}
+          </span>
+        </div>
       </div>
     </div>
   );

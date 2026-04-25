@@ -11,6 +11,7 @@ import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -419,7 +420,7 @@ export default function CategoriesPage() {
         {isLoading && (
           <div className="space-y-px">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-10 bg-white/[0.03] rounded animate-pulse mb-px" />
+              <Skeleton key={i} variant="rect" height={40} className="rounded mb-px" />
             ))}
           </div>
         )}

@@ -6,6 +6,7 @@ import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { DateInput } from "@/components/primitives/DateInput";
+import { TimeInput } from "@/components/primitives/TimeInput";
 import { api } from "@/lib/api";
 import { CreateHabitRequestSchema } from "@/schemas/api.generated";
 import {
@@ -318,11 +319,9 @@ export function CreateHabitModal({ onClose }: Props) {
       {/* Reminder time */}
       <div>
         <label className={labelCls}>Время напоминания</label>
-        <input
-          type="time"
+        <TimeInput
           value={reminderTime}
-          onChange={(e) => setReminderTime(e.target.value)}
-          className={inputCls}
+          onChange={setReminderTime}
         />
       </div>
 

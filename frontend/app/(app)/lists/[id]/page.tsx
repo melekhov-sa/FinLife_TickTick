@@ -14,6 +14,7 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-
 import { api } from "@/lib/api";
 import { TripDashboard } from "@/components/lists/TripDashboard";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -989,7 +990,7 @@ export default function ListDetailPage() {
 
           {isLoading && (
             <div className={clsx("space-y-3", viewMode === "kanban" && "px-3 md:px-6 pt-3 md:pt-6")}>
-              {[...Array(4)].map((_, i) => <div key={i} className="h-14 bg-slate-100 dark:bg-white/[0.02] rounded-xl animate-pulse" />)}
+              {[...Array(4)].map((_, i) => <Skeleton key={i} variant="rect" height={56} className="rounded-xl" />)}
             </div>
           )}
 

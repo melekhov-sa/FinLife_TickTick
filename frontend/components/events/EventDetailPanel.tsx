@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
 import { EventReminders } from "./EventReminders";
+import { TimeInput } from "@/components/primitives/TimeInput";
 
 interface Props {
   event: EventItem;
@@ -233,24 +234,14 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 Время
               </p>
               <div className="flex items-center gap-2">
-                <input
-                  type="time"
+                <TimeInput
                   value={startTime}
-                  onChange={(e) => { setStartTime(e.target.value); saveField("start_time", e.target.value); }}
-                  className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
-                  style={{ color: "var(--t-secondary)" }}
+                  onChange={(v) => { setStartTime(v); saveField("start_time", v); }}
+                  size="sm"
+                  className="w-[140px]"
                 />
                 {!startTime && (
                   <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>Весь день</span>
-                )}
-                {startTime && (
-                  <button
-                    onClick={() => { setStartTime(""); saveField("start_time", ""); }}
-                    className="text-[11px] hover:text-red-400 transition-colors"
-                    style={{ color: "var(--t-faint)" }}
-                  >
-                    ✕
-                  </button>
                 )}
               </div>
             </div>

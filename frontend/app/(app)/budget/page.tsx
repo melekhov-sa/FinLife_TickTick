@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface BudgetRow {
   category_id: number | null;
@@ -268,7 +269,7 @@ export default function BudgetPage() {
         {isLoading && (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="h-48 bg-white/[0.02] rounded-[14px] animate-pulse" />
+              <Skeleton key={i} variant="rect" height={192} className="rounded-[14px]" />
             ))}
           </div>
         )}

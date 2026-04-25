@@ -12,6 +12,7 @@ import { useNotifications, useMarkRead, useMarkAllRead } from "@/hooks/useNotifi
 import type { NotificationItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -225,7 +226,7 @@ export default function NotificationsPage() {
         {isLoading && (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-[68px] bg-white/[0.02] rounded-2xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={68} className="rounded-2xl" />
             ))}
           </div>
         )}

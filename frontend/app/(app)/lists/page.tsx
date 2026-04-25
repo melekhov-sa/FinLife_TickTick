@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface SharedListSummary {
   id: number;
@@ -216,7 +217,7 @@ export default function ListsPage() {
           {isLoading && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-20 bg-slate-100 dark:bg-white/[0.02] rounded-xl animate-pulse" />
+                <Skeleton key={i} variant="rect" height={80} className="rounded-xl" />
               ))}
             </div>
           )}

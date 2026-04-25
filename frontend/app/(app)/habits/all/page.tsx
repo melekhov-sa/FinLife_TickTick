@@ -9,6 +9,7 @@ import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
 import { AdminBlock } from "@/components/habits/AdminBlock";
 import { useHabits } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 export default function HabitsAllPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,7 +42,7 @@ export default function HabitsAllPage() {
         {isPending && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={64} className="rounded-2xl" />
             ))}
           </div>
         )}

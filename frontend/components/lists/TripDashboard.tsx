@@ -14,6 +14,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -669,7 +670,7 @@ function SummaryCard({ summary }: { summary: TripSummary | undefined }) {
   if (!summary) {
     return (
       <SectionCard>
-        <div className="h-24 animate-pulse rounded-md" style={{ background: "var(--app-accent-weak)" }} />
+        <Skeleton variant="rect" height={96} className="rounded-md" />
       </SectionCard>
     );
   }

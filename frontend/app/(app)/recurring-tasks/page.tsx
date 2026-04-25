@@ -9,6 +9,7 @@ import type { TaskTemplateItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -326,7 +327,7 @@ export default function RecurringTasksPage() {
         {isLoading && (
           <div className="space-y-1">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-14 bg-white/[0.02] rounded-xl animate-pulse" />
+              <Skeleton key={i} variant="rect" height={56} className="rounded-xl" />
             ))}
           </div>
         )}

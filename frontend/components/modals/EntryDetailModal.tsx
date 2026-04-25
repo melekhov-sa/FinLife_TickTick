@@ -7,7 +7,6 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Select } from "@/components/ui/Select";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
-import { X } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";
@@ -15,6 +14,7 @@ import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
+import { TimeInput } from "@/components/primitives/TimeInput";
 
 interface PlanEntry {
   id: number;
@@ -214,24 +214,10 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         {/* Time */}
         {editable ? (
           <FormRow label="Время" hint="Необязательно">
-            <div className="flex items-center gap-2">
-              <Input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-                className="flex-1"
-              />
-              {dueTime && (
-                <button
-                  type="button"
-                  onClick={() => setDueTime("")}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-                  aria-label="Очистить время"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            <TimeInput
+              value={dueTime}
+              onChange={setDueTime}
+            />
           </FormRow>
         ) : entry.time ? (
           <FormRow label="Время">

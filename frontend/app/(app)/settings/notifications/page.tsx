@@ -13,6 +13,8 @@ import {
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { getPushState, subscribePush, unsubscribePush, testPush } from "@/lib/push";
+import { Switch } from "@/components/primitives/Switch";
+import { TimeInput } from "@/components/primitives/TimeInput";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -343,18 +345,16 @@ export default function NotificationSettingsPage() {
               <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>Общие</h2>
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3">
+              <Switch
                 checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="w-4 h-4 rounded accent-indigo-500"
+                onChange={setEnabled}
               />
               <span className="text-[14px]" style={{ color: "var(--t-primary)" }}>
                 Уведомления {enabled ? "включены" : "выключены"}
               </span>
               {enabled ? <Bell size={14} className="text-emerald-400" /> : <BellOff size={14} className="text-red-400" />}
-            </label>
+            </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -363,9 +363,9 @@ export default function NotificationSettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>с</span>
-                <input type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} className="px-2 py-1.5 rounded-lg text-[13px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 [color-scheme:dark]" style={{ color: "var(--t-primary)" }} />
+                <TimeInput value={quietStart} onChange={setQuietStart} size="sm" className="w-[110px]" />
                 <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>по</span>
-                <input type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} className="px-2 py-1.5 rounded-lg text-[13px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 [color-scheme:dark]" style={{ color: "var(--t-primary)" }} />
+                <TimeInput value={quietEnd} onChange={setQuietEnd} size="sm" className="w-[110px]" />
               </div>
               <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>Telegram и email не отправляются в это время</p>
             </div>
@@ -403,16 +403,14 @@ export default function NotificationSettingsPage() {
               )}
             </div>
 
-            {/* Enable channel checkbox */}
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+            {/* Enable channel switch */}
+            <div className="flex items-center gap-3">
+              <Switch
                 checked={chTelegram}
-                onChange={(e) => setChTelegram(e.target.checked)}
-                className="w-4 h-4 rounded accent-sky-500"
+                onChange={setChTelegram}
               />
               <span className="text-[13px]" style={{ color: "var(--t-primary)" }}>Отправлять уведомления в Telegram</span>
-            </label>
+            </div>
 
             {/* Setup fields */}
             <div className="space-y-3">

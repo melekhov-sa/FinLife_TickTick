@@ -7,6 +7,7 @@ import { ArrowLeft, Pencil, Pin, Calendar } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface ArticleDetail {
   id: number;
@@ -67,10 +68,10 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
         <div className="max-w-[720px]">
           {isLoading && (
             <div className="space-y-4">
-              <div className="h-6 w-1/4 bg-white/[0.04] rounded-lg animate-pulse" />
-              <div className="h-9 w-2/3 bg-white/[0.05] rounded-xl animate-pulse" />
-              <div className="h-4 w-1/3 bg-white/[0.03] rounded-lg animate-pulse" />
-              <div className="h-64 bg-white/[0.03] rounded-2xl animate-pulse mt-6" />
+              <Skeleton variant="rect" height={24} width="25%" className="rounded-lg" />
+              <Skeleton variant="rect" height={36} width="66%" className="rounded-xl" />
+              <Skeleton variant="rect" height={16} width="33%" className="rounded-lg" />
+              <Skeleton variant="rect" height={256} className="rounded-2xl mt-6" />
             </div>
           )}
 

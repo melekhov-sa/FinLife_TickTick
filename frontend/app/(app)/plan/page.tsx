@@ -30,6 +30,8 @@ import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
 import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical } from "lucide-react";
 import { api } from "@/lib/api";
+import { TimeInput } from "@/components/primitives/TimeInput";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface PlanEntry {
   kind: string;
@@ -181,11 +183,9 @@ function RescheduleModal({
         </div>
         <div>
           <label className={labelCls}>Время (необязательно)</label>
-          <input
-            type="time"
+          <TimeInput
             value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={inputCls}
+            onChange={setTime}
           />
         </div>
       </div>
@@ -1253,7 +1253,7 @@ export default function PlanPage() {
           {isLoading && (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 bg-slate-100 dark:bg-white/[0.02] rounded-xl animate-pulse" />
+                <Skeleton key={i} variant="rect" height={96} className="rounded-xl" />
               ))}
             </div>
           )}

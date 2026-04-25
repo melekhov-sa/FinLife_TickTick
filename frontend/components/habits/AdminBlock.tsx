@@ -5,6 +5,7 @@ import { MoreHorizontal, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import type { HabitItem } from "@/types/api";
 import { useSkipHabitToday, useDeleteHabit, useRestoreHabit } from "@/hooks/useHabits";
+import { Checkbox } from "@/components/primitives/Checkbox";
 
 type FilterValue = "all" | "pending" | "done";
 
@@ -146,10 +147,14 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
             Создать привычку
           </button>
         )}
-        <label className="flex items-center gap-2 cursor-pointer ml-auto" style={{ fontSize: "var(--fs-caption)", color: "var(--t-muted)" }}>
-          <input type="checkbox" checked={showArchived} onChange={(e) => { setShowArchived(e.target.checked); setFilter("all"); }} className="rounded" />
-          Архивные
-        </label>
+        <div className="ml-auto">
+          <Checkbox
+            checked={showArchived}
+            onChange={(e) => { setShowArchived(e.target.checked); setFilter("all"); }}
+            label="Архивные"
+            size="sm"
+          />
+        </div>
       </div>
       {!showArchived && (
         <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 w-fit mb-3">

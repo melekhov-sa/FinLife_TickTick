@@ -11,6 +11,7 @@ import { useProject } from "@/hooks/useProjects";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import type { ProjectTag } from "@/types/api";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 const STATUS_COLORS: Record<string, string> = {
   active:   "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20",
@@ -236,7 +237,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <main className="flex-1 p-6">
           <div className="flex gap-4 overflow-x-auto">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="w-72 shrink-0 h-96 bg-white/[0.02] rounded-2xl animate-pulse" />
+              <Skeleton key={i} variant="rect" className="w-72 shrink-0 h-96 rounded-2xl" />
             ))}
           </div>
         </main>

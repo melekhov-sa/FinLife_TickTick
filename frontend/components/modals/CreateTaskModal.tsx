@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { FormRow } from "@/components/ui/FormRow";
-import { X, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
 import {
@@ -19,6 +19,8 @@ import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
+import { TimeInput } from "@/components/primitives/TimeInput";
+import { Checkbox } from "@/components/primitives/Checkbox";
 
 interface Props {
   onClose: () => void;
@@ -579,75 +581,30 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
               </FormRow>
             )}
 
-            {/* Single time with clear button */}
+            {/* Single time */}
             {showTimeField && (
               <FormRow label="Время" required error={fieldErrors.due_time}>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={dueTime}
-                    onChange={(e) => { setDueTime(e.target.value); clearFieldError("due_time"); }}
-                    aria-invalid={Boolean(fieldErrors.due_time) || undefined}
-                    className="flex-1"
-                  />
-                  {dueTime && (
-                    <button
-                      type="button"
-                      onClick={() => { setDueTime(""); clearFieldError("due_time"); }}
-                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-                      aria-label="Очистить время"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
+                <TimeInput
+                  value={dueTime}
+                  onChange={(v) => { setDueTime(v); clearFieldError("due_time"); }}
+                />
               </FormRow>
             )}
 
-            {/* Window time fields with clear */}
+            {/* Window time fields */}
             {showWindowFields && (
               <>
                 <FormRow label="С" required error={fieldErrors.due_start_time}>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={dueStartTime}
-                      onChange={(e) => { setDueStartTime(e.target.value); clearFieldError("due_start_time"); }}
-                      aria-invalid={Boolean(fieldErrors.due_start_time) || undefined}
-                      className="flex-1"
-                    />
-                    {dueStartTime && (
-                      <button
-                        type="button"
-                        onClick={() => { setDueStartTime(""); clearFieldError("due_start_time"); }}
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-                        aria-label="Очистить время"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
+                  <TimeInput
+                    value={dueStartTime}
+                    onChange={(v) => { setDueStartTime(v); clearFieldError("due_start_time"); }}
+                  />
                 </FormRow>
                 <FormRow label="До" required error={fieldErrors.due_end_time}>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={dueEndTime}
-                      onChange={(e) => { setDueEndTime(e.target.value); clearFieldError("due_end_time"); }}
-                      aria-invalid={Boolean(fieldErrors.due_end_time) || undefined}
-                      className="flex-1"
-                    />
-                    {dueEndTime && (
-                      <button
-                        type="button"
-                        onClick={() => { setDueEndTime(""); clearFieldError("due_end_time"); }}
-                        className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80 transition-colors"
-                        aria-label="Очистить время"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
+                  <TimeInput
+                    value={dueEndTime}
+                    onChange={(v) => { setDueEndTime(v); clearFieldError("due_end_time"); }}
+                  />
                 </FormRow>
               </>
             )}
@@ -655,20 +612,14 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
             {/* Multi-dates — checkbox без отдельного FormRow-лейбла (его нет смысла дублировать) */}
             <div className="md:col-start-2 md:pl-0">
               <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={multiDatesEnabled}
-                    onChange={(e) => {
-                      setMultiDatesEnabled(e.target.checked);
-                      if (!e.target.checked) setMultiDates([]);
-                    }}
-                    className="w-4 h-4 rounded accent-indigo-500"
-                  />
-                  <span className="text-[12px] md:text-[13px] text-slate-600 dark:text-white/72">
-                    Создать на несколько дат
-                  </span>
-                </label>
+                <Checkbox
+                  checked={multiDatesEnabled}
+                  onChange={(e) => {
+                    setMultiDatesEnabled(e.target.checked);
+                    if (!e.target.checked) setMultiDates([]);
+                  }}
+                  label="Создать на несколько дат"
+                />
 
                 {multiDatesEnabled && (
                   <div className="space-y-2 pl-1">
@@ -798,17 +749,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
 
                 {showExpense && (
                   <div className="mt-2 space-y-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={requiresExpense}
-                        onChange={(e) => setRequiresExpense(e.target.checked)}
-                        className="w-4 h-4 rounded accent-indigo-500"
-                      />
-                      <span className="text-[12px] md:text-[13px] text-slate-600 dark:text-white/72">
-                        При выполнении создать расход
-                      </span>
-                    </label>
+                    <Checkbox
+                      checked={requiresExpense}
+                      onChange={(e) => setRequiresExpense(e.target.checked)}
+                      label="При выполнении создать расход"
+                    />
 
                     {requiresExpense && (
                       <>

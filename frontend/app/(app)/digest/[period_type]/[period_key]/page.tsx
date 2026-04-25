@@ -9,6 +9,7 @@ import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useDigest, useDigestMarkViewed } from "@/hooks/useDigests";
 import type { DigestDetail } from "@/types/api";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -436,13 +437,11 @@ export default function DigestDetailPage() {
           {isPending && (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div
+                <Skeleton
                   key={i}
-                  className="rounded-2xl animate-pulse"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    height: i === 0 ? "88px" : "128px",
-                  }}
+                  variant="rect"
+                  height={i === 0 ? 88 : 128}
+                  className="rounded-2xl"
                 />
               ))}
             </div>

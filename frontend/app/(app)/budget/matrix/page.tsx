@@ -9,6 +9,8 @@ import Link from "next/link";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
+import { Checkbox } from "@/components/primitives/Checkbox";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,20 +149,20 @@ function PlanEditModal({
         />
 
         {remainingMonths > 0 && (
-          <label className="flex items-center gap-2.5 mt-3 py-1.5 cursor-pointer">
-            <input
-              type="checkbox"
+          <div className="mt-3 py-1.5">
+            <Checkbox
               checked={copyForward}
               onChange={(e) => setCopyForward(e.target.checked)}
-              className="rounded"
+              label={
+                <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
+                  Копировать до конца года
+                  <span className="ml-1 text-[11px]" style={{ color: "var(--t-faint)" }}>
+                    (+{remainingMonths} мес.)
+                  </span>
+                </span>
+              }
             />
-            <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
-              Копировать до конца года
-              <span className="ml-1 text-[11px]" style={{ color: "var(--t-faint)" }}>
-                (+{remainingMonths} мес.)
-              </span>
-            </span>
-          </label>
+          </div>
         )}
 
         <div className="flex gap-2 mt-4">
@@ -1126,7 +1128,7 @@ export default function BudgetMatrixPage() {
           {isPending && (
             <div className="p-6 space-y-2">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-8 bg-white/[0.02] rounded animate-pulse" />
+                <Skeleton key={i} variant="rect" height={32} className="rounded" />
               ))}
             </div>
           )}

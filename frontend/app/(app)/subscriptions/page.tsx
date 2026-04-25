@@ -13,6 +13,8 @@ import { Select } from "@/components/ui/Select";
 import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Badge } from "@/components/primitives/Badge";
+import { Checkbox } from "@/components/primitives/Checkbox";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -258,7 +260,7 @@ export default function SubscriptionsPage() {
           {isLoading && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-32 bg-white/[0.03] rounded-[14px] animate-pulse" />
+                <Skeleton key={i} variant="rect" height={128} className="rounded-[14px]" />
               ))}
             </div>
           )}
@@ -318,15 +320,12 @@ export default function SubscriptionsPage() {
               {/* ── Filters + Sort ────────────────────────────────── */}
               <div className="flex flex-wrap items-center gap-4">
                 {/* Archive toggle */}
-                <label className="flex items-center gap-2 text-[12px] cursor-pointer" style={{ color: "var(--t-muted)" }}>
-                  <input
-                    type="checkbox"
-                    checked={showArchived}
-                    onChange={(e) => setShowArchived(e.target.checked)}
-                    className="rounded"
-                  />
-                  Архивные
-                </label>
+                <Checkbox
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  label="Архивные"
+                  size="sm"
+                />
 
                 {/* Filter pills — only shown when not in archive mode */}
                 {!showArchived && (

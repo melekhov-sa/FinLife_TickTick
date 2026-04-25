@@ -10,10 +10,7 @@ import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
 import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`bg-white/[0.04] animate-pulse rounded-xl ${className ?? ""}`} />;
-}
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
@@ -40,9 +37,9 @@ export default function DashboardPage() {
 
         {isLoading && (
           <div className="space-y-3 xl:grid xl:grid-cols-[260px_1fr_290px] xl:gap-4 xl:space-y-0 max-w-[1400px]">
-            <Skeleton className="h-32 xl:h-40" />
-            <Skeleton className="h-48 xl:h-72" />
-            <Skeleton className="hidden xl:block h-36" />
+            <Skeleton variant="rect" className="h-32 xl:h-40 rounded-xl" />
+            <Skeleton variant="rect" className="h-48 xl:h-72 rounded-xl" />
+            <Skeleton variant="rect" className="hidden xl:block h-36 rounded-xl" />
           </div>
         )}
 

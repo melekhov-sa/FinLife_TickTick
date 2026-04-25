@@ -8,6 +8,8 @@ import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { DateInput } from "@/components/primitives/DateInput";
+import { TimeInput } from "@/components/primitives/TimeInput";
+import { Switch } from "@/components/primitives/Switch";
 import { api } from "@/lib/api";
 import { CreateEventRequestSchema } from "@/schemas/api.generated";
 import {
@@ -215,7 +217,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
     }
   }
 
-  // ── Toggle component ─────────────────────────────────────────
+  // ── Toggle component (uses primitive Switch) ─────────────────
   function Toggle({
     checked,
     onChange,
@@ -226,31 +228,9 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
     label: string;
   }) {
     return (
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className="flex items-center gap-2.5 py-1.5 group"
-      >
-        <div
-          className={clsx(
-            "w-9 h-5 rounded-full transition-colors relative shrink-0",
-            checked ? "bg-indigo-500" : "bg-white/[0.1]",
-          )}
-        >
-          <div
-            className={clsx(
-              "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
-              checked ? "translate-x-4" : "translate-x-0.5",
-            )}
-          />
-        </div>
-        <span
-          className="text-[13px] font-medium"
-          style={{ color: checked ? "var(--t-primary)" : "var(--t-muted)" }}
-        >
-          {label}
-        </span>
-      </button>
+      <div className="py-1.5">
+        <Switch checked={checked} onChange={onChange} label={label} size="sm" />
+      </div>
     );
   }
 
@@ -337,11 +317,9 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
         />
         {hasTime && (
           <div className="mt-2">
-            <input
-              type="time"
+            <TimeInput
               value={startTime}
-              onChange={(e) => { setStartTime(e.target.value); clearFieldError("start_time"); }}
-              className={`${inputCls} ${fieldErrors.start_time ? inputErrorBorder : ""}`}
+              onChange={(v) => { setStartTime(v); clearFieldError("start_time"); }}
             />
             {fieldErrors.start_time && <p className={errTextCls}>{fieldErrors.start_time}</p>}
           </div>
@@ -372,11 +350,9 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
             </div>
             <div>
               <label className={labelCls}>Время окончания</label>
-              <input
-                type="time"
+              <TimeInput
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={inputCls}
+                onChange={setEndTime}
               />
             </div>
           </div>

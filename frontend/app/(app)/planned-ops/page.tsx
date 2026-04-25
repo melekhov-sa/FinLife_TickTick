@@ -11,6 +11,7 @@ import { CreateOperationModal, type CreateOperationInitialValues } from "@/compo
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-16 bg-white/[0.03] rounded-xl animate-pulse" />
+            <Skeleton key={i} variant="rect" height={64} className="rounded-xl" />
           ))}
         </div>
       )}
@@ -424,7 +425,7 @@ function UpcomingTab() {
       {isLoading && (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 bg-white/[0.03] rounded-xl animate-pulse" />
+            <Skeleton key={i} variant="rect" height={80} className="rounded-xl" />
           ))}
         </div>
       )}

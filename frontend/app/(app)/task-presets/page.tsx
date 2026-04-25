@@ -19,6 +19,7 @@ import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -476,10 +477,7 @@ export default function TaskPresetsPage() {
         {isLoading && (
           <div className="space-y-px">
             {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-14 bg-white/[0.03] rounded animate-pulse mb-px"
-              />
+              <Skeleton key={i} variant="rect" height={56} className="rounded mb-px" />
             ))}
           </div>
         )}

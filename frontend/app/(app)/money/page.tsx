@@ -16,6 +16,7 @@ import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 interface TransactionItem {
   transaction_id: number;
@@ -353,7 +354,7 @@ export default function MoneyPage() {
         {isLoading && (
           <div className="space-y-1">
             {[...Array(10)].map((_, i) => (
-              <div key={i} className="h-12 md:h-14 bg-white/[0.02] rounded-xl animate-pulse" />
+              <Skeleton key={i} variant="rect" className="h-12 md:h-14 rounded-xl" />
             ))}
           </div>
         )}

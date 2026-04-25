@@ -8,6 +8,7 @@ import type { HabitItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateHabit, useDeleteHabit } from "@/hooks/useHabits";
+import { TimeInput } from "@/components/primitives/TimeInput";
 
 interface Props {
   habit: HabitItem;
@@ -232,28 +233,15 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
                 Напоминание
               </p>
               <div className="flex items-center gap-2">
-                <input
-                  type="time"
+                <TimeInput
                   value={reminderTime}
-                  onChange={(e) => {
-                    setReminderTime(e.target.value);
-                    update({ habitId: habit.habit_id, data: { reminder_time: e.target.value || null } });
+                  onChange={(v) => {
+                    setReminderTime(v);
+                    update({ habitId: habit.habit_id, data: { reminder_time: v || null } });
                   }}
-                  className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
-                  style={{ color: "var(--t-secondary)" }}
+                  size="sm"
+                  className="w-[140px]"
                 />
-                {reminderTime && (
-                  <button
-                    onClick={() => {
-                      setReminderTime("");
-                      update({ habitId: habit.habit_id, data: { reminder_time: null } });
-                    }}
-                    className="text-[11px] hover:text-red-400 transition-colors"
-                    style={{ color: "var(--t-faint)" }}
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
             </div>
           </div>

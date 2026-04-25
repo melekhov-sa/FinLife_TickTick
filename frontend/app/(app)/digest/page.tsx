@@ -7,6 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useDigests, useDigestBackfill } from "@/hooks/useDigests";
 import type { DigestListItem } from "@/types/api";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: () => void }) {
   const pct = Math.round(digest.habits_completion_rate * 100);
@@ -99,11 +100,7 @@ export default function DigestListPage() {
           {isPending && (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-24 rounded-2xl animate-pulse"
-                  style={{ background: "rgba(255,255,255,0.03)" }}
-                />
+                <Skeleton key={i} variant="rect" height={96} className="rounded-2xl" />
               ))}
             </div>
           )}

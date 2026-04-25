@@ -13,6 +13,7 @@ import {
 import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -476,7 +477,7 @@ export default function EventsPage() {
             {isLoading && (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-20 bg-white/[0.03] rounded-2xl animate-pulse" />
+                  <Skeleton key={i} variant="rect" height={80} className="rounded-2xl" />
                 ))}
               </div>
             )}
