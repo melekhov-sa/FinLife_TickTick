@@ -13,6 +13,7 @@ import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -182,18 +183,14 @@ function EditTripModal({ list, onClose }: { list: TripList; onClose: () => void 
           tabular
         />
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="С"
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-          <Input
-            label="По"
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">С</label>
+            <DateInput value={from} onChange={setFrom} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">По</label>
+            <DateInput value={to} onChange={setTo} />
+          </div>
         </div>
       </div>
     </BottomSheet>

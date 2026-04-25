@@ -11,6 +11,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 interface SharedListSummary {
   id: number;
@@ -179,18 +180,14 @@ export default function ListsPage() {
                   tabular
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="С"
-                    type="date"
-                    value={newFrom}
-                    onChange={(e) => setNewFrom(e.target.value)}
-                  />
-                  <Input
-                    label="По"
-                    type="date"
-                    value={newTo}
-                    onChange={(e) => setNewTo(e.target.value)}
-                  />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">С</label>
+                    <DateInput value={newFrom} onChange={setNewFrom} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">По</label>
+                    <DateInput value={newTo} onChange={setNewTo} />
+                  </div>
                 </div>
               </>
             )}

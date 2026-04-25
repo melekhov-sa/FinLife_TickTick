@@ -16,6 +16,7 @@ import {
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -574,18 +575,16 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Начало периода</div>
-                          <Input
-                            type="date"
+                          <DateInput
                             value={subStartDate}
-                            onChange={(e) => setSubStartDate(e.target.value)}
+                            onChange={setSubStartDate}
                           />
                         </div>
                         <div>
                           <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Конец периода</div>
-                          <Input
-                            type="date"
+                          <DateInput
                             value={subEndDate}
-                            onChange={(e) => setSubEndDate(e.target.value)}
+                            onChange={setSubEndDate}
                           />
                         </div>
                       </div>

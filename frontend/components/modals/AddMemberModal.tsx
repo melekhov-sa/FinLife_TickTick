@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
+import { DateInput } from "@/components/primitives/DateInput";
 
 interface ContactItem {
   id: number;
@@ -94,11 +95,9 @@ export function AddMemberModal({ subId, onClose }: Props) {
 
           <div>
             <label className={labelCls}>Оплачено до</label>
-            <input
-              type="date"
+            <DateInput
               value={paidUntil}
-              onChange={(e) => setPaidUntil(e.target.value)}
-              className={inputCls}
+              onChange={setPaidUntil}
             />
           </div>
         </div>

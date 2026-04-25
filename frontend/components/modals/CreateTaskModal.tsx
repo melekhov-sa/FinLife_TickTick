@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 interface Props {
   onClose: () => void;
@@ -571,11 +572,9 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
             {/* Date field */}
             {showDateFields && (
               <FormRow label="Дата" required error={fieldErrors.due_date}>
-                <Input
-                  type="date"
+                <DateInput
                   value={dueDate}
-                  onChange={(e) => { setDueDate(e.target.value); clearFieldError("due_date"); }}
-                  aria-invalid={Boolean(fieldErrors.due_date) || undefined}
+                  onChange={(v) => { setDueDate(v); clearFieldError("due_date"); }}
                 />
               </FormRow>
             )}
@@ -674,10 +673,9 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                 {multiDatesEnabled && (
                   <div className="space-y-2 pl-1">
                     <div className="flex gap-2">
-                      <Input
-                        type="date"
+                      <DateInput
                         value={multiDateInput}
-                        onChange={(e) => setMultiDateInput(e.target.value)}
+                        onChange={setMultiDateInput}
                         className="flex-1"
                       />
                       <button
@@ -920,20 +918,17 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
 
             {/* Start date */}
             <FormRow label="Дата начала" required error={fieldErrors.start_date}>
-              <Input
-                type="date"
+              <DateInput
                 value={startDate}
-                onChange={(e) => { setStartDate(e.target.value); clearFieldError("start_date"); }}
-                aria-invalid={Boolean(fieldErrors.start_date) || undefined}
+                onChange={(v) => { setStartDate(v); clearFieldError("start_date"); }}
               />
             </FormRow>
 
             {/* Active until */}
             <FormRow label="Активно до" hint="Оставьте пустым для бессрочного действия">
-              <Input
-                type="date"
+              <DateInput
                 value={activeUntil}
-                onChange={(e) => setActiveUntil(e.target.value)}
+                onChange={setActiveUntil}
                 min={startDate || undefined}
               />
             </FormRow>

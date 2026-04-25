@@ -8,6 +8,7 @@ import { clsx } from "clsx";
 import { FolderPlus } from "lucide-react";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 const STATUS_OPTIONS = [
   { value: "planned",   label: "Планируемый", color: "text-blue-400" },
@@ -119,20 +120,14 @@ export default function NewProjectPage() {
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Дата начала"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  size="lg"
-                />
-                <Input
-                  label="Дедлайн"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  size="lg"
-                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">Дата начала</label>
+                  <DateInput value={startDate} onChange={setStartDate} size="lg" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">Дедлайн</label>
+                  <DateInput value={dueDate} onChange={setDueDate} size="lg" />
+                </div>
               </div>
 
               {error && (

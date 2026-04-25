@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { DateInput } from "@/components/primitives/DateInput";
 import { api } from "@/lib/api";
 import { CreateEventRequestSchema } from "@/schemas/api.generated";
 import {
@@ -316,11 +317,9 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       {/* ── Дата * ── */}
       <div>
         <label className={labelCls}>Дата *</label>
-        <input
-          type="date"
+        <DateInput
           value={startDate}
-          onChange={(e) => { setStartDate(e.target.value); clearFieldError("start_date"); }}
-          className={`${inputCls} ${fieldErrors.start_date ? inputErrorBorder : ""}`}
+          onChange={(v) => { setStartDate(v); clearFieldError("start_date"); }}
         />
         {fieldErrors.start_date && <p className={errTextCls}>{fieldErrors.start_date}</p>}
       </div>
@@ -364,12 +363,10 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
           <div className="mt-2 space-y-2">
             <div>
               <label className={labelCls}>Дата окончания</label>
-              <input
-                type="date"
+              <DateInput
                 value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); clearFieldError("end_date"); }}
+                onChange={(v) => { setEndDate(v); clearFieldError("end_date"); }}
                 min={startDate || undefined}
-                className={`${inputCls} ${fieldErrors.end_date ? inputErrorBorder : ""}`}
               />
               {fieldErrors.end_date && <p className={errTextCls}>{fieldErrors.end_date}</p>}
             </div>
@@ -513,12 +510,10 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
             {repeat && (
               <div>
                 <label className={labelCls}>Повторять до</label>
-                <input
-                  type="date"
+                <DateInput
                   value={untilDate}
-                  onChange={(e) => setUntilDate(e.target.value)}
+                  onChange={setUntilDate}
                   min={startDate || undefined}
-                  className={inputCls}
                 />
               </div>
             )}

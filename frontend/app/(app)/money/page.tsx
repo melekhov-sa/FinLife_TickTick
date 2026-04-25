@@ -13,6 +13,7 @@ import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 
@@ -331,8 +332,8 @@ export default function MoneyPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} size="sm" />
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} size="sm" />
+            <DateInput value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} size="sm" placeholder="Дата с" />
+            <DateInput value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} size="sm" placeholder="Дата по" />
             <Input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск..." size="sm" className="flex-1 min-w-0" />
             {hasFilters && (
               <button onClick={resetFilters} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors px-2">

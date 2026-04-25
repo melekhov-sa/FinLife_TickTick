@@ -14,6 +14,7 @@ import type { WorkCategoryItem, TaskItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
+import { DateInput } from "@/components/primitives/DateInput";
 
 interface PlanEntry {
   id: number;
@@ -203,10 +204,9 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         {/* Due date — tasks only */}
         {editable && (
           <FormRow label="Дата">
-            <Input
-              type="date"
+            <DateInput
               value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
+              onChange={setDueDate}
             />
           </FormRow>
         )}

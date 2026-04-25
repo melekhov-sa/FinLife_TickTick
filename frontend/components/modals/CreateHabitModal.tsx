@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { DateInput } from "@/components/primitives/DateInput";
 import { api } from "@/lib/api";
 import { CreateHabitRequestSchema } from "@/schemas/api.generated";
 import {
@@ -278,20 +279,16 @@ export function CreateHabitModal({ onClose }: Props) {
       <div className="flex gap-2.5">
         <div className="flex-1">
           <label className={labelCls}>Начать с</label>
-          <input
-            type="date"
+          <DateInput
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className={inputCls}
+            onChange={setStartDate}
           />
         </div>
         <div className="flex-1">
           <label className={labelCls}>Действует до</label>
-          <input
-            type="date"
+          <DateInput
             value={activeUntil}
-            onChange={(e) => setActiveUntil(e.target.value)}
-            className={inputCls}
+            onChange={setActiveUntil}
           />
           <p className="mt-1 text-[10px] text-white/40">Оставьте пустым для бессрочного действия</p>
         </div>
