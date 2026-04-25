@@ -16,6 +16,8 @@ import {
 interface Props {
   onClose: () => void;
   initialDate?: string; // ISO date YYYY-MM-DD
+  /** Pre-fill list_id (e.g., when opening from a trip dashboard). */
+  initialListId?: number | null;
 }
 
 interface TaskPreset {
@@ -34,6 +36,12 @@ interface ReminderPreset {
 
 interface ReminderEntry {
   offset_minutes: number;
+}
+
+interface TripListOption {
+  id: number;
+  title: string;
+  list_type: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -88,7 +96,7 @@ function todayISO(): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function CreateTaskModal({ onClose, initialDate }: Props) {
+export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) {
   const qc = useQueryClient();
 
   // Mode
@@ -97,6 +105,7 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
   // Common fields
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
+  const [listId, setListId] = useState<number | "">(initialListId ?? "");
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
 
@@ -155,6 +164,15 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
     queryKey: ["reminder-presets"],
     queryFn: () => api.get<ReminderPreset[]>("/api/v2/reminder-presets"),
     staleTime: 10 * 60_000,
+  });
+
+  const { data: tripLists } = useQuery<TripListOption[]>({
+    queryKey: ["shared-lists", "trip"],
+    queryFn: async () => {
+      const all = await api.get<TripListOption[]>("/api/v2/lists");
+      return all.filter((l) => l.list_type === "trip");
+    },
+    staleTime: 60_000,
   });
 
   // ── Helpers ────────────────────────────────────────────────────────────
@@ -245,6 +263,7 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
         title: title.trim(),
         note: note.trim() || null,
         category_id: categoryId || null,
+        list_id: listId || null,
         freq,
         interval,
         start_date: startDate || null,
@@ -258,6 +277,7 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
       title: title.trim(),
       note: note.trim() || null,
       category_id: categoryId || null,
+      list_id: listId || null,
       due_kind: dueKind,
       due_date: dueDate || null,
       due_time: dueKind === "DATETIME" ? dueTime || null : null,
@@ -329,6 +349,10 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      if (listId) {
+        qc.invalidateQueries({ queryKey: ["list-tasks", Number(listId)] });
+        qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
+      }
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -447,6 +471,22 @@ export function CreateTaskModal({ onClose, initialDate }: Props) {
                 label: c.title,
                 emoji: c.emoji ?? undefined,
               })),
+            ]}
+          />
+        </div>
+      )}
+
+      {/* ── Trip list link ── */}
+      {tripLists && tripLists.length > 0 && (
+        <div>
+          <label className={labelCls}>К списку (поездка)</label>
+          <Select
+            value={listId}
+            onChange={(v) => setListId(v ? Number(v) : "")}
+            placeholder="— без списка —"
+            options={[
+              { value: "", label: "— без списка —" },
+              ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
             ]}
           />
         </div>

@@ -1,11 +1,12 @@
-"""Service for Shared Lists (wishlist, giftlist, roadmap)."""
+"""Service for Shared Lists (wishlist, giftlist, roadmap, trip)."""
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date as date_type
 from decimal import Decimal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.models import SharedList, SharedListGroup, SharedListItem
+from app.infrastructure.db.models import SharedList, SharedListGroup, SharedListItem, ListPlanItem, TaskModel, TransactionFeed
 
 
 def _generate_slug() -> str:
@@ -60,7 +61,16 @@ class SharedListService:
             return None
         return self._serialize_full(lst)
 
-    def create_list(self, account_id: int, title: str, list_type: str, description: str | None = None) -> dict:
+    def create_list(
+        self,
+        account_id: int,
+        title: str,
+        list_type: str,
+        description: str | None = None,
+        budget_amount: Decimal | None = None,
+        period_from: date_type | None = None,
+        period_to: date_type | None = None,
+    ) -> dict:
         lst = SharedList(
             account_id=account_id,
             title=title,
@@ -68,6 +78,9 @@ class SharedListService:
             list_type=list_type,
             slug=_generate_slug(),
             is_public=False,
+            budget_amount=budget_amount,
+            period_from=period_from,
+            period_to=period_to,
         )
         self.db.add(lst)
         self.db.flush()
@@ -82,7 +95,7 @@ class SharedListService:
         if not lst:
             return None
 
-        for key in ("title", "description", "is_public", "custom_statuses"):
+        for key in ("title", "description", "is_public", "custom_statuses", "budget_amount", "period_from", "period_to"):
             if key in kwargs:
                 setattr(lst, key, kwargs[key])
 
@@ -246,6 +259,135 @@ class SharedListService:
         self.db.commit()
         return True
 
+    # ── Plan Items ────────────────────────────────────────────────────────────
+
+    def get_plan_items(self, account_id: int, list_id: int) -> list[dict] | None:
+        if not self._get_list(account_id, list_id):
+            return None
+        items = self.db.query(ListPlanItem).filter(
+            ListPlanItem.list_id == list_id,
+            ListPlanItem.account_id == account_id,
+        ).order_by(ListPlanItem.sort_order, ListPlanItem.id).all()
+        return [self._serialize_plan_item(i) for i in items]
+
+    def create_plan_item(
+        self,
+        account_id: int,
+        list_id: int,
+        title: str,
+        amount: Decimal,
+        sort_order: int | None = None,
+    ) -> dict | None:
+        if not self._get_list(account_id, list_id):
+            return None
+        if sort_order is None:
+            sort_order = self.db.query(ListPlanItem).filter(
+                ListPlanItem.list_id == list_id
+            ).count()
+        item = ListPlanItem(
+            list_id=list_id,
+            account_id=account_id,
+            title=title,
+            amount=amount,
+            sort_order=sort_order,
+        )
+        self.db.add(item)
+        self.db.flush()
+        self.db.commit()
+        return self._serialize_plan_item(item)
+
+    def update_plan_item(
+        self,
+        account_id: int,
+        list_id: int,
+        item_id: int,
+        **kwargs,
+    ) -> dict | None:
+        if not self._get_list(account_id, list_id):
+            return None
+        item = self.db.query(ListPlanItem).filter(
+            ListPlanItem.id == item_id,
+            ListPlanItem.list_id == list_id,
+            ListPlanItem.account_id == account_id,
+        ).first()
+        if not item:
+            return None
+        for key in ("title", "sort_order"):
+            if key in kwargs:
+                setattr(item, key, kwargs[key])
+        if "amount" in kwargs:
+            item.amount = Decimal(str(kwargs["amount"]))
+        self.db.commit()
+        return self._serialize_plan_item(item)
+
+    def delete_plan_item(self, account_id: int, list_id: int, item_id: int) -> bool:
+        if not self._get_list(account_id, list_id):
+            return False
+        item = self.db.query(ListPlanItem).filter(
+            ListPlanItem.id == item_id,
+            ListPlanItem.list_id == list_id,
+            ListPlanItem.account_id == account_id,
+        ).first()
+        if not item:
+            return False
+        self.db.delete(item)
+        self.db.commit()
+        return True
+
+    def get_summary(self, account_id: int, list_id: int) -> dict | None:
+        lst = self._get_list(account_id, list_id)
+        if not lst:
+            return None
+
+        # Plan items
+        plan_items = self.db.query(ListPlanItem).filter(
+            ListPlanItem.list_id == list_id,
+            ListPlanItem.account_id == account_id,
+        ).all()
+        plan_items_count = len(plan_items)
+        plan_total = sum(i.amount for i in plan_items) if plan_items else Decimal("0")
+
+        # Effective budget
+        if plan_items_count > 0:
+            effective_budget = plan_total
+        else:
+            effective_budget = lst.budget_amount
+
+        # Fact amount (transactions)
+        txn_q = self.db.query(TransactionFeed).filter(
+            TransactionFeed.account_id == account_id,
+            TransactionFeed.list_id == list_id,
+        )
+        if lst.list_type == "trip" and lst.period_from and lst.period_to:
+            txn_q = txn_q.filter(
+                TransactionFeed.occurred_at >= lst.period_from,
+                TransactionFeed.occurred_at <= lst.period_to,
+            )
+        transactions = txn_q.all()
+        fact_amount = sum(t.amount for t in transactions) if transactions else Decimal("0")
+        txn_count = len(transactions)
+
+        # Tasks
+        tasks = self.db.query(TaskModel).filter(
+            TaskModel.account_id == account_id,
+            TaskModel.list_id == list_id,
+        ).all()
+        tasks_total = len(tasks)
+        tasks_done = sum(1 for t in tasks if t.status == "DONE")
+
+        return {
+            "budget_amount": str(lst.budget_amount) if lst.budget_amount is not None else None,
+            "plan_total": str(plan_total),
+            "plan_items_count": plan_items_count,
+            "effective_budget": str(effective_budget) if effective_budget is not None else None,
+            "fact_amount": str(fact_amount),
+            "tasks_total": tasks_total,
+            "tasks_done": tasks_done,
+            "txn_count": txn_count,
+            "period_from": lst.period_from.isoformat() if lst.period_from else None,
+            "period_to": lst.period_to.isoformat() if lst.period_to else None,
+        }
+
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _get_list(self, account_id: int, list_id: int) -> SharedList | None:
@@ -272,6 +414,9 @@ class SharedListService:
             "slug": lst.slug,
             "is_public": lst.is_public,
             "custom_statuses": lst.custom_statuses,
+            "budget_amount": str(lst.budget_amount) if lst.budget_amount is not None else None,
+            "period_from": lst.period_from.isoformat() if lst.period_from else None,
+            "period_to": lst.period_to.isoformat() if lst.period_to else None,
             "created_at": lst.created_at,
             "updated_at": lst.updated_at,
             "groups": [
@@ -297,5 +442,15 @@ class SharedListService:
             "planned_op_template_id": item.planned_op_template_id,
             "sort_order": item.sort_order,
             "completed_at": item.completed_at.isoformat() if item.completed_at else None,
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+        }
+
+    def _serialize_plan_item(self, item: ListPlanItem) -> dict:
+        return {
+            "id": item.id,
+            "list_id": item.list_id,
+            "title": item.title,
+            "amount": str(item.amount),
+            "sort_order": item.sort_order,
             "created_at": item.created_at.isoformat() if item.created_at else None,
         }

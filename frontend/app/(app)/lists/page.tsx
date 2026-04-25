@@ -6,7 +6,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
-import { Plus, ShoppingBag, ListTodo, Map, Globe, Lock, Trash2 } from "lucide-react";
+import { Plus, ShoppingBag, ListTodo, Map, Globe, Lock, Trash2, Plane } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
@@ -26,6 +26,7 @@ const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string; color
   wishlist:  { icon: ShoppingBag, label: "Вишлист",  color: "text-indigo-500" },
   personal:  { icon: ListTodo,    label: "Личное",   color: "text-slate-500" },
   roadmap:   { icon: Map,         label: "Роадмап",  color: "text-emerald-500" },
+  trip:      { icon: Plane,       label: "Поездка",  color: "text-sky-500" },
 };
 
 export default function ListsPage() {
@@ -37,6 +38,9 @@ export default function ListsPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newType, setNewType] = useState<string>("wishlist");
   const [newDesc, setNewDesc] = useState("");
+  const [newBudget, setNewBudget] = useState("");
+  const [newFrom, setNewFrom] = useState("");
+  const [newTo, setNewTo] = useState("");
 
   const { data: lists, isLoading } = useQuery<SharedListSummary[]>({
     queryKey: ["shared-lists"],
@@ -45,13 +49,23 @@ export default function ListsPage() {
   });
 
   const { mutate: createList, isPending } = useMutation({
-    mutationFn: (body: { title: string; list_type: string; description: string | null }) =>
-      api.post("/api/v2/lists", body),
+    mutationFn: (body: {
+      title: string;
+      list_type: string;
+      description: string | null;
+      budget_amount?: string | null;
+      period_from?: string | null;
+      period_to?: string | null;
+    }) => api.post("/api/v2/lists", body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shared-lists"] });
+      qc.invalidateQueries({ queryKey: ["shared-lists", "trip"] });
       setShowCreate(false);
       setNewTitle("");
       setNewDesc("");
+      setNewBudget("");
+      setNewFrom("");
+      setNewTo("");
     },
   });
 
@@ -62,12 +76,29 @@ export default function ListsPage() {
 
   function handleCreate() {
     if (!newTitle.trim()) return;
-    createList({ title: newTitle.trim(), list_type: newType, description: newDesc.trim() || null });
+    const body: {
+      title: string;
+      list_type: string;
+      description: string | null;
+      budget_amount?: string | null;
+      period_from?: string | null;
+      period_to?: string | null;
+    } = {
+      title: newTitle.trim(),
+      list_type: newType,
+      description: newDesc.trim() || null,
+    };
+    if (newType === "trip") {
+      body.budget_amount = newBudget.trim() || null;
+      body.period_from = newFrom || null;
+      body.period_to = newTo || null;
+    }
+    createList(body);
   }
 
   const availableTypes = isAdmin
-    ? ["wishlist", "personal", "roadmap"] as const
-    : ["wishlist", "personal"] as const;
+    ? ["wishlist", "personal", "roadmap", "trip"] as const
+    : ["wishlist", "personal", "trip"] as const;
 
   return (
     <>
@@ -87,7 +118,7 @@ export default function ListsPage() {
           }
         >
           <div className="space-y-3">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {availableTypes.map((t) => {
                 const meta = TYPE_META[t];
                 const Icon = meta.icon;
@@ -97,7 +128,7 @@ export default function ListsPage() {
                     type="button"
                     onClick={() => setNewType(t)}
                     className={clsx(
-                      "flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all text-[12px] font-medium",
+                      "flex flex-col items-center gap-1 py-3 rounded-xl border transition-all text-[12px] font-medium",
                       newType === t
                         ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
                         : "border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"
@@ -116,7 +147,12 @@ export default function ListsPage() {
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={newType === "wishlist" ? "Мои хотелки" : newType === "roadmap" ? "Roadmap 2026" : "Фильмы к просмотру"}
+                placeholder={
+                  newType === "wishlist" ? "Мои хотелки" :
+                  newType === "roadmap"  ? "Roadmap 2026" :
+                  newType === "trip"     ? "Турция, июль" :
+                  "Фильмы к просмотру"
+                }
                 className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
                 autoFocus
               />
@@ -131,6 +167,42 @@ export default function ListsPage() {
                 className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
               />
             </div>
+
+            {newType === "trip" && (
+              <>
+                <div>
+                  <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">Бюджет, ₽</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={newBudget}
+                    onChange={(e) => setNewBudget(e.target.value)}
+                    placeholder="120000"
+                    className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">С</label>
+                    <input
+                      type="date"
+                      value={newFrom}
+                      onChange={(e) => setNewFrom(e.target.value)}
+                      className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">По</label>
+                    <input
+                      type="date"
+                      value={newTo}
+                      onChange={(e) => setNewTo(e.target.value)}
+                      className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </BottomSheet>
       )}

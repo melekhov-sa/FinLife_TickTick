@@ -361,6 +361,7 @@ def list_transactions(
     operation_type: str | None = Query(None),
     wallet_id: int | None = Query(None),
     category_id: int | None = Query(None),
+    list_id: int | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
     search: str | None = Query(None),
@@ -381,6 +382,8 @@ def list_transactions(
             TransactionFeed.from_wallet_id == wallet_id,
             TransactionFeed.to_wallet_id == wallet_id,
         ))
+    if list_id is not None:
+        q = q.filter(TransactionFeed.list_id == list_id)
     if category_id:
         if category_id == -1:
             # "Прочие" — uncategorized transactions (no category or category not in active budget rows)
@@ -482,6 +485,8 @@ class CreateTransactionRequest(BaseModel):
     sub_member_id: int | None = None
     sub_start_date: str | None = None     # YYYY-MM-DD
     sub_end_date: str | None = None       # YYYY-MM-DD
+    # Trip container link
+    list_id: int | None = None
 
 
 @router.post("/transactions", status_code=201)
@@ -598,6 +603,13 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
         except SubscriptionValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    # Set list_id on the read model (not event-sourced)
+    if body.list_id is not None and tx_id:
+        tx = db.query(TransactionFeed).filter(TransactionFeed.transaction_id == tx_id).first()
+        if tx:
+            tx.list_id = body.list_id
+            db.commit()
+
     return {"id": tx_id}
 
 
@@ -608,6 +620,7 @@ class UpdateTransactionRequest(BaseModel):
     wallet_id: int | None = None
     category_id: int | None = None
     description: str | None = None
+    list_id: int | None = None
 
 
 @router.patch("/transactions/{transaction_id}")
@@ -633,17 +646,31 @@ def update_transaction(
     if body.description is not None:
         changes["description"] = body.description
 
-    if not changes:
+    list_id_in_request = "list_id" in body.model_fields_set
+
+    if not changes and not list_id_in_request:
         raise HTTPException(status_code=400, detail="Нет изменений")
 
-    try:
-        UpdateTransactionUseCase(db).execute(
-            transaction_id=transaction_id,
-            account_id=user_id,
-            actor_user_id=user_id,
-            **changes,
-        )
-    except TransactionValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    if changes:
+        try:
+            UpdateTransactionUseCase(db).execute(
+                transaction_id=transaction_id,
+                account_id=user_id,
+                actor_user_id=user_id,
+                **changes,
+            )
+        except TransactionValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # Update list_id directly on the read model
+    if list_id_in_request:
+        tx = db.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == transaction_id,
+            TransactionFeed.account_id == user_id,
+        ).first()
+        if not tx:
+            raise HTTPException(status_code=404, detail="Транзакция не найдена")
+        tx.list_id = body.list_id
+        db.commit()
 
     return {"ok": True}

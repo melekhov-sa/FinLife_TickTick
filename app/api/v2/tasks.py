@@ -32,6 +32,7 @@ class TaskItem(BaseModel):
     due_kind: str | None = None
     completed_at: datetime | None
     project_id: int | None
+    list_id: int | None = None
     category_id: int | None
     category_emoji: str | None
     is_overdue: bool
@@ -53,6 +54,7 @@ def list_tasks(
     request: Request,
     status: str = Query("ACTIVE"),
     project_id: int | None = Query(None),
+    list_id: int | None = Query(None),
     limit: int = Query(100, le=500),
     db: Session = Depends(get_db),
 ):
@@ -64,6 +66,8 @@ def list_tasks(
         q = q.filter(TaskModel.status == status)
     if project_id is not None:
         q = q.filter(TaskModel.project_id == project_id)
+    if list_id is not None:
+        q = q.filter(TaskModel.list_id == list_id)
 
     if status == "DONE":
         tasks = q.order_by(TaskModel.completed_at.desc()).limit(limit).all()
@@ -86,6 +90,7 @@ def list_tasks(
             due_date=t.due_date,
             completed_at=t.completed_at,
             project_id=t.project_id,
+            list_id=t.list_id,
             category_id=t.category_id,
             category_emoji=emoji_map.get(t.category_id) if t.category_id else None,
             is_overdue=(
@@ -283,6 +288,7 @@ class CreateTaskRequest(BaseModel):
     requires_expense: bool = False
     suggested_expense_category_id: int | None = None
     suggested_amount: str | None = None
+    list_id: int | None = None  # trip container link
 
     # Recurring fields
     freq: str | None = None  # DAILY, WEEKLY, MONTHLY, YEARLY
@@ -359,6 +365,12 @@ def create_task(body: CreateTaskRequest, request: Request, db: Session = Depends
         )
     except TaskValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Set list_id directly on the read model (not event-sourced)
+    if body.list_id is not None:
+        task = db.query(TaskModel).filter(TaskModel.task_id == task_id).first()
+        if task:
+            task.list_id = body.list_id
+            db.commit()
     return {"id": task_id}
 
 
@@ -450,6 +462,7 @@ def get_task(task_id: int, request: Request, db: Session = Depends(get_db)):
         due_kind=task.due_kind,
         completed_at=task.completed_at,
         project_id=task.project_id,
+        list_id=task.list_id,
         category_id=task.category_id,
         category_emoji=emoji,
         is_overdue=(task.due_date is not None and task.due_date < today and task.status == "ACTIVE"),
@@ -463,6 +476,7 @@ class UpdateTaskRequest(BaseModel):
     due_date: str | None = None
     due_time: str | None = None
     category_id: int | None = None
+    list_id: int | None = None
 
 
 @router.patch("/tasks/{task_id}")
@@ -502,6 +516,8 @@ def update_task(task_id: int, body: UpdateTaskRequest, request: Request, db: Ses
                 task.due_kind = "DATE"
     if "category_id" in fields:
         task.category_id = body.category_id
+    if "list_id" in fields:
+        task.list_id = body.list_id
     db.commit()
     return {"ok": True}
 

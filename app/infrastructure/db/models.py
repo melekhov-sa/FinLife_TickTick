@@ -225,6 +225,9 @@ class TransactionFeed(Base):
 
     task_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Trip container link
+    list_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -321,6 +324,9 @@ class TaskModel(Base):
     requires_expense: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     suggested_expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     suggested_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+
+    # Trip container link
+    list_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     __table_args__ = (
         Index("ix_tasks_project_board", "project_id", "board_status"),
@@ -1619,18 +1625,22 @@ class StrategyTarget(Base):
 # ============================================================================
 
 class SharedList(Base):
-    """A shareable list: wishlist, gift list, or roadmap."""
+    """A shareable list: wishlist, gift list, roadmap, or trip."""
     __tablename__ = "shared_lists"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    list_type: Mapped[str] = mapped_column(String(32), nullable=False)  # wishlist | giftlist | roadmap
+    list_type: Mapped[str] = mapped_column(String(32), nullable=False)  # wishlist | giftlist | roadmap | trip
     slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     # JSON array of {key, label, color} for custom statuses; null = use defaults
     custom_statuses: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Trip-specific fields
+    budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+    period_from: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    period_to: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -1668,6 +1678,21 @@ class SharedListItem(Base):
     planned_op_template_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> operation_templates
     sort_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ListPlanItem(Base):
+    """Trip-list plan line item: airline 30000, hotel 50000, etc."""
+    __tablename__ = "list_plan_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    list_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False, server_default="0")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

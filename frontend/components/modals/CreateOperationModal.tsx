@@ -34,6 +34,14 @@ interface Props {
   onClose: () => void;
   initialValues?: CreateOperationInitialValues;
   occurrenceId?: number;
+  /** Pre-fill list_id (e.g., when opening from a trip dashboard). */
+  initialListId?: number | null;
+}
+
+interface TripListOption {
+  id: number;
+  title: string;
+  list_type: string;
 }
 
 const inputCls =
@@ -49,7 +57,7 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
   { value: "TRANSFER", label: "Перемещение",  activeColor: "bg-blue-600 border-blue-500 text-white" },
 ];
 
-export function CreateOperationModal({ onClose, initialValues, occurrenceId }: Props) {
+export function CreateOperationModal({ onClose, initialValues, occurrenceId, initialListId }: Props) {
   const qc = useQueryClient();
 
   const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? "EXPENSE");
@@ -58,6 +66,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
   const [fromWalletId, setFromWalletId] = useState<number | "">(initialValues?.fromWalletId ?? "");
   const [toWalletId, setToWalletId] = useState<number | "">(initialValues?.toWalletId ?? "");
   const [categoryId, setCategoryId] = useState<number | "">(initialValues?.categoryId ?? "");
+  const [listId, setListId] = useState<number | "">(initialListId ?? "");
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
 
@@ -103,6 +112,15 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
     queryFn: () => api.get<GoalItem[]>("/api/v2/goals"),
     staleTime: 5 * 60_000,
     enabled: opType === "TRANSFER",
+  });
+
+  const { data: tripLists } = useQuery<TripListOption[]>({
+    queryKey: ["shared-lists", "trip"],
+    queryFn: async () => {
+      const all = await api.get<TripListOption[]>("/api/v2/lists");
+      return all.filter((l) => l.list_type === "trip");
+    },
+    staleTime: 60_000,
   });
 
   const relevantCats = finCats?.filter((c) => c.category_type === opType && c.parent_id !== null) ?? [];
@@ -218,6 +236,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
       body.sub_start_date = subStartDate || null;
       body.sub_end_date = subEndDate || null;
     }
+    body.list_id = listId || null;
     return body;
   }
 
@@ -263,6 +282,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      if (listId) {
+        qc.invalidateQueries({ queryKey: ["list-transactions", Number(listId)] });
+        qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
+      }
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
@@ -429,6 +452,22 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId }: P
                 options={categoryOptions}
                 placeholder="— без категории —"
                 searchable
+              />
+            </div>
+          )}
+
+          {/* Trip list link */}
+          {tripLists && tripLists.length > 0 && (
+            <div>
+              <label className={labelCls}>К списку (поездка)</label>
+              <Select
+                value={listId}
+                onChange={(v) => setListId(v ? Number(v) : "")}
+                options={[
+                  { value: "", label: "— без списка —" },
+                  ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
+                ]}
+                placeholder="— без списка —"
               />
             </div>
           )}

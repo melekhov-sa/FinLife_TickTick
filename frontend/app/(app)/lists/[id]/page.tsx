@@ -12,6 +12,7 @@ import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragE
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { api } from "@/lib/api";
+import { TripDashboard } from "@/components/lists/TripDashboard";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,10 @@ interface SharedListFull {
   custom_statuses: StatusDef[] | null;
   groups: ListGroup[];
   items: ListItem[];
+  // Trip-specific fields (only populated for list_type === "trip")
+  budget_amount: string | null;
+  period_from: string | null;
+  period_to: string | null;
 }
 
 type ViewMode = "list" | "grid" | "kanban";
@@ -764,6 +769,11 @@ export default function ListDetailPage() {
         </DragOverlay>
       </DndContext>
     );
+  }
+
+  // Trip lists use a dedicated dashboard instead of the kanban/list/grid views.
+  if (list && list.list_type === "trip") {
+    return <TripDashboard list={list} />;
   }
 
   return (
