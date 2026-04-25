@@ -78,7 +78,7 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip(
           {emoji}
         </span>
       )}
-      <span className="truncate">{label}</span>
+      <span className="whitespace-nowrap">{label}</span>
       {onRemove && (
         <span
           role="button"
