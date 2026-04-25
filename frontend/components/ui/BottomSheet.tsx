@@ -101,7 +101,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   return (
     <div
       ref={overlayRef}
-      className="modal-overlay fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="modal-overlay fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
     >
       <Wrapper

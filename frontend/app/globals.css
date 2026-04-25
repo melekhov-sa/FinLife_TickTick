@@ -565,6 +565,7 @@ html.dark[data-color-theme="emerald"] {
   .scrollbar-none::-webkit-scrollbar { display: none; }
 
   /* ── Hide mobile nav when modal overlay is present ────────────────────── */
+  body:has(.modal-overlay) nav[aria-label="Основная навигация"] { display: none; }
   body:has(.modal-overlay) #mobile-nav { display: none; }
 
   /* ── Focus ring ────────────────────────────────────────────────────────── */
