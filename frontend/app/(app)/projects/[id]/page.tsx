@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useRef, useState, useEffect } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Settings, Plus, X, Check } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,9 @@ import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import type { ProjectTag } from "@/types/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Popover } from "@/components/primitives/Popover";
+import { Tooltip } from "@/components/primitives/Tooltip";
+import { ProgressBar } from "@/components/primitives/ProgressBar";
 
 const STATUS_COLORS: Record<string, string> = {
   active:   "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20",
@@ -45,13 +48,11 @@ function ProjectSettingsPopover({
   hideFromPlan: boolean;
   tags: ProjectTag[];
 }) {
-  const [open, setOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState<string>("gray");
   const [editingTagId, setEditingTagId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("gray");
-  const ref = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
   const invalidate = () => {
@@ -85,27 +86,23 @@ function ProjectSettingsPopover({
 
   const [deleteTagTarget, setDeleteTagTarget] = useState<ProjectTag | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/70 hover:bg-white/[0.07] transition-colors"
-        title="Настройки проекта"
+    <>
+      <Popover
+        side="bottom"
+        align="end"
+        className="w-72 !p-4 mt-1"
+        trigger={
+          <Tooltip content="Настройки проекта">
+            <button
+              className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/70 hover:bg-white/[0.07] transition-colors"
+            >
+              <Settings size={13} />
+            </button>
+          </Tooltip>
+        }
       >
-        <Settings size={13} />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-9 z-50 w-72 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl p-4 space-y-4">
+        <div className="space-y-4">
           {/* hide_from_plan toggle */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>
@@ -208,7 +205,7 @@ function ProjectSettingsPopover({
             </div>
           </div>
         </div>
-      )}
+      </Popover>
 
       {deleteTagTarget && (
         <ConfirmDeleteModal
@@ -220,7 +217,7 @@ function ProjectSettingsPopover({
           onClose={() => setDeleteTagTarget(null)}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -300,26 +297,24 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 <span className="tabular-nums">{project.total_tasks}</span>
                 <span className="ml-1">выполнено</span>
               </p>
-              <div className="h-1 w-28 bg-white/[0.06] rounded-full mt-1.5 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all"
-                  style={{ width: `${project.progress}%` }}
-                />
+              <div className="w-28 mt-1.5">
+                <ProgressBar value={project.progress} max={100} variant="primary" size="sm" />
               </div>
             </div>
 
             <ProjectSettingsPopover projectId={project.id} hideFromPlan={project.hide_from_plan} tags={project.tags} />
 
             {/* Open in legacy SSR */}
-            <a
-              href={`/legacy/projects/${project.id}`}
-              target="_blank"
-              rel="noreferrer"
-              className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/55 hover:bg-white/[0.07] transition-colors"
-              title="Открыть полное представление"
-            >
-              <ExternalLink size={13} />
-            </a>
+            <Tooltip content="Открыть полное представление">
+              <a
+                href={`/legacy/projects/${project.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/55 hover:bg-white/[0.07] transition-colors"
+              >
+                <ExternalLink size={13} />
+              </a>
+            </Tooltip>
           </div>
         </div>
 

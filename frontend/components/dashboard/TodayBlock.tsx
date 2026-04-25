@@ -31,6 +31,7 @@ import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { DigestCtaBanner } from "./DigestCtaBanner";
 import { Button } from "@/components/primitives/Button";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface Props {
   today: TodayBlockType;
@@ -249,21 +250,23 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
           {op.amount_formatted}
         </span>
       </button>
-      <button
-        onClick={onClick}
-        className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-0.5 px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all shrink-0 touch-manipulation"
-        title="Выполнить"
-      >
-        <Play size={9} className="fill-current" />
-      </button>
-      <button
-        onClick={onSkip}
-        className="md:opacity-0 md:group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-50 dark:hover:bg-red-500/15 hover:text-red-500 dark:hover:text-red-400 shrink-0 touch-manipulation"
-        style={{ color: "var(--t-faint)" }}
-        title="Пропустить"
-      >
-        <SkipForward size={12} />
-      </button>
+      <Tooltip content="Выполнить">
+        <button
+          onClick={onClick}
+          className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-0.5 px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all shrink-0 touch-manipulation"
+        >
+          <Play size={9} className="fill-current" />
+        </button>
+      </Tooltip>
+      <Tooltip content="Пропустить">
+        <button
+          onClick={onSkip}
+          className="md:opacity-0 md:group-hover/fi:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all hover:bg-red-50 dark:hover:bg-red-500/15 hover:text-red-500 dark:hover:text-red-400 shrink-0 touch-manipulation"
+          style={{ color: "var(--t-faint)" }}
+        >
+          <SkipForward size={12} />
+        </button>
+      </Tooltip>
     </div>
   );
 }

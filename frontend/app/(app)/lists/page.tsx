@@ -13,6 +13,7 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface SharedListSummary {
   id: number;
@@ -255,14 +256,15 @@ export default function ListsPage() {
                         {lst.is_public ? <> · <Globe size={10} className="inline -mt-px" /> публичный</> : <> · <Lock size={10} className="inline -mt-px" /> приватный</>}
                       </p>
                     </div>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteList(lst.id); }}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
-                      style={{ color: "var(--t-faint)" }}
-                      title="Удалить"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <Tooltip content="Удалить">
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteList(lst.id); }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
+                        style={{ color: "var(--t-faint)" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </Tooltip>
                   </Link>
                 );
               })}

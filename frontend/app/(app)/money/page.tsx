@@ -17,6 +17,7 @@ import { DateInput } from "@/components/primitives/DateInput";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface TransactionItem {
   transaction_id: number;
@@ -398,14 +399,15 @@ export default function MoneyPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setEditTx(tx)}
-                      className="md:opacity-0 md:group-hover/tx:opacity-100 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
-                      style={{ color: "var(--t-faint)" }}
-                      title="Редактировать"
-                    >
-                      <Pencil size={12} />
-                    </button>
+                    <Tooltip content="Редактировать">
+                      <button
+                        onClick={() => setEditTx(tx)}
+                        className="md:opacity-0 md:group-hover/tx:opacity-100 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
+                        style={{ color: "var(--t-faint)" }}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    </Tooltip>
                     <div className="text-right">
                       <p className={clsx("text-[13px] md:text-sm font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
                         {formatAmount(tx.amount, tx.operation_type, tx.currency)}

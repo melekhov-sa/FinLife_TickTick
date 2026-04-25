@@ -15,6 +15,8 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { ProgressBar } from "@/components/primitives/ProgressBar";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -350,14 +352,15 @@ function PlanSection({ listId }: { listId: number }) {
                   </span>
                 )}
 
-                <button
-                  onClick={() => setDeleteTarget(it)}
-                  className="w-7 h-7 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
-                  style={{ color: "var(--t-faint)" }}
-                  title="Удалить позицию"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <Tooltip content="Удалить позицию">
+                  <button
+                    onClick={() => setDeleteTarget(it)}
+                    className="w-7 h-7 flex items-center justify-center rounded transition-all opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
+                    style={{ color: "var(--t-faint)" }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </Tooltip>
               </div>
             );
           })}
@@ -677,9 +680,6 @@ function SummaryCard({ summary }: { summary: TripSummary | undefined }) {
 
   const fact = parseFloat(summary.fact_amount || "0");
   const eff = parseFloat(summary.effective_budget || "0");
-  const pct = eff > 0 ? Math.min(999, Math.round((fact / eff) * 100)) : 0;
-  const fillPct = eff > 0 ? Math.min(100, (fact / eff) * 100) : 0;
-  const overBudget = eff > 0 && fact > eff;
 
   return (
     <SectionCard>
@@ -705,32 +705,12 @@ function SummaryCard({ summary }: { summary: TripSummary | undefined }) {
           <span className="text-[var(--fs-caption)]" style={{ color: "var(--t-faint)" }}>
             Операций: <span className="font-semibold" style={{ color: "var(--t-secondary)" }}>{summary.txn_count}</span>
           </span>
-          {eff > 0 && (
-            <span
-              className="text-[var(--fs-caption)] font-bold tabular-nums"
-              style={{ color: overBudget ? "var(--color-expense)" : "var(--t-secondary)" }}
-            >
-              {pct}%
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div
-        className="h-2 rounded-full overflow-hidden"
-        style={{ background: "var(--app-accent-weak)" }}
-      >
-        <div
-          className="h-full transition-all duration-300"
-          style={{
-            width: `${fillPct}%`,
-            background: overBudget
-              ? "linear-gradient(90deg, #DC2626, #F87171)"
-              : "linear-gradient(90deg, #6366F1, #8B5CF6)",
-          }}
-        />
-      </div>
+      {eff > 0 && (
+        <ProgressBar value={fact} max={eff} variant="primary" size="md" showLabel />
+      )}
     </SectionCard>
   );
 }

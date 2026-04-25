@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
 import { EventReminders } from "./EventReminders";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface Props {
   event: EventItem;
@@ -156,14 +157,15 @@ export function EventDetailPanel({ event, onClose }: Props) {
             {event.category_emoji && <span className="text-base">{event.category_emoji}</span>}
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => { duplicate(event.occurrence_id); onClose(); }}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
-              style={{ color: "var(--t-faint)" }}
-              title="Дублировать"
-            >
-              <Copy size={13} />
-            </button>
+            <Tooltip content="Дублировать">
+              <button
+                onClick={() => { duplicate(event.occurrence_id); onClose(); }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                style={{ color: "var(--t-faint)" }}
+              >
+                <Copy size={13} />
+              </button>
+            </Tooltip>
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"

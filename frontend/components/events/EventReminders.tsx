@@ -5,6 +5,8 @@ import { Bell, X, Plus } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
+import { useToast } from "@/components/primitives/Toast";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface EventReminder {
   id: number;
@@ -31,6 +33,7 @@ const FIXED_TIME_PRESETS = ["09:00", "12:00", "15:00", "18:00", "20:00"];
 
 export function EventReminders({ eventId, startTime, disabled }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [adding, setAdding] = useState(false);
 
   const { data: reminders = [] } = useQuery<EventReminder[]>({
@@ -51,7 +54,12 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
     mutationFn: (body: { mode: string; offset_minutes?: number; fixed_time?: string }) =>
       api.post(`/api/v2/events/${eventId}/reminders`, body),
     onSuccess: () => { invalidate(); setAdding(false); },
-    onError: (err: Error) => alert(err.message.replace(/^API error \d+: /, "")),
+    onError: (err: Error) =>
+      toast({
+        title: "Ошибка",
+        description: err.message.replace(/^API error \d+: /, ""),
+        variant: "danger",
+      }),
   });
 
   const { mutateAsync: deleteReminder } = useMutation({
@@ -93,13 +101,14 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
             >
               {reminderLabel(r)}
               {!disabled && (
-                <button
-                  onClick={() => setDeleteTarget(r)}
-                  className="hover:text-red-500 transition-colors"
-                  title="Удалить"
-                >
-                  <X size={11} />
-                </button>
+                <Tooltip content="Удалить">
+                  <button
+                    onClick={() => setDeleteTarget(r)}
+                    className="hover:text-red-500 transition-colors"
+                  >
+                    <X size={11} />
+                  </button>
+                </Tooltip>
               )}
             </span>
           ))}

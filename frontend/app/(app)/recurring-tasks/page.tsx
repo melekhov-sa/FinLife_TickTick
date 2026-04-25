@@ -10,6 +10,7 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -261,23 +262,25 @@ function TemplateRow({
       <div className="flex items-center gap-1 shrink-0">
         <Badge variant="accent" size="sm">{freqLabel(item.freq)}</Badge>
         {!archived && (
+          <Tooltip content="Редактировать">
+            <button
+              onClick={startEdit}
+              className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+              style={{ color: "var(--t-faint)" }}
+            >
+              <Pencil size={11} />
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip content={archived ? "Восстановить" : "В архив"}>
           <button
-            onClick={startEdit}
+            onClick={() => archived ? restoreTemplate() : archiveTemplate()}
             className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
             style={{ color: "var(--t-faint)" }}
-            title="Редактировать"
           >
-            <Pencil size={11} />
+            {archived ? <RotateCcw size={11} /> : <Archive size={11} />}
           </button>
-        )}
-        <button
-          onClick={() => archived ? restoreTemplate() : archiveTemplate()}
-          className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
-          style={{ color: "var(--t-faint)" }}
-          title={archived ? "Восстановить" : "В архив"}
-        >
-          {archived ? <RotateCcw size={11} /> : <Archive size={11} />}
-        </button>
+        </Tooltip>
       </div>
     </div>
   );

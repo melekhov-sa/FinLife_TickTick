@@ -9,6 +9,7 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -203,30 +204,33 @@ export default function EventTemplatesPage() {
 
                 <div className="flex items-center gap-1 shrink-0">
                   {!item.is_archived && editingId !== item.event_id && (
-                    <button
-                      onClick={() => { setEditingId(item.event_id); setEditTitle(item.title); }}
-                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-                      title="Редактировать"
-                    >
-                      <Pencil size={13} className="text-white/40" />
-                    </button>
+                    <Tooltip content="Редактировать">
+                      <button
+                        onClick={() => { setEditingId(item.event_id); setEditTitle(item.title); }}
+                        className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      >
+                        <Pencil size={13} className="text-white/40" />
+                      </button>
+                    </Tooltip>
                   )}
                   {item.is_archived ? (
-                    <button
-                      onClick={() => handleRestore(item.event_id)}
-                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-                      title="Восстановить"
-                    >
-                      <RotateCcw size={13} className="text-indigo-400/60" />
-                    </button>
+                    <Tooltip content="Восстановить">
+                      <button
+                        onClick={() => handleRestore(item.event_id)}
+                        className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      >
+                        <RotateCcw size={13} className="text-indigo-400/60" />
+                      </button>
+                    </Tooltip>
                   ) : (
-                    <button
-                      onClick={() => handleArchive(item.event_id)}
-                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-                      title="В архив"
-                    >
-                      <Archive size={13} className="text-white/30" />
-                    </button>
+                    <Tooltip content="В архив">
+                      <button
+                        onClick={() => handleArchive(item.event_id)}
+                        className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      >
+                        <Archive size={13} className="text-white/30" />
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
 

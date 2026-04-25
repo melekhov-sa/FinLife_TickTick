@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { Avatar } from "@/components/primitives/Avatar";
+import { Popover } from "@/components/primitives/Popover";
 
 interface AppTopbarProps {
   /** Заголовок раздела (белым). Если не передан — ничего не рендерим. */
@@ -23,24 +24,6 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const email = me?.email ?? "";
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) =>
-      e.key === "Escape" && setMenuOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
 
   return (
     <header
@@ -96,88 +79,80 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         <NotificationBell />
 
         {/* Аватар + dropdown */}
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            aria-label="Профиль"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-full transition-transform hover:scale-[1.04]"
-            style={{
-              boxShadow:
-                "0 1px 2px rgba(16,24,40,.1), 0 4px 12px -4px rgba(16,24,40,.2)",
-            }}
-          >
-            <Avatar
-              name={email}
-              size="md"
-              className="!bg-white !text-[#6366F1] font-bold"
-            />
-          </button>
-
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 top-full mt-2 w-56 rounded-xl overflow-hidden border"
+        <Popover
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          side="bottom"
+          align="end"
+          className="!p-0 mt-2 w-56 overflow-hidden"
+          trigger={
+            <button
+              type="button"
+              aria-label="Профиль"
+              className="rounded-full transition-transform hover:scale-[1.04]"
               style={{
-                background: "var(--app-card-bg)",
-                borderColor: "var(--app-border)",
                 boxShadow:
-                  "0 1px 2px rgba(16,24,40,.04), 0 16px 40px -8px rgba(16,24,40,.2)",
-                zIndex: 50,
+                  "0 1px 2px rgba(16,24,40,.1), 0 4px 12px -4px rgba(16,24,40,.2)",
               }}
             >
-              {email && (
-                <div
-                  className="px-4 py-3 border-b"
-                  style={{ borderColor: "var(--app-border)" }}
-                >
-                  <p
-                    className="text-[11px] truncate"
-                    style={{ color: "var(--t-muted)" }}
-                  >
-                    {email}
-                  </p>
-                </div>
-              )}
-
-              <div className="py-1">
-                <MenuLink
-                  href="/profile"
-                  icon={<User size={15} strokeWidth={1.8} />}
-                  onNavigate={() => setMenuOpen(false)}
-                >
-                  Мой профиль
-                </MenuLink>
-                <MenuLink
-                  href="/settings"
-                  icon={<Settings size={15} strokeWidth={1.8} />}
-                  onNavigate={() => setMenuOpen(false)}
-                >
-                  Настройки
-                </MenuLink>
-              </div>
-
-              <div
-                className="py-1 border-t"
-                style={{ borderColor: "var(--app-border)" }}
+              <Avatar
+                name={email}
+                size="md"
+                className="!bg-white !text-[#6366F1] font-bold"
+              />
+            </button>
+          }
+        >
+          {email && (
+            <div
+              className="px-4 py-3 border-b"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <p
+                className="text-[11px] truncate"
+                style={{ color: "var(--t-muted)" }}
               >
-                <Link
-                  href="/logout"
-                  role="menuitem"
-                  onClick={() => setMenuOpen(false)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium text-left transition-colors",
-                    "hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                  )}
-                  style={{ color: "#DC2626" }}
-                >
-                  <LogOut size={15} strokeWidth={1.8} />
-                  <span>Выйти</span>
-                </Link>
-              </div>
+                {email}
+              </p>
             </div>
           )}
-        </div>
+
+          <div className="py-1">
+            <MenuLink
+              href="/profile"
+              icon={<User size={15} strokeWidth={1.8} />}
+              onNavigate={() => setMenuOpen(false)}
+            >
+              Мой профиль
+            </MenuLink>
+            <MenuLink
+              href="/settings"
+              icon={<Settings size={15} strokeWidth={1.8} />}
+              onNavigate={() => setMenuOpen(false)}
+            >
+              Настройки
+            </MenuLink>
+          </div>
+
+          <div
+            className="py-1 border-t"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <Link
+              href="/logout"
+              role="menuitem"
+              onClick={() => setMenuOpen(false)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium text-left transition-colors",
+                "hover:bg-rose-50 dark:hover:bg-rose-500/10"
+              )}
+              style={{ color: "#DC2626" }}
+            >
+              <LogOut size={15} strokeWidth={1.8} />
+              <span>Выйти</span>
+            </Link>
+          </div>
+        </Popover>
       </div>
     </header>
   );

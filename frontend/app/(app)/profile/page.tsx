@@ -9,6 +9,7 @@ import { ArrowRight, Star, Zap, TrendingUp, Settings, Bell, Wallet, Lock } from 
 import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { ProgressBar } from "@/components/primitives/ProgressBar";
 
 interface XpProfile {
   xp_total: number;
@@ -128,12 +129,7 @@ export default function ProfilePage() {
                         {data.xp.xp_in_level} / {data.xp.xp_needed} XP
                       </span>
                     </div>
-                    <div className="h-2 bg-white/[0.07] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all"
-                        style={{ width: `${data.xp.progress_pct}%` }}
-                      />
-                    </div>
+                    <ProgressBar value={data.xp.progress_pct} max={100} variant="primary" size="md" />
                     <p className="text-[11px] text-white/60 mt-1.5 tabular-nums">
                       Всего XP: {data.xp.xp_total.toLocaleString("ru-RU")}
                     </p>

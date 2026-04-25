@@ -13,6 +13,7 @@ import type { NotificationItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -130,14 +131,15 @@ function NotificationRow({
 
       {/* Hover actions */}
       {!n.is_read && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRead(); }}
-          className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.07]"
-          style={{ color: "var(--t-faint)" }}
-          title="Отметить прочитанным"
-        >
-          <Eye size={13} />
-        </button>
+        <Tooltip content="Отметить прочитанным">
+          <button
+            onClick={(e) => { e.stopPropagation(); onRead(); }}
+            className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.07]"
+            style={{ color: "var(--t-faint)" }}
+          >
+            <Eye size={13} />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

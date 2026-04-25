@@ -20,6 +20,7 @@ import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -249,41 +250,44 @@ function PresetRow({
         </p>
       </div>
       <div className="flex gap-1 shrink-0 items-center">
-        <button
-          onClick={() => move({ id: preset.id, direction: "up" })}
-          disabled={isFirst}
-          className={clsx(
-            btnBase,
-            "opacity-0 group-hover/row:opacity-100"
-          )}
-          style={{ color: "var(--t-faint)" }}
-          title="Выше"
-        >
-          <ChevronUp size={13} />
-        </button>
-        <button
-          onClick={() => move({ id: preset.id, direction: "down" })}
-          disabled={isLast}
-          className={clsx(
-            btnBase,
-            "opacity-0 group-hover/row:opacity-100"
-          )}
-          style={{ color: "var(--t-faint)" }}
-          title="Ниже"
-        >
-          <ChevronDown size={13} />
-        </button>
-        <button
-          onClick={startEdit}
-          className={clsx(
-            btnBase,
-            "opacity-0 group-hover/row:opacity-100"
-          )}
-          style={{ color: "var(--t-faint)" }}
-          title="Изменить"
-        >
-          <Pencil size={12} />
-        </button>
+        <Tooltip content="Выше">
+          <button
+            onClick={() => move({ id: preset.id, direction: "up" })}
+            disabled={isFirst}
+            className={clsx(
+              btnBase,
+              "opacity-0 group-hover/row:opacity-100"
+            )}
+            style={{ color: "var(--t-faint)" }}
+          >
+            <ChevronUp size={13} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Ниже">
+          <button
+            onClick={() => move({ id: preset.id, direction: "down" })}
+            disabled={isLast}
+            className={clsx(
+              btnBase,
+              "opacity-0 group-hover/row:opacity-100"
+            )}
+            style={{ color: "var(--t-faint)" }}
+          >
+            <ChevronDown size={13} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Изменить">
+          <button
+            onClick={startEdit}
+            className={clsx(
+              btnBase,
+              "opacity-0 group-hover/row:opacity-100"
+            )}
+            style={{ color: "var(--t-faint)" }}
+          >
+            <Pencil size={12} />
+          </button>
+        </Tooltip>
         <button
           onClick={toggleActive}
           className={clsx(

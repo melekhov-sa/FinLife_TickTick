@@ -12,6 +12,7 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -182,14 +183,15 @@ function CategoryRow({
             </span>
             {cat.is_system && <Badge variant="neutral" size="sm">система</Badge>}
             {!cat.is_system && !cat.is_archived && (
-              <button
-                onClick={startEdit}
-                className="opacity-0 group-hover/title:opacity-100 w-5 h-5 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-all"
-                style={{ color: "var(--t-faint)" }}
-                title="Переименовать"
-              >
-                <Pencil size={10} />
-              </button>
+              <Tooltip content="Переименовать">
+                <button
+                  onClick={startEdit}
+                  className="opacity-0 group-hover/title:opacity-100 w-5 h-5 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-all"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <Pencil size={10} />
+                </button>
+              </Tooltip>
             )}
           </div>
         )}

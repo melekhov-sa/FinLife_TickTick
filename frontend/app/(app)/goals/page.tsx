@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { ProgressBar } from "@/components/primitives/ProgressBar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -67,12 +68,7 @@ function GoalCard({ goal }: { goal: GoalItem }) {
       {/* Progress bar (only when target is set) */}
       {goal.target_amount ? (
         <div className="space-y-1.5">
-          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          <ProgressBar value={pct} max={100} variant="primary" size="md" />
           <div className="flex items-center justify-between text-[12px]">
             <span style={{ color: "var(--t-muted)" }}>
               {formatAmount(goal.current_balance)} / {formatAmount(goal.target_amount)}{" "}

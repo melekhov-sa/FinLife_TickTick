@@ -5,6 +5,8 @@ import { Bell, X, Plus } from "lucide-react";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { api } from "@/lib/api";
+import { useToast } from "@/components/primitives/Toast";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 interface TaskReminder {
   id: number;
@@ -30,6 +32,7 @@ const FIXED_TIME_PRESETS = ["09:00", "12:00", "15:00", "18:00", "20:00"];
 
 export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [adding, setAdding] = useState(false);
 
   const { data: reminders = [] } = useQuery<TaskReminder[]>({
@@ -50,7 +53,12 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
     mutationFn: (body: { reminder_kind: string; offset_minutes?: number; fixed_time?: string }) =>
       api.post(`/api/v2/tasks/${taskId}/reminders`, body),
     onSuccess: () => { invalidate(); setAdding(false); },
-    onError: (err: Error) => alert(err.message.replace(/^API error \d+: /, "")),
+    onError: (err: Error) =>
+      toast({
+        title: "Ошибка",
+        description: err.message.replace(/^API error \d+: /, ""),
+        variant: "danger",
+      }),
   });
 
   const { mutate: deleteReminder } = useMutation({
@@ -112,13 +120,14 @@ export function TaskReminders({ taskId, dueDate, dueTime, disabled }: Props) {
               >
                 {reminderLabel(r)}
                 {!disabled && (
-                  <button
-                    onClick={() => deleteReminder(r.id)}
-                    className="hover:text-red-500 transition-colors"
-                    title="Удалить"
-                  >
-                    <X size={11} />
-                  </button>
+                  <Tooltip content="Удалить">
+                    <button
+                      onClick={() => deleteReminder(r.id)}
+                      className="hover:text-red-500 transition-colors"
+                    >
+                      <X size={11} />
+                    </button>
+                  </Tooltip>
                 )}
               </span>
             ))}

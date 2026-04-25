@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import { TripDashboard } from "@/components/lists/TripDashboard";
 import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -409,8 +410,8 @@ export default function ListDetailPage() {
 
         {item.price && <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>{parseFloat(item.price).toLocaleString("ru-RU")} ₽</span>}
         {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-indigo-50 dark:hover:bg-indigo-500/10" style={{ color: "var(--t-faint)" }}><ExternalLink size={13} /></a>}
-        <button onClick={() => openEdit(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }} title="Редактировать"><Pencil size={13} /></button>
-        <button onClick={() => setDeleteTarget(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }} title="Удалить"><Trash2 size={13} /></button>
+        <Tooltip content="Редактировать"><button onClick={() => openEdit(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }}><Pencil size={13} /></button></Tooltip>
+        <Tooltip content="Удалить"><button onClick={() => setDeleteTarget(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={13} /></button></Tooltip>
       </div>
     );
   }

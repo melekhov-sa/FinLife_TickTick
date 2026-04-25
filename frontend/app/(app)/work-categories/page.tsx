@@ -9,6 +9,7 @@ import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Tooltip } from "@/components/primitives/Tooltip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -169,14 +170,15 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
           </span>
           <div className="flex items-center gap-1 shrink-0">
             {!cat.is_archived && (
-              <button
-                onClick={startEdit}
-                className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors opacity-0 group-hover/row:opacity-100"
-                style={{ color: "var(--t-faint)" }}
-                title="Изменить"
-              >
-                <Pencil size={12} />
-              </button>
+              <Tooltip content="Изменить">
+                <button
+                  onClick={startEdit}
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors opacity-0 group-hover/row:opacity-100"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  <Pencil size={12} />
+                </button>
+              </Tooltip>
             )}
             {cat.is_archived ? (
               <button

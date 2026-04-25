@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { clsx } from "clsx";
 import type { ProjectSummary } from "@/types/api";
+import { ProgressBar } from "@/components/primitives/ProgressBar";
 
 const STATUS_COLORS: Record<string, string> = {
   active:   "bg-emerald-500/15 text-emerald-400",
@@ -59,17 +60,12 @@ export function ProjectCard({ project }: Props) {
           <span>{project.done_tasks} / {project.total_tasks} задач</span>
           <span className="tabular-nums">{pct}%</span>
         </div>
-        <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
-          <div
-            className={clsx(
-              "h-full rounded-full transition-all",
-              pct === 100
-                ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
-                : "bg-gradient-to-r from-indigo-500 to-indigo-400"
-            )}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <ProgressBar
+          value={pct}
+          max={100}
+          variant={pct === 100 ? "success" : "primary"}
+          size="sm"
+        />
       </div>
 
       {/* Due date */}
