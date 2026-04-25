@@ -71,11 +71,12 @@ function categoryColorClass(name: string): string {
   return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
 }
 
-function CategoryChip({ name }: { name: string }) {
+function CategoryChip({ name, emoji }: { name: string; emoji?: string | null }) {
   const colorCls = categoryColorClass(name);
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold tracking-tight leading-none shrink-0 ${colorCls}`}>
-      {name}
+    <span className={`inline-flex items-center h-6 px-2 gap-1 rounded-md text-[12px] font-medium leading-none shrink-0 ${colorCls}`}>
+      {emoji && <span aria-hidden className="leading-none">{emoji}</span>}
+      <span className="whitespace-nowrap">{name}</span>
     </span>
   );
 }
@@ -155,7 +156,7 @@ function Item({
         >
           {title}
         </span>
-        {categoryName && <CategoryChip name={categoryName} />}
+        {categoryName && <CategoryChip name={categoryName} emoji={item.category_emoji} />}
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
           isDone ? (
