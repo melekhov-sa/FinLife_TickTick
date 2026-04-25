@@ -2,15 +2,12 @@
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 interface Props {
   onClose: () => void;
 }
 
-const inputCls =
-  "w-full px-3 h-10 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors";
-const labelCls =
-  "block text-[11px] md:text-xs font-medium text-white/50 uppercase tracking-wider mb-1.5";
 const errCls = "text-[11px] text-red-400 mt-1";
 
 export function ChangePasswordModal({ onClose }: Props) {
@@ -82,39 +79,30 @@ export function ChangePasswordModal({ onClose }: Props) {
       footer={footer}
       onSubmit={handleSubmit}
     >
-      <div>
-        <label className={labelCls}>Текущий пароль</label>
-        <input
-          type="password"
-          value={oldPw}
-          onChange={(e) => setOldPw(e.target.value)}
-          placeholder="Введите текущий пароль"
-          className={inputCls}
-          autoFocus
-        />
-      </div>
+      <Input
+        label="Текущий пароль"
+        type="password"
+        value={oldPw}
+        onChange={(e) => setOldPw(e.target.value)}
+        placeholder="Введите текущий пароль"
+        autoFocus
+      />
 
-      <div>
-        <label className={labelCls}>Новый пароль</label>
-        <input
-          type="password"
-          value={newPw}
-          onChange={(e) => setNewPw(e.target.value)}
-          placeholder="Минимум 6 символов"
-          className={inputCls}
-        />
-      </div>
+      <Input
+        label="Новый пароль"
+        type="password"
+        value={newPw}
+        onChange={(e) => setNewPw(e.target.value)}
+        placeholder="Минимум 6 символов"
+      />
 
-      <div>
-        <label className={labelCls}>Подтвердите новый пароль</label>
-        <input
-          type="password"
-          value={confirmPw}
-          onChange={(e) => setConfirmPw(e.target.value)}
-          placeholder="Повторите новый пароль"
-          className={inputCls}
-        />
-      </div>
+      <Input
+        label="Подтвердите новый пароль"
+        type="password"
+        value={confirmPw}
+        onChange={(e) => setConfirmPw(e.target.value)}
+        placeholder="Повторите новый пароль"
+      />
 
       {error && (
         <p className={errCls + " text-[13px] bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5"}>

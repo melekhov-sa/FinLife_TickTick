@@ -13,6 +13,7 @@ import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-
 
 import { api } from "@/lib/api";
 import { TripDashboard } from "@/components/lists/TripDashboard";
+import { Button } from "@/components/primitives/Button";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -740,23 +741,34 @@ export default function ListDetailPage() {
                   autoFocus
                 />
                 <div className="flex gap-1.5">
-                  <button onClick={handleAddColumn} disabled={!newColTitle.trim()} className="text-[12px] font-semibold px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                  <Button
+                    variant="primary"
+                    size="xs"
+                    onClick={handleAddColumn}
+                    disabled={!newColTitle.trim()}
+                  >
                     Создать
-                  </button>
-                  <button onClick={() => setAddingColumn(false)} className="text-[12px] font-medium px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors" style={{ color: "var(--t-faint)" }}>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setAddingColumn(false)}
+                  >
                     Отмена
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
-              <button
+              <Button
+                variant="ghost"
+                size="md"
+                fullWidth
+                leftIcon={<Plus size={16} />}
                 onClick={() => { setAddingColumn(true); setNewColTitle(""); }}
-                className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex items-center justify-center gap-2 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/[0.04]"
-                style={{ color: "var(--t-faint)" }}
+                className="border-2 border-dashed border-slate-200 dark:border-white/[0.08] hover:border-indigo-300 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/[0.04] py-4 h-auto"
               >
-                <Plus size={16} />
-                <span className="text-[13px] font-medium">Колонка</span>
-              </button>
+                Колонка
+              </Button>
             )}
           </div>
         </div>

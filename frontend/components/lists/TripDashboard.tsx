@@ -12,6 +12,7 @@ import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,10 +129,6 @@ function EditTripModal({ list, onClose }: { list: TripList; onClose: () => void 
   const [to, setTo] = useState(list.period_to ?? "");
   const [saving, setSaving] = useState(false);
 
-  const inputCls =
-    "w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
-  const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500";
-
   async function handleSave() {
     setSaving(true);
     try {
@@ -170,30 +167,33 @@ function EditTripModal({ list, onClose }: { list: TripList; onClose: () => void 
       }
     >
       <div className="space-y-3">
-        <div>
-          <label className={labelCls}>Название</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>Бюджет, ₽</label>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            placeholder="120000"
-            className={inputCls}
-          />
-        </div>
+        <Input
+          label="Название"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <Input
+          label="Бюджет, ₽"
+          type="number"
+          inputMode="decimal"
+          value={budget}
+          onChange={(e) => setBudget(e.target.value)}
+          placeholder="120000"
+          tabular
+        />
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>С</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>По</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputCls} />
-          </div>
+          <Input
+            label="С"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+          <Input
+            label="По"
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
         </div>
       </div>
     </BottomSheet>
@@ -302,7 +302,8 @@ function PlanSection({ listId }: { listId: number }) {
                 style={{ borderColor: "var(--app-card-border)" }}
               >
                 {isEdit && editingField === "title" ? (
-                  <input
+                  <Input
+                    size="sm"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => handleEditCommit(it)}
@@ -311,8 +312,7 @@ function PlanSection({ listId }: { listId: number }) {
                       if (e.key === "Escape") { setEditingId(null); setEditingField(null); }
                     }}
                     autoFocus
-                    className="flex-1 bg-transparent outline-none text-[14px] border-b border-indigo-400"
-                    style={{ color: "var(--t-primary)" }}
+                    className="flex-1"
                   />
                 ) : (
                   <span
@@ -326,7 +326,8 @@ function PlanSection({ listId }: { listId: number }) {
                 )}
 
                 {isEdit && editingField === "amount" ? (
-                  <input
+                  <Input
+                    size="sm"
                     type="number"
                     inputMode="decimal"
                     value={editValue}
@@ -337,8 +338,8 @@ function PlanSection({ listId }: { listId: number }) {
                       if (e.key === "Escape") { setEditingId(null); setEditingField(null); }
                     }}
                     autoFocus
-                    className="w-28 text-right bg-transparent outline-none text-[14px] tabular-nums border-b border-indigo-400"
-                    style={{ color: "var(--t-primary)" }}
+                    tabular
+                    className="w-28"
                   />
                 ) : (
                   <span
@@ -367,23 +368,24 @@ function PlanSection({ listId }: { listId: number }) {
 
       {/* Add row */}
       <div className="flex items-center gap-2 mt-2">
-        <input
+        <Input
+          size="sm"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           placeholder="Например, Авиабилеты"
-          className="flex-1 h-9 px-3 text-[14px] rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08]"
-          style={{ color: "var(--t-primary)" }}
+          className="flex-1"
         />
-        <input
+        <Input
+          size="sm"
           type="number"
           inputMode="decimal"
           value={newAmount}
           onChange={(e) => setNewAmount(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           placeholder="0"
-          className="w-28 h-9 px-3 text-[14px] tabular-nums text-right rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08]"
-          style={{ color: "var(--t-primary)" }}
+          tabular
+          className="w-28"
         />
         <Button
           variant="primary"

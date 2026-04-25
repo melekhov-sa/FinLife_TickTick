@@ -9,6 +9,8 @@ import { clsx } from "clsx";
 import { Plus, ShoppingBag, ListTodo, Map, Globe, Lock, Trash2, Plane } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 interface SharedListSummary {
   id: number;
@@ -108,13 +110,16 @@ export default function ListsPage() {
           onClose={() => setShowCreate(false)}
           title="Новый список"
           footer={
-            <button
+            <Button
+              variant="primary"
+              size="md"
+              loading={isPending}
+              disabled={!newTitle.trim()}
               onClick={handleCreate}
-              disabled={isPending || !newTitle.trim()}
-              className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+              fullWidth
             >
-              {isPending ? "Создаём..." : "Создать"}
-            </button>
+              Создать
+            </Button>
           }
         >
           <div className="space-y-3">
@@ -142,64 +147,50 @@ export default function ListsPage() {
               })}
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">Название</label>
-              <input
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={
-                  newType === "wishlist" ? "Мои хотелки" :
-                  newType === "roadmap"  ? "Roadmap 2026" :
-                  newType === "trip"     ? "Турция, июль" :
-                  "Фильмы к просмотру"
-                }
-                className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
-                autoFocus
-              />
-            </div>
+            <Input
+              label="Название"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder={
+                newType === "wishlist" ? "Мои хотелки" :
+                newType === "roadmap"  ? "Roadmap 2026" :
+                newType === "trip"     ? "Турция, июль" :
+                "Фильмы к просмотру"
+              }
+              autoFocus
+            />
 
-            <div>
-              <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">Описание (необязательно)</label>
-              <input
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="Краткое описание"
-                className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
-              />
-            </div>
+            <Input
+              label="Описание (необязательно)"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="Краткое описание"
+            />
 
             {newType === "trip" && (
               <>
-                <div>
-                  <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">Бюджет, ₽</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={newBudget}
-                    onChange={(e) => setNewBudget(e.target.value)}
-                    placeholder="120000"
-                    className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
-                  />
-                </div>
+                <Input
+                  label="Бюджет, ₽"
+                  type="number"
+                  inputMode="decimal"
+                  value={newBudget}
+                  onChange={(e) => setNewBudget(e.target.value)}
+                  placeholder="120000"
+                  tabular
+                />
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">С</label>
-                    <input
-                      type="date"
-                      value={newFrom}
-                      onChange={(e) => setNewFrom(e.target.value)}
-                      className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500">По</label>
-                    <input
-                      type="date"
-                      value={newTo}
-                      onChange={(e) => setNewTo(e.target.value)}
-                      className="w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
-                    />
-                  </div>
+                  <Input
+                    label="С"
+                    type="date"
+                    value={newFrom}
+                    onChange={(e) => setNewFrom(e.target.value)}
+                  />
+                  <Input
+                    label="По"
+                    type="date"
+                    value={newTo}
+                    onChange={(e) => setNewTo(e.target.value)}
+                  />
                 </div>
               </>
             )}
@@ -215,13 +206,14 @@ export default function ListsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Вишлисты, списки, роадмапы
             </h2>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm"
             >
-              <Plus size={14} />
               <span className="hidden md:inline">Новый список</span>
-            </button>
+            </Button>
           </div>
 
           {isLoading && (

@@ -13,6 +13,7 @@ import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
+import { Input } from "@/components/primitives/Input";
 
 interface PlanEntry {
   id: number;
@@ -149,9 +150,6 @@ export function EntryDetailModal({ entry, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [editable]);
 
-  const inputCls =
-    "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
-
   return (
     <BottomSheet
       open
@@ -205,11 +203,10 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         {/* Due date — tasks only */}
         {editable && (
           <FormRow label="Дата">
-            <input
+            <Input
               type="date"
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
-              className={inputCls}
             />
           </FormRow>
         )}
@@ -218,11 +215,11 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         {editable ? (
           <FormRow label="Время" hint="Необязательно">
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className={inputCls}
+                className="flex-1"
               />
               {dueTime && (
                 <button

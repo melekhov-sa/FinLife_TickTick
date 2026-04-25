@@ -11,10 +11,11 @@ import { X } from "lucide-react";
 import { CreateTransactionRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
-  inputErrorBorder, type FieldErrors,
+  type FieldErrors,
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -47,8 +48,6 @@ interface TripListOption {
   list_type: string;
 }
 
-const inputCls =
-  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
 const chipActiveCls = "bg-indigo-600 border-indigo-500 text-white";
 const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
@@ -391,14 +390,15 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
           <>
             {/* Amount */}
             <FormRow label="Сумма" required error={fieldErrors.amount}>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0.01"
                 value={amount}
                 onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
                 placeholder="0.00"
-                className={`${inputCls} text-base font-semibold ${fieldErrors.amount ? inputErrorBorder : ""}`}
+                tabular
+                aria-invalid={Boolean(fieldErrors.amount) || undefined}
                 autoFocus={!initialValues?.amount}
               />
             </FormRow>
@@ -486,23 +486,22 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
             {/* Description */}
             <FormRow label="Описание">
-              <input
+              <Input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Необязательно"
-                className={inputCls}
               />
             </FormRow>
 
             {/* Occurred at */}
             <FormRow label="Дата и время">
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="datetime-local"
                   value={occurredAt}
                   onChange={(e) => setOccurredAt(e.target.value)}
-                  className={inputCls}
+                  className="flex-1"
                 />
                 {occurredAt && (
                   <button
@@ -575,20 +574,18 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Начало периода</div>
-                          <input
+                          <Input
                             type="date"
                             value={subStartDate}
                             onChange={(e) => setSubStartDate(e.target.value)}
-                            className={inputCls}
                           />
                         </div>
                         <div>
                           <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Конец периода</div>
-                          <input
+                          <Input
                             type="date"
                             value={subEndDate}
                             onChange={(e) => setSubEndDate(e.target.value)}
-                            className={inputCls}
                           />
                         </div>
                       </div>

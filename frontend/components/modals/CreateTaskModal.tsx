@@ -12,10 +12,11 @@ import { Tag, X } from "lucide-react";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
-  inputErrorBorder, type FieldErrors,
+  type FieldErrors,
 } from "@/lib/formErrors";
 import { Button } from "@/components/primitives/Button";
 import { Chip } from "@/components/primitives/Chip";
+import { Input } from "@/components/primitives/Input";
 
 interface Props {
   onClose: () => void;
@@ -81,8 +82,6 @@ const WEEKDAYS = [
 
 // ── Style constants ────────────────────────────────────────────────────────
 
-const inputCls =
-  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const chipActiveCls =
   "bg-indigo-600 border-indigo-500 text-white";
 const chipInactiveCls =
@@ -467,12 +466,12 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
 
         {/* ── Title + inline preset link ── */}
         <FormRow label="Название" required error={fieldErrors.title}>
-          <input
+          <Input
             type="text"
             value={title}
             onChange={(e) => { setTitle(e.target.value); clearFieldError("title"); }}
             placeholder="Название задачи"
-            className={`${inputCls} ${fieldErrors.title ? inputErrorBorder : ""}`}
+            aria-invalid={Boolean(fieldErrors.title) || undefined}
             autoFocus
           />
           {presets && presets.length > 0 && (
@@ -579,11 +578,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
             {/* Date field */}
             {showDateFields && (
               <FormRow label="Дата" required error={fieldErrors.due_date}>
-                <input
+                <Input
                   type="date"
                   value={dueDate}
                   onChange={(e) => { setDueDate(e.target.value); clearFieldError("due_date"); }}
-                  className={`${inputCls} ${fieldErrors.due_date ? inputErrorBorder : ""}`}
+                  aria-invalid={Boolean(fieldErrors.due_date) || undefined}
                 />
               </FormRow>
             )}
@@ -592,11 +591,12 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
             {showTimeField && (
               <FormRow label="Время" required error={fieldErrors.due_time}>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="time"
                     value={dueTime}
                     onChange={(e) => { setDueTime(e.target.value); clearFieldError("due_time"); }}
-                    className={`${inputCls} ${fieldErrors.due_time ? inputErrorBorder : ""}`}
+                    aria-invalid={Boolean(fieldErrors.due_time) || undefined}
+                    className="flex-1"
                   />
                   {dueTime && (
                     <button
@@ -617,11 +617,12 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
               <>
                 <FormRow label="С" required error={fieldErrors.due_start_time}>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="time"
                       value={dueStartTime}
                       onChange={(e) => { setDueStartTime(e.target.value); clearFieldError("due_start_time"); }}
-                      className={`${inputCls} ${fieldErrors.due_start_time ? inputErrorBorder : ""}`}
+                      aria-invalid={Boolean(fieldErrors.due_start_time) || undefined}
+                      className="flex-1"
                     />
                     {dueStartTime && (
                       <button
@@ -637,11 +638,12 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                 </FormRow>
                 <FormRow label="До" required error={fieldErrors.due_end_time}>
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="time"
                       value={dueEndTime}
                       onChange={(e) => { setDueEndTime(e.target.value); clearFieldError("due_end_time"); }}
-                      className={`${inputCls} ${fieldErrors.due_end_time ? inputErrorBorder : ""}`}
+                      aria-invalid={Boolean(fieldErrors.due_end_time) || undefined}
+                      className="flex-1"
                     />
                     {dueEndTime && (
                       <button
@@ -679,11 +681,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                 {multiDatesEnabled && (
                   <div className="space-y-2 pl-1">
                     <div className="flex gap-2">
-                      <input
+                      <Input
                         type="date"
                         value={multiDateInput}
                         onChange={(e) => setMultiDateInput(e.target.value)}
-                        className={`${inputCls} flex-1`}
+                        className="flex-1"
                       />
                       <button
                         type="button"
@@ -837,13 +839,13 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                             />
                           </div>
                         )}
-                        <input
+                        <Input
                           type="text"
                           inputMode="decimal"
                           value={expenseAmount}
                           onChange={(e) => setExpenseAmount(e.target.value)}
                           placeholder="Сумма (0.00)"
-                          className={inputCls}
+                          tabular
                         />
                       </>
                     )}
@@ -879,12 +881,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
 
             {/* Interval */}
             <FormRow label="Интервал">
-              <input
+              <Input
                 type="number"
                 min={1}
                 value={interval}
                 onChange={(e) => setInterval(Math.max(1, Number(e.target.value)))}
-                className={inputCls}
               />
             </FormRow>
 
@@ -911,36 +912,35 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
             {/* Monthday (MONTHLY only) */}
             {freq === "MONTHLY" && (
               <FormRow label="День месяца" required error={fieldErrors.by_monthday}>
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={31}
                   value={byMonthday}
                   onChange={(e) => { setByMonthday(e.target.value); clearFieldError("by_monthday"); }}
                   placeholder="1–31"
-                  className={`${inputCls} ${fieldErrors.by_monthday ? inputErrorBorder : ""}`}
+                  aria-invalid={Boolean(fieldErrors.by_monthday) || undefined}
                 />
               </FormRow>
             )}
 
             {/* Start date */}
             <FormRow label="Дата начала" required error={fieldErrors.start_date}>
-              <input
+              <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); clearFieldError("start_date"); }}
-                className={`${inputCls} ${fieldErrors.start_date ? inputErrorBorder : ""}`}
+                aria-invalid={Boolean(fieldErrors.start_date) || undefined}
               />
             </FormRow>
 
             {/* Active until */}
             <FormRow label="Активно до" hint="Оставьте пустым для бессрочного действия">
-              <input
+              <Input
                 type="date"
                 value={activeUntil}
                 onChange={(e) => setActiveUntil(e.target.value)}
                 min={startDate || undefined}
-                className={inputCls}
               />
             </FormRow>
           </>

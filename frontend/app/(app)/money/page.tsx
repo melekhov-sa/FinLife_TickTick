@@ -8,9 +8,11 @@ import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
-import { SlidersHorizontal, X, Pencil } from "lucide-react";
+import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 interface TransactionItem {
   transaction_id: number;
@@ -90,7 +92,6 @@ function EditTransactionModal({
     ];
   }, [finCats, tx.operation_type]);
 
-  const inputCls = "w-full px-3 h-9 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
   const labelCls = "block text-[11px] font-medium text-white/55 uppercase tracking-wider mb-1.5";
 
   async function handleSave() {
@@ -129,18 +130,16 @@ function EditTransactionModal({
           </button>
         </div>
 
-        <div>
-          <label className={labelCls}>Сумма</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={inputCls}
-            autoFocus
-          />
-        </div>
+        <Input
+          label="Сумма"
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          tabular
+          autoFocus
+        />
 
         {!isTransfer && (
           <div>
@@ -159,19 +158,23 @@ function EditTransactionModal({
         {error && <p className="text-red-400 text-xs">{error}</p>}
 
         <div className="flex gap-2 pt-1">
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={onClose}
-            className="flex-1 rounded-xl py-2 text-[13px] font-semibold border border-white/[0.08] hover:bg-white/[0.04] text-white/60 transition-colors"
+            fullWidth
           >
             Отмена
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            loading={saving}
             onClick={handleSave}
-            disabled={saving}
-            className="flex-1 rounded-xl py-2 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+            fullWidth
           >
-            {saving ? "..." : "Сохранить"}
-          </button>
+            Сохранить
+          </Button>
         </div>
       </div>
     </div>
@@ -236,8 +239,6 @@ export default function MoneyPage() {
   });
 
   const walletMap = Object.fromEntries((wallets ?? []).map((w) => [w.wallet_id, w.title]));
-
-  const inputCls = "px-3 py-1.5 md:py-2 text-base md:text-xs rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 focus:outline-none focus:border-indigo-500/40 transition-colors [color-scheme:dark]";
 
   const opTypeOptions = useMemo(() => [
     { value: "", label: "Все типы" },
@@ -353,10 +354,10 @@ export default function MoneyPage() {
               <Select value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setPage(1); }} options={categoryOptions} searchable />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className={`${inputCls} w-auto`} />
-            <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className={`${inputCls} w-auto`} />
-            <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск..." className={`${inputCls} flex-1 min-w-0`} />
+          <div className="flex flex-wrap gap-2 items-center">
+            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} size="sm" />
+            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} size="sm" />
+            <Input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Поиск..." size="sm" className="flex-1 min-w-0" />
             {hasFilters && (
               <button onClick={resetFilters} className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors px-2">
                 Сбросить
@@ -443,23 +444,29 @@ export default function MoneyPage() {
             {/* Pagination */}
             {data.pages > 1 && (
               <div className="flex items-center justify-center gap-3 mt-4 md:mt-6">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-medium rounded-lg md:rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/72 hover:text-white/70 disabled:opacity-30 transition-colors"
+                  aria-label="Назад"
                 >
-                  ← Назад
-                </button>
+                  <ChevronLeft size={16} />
+                </Button>
                 <span className="text-[11px] md:text-xs font-medium text-white/65 tabular-nums">
                   {page} / {data.pages}
                 </span>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
                   onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
                   disabled={page === data.pages}
-                  className="px-3 md:px-4 py-1.5 md:py-2 text-[11px] md:text-xs font-medium rounded-lg md:rounded-xl bg-white/[0.03] border border-white/[0.06] text-white/72 hover:text-white/70 disabled:opacity-30 transition-colors"
+                  aria-label="Вперёд"
                 >
-                  Вперёд →
-                </button>
+                  <ChevronRight size={16} />
+                </Button>
               </div>
             )}
           </>
