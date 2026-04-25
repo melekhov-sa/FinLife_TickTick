@@ -1,7 +1,7 @@
 "use client";
 
-import { clsx } from "clsx";
 import type { ExpiringSub } from "@/types/api";
+import { Badge } from "@/components/primitives/Badge";
 
 interface Props {
   subs: ExpiringSub[];
@@ -35,19 +35,13 @@ export function ExpiringSubsCard({ subs }: Props) {
                 </p>
                 <p className="t-secondary mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
               </div>
-              <span
-                className={clsx(
-                  "text-xs font-semibold shrink-0 tabular-nums px-1.5 py-0.5 rounded-md border",
-                  s.days_left <= 3
-                    ? "bg-red-500/12 border-red-500/20 text-red-400"
-                    : s.days_left <= 14
-                    ? "bg-amber-500/12 border-amber-500/20 text-amber-400"
-                    : "bg-white/[0.06] border-white/[0.08]"
-                )}
-                style={s.days_left > 14 ? { color: "var(--t-secondary)" } : undefined}
+              <Badge
+                variant={s.days_left <= 3 ? "danger" : s.days_left <= 14 ? "warning" : "neutral"}
+                size="sm"
+                className="tabular-nums shrink-0"
               >
                 {s.days_left === 0 ? "сегодня" : `${s.days_left} дн.`}
-              </span>
+              </Badge>
             </div>
           ))}
         </div>

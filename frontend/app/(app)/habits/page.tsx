@@ -11,6 +11,7 @@ import { DoneSection } from "@/components/habits/DoneSection";
 import { MilestoneOverlay, MILESTONE_STREAKS } from "@/components/habits/MilestoneOverlay";
 import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
+import { Button } from "@/components/primitives/Button";
 
 // Safely fire haptic — no-op on Safari / unsupported devices
 function haptic(pattern: number | number[]) {
@@ -163,13 +164,14 @@ export default function HabitsPage() {
                 <p style={{ fontSize: "var(--fs-body)", color: "var(--t-muted)" }}>
                   У вас ещё нет привычек
                 </p>
-                <button
+                <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors"
-                  style={{ fontSize: "var(--fs-secondary)" }}
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Plus size={14} />}
                 >
-                  <Plus size={14} /> Создать первую
-                </button>
+                  Создать первую
+                </Button>
               </div>
             )}
 
@@ -215,13 +217,14 @@ export default function HabitsPage() {
             {/* Footer actions */}
             {activeHabits.length > 0 && (
               <div className="flex items-center justify-between pt-2 gap-3">
-                <button
+                <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.10] hover:bg-white/[0.05] transition-colors"
-                  style={{ fontSize: "var(--fs-secondary)", color: "var(--t-secondary)" }}
+                  variant="outline"
+                  size="md"
+                  leftIcon={<Plus size={14} />}
                 >
-                  <Plus size={14} /> Создать привычку
-                </button>
+                  Создать привычку
+                </Button>
                 <Link
                   href="/habits/all"
                   className="inline-flex items-center gap-1.5 px-3 py-2 hover:text-indigo-400 transition-colors"

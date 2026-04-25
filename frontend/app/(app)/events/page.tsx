@@ -7,10 +7,12 @@ import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } fro
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import type { EventItem } from "@/types/api";
 import {
-  CalendarDays, Search, Plus, ChevronLeft, ChevronRight,
+  CalendarDays, Plus, ChevronLeft, ChevronRight,
   MoreHorizontal, X as XIcon,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -406,21 +408,19 @@ export default function EventsPage() {
 
             {/* Controls row */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--t-faint)" }} />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск событий..."
-                  className="w-full h-9 pl-8 pr-8 text-[13px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors placeholder-white/20"
-                  style={{ color: "var(--t-secondary)" }}
-                />
-                {search && (
-                  <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 hover:opacity-70" style={{ color: "var(--t-faint)" }}>
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Поиск событий..."
+                size="md"
+                className="flex-1 min-w-[160px]"
+                suffix={search ? (
+                  <button onClick={() => setSearch("")} className="hover:opacity-70" style={{ color: "var(--t-faint)" }}>
                     <XIcon size={12} />
                   </button>
-                )}
-              </div>
+                ) : undefined}
+              />
               <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
                 {DAYS_OPTIONS.map((d) => (
                   <button
@@ -435,13 +435,9 @@ export default function EventsPage() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setShowModal(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors flex items-center gap-1.5"
-              >
-                <Plus size={13} strokeWidth={2.5} />
+              <Button onClick={() => setShowModal(true)} variant="primary" size="sm" leftIcon={<Plus size={13} strokeWidth={2.5} />}>
                 Событие
-              </button>
+              </Button>
             </div>
 
             {/* Category filters */}
@@ -500,9 +496,9 @@ export default function EventsPage() {
                   {search || catFilter || selectedDate ? "Ничего не найдено" : `Нет событий на ближайшие ${days} дней`}
                 </p>
                 {!search && !catFilter && !selectedDate && (
-                  <button onClick={() => setShowModal(true)} className="text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors">
+                  <Button variant="link" size="sm" onClick={() => setShowModal(true)} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                     + Создать событие
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

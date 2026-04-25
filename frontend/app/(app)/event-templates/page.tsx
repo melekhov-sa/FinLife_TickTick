@@ -5,6 +5,9 @@ import { CalendarDays, Pencil, Archive, RotateCcw, X, Check } from "lucide-react
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -163,16 +166,16 @@ export default function EventTemplatesPage() {
                 <div className="flex-1 min-w-0">
                   {editingId === item.event_id ? (
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
                         autoFocus
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(item.event_id); if (e.key === "Escape") setEditingId(null); }}
-                        className="flex-1 px-2 py-1 text-[14px] rounded-lg bg-white/[0.05] border border-indigo-500/40 outline-none"
-                        style={{ color: "var(--t-primary)" }}
+                        size="sm"
+                        className="flex-1"
                       />
-                      <button onClick={() => handleSaveTitle(item.event_id)} className="p-1 rounded-lg hover:bg-white/[0.06]"><Check size={14} className="text-emerald-400" /></button>
-                      <button onClick={() => setEditingId(null)} className="p-1 rounded-lg hover:bg-white/[0.06]"><X size={14} className="text-white/40" /></button>
+                      <Button onClick={() => handleSaveTitle(item.event_id)} variant="ghost" size="xs" iconOnly><Check size={14} className="text-emerald-400" /></Button>
+                      <Button onClick={() => setEditingId(null)} variant="ghost" size="xs" iconOnly><X size={14} className="text-white/40" /></Button>
                     </div>
                   ) : (
                     <>
@@ -226,17 +229,13 @@ export default function EventTemplatesPage() {
                   )}
                 </div>
 
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                    item.is_archived
-                      ? "bg-white/[0.05] text-white/40"
-                      : item.freq
-                        ? "bg-indigo-500/15 text-indigo-400"
-                        : "bg-emerald-500/15 text-emerald-400"
-                  }`}
+                <Badge
+                  variant={item.is_archived ? "neutral" : item.freq ? "accent" : "success"}
+                  size="sm"
+                  className="shrink-0"
                 >
                   {item.is_archived ? "Архив" : item.freq ? item.freq_label : "Однократно"}
-                </span>
+                </Badge>
               </div>
             ))}
           </div>

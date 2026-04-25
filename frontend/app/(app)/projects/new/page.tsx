@@ -6,6 +6,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import { FolderPlus } from "lucide-react";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 const STATUS_OPTIONS = [
   { value: "planned",   label: "Планируемый", color: "text-blue-400" },
@@ -47,7 +49,6 @@ export default function NewProjectPage() {
 
   const inputCls =
     "w-full px-3.5 py-2.5 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all";
-  const labelCls = "block text-xs font-semibold text-white/65 uppercase tracking-widest mb-1.5";
 
   return (
     <>
@@ -72,21 +73,19 @@ export default function NewProjectPage() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               {/* Title */}
-              <div>
-                <label className={labelCls}>Название *</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Название проекта"
-                  className={inputCls}
-                  autoFocus
-                />
-              </div>
+              <Input
+                label="Название *"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Название проекта"
+                size="lg"
+                autoFocus
+              />
 
               {/* Description */}
-              <div>
-                <label className={labelCls}>Описание</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">Описание</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -97,8 +96,8 @@ export default function NewProjectPage() {
               </div>
 
               {/* Status pills */}
-              <div>
-                <label className={labelCls}>Статус</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 select-none">Статус</label>
                 <div className="flex flex-wrap gap-2">
                   {STATUS_OPTIONS.map((o) => (
                     <button
@@ -120,24 +119,20 @@ export default function NewProjectPage() {
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Дата начала</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Дедлайн</label>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
+                <Input
+                  label="Дата начала"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  size="lg"
+                />
+                <Input
+                  label="Дедлайн"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  size="lg"
+                />
               </div>
 
               {error && (
@@ -148,20 +143,24 @@ export default function NewProjectPage() {
 
               {/* Actions */}
               <div className="flex gap-3 pt-1">
-                <button
+                <Button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                  loading={saving}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
                 >
                   {saving ? "Создаём…" : "Создать проект"}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => router.back()}
-                  className="px-4 py-2.5 text-sm rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/72 hover:text-white/70 hover:border-white/[0.12] transition-all"
+                  variant="outline"
+                  size="lg"
                 >
                   Отмена
-                </button>
+                </Button>
               </div>
             </form>
           </div>

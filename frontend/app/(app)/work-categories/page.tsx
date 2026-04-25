@@ -6,6 +6,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import { Pencil, Check, X, Archive, ArchiveRestore, Plus } from "lucide-react";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,14 +115,14 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
     >
       {editing ? (
         <>
-          <input
+          <Input
             value={editEmoji}
             onChange={(e) => setEditEmoji(e.target.value)}
             placeholder="📁"
-            className="w-10 text-center text-[16px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-1 py-1 outline-none focus:border-indigo-500/50"
-            style={{ color: "var(--t-primary)" }}
+            size="sm"
+            className="w-12 text-center"
           />
-          <input
+          <Input
             ref={titleRef}
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
@@ -131,24 +133,27 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
               }
               if (e.key === "Escape") cancel();
             }}
-            className="flex-1 text-[13px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2.5 py-1 outline-none"
-            style={{ color: "var(--t-primary)" }}
+            size="sm"
+            className="flex-1"
             autoFocus
           />
-          <button
+          <Button
             onClick={save}
             disabled={updating || !editTitle.trim()}
-            className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40"
+            variant="primary"
+            size="xs"
+            iconOnly
           >
             <Check size={11} strokeWidth={2.5} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={cancel}
-            className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors"
-            style={{ color: "var(--t-faint)" }}
+            variant="ghost"
+            size="xs"
+            iconOnly
           >
             <X size={11} />
-          </button>
+          </Button>
         </>
       ) : (
         <>
@@ -229,36 +234,41 @@ function AddCategoryForm({ onDone }: { onDone: () => void }) {
       onSubmit={submit}
       className="flex items-center gap-2 px-4 py-3 bg-white/[0.03] border-t border-white/[0.06]"
     >
-      <input
+      <Input
         value={emoji}
         onChange={(e) => setEmoji(e.target.value)}
         placeholder="📁"
-        className="w-10 text-center text-[16px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-1 py-1.5 outline-none focus:border-indigo-500/50 shrink-0"
-        style={{ color: "var(--t-primary)" }}
+        size="sm"
+        className="w-12 shrink-0 text-center"
       />
-      <input
+      <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Название категории"
-        className="flex-1 text-[13px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50"
-        style={{ color: "var(--t-primary)" }}
+        size="sm"
+        className="flex-1"
         autoFocus
       />
-      <button
+      <Button
         type="submit"
         disabled={isPending || !title.trim()}
-        className="text-[12px] font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 transition-colors shrink-0"
+        variant="primary"
+        size="sm"
+        loading={isPending}
+        className="shrink-0"
       >
-        {isPending ? "..." : "Добавить"}
-      </button>
-      <button
+        Добавить
+      </Button>
+      <Button
         type="button"
         onClick={onDone}
-        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0"
-        style={{ color: "var(--t-faint)" }}
+        variant="ghost"
+        size="sm"
+        iconOnly
+        className="shrink-0"
       >
         <X size={13} />
-      </button>
+      </Button>
     </form>
   );
 }

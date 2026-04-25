@@ -6,6 +6,7 @@ import { Plus, FolderOpen } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
+import { Button } from "@/components/primitives/Button";
 
 const STATUSES = [
   { value: undefined, label: "Активные" },
@@ -41,12 +42,10 @@ export default function ProjectsPage() {
             ))}
           </div>
 
-          <Link
-            href="/projects/new"
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"
-          >
-            <Plus size={13} strokeWidth={2.5} />
-            Новый проект
+          <Link href="/projects/new" className="inline-flex">
+            <Button variant="primary" size="sm" leftIcon={<Plus size={13} strokeWidth={2.5} />}>
+              Новый проект
+            </Button>
           </Link>
         </div>
 
@@ -83,11 +82,8 @@ export default function ProjectsPage() {
             </div>
             <p className="text-sm font-medium text-white/65">Проектов пока нет</p>
             <p className="text-xs text-white/55 mt-1 mb-5">Создайте первый проект, чтобы начать работу</p>
-            <Link
-              href="/projects/new"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors"
-            >
-              Создать проект →
+            <Link href="/projects/new" className="inline-flex">
+              <Button variant="primary" size="sm">Создать проект →</Button>
             </Link>
           </div>
         )}

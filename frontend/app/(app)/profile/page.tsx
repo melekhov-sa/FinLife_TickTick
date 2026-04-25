@@ -7,6 +7,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { clsx } from "clsx";
 import { ArrowRight, Star, Zap, TrendingUp, Settings, Bell, Wallet, Lock } from "lucide-react";
 import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
+import { Badge } from "@/components/primitives/Badge";
 
 interface XpProfile {
   xp_total: number;
@@ -207,9 +208,9 @@ export default function ProfilePage() {
                     {data.recent_xp_events.map((ev, i) => (
                       <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
                         <span className="text-sm text-white/65 truncate font-medium">{ev.description ?? "XP"}</span>
-                        <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full tabular-nums shrink-0 ml-3">
+                        <Badge variant="warning" size="sm" className="tabular-nums shrink-0 ml-3">
                           +{ev.xp_amount ?? 0} XP
-                        </span>
+                        </Badge>
                       </div>
                     ))}
                   </div>

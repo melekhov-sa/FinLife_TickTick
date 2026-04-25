@@ -7,6 +7,8 @@ import { PageTabs } from "@/components/layout/PageTabs";
 import { api } from "@/lib/api";
 import type { WalletItem } from "@/types/api";
 import { CreateWalletModal } from "@/components/modals/CreateWalletModal";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -72,11 +74,6 @@ function useActualizeBalance() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
   });
 }
-
-// ── Shared input style ─────────────────────────────────────────────────────────
-
-const inputCls =
-  "w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-1.5 text-[13px] outline-none focus:border-indigo-500/60 transition-colors";
 
 // ── WalletRow ──────────────────────────────────────────────────────────────────
 
@@ -149,26 +146,20 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
         <div className="px-4 py-4 bg-white/[0.02] border-b border-white/[0.05] space-y-3">
           {wallet.is_archived ? (
             /* Archived wallet: only restore */
-            <button
-              onClick={handleRestore}
-              className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
-            >
+            <Button variant="link" size="xs" onClick={handleRestore} className="text-emerald-400 hover:text-emerald-300 px-0">
               Восстановить из архива
-            </button>
+            </Button>
           ) : (
             <>
               {/* Rename */}
-              <div>
-                <label className="text-[11px] text-white/50 uppercase tracking-wider">Название</label>
-                <input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  onBlur={saveTitle}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } }}
-                  className={`${inputCls} mt-1`}
-                  style={{ color: "var(--t-primary)" }}
-                />
-              </div>
+              <Input
+                label="Название"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveTitle(); } }}
+                size="sm"
+              />
 
               {/* Actualize balance — REGULAR and CREDIT */}
               {(wallet.wallet_type === "REGULAR" || wallet.wallet_type === "CREDIT") && (
@@ -177,22 +168,23 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
                     Актуализация баланса
                   </label>
                   <div className="flex gap-2 mt-1">
-                    <input
+                    <Input
                       type="number"
                       step="0.01"
                       value={targetBalance}
                       onChange={(e) => setTargetBalance(e.target.value)}
                       placeholder={wallet.balance}
-                      className={`${inputCls} flex-1`}
-                      style={{ color: "var(--t-primary)" }}
+                      size="sm"
+                      className="flex-1"
                     />
-                    <button
+                    <Button
                       onClick={handleActualize}
                       disabled={actualizing || !targetBalance.trim()}
-                      className="px-3 py-1.5 text-xs font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+                      variant="primary"
+                      size="sm"
                     >
                       Применить
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-[10px] text-white/40 mt-1">
                     Текущий: {wallet.balance} {wallet.currency}
@@ -201,12 +193,9 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
               )}
 
               {/* Archive */}
-              <button
-                onClick={handleArchive}
-                className="text-[11px] text-red-400 hover:text-red-300 transition-colors"
-              >
+              <Button variant="link" size="xs" onClick={handleArchive} className="text-red-400 hover:text-red-300 px-0">
                 В архив
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -269,12 +258,9 @@ export default function WalletsPage() {
               Архивные
             </label>
             {!showArchived && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-xl px-3.5 py-2 transition-colors"
-              >
+              <Button onClick={() => setShowCreateModal(true)} variant="primary" size="sm">
                 + Создать
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -300,12 +286,9 @@ export default function WalletsPage() {
               {showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
             </p>
             {!showArchived && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-              >
+              <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                 + Создать первый кошелёк
-              </button>
+              </Button>
             )}
           </div>
         )}

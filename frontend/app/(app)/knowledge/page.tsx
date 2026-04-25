@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useKnowledge } from "@/hooks/useKnowledge";
 import { Select } from "@/components/ui/Select";
 import type { ArticleListItem } from "@/types/api";
+import { Input } from "@/components/primitives/Input";
+import { Badge } from "@/components/primitives/Badge";
 
 const TYPE_OPTIONS = [
   { value: "", label: "Все типы" },
@@ -16,10 +18,10 @@ const TYPE_OPTIONS = [
   { value: "reference",   label: "Справки" },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  draft:     "text-white/72 bg-white/[0.05] border border-white/[0.08]",
-  published: "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20",
-  archived:  "text-white/55 bg-white/[0.03] border border-white/[0.05]",
+const STATUS_VARIANTS: Record<string, "neutral" | "success" | "info"> = {
+  draft:     "info",
+  published: "success",
+  archived:  "neutral",
 };
 
 function timeAgo(iso: string): string {
@@ -34,7 +36,7 @@ function timeAgo(iso: string): string {
 }
 
 function ArticleRow({ article }: { article: ArticleListItem }) {
-  const statusCls = STATUS_COLORS[article.status] ?? "text-white/68";
+  const statusVariant = STATUS_VARIANTS[article.status] ?? "neutral";
   return (
     <a
       href={`/knowledge/${article.id}`}
@@ -51,9 +53,7 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${statusCls}`}>
-            {article.status_label}
-          </span>
+          <Badge variant={statusVariant} size="sm">{article.status_label}</Badge>
           <span className="text-[10px] font-semibold text-white/55 uppercase tracking-widest">{article.type_label}</span>
           {article.tags.map((t) => (
             <span key={t.id} className="text-[10px] font-medium text-indigo-400/80 bg-indigo-500/10 border border-indigo-500/15 px-1.5 py-0.5 rounded-full">
@@ -93,17 +93,14 @@ export default function KnowledgePage() {
       <AppTopbar title="База знаний" />
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Controls */}
-        <div className="flex gap-2 mb-6">
-          <div className="relative flex-1">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Поиск по названию или тексту…"
-              className="w-full pl-8 pr-3 py-2 text-sm rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/80 placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-colors"
-            />
-          </div>
+        <div className="flex gap-2 mb-6 items-start">
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Поиск по названию или тексту…"
+            className="flex-1"
+          />
           <div className="w-40">
             <Select value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
           </div>

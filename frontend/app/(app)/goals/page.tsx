@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Target } from "lucide-react";
 import { api } from "@/lib/api";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -56,16 +57,8 @@ function GoalCard({ goal }: { goal: GoalItem }) {
           {goal.title}
         </h3>
         <div className="flex items-center gap-1.5 shrink-0">
-          {goal.is_system && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/20">
-              Системная
-            </span>
-          )}
-          {goal.is_archived && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.08] text-white/40 font-semibold border border-white/[0.10]">
-              Архив
-            </span>
-          )}
+          {goal.is_system && <Badge variant="warning" size="sm">Системная</Badge>}
+          {goal.is_archived && <Badge variant="neutral" size="sm">Архив</Badge>}
         </div>
       </div>
 

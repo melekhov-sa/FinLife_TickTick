@@ -6,6 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
 import type { TaskTemplateItem } from "@/types/api";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
+import { Badge } from "@/components/primitives/Badge";
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -135,36 +138,40 @@ function TemplateRow({
     return (
       <div className={`px-4 py-3 space-y-2 ${!isLast ? "border-b border-white/[0.05]" : ""}`}>
         <div className="flex gap-2">
-          <input
+          <Input
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             placeholder="Название шаблона"
-            className="flex-1 text-[13px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2.5 py-1.5 outline-none"
-            style={{ color: "var(--t-primary)" }}
+            size="sm"
+            className="flex-1"
             autoFocus
           />
-          <button
+          <Button
             onClick={save}
             disabled={isPending || !editTitle.trim()}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40 shrink-0"
+            variant="primary"
+            size="sm"
+            iconOnly
+            className="shrink-0"
           >
             <Check size={12} strokeWidth={2.5} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setEditing(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0"
-            style={{ color: "var(--t-faint)" }}
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className="shrink-0"
           >
             <X size={12} />
-          </button>
+          </Button>
         </div>
 
-        <input
+        <Input
           value={editNote}
           onChange={(e) => setEditNote(e.target.value)}
           placeholder="Заметка (необязательно)"
-          className={inputCls}
-          style={{ color: "var(--t-secondary)" }}
+          size="sm"
         />
 
         <div className="flex gap-2">
@@ -178,14 +185,14 @@ function TemplateRow({
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <input
+          <Input
             type="number"
             min="1"
             value={editInterval}
             onChange={(e) => setEditInterval(e.target.value)}
             placeholder="Интервал"
-            className="w-20 text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40 text-center"
-            style={{ color: "var(--t-secondary)" }}
+            size="sm"
+            className="w-20 text-center"
           />
         </div>
 
@@ -203,15 +210,13 @@ function TemplateRow({
               </option>
             ))}
           </select>
-          <div className="flex-1">
-            <input
-              type="date"
-              value={editActiveUntil}
-              onChange={(e) => setEditActiveUntil(e.target.value)}
-              className={inputCls}
-              style={{ color: "var(--t-secondary)" }}
-            />
-          </div>
+          <Input
+            type="date"
+            value={editActiveUntil}
+            onChange={(e) => setEditActiveUntil(e.target.value)}
+            size="sm"
+            className="flex-1"
+          />
         </div>
       </div>
     );
@@ -253,9 +258,7 @@ function TemplateRow({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-medium">
-          {freqLabel(item.freq)}
-        </span>
+        <Badge variant="accent" size="sm">{freqLabel(item.freq)}</Badge>
         {!archived && (
           <button
             onClick={startEdit}

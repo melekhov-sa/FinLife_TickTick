@@ -6,8 +6,11 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
-import { Pencil, Check, X, Archive, ArchiveRestore, Plus, ChevronDown } from "lucide-react";
+import { Pencil, Check, X, Archive, ArchiveRestore, Plus } from "lucide-react";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -127,7 +130,7 @@ function CategoryRow({
       <div className="flex-1 min-w-0">
         {editing ? (
           <div className="flex items-center gap-1.5">
-            <input
+            <Input
               ref={inputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -138,24 +141,27 @@ function CategoryRow({
                 }
                 if (e.key === "Escape") cancelEdit();
               }}
-              className="text-[13px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2.5 py-1 outline-none w-52"
-              style={{ color: "var(--t-primary)" }}
+              size="sm"
+              className="w-52"
               autoFocus
             />
-            <button
+            <Button
               onClick={saveTitle}
               disabled={renaming}
-              className="w-6 h-6 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors"
+              variant="primary"
+              size="xs"
+              iconOnly
             >
               <Check size={11} strokeWidth={2.5} />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={cancelEdit}
-              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors"
-              style={{ color: "var(--t-faint)" }}
+              variant="ghost"
+              size="xs"
+              iconOnly
             >
               <X size={11} />
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="flex items-center gap-2 group/title">
@@ -173,11 +179,7 @@ function CategoryRow({
             >
               {cat.title}
             </span>
-            {cat.is_system && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08]" style={{ color: "var(--t-faint)" }}>
-                система
-              </span>
-            )}
+            {cat.is_system && <Badge variant="neutral" size="sm">система</Badge>}
             {!cat.is_system && !cat.is_archived && (
               <button
                 onClick={startEdit}
@@ -260,29 +262,32 @@ function AddCategoryForm({
       className="flex flex-col gap-2 px-4 py-3 bg-white/[0.03] border-t border-white/[0.06]"
     >
       <div className="flex items-center gap-2">
-        <input
+        <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Название категории"
-          className="flex-1 text-[13px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50"
-          style={{ color: "var(--t-primary)" }}
+          size="sm"
+          className="flex-1"
           autoFocus
         />
-        <button
+        <Button
           type="submit"
           disabled={isPending || !title.trim()}
-          className="text-[12px] font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 transition-colors"
+          variant="primary"
+          size="sm"
+          loading={isPending}
         >
-          {isPending ? "..." : "Добавить"}
-        </button>
-        <button
+          Добавить
+        </Button>
+        <Button
           type="button"
           onClick={onDone}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors"
-          style={{ color: "var(--t-faint)" }}
+          variant="ghost"
+          size="sm"
+          iconOnly
         >
           <X size={13} />
-        </button>
+        </Button>
       </div>
 
       {parents.length > 0 && (

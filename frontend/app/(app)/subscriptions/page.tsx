@@ -11,6 +11,8 @@ import type { SubscriptionItem } from "@/types/api";
 import { CreditCard, MoreHorizontal } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,12 +23,12 @@ function daysLabel(days: number | null): string {
   return `${days}д`;
 }
 
-function daysBadgeCls(days: number | null): string {
-  if (days === null) return "bg-white/[0.06] border-white/10 text-white/50";
-  if (days < 0)    return "bg-red-500/10 border-red-500/20 text-red-400";
-  if (days <= 7)   return "bg-red-500/10 border-red-500/20 text-red-400";
-  if (days <= 30)  return "bg-amber-500/10 border-amber-500/20 text-amber-400";
-  return "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
+function daysBadgeVariant(days: number | null): "neutral" | "danger" | "warning" | "success" {
+  if (days === null) return "neutral";
+  if (days < 0)    return "danger";
+  if (days <= 7)   return "danger";
+  if (days <= 30)  return "warning";
+  return "success";
 }
 
 function formatDate(iso: string): string {
@@ -131,9 +133,9 @@ function SubCard({ sub, onOpen, onAddMember }: { sub: SubscriptionItem; onOpen: 
             <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>нет даты</span>
           )}
           {minDays !== null && (
-            <span className={clsx("text-[9px] font-semibold px-1.5 py-0.5 rounded-full border whitespace-nowrap", daysBadgeCls(minDays))}>
+            <Badge variant={daysBadgeVariant(minDays)} size="sm" className="whitespace-nowrap">
               {daysLabel(minDays)}
-            </span>
+            </Badge>
           )}
         </div>
         {sub.total_members > 0 && (
@@ -247,13 +249,10 @@ export default function SubscriptionsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Управление подписками
             </h2>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
-            >
+            <Button onClick={() => setShowCreate(true)} variant="primary" size="md">
               <span className="text-[16px] leading-none">+</span>
               Подписка
-            </button>
+            </Button>
           </div>
 
           {isLoading && (
@@ -375,12 +374,9 @@ export default function SubscriptionsPage() {
                     {showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
                   </p>
                   {!showArchived && filter === "all" && (
-                    <button
-                      onClick={() => setShowCreate(true)}
-                      className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
-                    >
+                    <Button variant="link" size="sm" onClick={() => setShowCreate(true)} className="text-indigo-400/70 hover:text-indigo-400 px-0">
                       + Добавить подписку
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : (

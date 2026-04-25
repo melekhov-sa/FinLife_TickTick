@@ -7,6 +7,7 @@ import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
 import type { TaskItem } from "@/types/api";
+import { Button } from "@/components/primitives/Button";
 
 const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
@@ -247,12 +248,9 @@ export default function TasksPage() {
                   {status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
                 </p>
                 {status === "ACTIVE" && (
-                  <button
-                    onClick={() => quickInputRef.current?.focus()}
-                    className="mt-2 text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-                  >
+                  <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="mt-2 text-indigo-400/60 hover:text-indigo-400 px-0">
                     Напишите задачу выше
-                  </button>
+                  </Button>
                 )}
               </div>
             )}

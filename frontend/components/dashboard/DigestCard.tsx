@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { useUnviewedLatestDigest, useDigestMarkViewed } from "@/hooks/useDigests";
+import { Badge } from "@/components/primitives/Badge";
 
 export function DigestCard() {
   const { data: digest, isPending } = useUnviewedLatestDigest();
@@ -28,12 +29,7 @@ export function DigestCard() {
         <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
           Итоги недели {digest.period_key}
         </span>
-        <span
-          className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-full"
-          style={{ background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}
-        >
-          Новый
-        </span>
+        <Badge variant="info" size="sm" className="ml-auto">Новый</Badge>
       </div>
       <div className="flex gap-4 text-[12px]" style={{ color: "var(--t-secondary)" }}>
         <span>{digest.tasks_completed} задач</span>

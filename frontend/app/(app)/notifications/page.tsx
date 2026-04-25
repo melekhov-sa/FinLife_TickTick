@@ -10,6 +10,8 @@ import { clsx } from "clsx";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useNotifications, useMarkRead, useMarkAllRead } from "@/hooks/useNotifications";
 import type { NotificationItem } from "@/types/api";
+import { Button } from "@/components/primitives/Button";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -184,9 +186,7 @@ export default function NotificationsPage() {
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             {unreadCount > 0 ? (
-              <span className="text-[12px] font-medium tabular-nums px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
-                {unreadCount} непрочитанных
-              </span>
+              <Badge variant="danger" size="md">{unreadCount} непрочитанных</Badge>
             ) : (
               <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
                 Все прочитано
@@ -194,12 +194,9 @@ export default function NotificationsPage() {
             )}
           </div>
           {unreadCount > 0 && (
-            <button
-              onClick={() => markAll()}
-              className="px-3 py-1.5 text-[11px] md:text-xs font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:text-white/85 hover:bg-white/[0.08] transition-colors"
-            >
+            <Button onClick={() => markAll()} variant="outline" size="sm">
               Очистить все
-            </button>
+            </Button>
           )}
         </div>
 

@@ -3,10 +3,10 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
-import { clsx } from "clsx";
 import { ArrowLeft, Pencil, Pin, Calendar } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Badge } from "@/components/primitives/Badge";
 
 interface ArticleDetail {
   id: number;
@@ -24,10 +24,10 @@ interface ArticleDetail {
   linked_projects: { id: number; title: string; status: string }[];
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  published: "bg-emerald-500/12 border-emerald-500/20 text-emerald-400",
-  draft:     "bg-amber-500/12 border-amber-500/20 text-amber-400",
-  archived:  "bg-white/[0.05] border-white/[0.08] text-white/60",
+const STATUS_VARIANTS: Record<string, "success" | "warning" | "neutral"> = {
+  published: "success",
+  draft:     "warning",
+  archived:  "neutral",
 };
 
 function formatDate(iso: string) {
@@ -106,16 +106,13 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                     {data.type_label}
                   </span>
                   <span className="text-white/15">·</span>
-                  <span className={clsx(
-                    "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
-                    STATUS_STYLES[data.status] ?? "bg-white/[0.05] border-white/[0.08] text-white/60"
-                  )}>
+                  <Badge variant={STATUS_VARIANTS[data.status] ?? "neutral"} size="sm">
                     {data.status_label}
-                  </span>
+                  </Badge>
                   {data.pinned && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                      <Pin size={9} /> Закреплена
-                    </span>
+                    <Badge variant="warning" size="sm" leftIcon={<Pin size={9} />}>
+                      Закреплена
+                    </Badge>
                   )}
                 </div>
 

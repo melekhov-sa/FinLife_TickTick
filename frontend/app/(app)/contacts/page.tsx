@@ -8,6 +8,9 @@ import { useMe } from "@/hooks/useMe";
 import { UserPlus, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
+import { Avatar } from "@/components/primitives/Avatar";
 
 interface Contact {
   id: number;
@@ -52,23 +55,24 @@ export default function ContactsPage() {
           </p>
 
           {/* Add form */}
-          <div className="flex gap-2">
-            <input
+          <div className="flex gap-2 items-start">
+            <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) createMut.mutate(newName.trim()); }}
               placeholder="Имя участника"
-              className="flex-1 px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 placeholder:text-white/20"
-              style={{ color: "var(--t-primary)" }}
+              size="md"
+              className="flex-1"
             />
-            <button
+            <Button
               onClick={() => newName.trim() && createMut.mutate(newName.trim())}
               disabled={!newName.trim() || createMut.isPending}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+              variant="primary"
+              size="md"
+              leftIcon={<UserPlus size={14} />}
             >
-              <UserPlus size={14} /> Добавить
-            </button>
+              Добавить
+            </Button>
           </div>
 
           {/* List */}
@@ -79,9 +83,7 @@ export default function ContactsPage() {
                 className="flex items-center gap-3 py-3 px-4 rounded-xl border transition-all"
                 style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}
               >
-                <div className="w-8 h-8 rounded-full bg-indigo-500/15 flex items-center justify-center text-[11px] font-bold text-indigo-300/80 shrink-0">
-                  {c.name.slice(0, 2).toUpperCase()}
-                </div>
+                <Avatar name={c.name} size="md" className="bg-indigo-500/15 text-indigo-300/80" />
                 <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--t-primary)" }}>
                   {c.name}
                 </span>

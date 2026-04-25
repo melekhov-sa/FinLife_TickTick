@@ -17,6 +17,8 @@ import {
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -169,36 +171,40 @@ function PresetRow({
     return (
       <div className="px-4 py-3 border-b border-white/[0.05] space-y-2">
         <div className="flex gap-2">
-          <input
+          <Input
             ref={nameRef}
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             placeholder="Название шаблона"
-            className="flex-1 text-[13px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2.5 py-1.5 outline-none"
-            style={{ color: "var(--t-primary)" }}
+            size="sm"
+            className="flex-1"
             autoFocus
           />
-          <button
+          <Button
             onClick={save}
             disabled={updating || !editName.trim() || !editTitle.trim()}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40 shrink-0"
+            variant="primary"
+            size="sm"
+            iconOnly
+            className="shrink-0"
           >
             <Check size={12} strokeWidth={2.5} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={cancel}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0"
-            style={{ color: "var(--t-faint)" }}
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className="shrink-0"
           >
             <X size={12} />
-          </button>
+          </Button>
         </div>
-        <input
+        <Input
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
           placeholder="Шаблон заголовка задачи"
-          className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40"
-          style={{ color: "var(--t-secondary)" }}
+          size="sm"
         />
         <textarea
           value={editDesc}
@@ -354,36 +360,40 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
       className="px-4 py-3 bg-white/[0.03] border-t border-white/[0.06] space-y-2"
     >
       <div className="flex gap-2">
-        <input
+        <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Название шаблона"
-          className="flex-1 text-[13px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50"
-          style={{ color: "var(--t-primary)" }}
+          size="sm"
+          className="flex-1"
           autoFocus
         />
-        <button
+        <Button
           type="submit"
           disabled={isPending || !name.trim() || !titleTpl.trim()}
-          className="text-[12px] font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 transition-colors shrink-0"
+          variant="primary"
+          size="sm"
+          loading={isPending}
+          className="shrink-0"
         >
-          {isPending ? "..." : "Добавить"}
-        </button>
-        <button
+          Добавить
+        </Button>
+        <Button
           type="button"
           onClick={onDone}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0"
-          style={{ color: "var(--t-faint)" }}
+          variant="ghost"
+          size="sm"
+          iconOnly
+          className="shrink-0"
         >
           <X size={13} />
-        </button>
+        </Button>
       </div>
-      <input
+      <Input
         value={titleTpl}
         onChange={(e) => setTitleTpl(e.target.value)}
         placeholder="Шаблон заголовка задачи"
-        className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50"
-        style={{ color: "var(--t-secondary)" }}
+        size="sm"
       />
       <textarea
         value={desc}

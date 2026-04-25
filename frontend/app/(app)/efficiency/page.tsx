@@ -3,6 +3,7 @@
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useEfficiency } from "@/hooks/useEfficiency";
 import type { MetricCard } from "@/types/api";
+import { Badge } from "@/components/primitives/Badge";
 
 function scoreColor(score: number): string {
   if (score >= 85) return "text-emerald-400";
@@ -16,10 +17,10 @@ function subScoreBarColor(score: number): string {
   return "bg-red-500";
 }
 
-function subScoreBadge(score: number): { label: string; cls: string } {
-  if (score >= 90) return { label: "Хорошо",   cls: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" };
-  if (score >= 60) return { label: "Нормально", cls: "bg-amber-500/15 text-amber-400 border border-amber-500/25" };
-  return              { label: "Плохо",      cls: "bg-red-500/15 text-red-400 border border-red-500/25" };
+function subScoreBadge(score: number): { label: string; variant: "success" | "warning" | "danger" } {
+  if (score >= 90) return { label: "Хорошо",    variant: "success" };
+  if (score >= 60) return { label: "Нормально", variant: "warning" };
+  return              { label: "Плохо",      variant: "danger" };
 }
 
 function formatRaw(card: MetricCard): string {
@@ -91,9 +92,7 @@ function MetricCardRow({ card }: { card: MetricCard }) {
             <span className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
               {card.label}
             </span>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
-              {badge.label}
-            </span>
+            <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
           </div>
           <p className="text-xs text-white/68 leading-snug">{card.description}</p>
         </div>

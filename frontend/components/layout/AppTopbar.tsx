@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SearchBar } from "@/components/layout/SearchBar";
+import { Avatar } from "@/components/primitives/Avatar";
 
 interface AppTopbarProps {
   /** Заголовок раздела (белым). Если не передан — ничего не рендерим. */
@@ -20,7 +21,6 @@ interface AppTopbarProps {
 export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
   const { data: me } = useMe();
   const email = me?.email ?? "";
-  const initial = email[0]?.toUpperCase() ?? "?";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -101,19 +101,17 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
             type="button"
             aria-label="Профиль"
             onClick={() => setMenuOpen((v) => !v)}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-transform hover:scale-[1.04]"
+            className="rounded-full transition-transform hover:scale-[1.04]"
             style={{
-              background: "#FFFFFF",
               boxShadow:
                 "0 1px 2px rgba(16,24,40,.1), 0 4px 12px -4px rgba(16,24,40,.2)",
             }}
           >
-            <span
-              className="text-[13px] font-bold"
-              style={{ color: "#6366F1" }}
-            >
-              {initial}
-            </span>
+            <Avatar
+              name={email}
+              size="md"
+              className="!bg-white !text-[#6366F1] font-bold"
+            />
           </button>
 
           {menuOpen && (

@@ -8,6 +8,9 @@ import { clsx } from "clsx";
 import { CalendarClock, LayoutList, Play, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { Button } from "@/components/primitives/Button";
+import { Input } from "@/components/primitives/Input";
+import { Badge } from "@/components/primitives/Badge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,17 +158,16 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
   }
 
   if (editing) {
-    const inputCls = "w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40";
     return (
       <div className="px-2 py-3 border-b border-white/[0.06] last:border-0 space-y-2">
         <div className="flex gap-2">
-          <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название" className={`flex-1 ${inputCls}`} style={{ color: "var(--t-primary)" }} autoFocus />
-          <button onClick={save} disabled={isPending || !editTitle.trim()} className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white transition-colors disabled:opacity-40 shrink-0"><Check size={12} strokeWidth={2.5} /></button>
-          <button onClick={() => setEditing(false)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0" style={{ color: "var(--t-faint)" }}><X size={12} /></button>
+          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название" size="sm" className="flex-1" autoFocus />
+          <Button onClick={save} disabled={isPending || !editTitle.trim()} variant="primary" size="sm" iconOnly className="shrink-0"><Check size={12} strokeWidth={2.5} /></Button>
+          <Button onClick={() => setEditing(false)} variant="ghost" size="sm" iconOnly className="shrink-0"><X size={12} /></Button>
         </div>
         <div className="flex gap-2">
-          <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="Сумма" className={`w-32 ${inputCls}`} style={{ color: "var(--t-secondary)" }} />
-          <input type="date" value={editUntil} onChange={(e) => setEditUntil(e.target.value)} placeholder="Активна до" className={`flex-1 ${inputCls} [color-scheme:dark]`} style={{ color: "var(--t-secondary)" }} />
+          <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="Сумма" size="sm" className="w-32" />
+          <Input type="date" value={editUntil} onChange={(e) => setEditUntil(e.target.value)} size="sm" className="flex-1" />
         </div>
       </div>
     );
@@ -239,14 +241,10 @@ function OccurrenceRow({
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           {occ.is_overdue && (
-            <span className="text-[11px] font-semibold text-red-400 bg-red-500/[0.10] border border-red-500/20 px-1.5 py-0.5 rounded-md">
-              просрочено
-            </span>
+            <Badge variant="danger" size="sm">просрочено</Badge>
           )}
           {today && !occ.is_overdue && (
-            <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/[0.10] border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-              сегодня
-            </span>
+            <Badge variant="success" size="sm">сегодня</Badge>
           )}
           {!occ.is_overdue && !today && (
             <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
@@ -327,12 +325,9 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
             {archived ? "Архив пуст" : "Нет плановых операций"}
           </p>
           {!archived && (
-            <button
-              onClick={onCreateOp}
-              className="text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
-            >
+            <Button variant="link" size="sm" onClick={onCreateOp} className="text-indigo-400/70 hover:text-indigo-400 px-0">
               + Добавить операцию
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -487,13 +482,10 @@ export default function PlannedOpsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Регулярные финансовые операции
             </h2>
-            <button
-              onClick={() => setShowCreateOp(true)}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-xl px-4 py-2 transition-colors shadow-sm"
-            >
+            <Button onClick={() => setShowCreateOp(true)} variant="primary" size="md">
               <span className="text-[16px] leading-none">+</span>
               Операция
-            </button>
+            </Button>
           </div>
 
           {/* Main tabs */}
