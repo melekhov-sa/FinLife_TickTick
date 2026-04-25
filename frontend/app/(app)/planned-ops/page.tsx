@@ -13,6 +13,7 @@ import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -484,14 +485,17 @@ export default function PlannedOpsPage() {
         <div className="w-full">
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Регулярные финансовые операции
-            </h2>
-            <Button onClick={() => setShowCreateOp(true)} variant="primary" size="md">
-              <span className="text-[16px] leading-none">+</span>
-              Операция
-            </Button>
+          <div className="mb-6">
+            <SectionHeader
+              title="Регулярные финансовые операции"
+              size="sm"
+              actions={
+                <Button onClick={() => setShowCreateOp(true)} variant="primary" size="md">
+                  <span className="text-[16px] leading-none">+</span>
+                  Операция
+                </Button>
+              }
+            />
           </div>
 
           {/* Main tabs */}

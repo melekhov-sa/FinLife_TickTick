@@ -3,6 +3,7 @@
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useStrategy } from "@/hooks/useStrategy";
 import type { StrategyScoreItem, StrategyHistoryPoint, StrategyTarget } from "@/types/api";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 const RU_MONTHS = [
   "", "янв", "фев", "мар", "апр", "май", "июн",
@@ -187,9 +188,9 @@ export default function StrategyPage() {
             </div>
 
             {/* Scores section */}
-            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
-              Области жизни
-            </p>
+            <div className="px-1">
+              <SectionHeader title="Области жизни" size="sm" />
+            </div>
 
             {/* Score grid */}
             <div className="grid grid-cols-2 gap-3">
@@ -204,9 +205,9 @@ export default function StrategyPage() {
             {/* Targets */}
             {data.targets.length > 0 && (
               <>
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
-                  Цели
-                </p>
+                <div className="px-1">
+                  <SectionHeader title="Цели" size="sm" />
+                </div>
                 <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
                   {data.targets.map((t) => (
                     <TargetRow key={t.id} target={t} />

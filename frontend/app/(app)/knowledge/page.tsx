@@ -8,6 +8,8 @@ import { Select } from "@/components/ui/Select";
 import type { ArticleListItem } from "@/types/api";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 const TYPE_OPTIONS = [
   { value: "", label: "Все типы" },
@@ -121,30 +123,26 @@ export default function KnowledgePage() {
           <div className="text-white/68 text-sm text-center mt-12">Не удалось загрузить статьи</div>
         )}
         {data && data.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-              <BookOpen size={22} className="text-white/50" />
-            </div>
-            <p className="text-sm font-medium text-white/65">
-              {debouncedSearch || typeFilter ? "Ничего не найдено" : "База знаний пуста"}
-            </p>
-            {!debouncedSearch && !typeFilter && (
+          <EmptyState
+            icon={<BookOpen size={24} />}
+            title={debouncedSearch || typeFilter ? "Ничего не найдено" : "База знаний пуста"}
+            action={!debouncedSearch && !typeFilter ? (
               <a
                 href="/legacy/knowledge/create"
-                className="mt-4 text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
+                className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
               >
                 Создать первую статью →
               </a>
-            )}
-          </div>
+            ) : undefined}
+          />
         )}
         {data && data.length > 0 && (
           <div className="space-y-5">
             {pinned.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3 px-1">
-                  Закреплённые
-                </p>
+                <div className="mb-3 px-1">
+                  <SectionHeader title="Закреплённые" size="sm" />
+                </div>
                 <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
                   {pinned.map((a) => <ArticleRow key={a.id} article={a} />)}
                 </div>
@@ -153,9 +151,9 @@ export default function KnowledgePage() {
             {rest.length > 0 && (
               <div>
                 {pinned.length > 0 && (
-                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3 px-1">
-                    Остальные
-                  </p>
+                  <div className="mb-3 px-1">
+                    <SectionHeader title="Остальные" size="sm" />
+                  </div>
                 )}
                 <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
                   {rest.map((a) => <ArticleRow key={a.id} article={a} />)}

@@ -14,6 +14,8 @@ import { Button } from "@/components/primitives/Button";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -235,17 +237,11 @@ export default function NotificationsPage() {
 
         {/* Empty state */}
         {!isLoading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-              <BellOff size={24} style={{ color: "var(--t-faint)" }} />
-            </div>
-            <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-              {filter === "unread" ? "Нет непрочитанных" : filter === "important" ? "Нет важных уведомлений" : "Нет уведомлений"}
-            </p>
-            <p className="text-xs mt-1" style={{ color: "var(--t-faint)" }}>
-              Когда что-то важное произойдёт — вы узнаете
-            </p>
-          </div>
+          <EmptyState
+            icon={<BellOff size={24} />}
+            title={filter === "unread" ? "Нет непрочитанных" : filter === "important" ? "Нет важных уведомлений" : "Нет уведомлений"}
+            description="Когда что-то важное произойдёт — вы узнаете"
+          />
         )}
 
         {/* Grouped list */}
@@ -255,10 +251,9 @@ export default function NotificationsPage() {
               <div key={group.label}>
                 {/* Only show group header when there are multiple groups */}
                 {groups.length > 1 && (
-                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 px-1"
-                    style={{ color: "var(--t-faint)" }}>
-                    {group.label}
-                  </p>
+                  <div className="mb-2 px-1">
+                    <SectionHeader title={group.label} size="sm" />
+                  </div>
                 )}
                 <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
                   {group.items.map((n, i) => (

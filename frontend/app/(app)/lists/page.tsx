@@ -14,6 +14,8 @@ import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 interface SharedListSummary {
   id: number;
@@ -201,18 +203,21 @@ export default function ListsPage() {
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
 
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Вишлисты, списки, роадмапы
-            </h2>
-            <Button
-              variant="primary"
+          <div className="mb-4">
+            <SectionHeader
+              title="Вишлисты, списки, роадмапы"
               size="sm"
-              leftIcon={<Plus size={14} />}
-              onClick={() => setShowCreate(true)}
-            >
-              <span className="hidden md:inline">Новый список</span>
-            </Button>
+              actions={
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Plus size={14} />}
+                  onClick={() => setShowCreate(true)}
+                >
+                  <span className="hidden md:inline">Новый список</span>
+                </Button>
+              }
+            />
           </div>
 
           {isLoading && (
@@ -224,15 +229,15 @@ export default function ListsPage() {
           )}
 
           {lists && lists.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag size={24} className="text-indigo-400/40" />
-              </div>
-              <p className="text-[14px] font-medium" style={{ color: "var(--t-muted)" }}>Пока нет списков</p>
-              <button onClick={() => setShowCreate(true)} className="mt-3 text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">
-                + Создать первый список
-              </button>
-            </div>
+            <EmptyState
+              icon={<ShoppingBag size={24} />}
+              title="Пока нет списков"
+              action={
+                <button onClick={() => setShowCreate(true)} className="text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">
+                  + Создать первый список
+                </button>
+              }
+            />
           )}
 
           {lists && lists.length > 0 && (

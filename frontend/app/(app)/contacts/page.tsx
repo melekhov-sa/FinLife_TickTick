@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Avatar } from "@/components/primitives/Avatar";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 interface Contact {
   id: number;
@@ -107,9 +108,12 @@ export default function ContactsPage() {
               </div>
             ))}
             {contacts.length === 0 && (
-              <p className="text-[13px] py-6 text-center" style={{ color: "var(--t-faint)" }}>
-                Нет участников. Добавьте первого.
-              </p>
+              <EmptyState
+                icon={<UserPlus size={24} />}
+                title="Нет участников"
+                description="Добавьте первого участника, чтобы назначать его в подписки."
+                size="sm"
+              />
             )}
           </div>
         </div>

@@ -4,6 +4,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useEfficiency } from "@/hooks/useEfficiency";
 import type { MetricCard } from "@/types/api";
 import { Badge } from "@/components/primitives/Badge";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 function scoreColor(score: number): string {
   if (score >= 85) return "text-emerald-400";
@@ -165,9 +166,9 @@ export default function EfficiencyPage() {
             </div>
 
             {/* Metrics section label */}
-            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest px-1">
-              Метрики
-            </p>
+            <div className="px-1">
+              <SectionHeader title="Метрики" size="sm" />
+            </div>
 
             {/* Metrics */}
             <div className="space-y-3">

@@ -17,6 +17,8 @@ import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { ProgressBar } from "@/components/primitives/ProgressBar";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader as SectionHeaderPrimitive } from "@/components/primitives/SectionHeader";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,14 +113,8 @@ function SectionCard({ children, className = "" }: { children: React.ReactNode; 
 
 function SectionHeader({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-3">
-      <h2
-        className="text-[var(--fs-caption)] font-semibold uppercase tracking-wider"
-        style={{ color: "var(--t-faint)" }}
-      >
-        {children}
-      </h2>
-      {action}
+    <div className="mb-3">
+      <SectionHeaderPrimitive title={children} actions={action} size="sm" />
     </div>
   );
 }
@@ -286,9 +282,7 @@ function PlanSection({ listId }: { listId: number }) {
       <SectionHeader>План</SectionHeader>
 
       {items.length === 0 && (
-        <p className="text-[13px] mb-2" style={{ color: "var(--t-faint)" }}>
-          Добавьте позиции, чтобы прикинуть смету.
-        </p>
+        <EmptyState title="Добавьте позиции, чтобы прикинуть смету." size="sm" />
       )}
 
       {items.length > 0 && (
@@ -464,9 +458,7 @@ function TasksSection({ listId }: { listId: number }) {
         </SectionHeader>
 
         {tasks.length === 0 && (
-          <p className="text-[13px]" style={{ color: "var(--t-faint)" }}>
-            Пока нет задач.
-          </p>
+          <EmptyState title="Пока нет задач." size="sm" />
         )}
 
         {tasks.length > 0 && (
@@ -570,9 +562,7 @@ function OperationsSection({ listId }: { listId: number }) {
         </SectionHeader>
 
         {txns.length === 0 && (
-          <p className="text-[13px]" style={{ color: "var(--t-faint)" }}>
-            Пока нет операций.
-          </p>
+          <EmptyState title="Пока нет операций." size="sm" />
         )}
 
         {txns.length > 0 && (

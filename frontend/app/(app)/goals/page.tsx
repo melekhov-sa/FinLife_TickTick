@@ -9,6 +9,8 @@ import { Badge } from "@/components/primitives/Badge";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { ProgressBar } from "@/components/primitives/ProgressBar";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -119,25 +121,28 @@ export default function GoalsPage() {
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-4xl">
         {/* Header actions */}
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-            Накопительные цели
-          </p>
-          <div className="flex items-center gap-3">
-            <Checkbox
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              label="Архивные"
-              size="sm"
-            />
-            <a
-              href="/legacy/goals"
-              className="text-[12px] font-medium transition-colors hover:text-indigo-400"
-              style={{ color: "var(--t-muted)" }}
-            >
-              Управление целями →
-            </a>
-          </div>
+        <div className="mb-5">
+          <SectionHeader
+            title="Накопительные цели"
+            size="sm"
+            actions={
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  label="Архивные"
+                  size="sm"
+                />
+                <a
+                  href="/legacy/goals"
+                  className="text-[12px] font-medium transition-colors hover:text-indigo-400"
+                  style={{ color: "var(--t-muted)" }}
+                >
+                  Управление целями →
+                </a>
+              </div>
+            }
+          />
         </div>
 
         {/* Loading skeletons */}
@@ -167,22 +172,18 @@ export default function GoalsPage() {
 
         {/* Empty state */}
         {!isLoading && !isError && goals && goals.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-              <Target size={20} className="text-white/35" />
-            </div>
-            <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-              {showArchived ? "Нет архивных целей" : "Нет активных целей"}
-            </p>
-            {!showArchived && (
+          <EmptyState
+            icon={<Target size={24} />}
+            title={showArchived ? "Нет архивных целей" : "Нет активных целей"}
+            action={!showArchived ? (
               <a
                 href="/legacy/goals"
                 className="text-[13px] font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
               >
                 Создать цель →
               </a>
-            )}
-          </div>
+            ) : undefined}
+          />
         )}
       </main>
     </>

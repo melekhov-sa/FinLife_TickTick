@@ -10,6 +10,7 @@ import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { ProgressBar } from "@/components/primitives/ProgressBar";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 interface XpProfile {
   xp_total: number;
@@ -160,11 +161,16 @@ export default function ProfilePage() {
               {/* Monthly XP chart */}
               {data.monthly_xp && data.monthly_xp.length > 0 && (
                 <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">XP по месяцам</p>
-                    <p className="text-xs text-white/72 tabular-nums font-medium">
-                      {data.current_month_label}: <span className="text-indigo-400 font-semibold">{data.daily_xp_total} XP</span>
-                    </p>
+                  <div className="mb-4">
+                    <SectionHeader
+                      title="XP по месяцам"
+                      size="sm"
+                      actions={
+                        <span className="text-xs text-white/72 tabular-nums font-medium">
+                          {data.current_month_label}: <span className="text-indigo-400 font-semibold">{data.daily_xp_total} XP</span>
+                        </span>
+                      }
+                    />
                   </div>
                   <div className="flex items-end gap-1.5 h-24">
                     {[...data.monthly_xp].sort((a, b) => {
@@ -198,9 +204,9 @@ export default function ProfilePage() {
               {/* Recent XP events */}
               {data.recent_xp_events && data.recent_xp_events.length > 0 && (
                 <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
-                    Последние XP-события
-                  </p>
+                  <div className="mb-4">
+                    <SectionHeader title="Последние XP-события" size="sm" />
+                  </div>
                   <div>
                     {data.recent_xp_events.map((ev, i) => (
                       <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
@@ -216,7 +222,9 @@ export default function ProfilePage() {
 
               {/* Quick links */}
               <div>
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">Быстрые ссылки</p>
+                <div className="mb-3">
+                  <SectionHeader title="Быстрые ссылки" size="sm" />
+                </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   {QUICK_LINKS.map((link) => (
                     <a

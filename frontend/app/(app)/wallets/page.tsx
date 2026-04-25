@@ -11,6 +11,8 @@ import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { Wallet } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -277,19 +279,15 @@ export default function WalletsPage() {
         )}
 
         {!isLoading && !isError && wallets.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-xl">
-              💳
-            </div>
-            <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-              {showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
-            </p>
-            {!showArchived && (
+          <EmptyState
+            icon={<Wallet size={24} />}
+            title={showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
+            action={!showArchived ? (
               <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                 + Создать первый кошелёк
               </Button>
-            )}
-          </div>
+            ) : undefined}
+          />
         )}
 
         {!isLoading && !isError && orderedGroups.length > 0 && (

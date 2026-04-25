@@ -15,6 +15,8 @@ import { Button } from "@/components/primitives/Button";
 import { Badge } from "@/components/primitives/Badge";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { SectionHeader } from "@/components/primitives/SectionHeader";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -247,14 +249,17 @@ export default function SubscriptionsPage() {
         <div className="w-full">
 
           {/* ── Header actions ──────────────────────────────────────── */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-              Управление подписками
-            </h2>
-            <Button onClick={() => setShowCreate(true)} variant="primary" size="md">
-              <span className="text-[16px] leading-none">+</span>
-              Подписка
-            </Button>
+          <div className="mb-6">
+            <SectionHeader
+              title="Управление подписками"
+              size="sm"
+              actions={
+                <Button onClick={() => setShowCreate(true)} variant="primary" size="md">
+                  <span className="text-[16px] leading-none">+</span>
+                  Подписка
+                </Button>
+              }
+            />
           </div>
 
           {isLoading && (
@@ -365,19 +370,15 @@ export default function SubscriptionsPage() {
 
               {/* ── Subscription list ─────────────────────────────── */}
               {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                    <CreditCard size={20} className="text-white/35" />
-                  </div>
-                  <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                    {showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
-                  </p>
-                  {!showArchived && filter === "all" && (
+                <EmptyState
+                  icon={<CreditCard size={24} />}
+                  title={showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
+                  action={!showArchived && filter === "all" ? (
                     <Button variant="link" size="sm" onClick={() => setShowCreate(true)} className="text-indigo-400/70 hover:text-indigo-400 px-0">
                       + Добавить подписку
                     </Button>
-                  )}
-                </div>
+                  ) : undefined}
+                />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {filtered.map((s) => (

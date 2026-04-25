@@ -13,6 +13,8 @@ import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { Sparkles } from "lucide-react";
 
 // Safely fire haptic — no-op on Safari / unsupported devices
 function haptic(pattern: number | number[]) {
@@ -161,27 +163,27 @@ export default function HabitsPage() {
           <div className="space-y-4">
             {/* Empty state */}
             {noneScheduled && activeHabits.length === 0 && (
-              <div className="text-center py-12 space-y-3">
-                <p style={{ fontSize: "var(--fs-body)", color: "var(--t-muted)" }}>
-                  У вас ещё нет привычек
-                </p>
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  variant="primary"
-                  size="md"
-                  leftIcon={<Plus size={14} />}
-                >
-                  Создать первую
-                </Button>
-              </div>
+              <EmptyState
+                icon={<Sparkles size={24} />}
+                title="У вас ещё нет привычек"
+                action={
+                  <Button
+                    onClick={() => setShowCreateModal(true)}
+                    variant="primary"
+                    size="md"
+                    leftIcon={<Plus size={14} />}
+                  >
+                    Создать первую
+                  </Button>
+                }
+              />
             )}
 
             {noneScheduled && activeHabits.length > 0 && (
-              <div className="text-center py-8">
-                <p style={{ fontSize: "var(--fs-body)", color: "var(--t-muted)" }}>
-                  Сегодня нет запланированных привычек
-                </p>
-              </div>
+              <EmptyState
+                title="Сегодня нет запланированных привычек"
+                size="sm"
+              />
             )}
 
             {/* All-done celebration */}
