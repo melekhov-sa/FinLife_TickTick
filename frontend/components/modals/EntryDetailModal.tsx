@@ -7,7 +7,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Select } from "@/components/ui/Select";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
-import { Tag, X } from "lucide-react";
+import { X } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";
@@ -239,21 +239,10 @@ export function EntryDetailModal({ entry, onClose }: Props) {
           </FormRow>
         ) : null}
 
-        {/* Category — tasks only */}
+        {/* Category — tasks only (toggle, no default selection) */}
         {editable && (
-          <FormRow label="Категория">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip
-                label={
-                  <span className="inline-flex items-center gap-1">
-                    <Tag size={11} /> Без категории
-                  </span>
-                }
-                selected={categoryId === null}
-                variant="accent"
-                size="md"
-                onClick={() => setCategoryId(null)}
-              />
+          <FormRow label="Категория" hint={categoryId === null ? "Без категории" : undefined}>
+            <div className="flex flex-wrap gap-1">
               {activeCategories.map((c) => (
                 <Chip
                   key={c.category_id}
@@ -261,8 +250,8 @@ export function EntryDetailModal({ entry, onClose }: Props) {
                   emoji={c.emoji ?? undefined}
                   selected={categoryId === c.category_id}
                   variant="accent"
-                  size="md"
-                  onClick={() => setCategoryId(c.category_id)}
+                  size="sm"
+                  onClick={() => setCategoryId(categoryId === c.category_id ? null : c.category_id)}
                 />
               ))}
             </div>

@@ -8,7 +8,8 @@ import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { FormRow } from "@/components/ui/FormRow";
-import { Tag, X } from "lucide-react";
+import { X, ChevronRight } from "lucide-react";
+import { clsx } from "clsx";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
 import {
   validateWithSchema, mergeErrors, parseBackendErrors,
@@ -83,7 +84,7 @@ const WEEKDAYS = [
 // ── Style constants ────────────────────────────────────────────────────────
 
 const chipActiveCls =
-  "bg-indigo-600 border-indigo-500 text-white";
+  "bg-indigo-600 border-indigo-500 text-[#fff]";
 const chipInactiveCls =
   "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/72 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 const chipBaseCls =
@@ -507,21 +508,10 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
           )}
         </FormRow>
 
-        {/* ── Category — chip buttons ── */}
+        {/* ── Category — chip buttons (toggle, no default selection) ── */}
         {categories && categories.length > 0 && (
-          <FormRow label="Категория">
-            <div className="flex flex-wrap gap-1.5">
-              <Chip
-                label={
-                  <span className="inline-flex items-center gap-1">
-                    <Tag size={11} /> Без категории
-                  </span>
-                }
-                selected={categoryId === ""}
-                variant="accent"
-                size="md"
-                onClick={() => { setCategoryId(""); clearFieldError("category_id"); }}
-              />
+          <FormRow label="Категория" hint={categoryId === "" ? "Без категории" : undefined}>
+            <div className="flex flex-wrap gap-1">
               {categories.map((c) => (
                 <Chip
                   key={c.category_id}
@@ -529,8 +519,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                   emoji={c.emoji ?? undefined}
                   selected={categoryId === c.category_id}
                   variant="accent"
-                  size="md"
-                  onClick={() => { setCategoryId(c.category_id); clearFieldError("category_id"); }}
+                  size="sm"
+                  onClick={() => {
+                    setCategoryId(categoryId === c.category_id ? "" : c.category_id);
+                    clearFieldError("category_id");
+                  }}
                 />
               ))}
             </div>
@@ -660,8 +653,8 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
               </>
             )}
 
-            {/* Multi-dates */}
-            <FormRow label="Несколько дат">
+            {/* Multi-dates — checkbox без отдельного FormRow-лейбла (его нет смысла дублировать) */}
+            <div className="md:col-start-2 md:pl-0">
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -719,7 +712,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                   </div>
                 )}
               </div>
-            </FormRow>
+            </div>
 
             {/* Reminders (collapsible, only for DATETIME/WINDOW) */}
             {showReminderSection && (
@@ -799,9 +792,10 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                 <button
                   type="button"
                   onClick={() => setShowExpense((v) => !v)}
-                  className="text-[12px] font-medium text-slate-600 dark:text-white/65 hover:text-slate-800 dark:hover:text-white/80 transition-colors"
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-slate-600 dark:text-white/65 hover:text-slate-800 dark:hover:text-white/80 transition-colors"
                 >
-                  {showExpense ? "▾ Скрыть привязку" : "▸ Связать с расходом"}
+                  <ChevronRight size={12} className={clsx("transition-transform", showExpense && "rotate-90")} />
+                  {showExpense ? "Скрыть привязку" : "Связать с расходом"}
                 </button>
 
                 {showExpense && (

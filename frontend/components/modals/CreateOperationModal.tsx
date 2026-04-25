@@ -49,7 +49,7 @@ interface TripListOption {
 }
 
 const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
-const chipActiveCls = "bg-indigo-600 border-indigo-500 text-white";
+const chipActiveCls = "bg-indigo-600 border-indigo-500 text-[#fff]";
 const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 
 const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [

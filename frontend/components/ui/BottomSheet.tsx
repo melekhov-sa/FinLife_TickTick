@@ -114,7 +114,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           // Mobile: bottom sheet, full width
           "w-full rounded-t-2xl",
           // Desktop: centered modal
-          "md:max-w-md md:mx-4 md:rounded-2xl md:max-h-[85vh]",
+          "md:max-w-xl md:mx-4 md:rounded-2xl md:max-h-[85vh]",
         )}
         style={{ maxHeight: viewportH ? `${viewportH - 20}px` : "calc(100dvh - 24px)" }}
       >
