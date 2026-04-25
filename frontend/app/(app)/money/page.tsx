@@ -13,6 +13,8 @@ import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { FormRow } from "@/components/ui/FormRow";
 
 interface TransactionItem {
   transaction_id: number;
@@ -92,8 +94,6 @@ function EditTransactionModal({
     ];
   }, [finCats, tx.operation_type]);
 
-  const labelCls = "block text-[11px] font-medium text-white/55 uppercase tracking-wider mb-1.5";
-
   async function handleSave() {
     const n = parseFloat(amount);
     if (!amount || isNaN(n) || n <= 0) { setError("Введите корректную сумму"); return; }
@@ -113,71 +113,47 @@ function EditTransactionModal({
     }
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-[#131b2e] border border-white/[0.10] rounded-2xl shadow-2xl p-5 w-[340px] space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-white/90">Редактировать операцию</h3>
-          <button
-            onClick={onClose}
-            className="text-[18px] leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06] text-white/50 transition-colors"
-          >
-            ×
-          </button>
-        </div>
+  const footer = (
+    <div className="flex gap-2">
+      <Button variant="secondary" size="md" onClick={onClose} fullWidth>
+        Отмена
+      </Button>
+      <Button variant="primary" size="md" loading={saving} onClick={handleSave} fullWidth>
+        Сохранить
+      </Button>
+    </div>
+  );
 
-        <Input
-          label="Сумма"
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          tabular
-          autoFocus
-        />
+  return (
+    <BottomSheet open onClose={onClose} title="Редактировать операцию" footer={footer}>
+      <div className="space-y-4">
+        <FormRow label="Сумма" required>
+          <Input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            tabular
+            autoFocus
+          />
+        </FormRow>
 
         {!isTransfer && (
-          <div>
-            <label className={labelCls}>Кошелёк</label>
+          <FormRow label="Кошелёк">
             <Select value={walletId} onChange={setWalletId} options={walletOptions} />
-          </div>
+          </FormRow>
         )}
 
         {(tx.operation_type === "INCOME" || tx.operation_type === "EXPENSE") && (
-          <div>
-            <label className={labelCls}>Категория</label>
+          <FormRow label="Категория">
             <Select value={categoryId} onChange={setCategoryId} options={categoryOptions} searchable />
-          </div>
+          </FormRow>
         )}
 
-        {error && <p className="text-red-400 text-xs">{error}</p>}
-
-        <div className="flex gap-2 pt-1">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={onClose}
-            fullWidth
-          >
-            Отмена
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
-            loading={saving}
-            onClick={handleSave}
-            fullWidth
-          >
-            Сохранить
-          </Button>
-        </div>
+        {error && <p className="text-red-500 text-xs">{error}</p>}
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
