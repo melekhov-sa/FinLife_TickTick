@@ -30,6 +30,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { DigestCtaBanner } from "./DigestCtaBanner";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   today: TodayBlockType;
@@ -580,16 +581,16 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
           {/* Create menu — desktop only */}
           <div ref={createBtnRef} className="relative hidden md:block shrink-0">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Plus size={14} strokeWidth={2.2} />}
               onClick={() => setCreateMenuOpen((v) => !v)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-colors bg-indigo-500/15 hover:bg-indigo-500/25"
-              style={{ color: "var(--t-primary)" }}
               aria-label="Создать"
               aria-expanded={createMenuOpen}
             >
-              <Plus size={14} strokeWidth={2.2} />
               Создать
-            </button>
+            </Button>
 
             {createMenuOpen && (
               <div

@@ -14,6 +14,7 @@ import {
   inputErrorBorder, type FieldErrors,
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
+import { Button } from "@/components/primitives/Button";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
@@ -328,20 +329,24 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
   const footer = opType ? (
     <div className="flex gap-2.5">
-      <button
+      <Button
         type="submit"
-        disabled={saving}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+        variant="primary"
+        size="md"
+        loading={saving}
+        fullWidth
       >
-        {saving ? "Сохраняем…" : occurrenceId ? "Выполнить операцию" : "Создать операцию"}
-      </button>
-      <button
+        {occurrenceId ? "Выполнить операцию" : "Создать операцию"}
+      </Button>
+      <Button
         type="button"
+        variant="secondary"
+        size="md"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="hidden md:inline-flex"
       >
         Отмена
-      </button>
+      </Button>
     </div>
   ) : undefined;
 

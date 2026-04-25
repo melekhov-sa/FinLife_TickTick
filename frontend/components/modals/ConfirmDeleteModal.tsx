@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   /** Название удаляемой сущности в винительном падеже: "задачу", "элемент", "группу". */
@@ -45,19 +46,18 @@ export function ConfirmDeleteModal({
 
   const footer = (
     <div className="flex gap-2.5">
-      <button
+      <Button
+        variant="destructive"
+        size="md"
+        loading={loading}
         onClick={handleConfirm}
-        disabled={loading}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-red-600 hover:bg-red-500 text-white disabled:opacity-50 transition-colors"
+        fullWidth
       >
-        {loading ? "Удаляем…" : "Удалить"}
-      </button>
-      <button
-        onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
-      >
+        Удалить
+      </Button>
+      <Button variant="secondary" size="md" onClick={onClose}>
         Отмена
-      </button>
+      </Button>
     </div>
   );
 

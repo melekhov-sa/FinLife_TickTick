@@ -11,6 +11,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/primitives/Button";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,13 +157,16 @@ function EditTripModal({ list, onClose }: { list: TripList; onClose: () => void 
       onClose={onClose}
       title="Параметры поездки"
       footer={
-        <button
+        <Button
+          variant="primary"
+          size="md"
+          loading={saving}
+          disabled={!title.trim()}
           onClick={handleSave}
-          disabled={saving || !title.trim()}
-          className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+          fullWidth
         >
-          {saving ? "Сохраняем..." : "Сохранить"}
-        </button>
+          Сохранить
+        </Button>
       }
     >
       <div className="space-y-3">
@@ -381,14 +385,15 @@ function PlanSection({ listId }: { listId: number }) {
           className="w-28 h-9 px-3 text-[14px] tabular-nums text-right rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08]"
           style={{ color: "var(--t-primary)" }}
         />
-        <button
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<Plus size={14} />}
           onClick={handleAdd}
           disabled={!newTitle.trim()}
-          className="h-9 px-3 text-[13px] font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors flex items-center gap-1"
         >
-          <Plus size={14} />
           Добавить
-        </button>
+        </Button>
       </div>
 
       <div className="flex justify-end mt-3 pt-3 border-t" style={{ borderColor: "var(--app-card-border)" }}>
@@ -442,13 +447,14 @@ function TasksSection({ listId }: { listId: number }) {
       <SectionCard>
         <SectionHeader
           action={
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Plus size={14} />}
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold transition-colors"
             >
-              <Plus size={13} />
               Задача
-            </button>
+            </Button>
           }
         >
           Задачи
@@ -547,13 +553,14 @@ function OperationsSection({ listId }: { listId: number }) {
       <SectionCard>
         <SectionHeader
           action={
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Plus size={14} />}
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold transition-colors"
             >
-              <Plus size={13} />
               Операция
-            </button>
+            </Button>
           }
         >
           Операции

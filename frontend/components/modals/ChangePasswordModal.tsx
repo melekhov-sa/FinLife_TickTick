@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   onClose: () => void;
@@ -51,20 +52,25 @@ export function ChangePasswordModal({ onClose }: Props) {
 
   const footer = (
     <div className="flex gap-2.5">
-      <button
+      <Button
         type="submit"
-        disabled={saving || success}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+        variant="primary"
+        size="md"
+        loading={saving}
+        disabled={success}
+        fullWidth
       >
-        {saving ? "Сохраняем…" : success ? "Пароль изменён" : "Сохранить"}
-      </button>
-      <button
+        {success ? "Пароль изменён" : "Сохранить"}
+      </Button>
+      <Button
         type="button"
+        variant="secondary"
+        size="md"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="hidden md:inline-flex"
       >
         Отмена
-      </button>
+      </Button>
     </div>
   );
 

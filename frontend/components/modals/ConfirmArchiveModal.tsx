@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   action: "archive" | "restore";
@@ -21,9 +22,6 @@ export function ConfirmArchiveModal({ action, entityName, title, onConfirm, onCl
     ? `Перенести ${entityName} «${title}» в архив?`
     : `Восстановить ${entityName} «${title}» из архива?`;
   const buttonText = isArchive ? "В архив" : "Восстановить";
-  const buttonColor = isArchive
-    ? "bg-amber-600 hover:bg-amber-500"
-    : "bg-emerald-600 hover:bg-emerald-500";
 
   async function handleConfirm() {
     setLoading(true);
@@ -40,19 +38,18 @@ export function ConfirmArchiveModal({ action, entityName, title, onConfirm, onCl
 
   const footer = (
     <div className="flex gap-2.5">
-      <button
+      <Button
+        variant="primary"
+        size="md"
+        loading={loading}
         onClick={handleConfirm}
-        disabled={loading}
-        className={`flex-1 py-2.5 text-sm font-medium rounded-xl ${buttonColor} text-white disabled:opacity-50 transition-colors`}
+        fullWidth
       >
-        {loading ? "Обработка…" : buttonText}
-      </button>
-      <button
-        onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
-      >
+        {buttonText}
+      </Button>
+      <Button variant="secondary" size="md" onClick={onClose}>
         Отмена
-      </button>
+      </Button>
     </div>
   );
 

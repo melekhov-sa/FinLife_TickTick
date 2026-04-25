@@ -14,6 +14,8 @@ import {
   validateWithSchema, mergeErrors, parseBackendErrors,
   inputErrorBorder, type FieldErrors,
 } from "@/lib/formErrors";
+import { Button } from "@/components/primitives/Button";
+import { Chip } from "@/components/primitives/Chip";
 
 interface Props {
   onClose: () => void;
@@ -87,12 +89,6 @@ const chipInactiveCls =
   "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/72 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 const chipBaseCls =
   "py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors";
-const catChipBase =
-  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors border";
-const catChipActive =
-  "bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300";
-const catChipInactive =
-  "bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70 hover:border-slate-300 dark:hover:border-white/[0.15]";
 
 // ── Today's date helper ────────────────────────────────────────────────────
 
@@ -405,20 +401,24 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
 
   const footer = (
     <div className="flex gap-2.5">
-      <button
+      <Button
         type="submit"
-        disabled={saving}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+        variant="primary"
+        size="md"
+        loading={saving}
+        fullWidth
       >
-        {saving ? "Создаём…" : "Создать задачу"}
-      </button>
-      <button
+        Создать задачу
+      </Button>
+      <Button
         type="button"
+        variant="secondary"
+        size="md"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="hidden md:inline-flex"
       >
         Отмена
-      </button>
+      </Button>
     </div>
   );
 
@@ -512,23 +512,27 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
         {categories && categories.length > 0 && (
           <FormRow label="Категория">
             <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
+              <Chip
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <Tag size={11} /> Без категории
+                  </span>
+                }
+                selected={categoryId === ""}
+                variant="accent"
+                size="md"
                 onClick={() => { setCategoryId(""); clearFieldError("category_id"); }}
-                className={`${catChipBase} ${categoryId === "" ? catChipActive : catChipInactive}`}
-              >
-                <Tag size={11} /> Без категории
-              </button>
+              />
               {categories.map((c) => (
-                <button
+                <Chip
                   key={c.category_id}
-                  type="button"
+                  label={c.title}
+                  emoji={c.emoji ?? undefined}
+                  selected={categoryId === c.category_id}
+                  variant="accent"
+                  size="md"
                   onClick={() => { setCategoryId(c.category_id); clearFieldError("category_id"); }}
-                  className={`${catChipBase} ${categoryId === c.category_id ? catChipActive : catChipInactive}`}
-                >
-                  {c.emoji && <span>{c.emoji}</span>}
-                  {c.title}
-                </button>
+                />
               ))}
             </div>
           </FormRow>

@@ -12,6 +12,7 @@ import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
 import { api } from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   task: TaskItem;
@@ -325,7 +326,10 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
         {/* Action bar */}
         <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex items-center gap-2">
           {!isDone && !isArchived && (
-            <button
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<CheckCircle2 size={15} />}
               onClick={() => {
                 if (task.is_recurring && task.occurrence_id) {
                   completeOcc(task.occurrence_id);
@@ -334,21 +338,23 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
                 }
                 onClose();
               }}
-              className="flex items-center gap-2 flex-1 justify-center py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold transition-colors"
+              fullWidth
+              className="flex-1"
             >
-              <CheckCircle2 size={15} />
               Выполнено
-            </button>
+            </Button>
           )}
           {!isDone && !isArchived && !task.is_recurring && (
-            <button
+            <Button
+              variant="secondary"
+              size="md"
+              iconOnly
               onClick={() => { archive(task.task_id); onClose(); }}
-              className="flex items-center gap-2 py-2.5 px-3.5 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors"
-              style={{ color: "var(--t-secondary)" }}
               title="В архив"
+              aria-label="В архив"
             >
               <Archive size={14} />
-            </button>
+            </Button>
           )}
           {task.is_recurring ? (
             <a

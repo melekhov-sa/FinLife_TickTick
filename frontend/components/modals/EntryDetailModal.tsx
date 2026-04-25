@@ -11,6 +11,8 @@ import { Tag, X } from "lucide-react";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";
+import { Button } from "@/components/primitives/Button";
+import { Chip } from "@/components/primitives/Chip";
 
 interface PlanEntry {
   id: number;
@@ -149,12 +151,6 @@ export function EntryDetailModal({ entry, onClose }: Props) {
 
   const inputCls =
     "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
-  const catChipBase =
-    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors border";
-  const catChipActive =
-    "bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300";
-  const catChipInactive =
-    "bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/70 hover:border-slate-300 dark:hover:border-white/[0.15]";
 
   return (
     <BottomSheet
@@ -164,13 +160,16 @@ export function EntryDetailModal({ entry, onClose }: Props) {
       onSubmit={editable ? handleSubmit : undefined}
       footer={
         editable ? (
-          <button
+          <Button
             type="submit"
-            disabled={updating || !title.trim()}
-            className="w-full py-2.5 rounded-xl text-[14px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+            variant="primary"
+            size="md"
+            loading={updating}
+            disabled={!title.trim()}
+            fullWidth
           >
-            {updating ? "..." : "Сохранить"}
-          </button>
+            Сохранить
+          </Button>
         ) : isTask && entry.is_done ? (
           <p className="text-center text-[13px] text-emerald-600 dark:text-emerald-400 font-medium">Задача выполнена</p>
         ) : null
@@ -247,23 +246,27 @@ export function EntryDetailModal({ entry, onClose }: Props) {
         {editable && (
           <FormRow label="Категория">
             <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
+              <Chip
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <Tag size={11} /> Без категории
+                  </span>
+                }
+                selected={categoryId === null}
+                variant="accent"
+                size="md"
                 onClick={() => setCategoryId(null)}
-                className={`${catChipBase} ${categoryId === null ? catChipActive : catChipInactive}`}
-              >
-                <Tag size={11} /> Без категории
-              </button>
+              />
               {activeCategories.map((c) => (
-                <button
+                <Chip
                   key={c.category_id}
-                  type="button"
+                  label={c.title}
+                  emoji={c.emoji ?? undefined}
+                  selected={categoryId === c.category_id}
+                  variant="accent"
+                  size="md"
                   onClick={() => setCategoryId(c.category_id)}
-                  className={`${catChipBase} ${categoryId === c.category_id ? catChipActive : catChipInactive}`}
-                >
-                  {c.emoji && <span>{c.emoji}</span>}
-                  {c.title}
-                </button>
+                />
               ))}
             </div>
           </FormRow>
