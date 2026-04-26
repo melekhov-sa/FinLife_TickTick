@@ -31,7 +31,11 @@ import { clsx } from "clsx";
 import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical } from "lucide-react";
 import { api } from "@/lib/api";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Button } from "@/components/primitives/Button";
+import { Popover } from "@/components/primitives/Popover";
+import { FormRow } from "@/components/ui/FormRow";
 
 interface PlanEntry {
   kind: string;
@@ -122,9 +126,6 @@ function RescheduleModal({
   const [error, setError] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const inputCls = "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
-  const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/50";
-
   async function save() {
     if (!date) { setError("Укажите дату"); return; }
     setSaving(true);
@@ -150,20 +151,12 @@ function RescheduleModal({
       title="Перенести задачу"
       footer={
         <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
-            style={{ color: "var(--t-secondary)" }}
-          >
+          <Button variant="secondary" size="md" fullWidth onClick={onClose}>
             Отмена
-          </button>
-          <button
-            onClick={save}
-            disabled={saving || !date}
-            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
-          >
-            {saving ? "..." : "Сохранить"}
-          </button>
+          </Button>
+          <Button variant="primary" size="md" fullWidth onClick={save} disabled={!date} loading={saving}>
+            Сохранить
+          </Button>
         </div>
       }
     >
@@ -172,22 +165,12 @@ function RescheduleModal({
       </p>
 
       <div className="space-y-3">
-        <div>
-          <label className={labelCls}>Дата</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Время (необязательно)</label>
-          <TimeInput
-            value={time}
-            onChange={setTime}
-          />
-        </div>
+        <FormRow label="Дата" required>
+          <DateInput value={date} onChange={setDate} />
+        </FormRow>
+        <FormRow label="Время" hint="Необязательно">
+          <TimeInput value={time} onChange={setTime} />
+        </FormRow>
       </div>
 
       {error && (
@@ -231,114 +214,79 @@ function RowMenu({
   onExecuteOp,
   onSkipOp,
 }: RowMenuProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
   const isTask = entry.kind === 'task';
   const isTaskOcc = entry.kind === 'task_occ';
   const isOp = entry.kind === 'planned_op';
   const isEvent = entry.kind === 'event';
 
-  // No menu for habits and completed entries
   const hasMenu = (isTask || isTaskOcc || isOp || isEvent) && !entry.is_done;
-
-  // Click-away and Escape — must be declared before any early return (Rules of Hooks)
-  useEffect(() => {
-    if (!open || !hasMenu) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, hasMenu]);
-
   if (!hasMenu) return null;
-
-  function close() { setOpen(false); }
-
-  function handle(action: () => void) {
-    close();
-    action();
-  }
 
   const itemCls = 'w-full text-left px-4 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]';
   const normalStyle: React.CSSProperties = { color: 'var(--t-primary)', fontSize: 'var(--fs-sm, 13px)' };
   const dangerStyle: React.CSSProperties = { color: 'rgb(239 68 68)', fontSize: 'var(--fs-sm, 13px)' };
 
   return (
-    <div ref={ref} className='relative'>
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className={clsx(
-          'md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all',
-          'hover:bg-slate-100 dark:hover:bg-white/[0.08]',
-          open && 'opacity-100 bg-slate-100 dark:bg-white/[0.08]'
-        )}
-        style={{ color: 'var(--t-faint)' }}
-        title='Действия'
-        aria-haspopup='true'
-        aria-expanded={open}
-      >
-        <MoreVertical size={14} />
-      </button>
-
-      {open && (
-        <div className='absolute right-0 top-full mt-1 w-44 rounded-xl border shadow-xl z-30 overflow-hidden bg-white dark:bg-[#0f1221] border-slate-200 dark:border-white/[0.08]'>
-          {isTask && (
-            <>
-              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onReschedule)}>
-                <CalendarDays size={13} className='inline mr-2 opacity-60' />
-                Перенести
-              </button>
-              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onArchiveTask)}>
-                Архивировать
-              </button>
-            </>
-          )}
-
-          {isTaskOcc && (
-            <>
-              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onReschedule)}>
-                <CalendarDays size={13} className='inline mr-2 opacity-60' />
-                Перенести
-              </button>
-              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipTaskOcc)}>
-                Пропустить
-              </button>
-            </>
-          )}
-
-          {isOp && (
-            <>
-              <button className={itemCls} style={normalStyle} onMouseDown={() => handle(onExecuteOp)}>
-                <Play size={11} className='inline mr-2 opacity-60 fill-current' />
-                Выполнить
-              </button>
-              <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipOp)}>
-                <SkipForward size={12} className='inline mr-2 opacity-60' />
-                Пропустить
-              </button>
-            </>
-          )}
-
-          {isEvent && (
-            <button className={itemCls} style={dangerStyle} onMouseDown={() => handle(onSkipEvent)}>
-              <SkipForward size={12} className='inline mr-2 opacity-60' />
-              Пропустить
-            </button>
-          )}
-        </div>
+    <Popover
+      side="bottom"
+      align="end"
+      closeOnClickInside
+      className="!p-0 w-44 overflow-hidden"
+      trigger={
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="md:opacity-0 md:group-hover/row:opacity-100 w-6 h-6 flex items-center justify-center rounded transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+          style={{ color: 'var(--t-faint)' }}
+          title="Действия"
+        >
+          <MoreVertical size={14} />
+        </button>
+      }
+    >
+      {isTask && (
+        <>
+          <button className={itemCls} style={normalStyle} onClick={onReschedule}>
+            <CalendarDays size={13} className="inline mr-2 opacity-60" />
+            Перенести
+          </button>
+          <button className={itemCls} style={dangerStyle} onClick={onArchiveTask}>
+            Архивировать
+          </button>
+        </>
       )}
-    </div>
+
+      {isTaskOcc && (
+        <>
+          <button className={itemCls} style={normalStyle} onClick={onReschedule}>
+            <CalendarDays size={13} className="inline mr-2 opacity-60" />
+            Перенести
+          </button>
+          <button className={itemCls} style={dangerStyle} onClick={onSkipTaskOcc}>
+            Пропустить
+          </button>
+        </>
+      )}
+
+      {isOp && (
+        <>
+          <button className={itemCls} style={normalStyle} onClick={onExecuteOp}>
+            <Play size={11} className="inline mr-2 opacity-60 fill-current" />
+            Выполнить
+          </button>
+          <button className={itemCls} style={dangerStyle} onClick={onSkipOp}>
+            <SkipForward size={12} className="inline mr-2 opacity-60" />
+            Пропустить
+          </button>
+        </>
+      )}
+
+      {isEvent && (
+        <button className={itemCls} style={dangerStyle} onClick={onSkipEvent}>
+          <SkipForward size={12} className="inline mr-2 opacity-60" />
+          Пропустить
+        </button>
+      )}
+    </Popover>
   );
 }
 
@@ -1184,36 +1132,37 @@ export default function PlanPage() {
             </div>
 
             {/* Add button */}
-            <div className="ml-auto relative">
-              <button
-                onClick={() => setShowAddMenu((v) => !v)}
-                onBlur={() => setTimeout(() => setShowAddMenu(false), 150)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm"
+            <div className="ml-auto">
+              <Popover
+                open={showAddMenu}
+                onOpenChange={setShowAddMenu}
+                side="bottom"
+                align="end"
+                closeOnClickInside
+                className="!p-0 w-40 overflow-hidden"
+                trigger={
+                  <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm">
+                    <Plus size={14} />
+                    <span className="hidden md:inline">Добавить</span>
+                    <ChevronDown size={12} className={clsx("transition-transform hidden md:block", showAddMenu && "rotate-180")} />
+                  </button>
+                }
               >
-                <Plus size={14} />
-                <span className="hidden md:inline">Добавить</span>
-                <ChevronDown size={12} className={clsx("transition-transform hidden md:block", showAddMenu && "rotate-180")} />
-              </button>
-              {showAddMenu && (
-                <div
-                  className="absolute right-0 top-full mt-1 w-40 rounded-xl border shadow-xl z-20 overflow-hidden bg-white dark:bg-[#0f1221] border-slate-200 dark:border-white/[0.08]"
+                <button
+                  onClick={() => setCreateTaskDate("")}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
+                  style={{ color: "var(--t-primary)" }}
                 >
-                  <button
-                    onMouseDown={() => { setShowAddMenu(false); setCreateTaskDate(""); }}
-                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
-                    style={{ color: "var(--t-primary)" }}
-                  >
-                    Задача
-                  </button>
-                  <button
-                    onMouseDown={() => { setShowAddMenu(false); setCreateEventDate(""); }}
-                    className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
-                    style={{ color: "var(--t-primary)" }}
-                  >
-                    Событие
-                  </button>
-                </div>
-              )}
+                  Задача
+                </button>
+                <button
+                  onClick={() => setCreateEventDate("")}
+                  className="w-full text-left px-4 py-2.5 text-[13px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
+                  style={{ color: "var(--t-primary)" }}
+                >
+                  Событие
+                </button>
+              </Popover>
             </div>
           </div>
 
@@ -1259,7 +1208,7 @@ export default function PlanPage() {
           )}
 
           {isError && (
-            <p className="text-red-400/70 text-sm text-center py-12">Не удалось загрузить план</p>
+            <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">Не удалось загрузить план</p>
           )}
 
           {/* ── Empty state ───────────────────────────────────────────── */}
@@ -1273,7 +1222,7 @@ export default function PlanPage() {
               </p>
               <button
                 onClick={() => setCreateTaskDate("")}
-                className="mt-4 text-[13px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
+                className="mt-4 text-[13px] font-medium text-indigo-600 dark:text-indigo-400/70 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
               >
                 + Создать задачу
               </button>
