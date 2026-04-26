@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateHabit, useDeleteHabit } from "@/hooks/useHabits";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { Popover } from "@/components/primitives/Popover";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   habit: HabitItem;
@@ -28,7 +30,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
   const [catId, setCatId]           = useState(habit.category_id ? String(habit.category_id) : "");
   const [reminderTime, setReminderTime] = useState(habit.reminder_time ?? "");
   const [titleFocused, setTitleFocused] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
 
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +81,6 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
   }
 
   function handleDelete() {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
     del(habit.habit_id);
     onClose();
   }
@@ -267,20 +268,45 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
 
         {/* Footer */}
         <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex justify-end">
-          <button
-            onClick={handleDelete}
-            onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
-            className={clsx(
-              "flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium",
-              confirmDelete
-                ? "bg-red-600 border-red-500 text-white"
-                : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-            )}
-            style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
+          <Popover
+            open={archivePopoverOpen}
+            onOpenChange={setArchivePopoverOpen}
+            side="top"
+            align="end"
+            className="min-w-[240px] p-3"
+            trigger={
+              <button
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                <Trash2 size={13} />
+                В архив
+              </button>
+            }
           >
-            <Trash2 size={13} />
-            {confirmDelete ? "Архивировать?" : "В архив"}
-          </button>
+            <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+              Архивировать привычку?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setArchivePopoverOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  handleDelete();
+                  setArchivePopoverOpen(false);
+                }}
+              >
+                Архивировать
+              </Button>
+            </div>
+          </Popover>
         </div>
       </div>
 

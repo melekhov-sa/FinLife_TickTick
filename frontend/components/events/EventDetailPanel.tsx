@@ -11,6 +11,8 @@ import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEv
 import { EventReminders } from "./EventReminders";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { Popover } from "@/components/primitives/Popover";
+import { Button } from "@/components/primitives/Button";
 
 interface Props {
   event: EventItem;
@@ -62,7 +64,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
   const [startTime, setStartTime] = useState(event.start_time ?? "");
   const [catId, setCatId]         = useState<string>(event.category_id ? String(event.category_id) : "");
   const [titleFocused, setTitleFocused] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletePopoverOpen, setDeletePopoverOpen] = useState(false);
 
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,7 +127,6 @@ export function EventDetailPanel({ event, onClose }: Props) {
   }
 
   function handleDelete() {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
     del(event.occurrence_id);
     onClose();
   }
@@ -302,21 +303,46 @@ export function EventDetailPanel({ event, onClose }: Props) {
           >
             Расширенные настройки →
           </a>
-          <button
-            onClick={handleDelete}
-            onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
-            className={clsx(
-              "flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium",
-              confirmDelete
-                ? "bg-red-600 border-red-500 text-white"
-                : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-            )}
-            style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
-            title={confirmDelete ? "Нажмите ещё раз" : "Удалить"}
+          <Popover
+            open={deletePopoverOpen}
+            onOpenChange={setDeletePopoverOpen}
+            side="top"
+            align="end"
+            className="min-w-[240px] p-3"
+            trigger={
+              <button
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                style={{ color: "var(--t-secondary)" }}
+                title="Удалить"
+              >
+                <Trash2 size={13} />
+                Удалить
+              </button>
+            }
           >
-            <Trash2 size={13} />
-            {confirmDelete ? "Удалить?" : "Удалить"}
-          </button>
+            <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+              Удалить событие?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setDeletePopoverOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  handleDelete();
+                  setDeletePopoverOpen(false);
+                }}
+              >
+                Удалить
+              </Button>
+            </div>
+          </Popover>
         </div>
       </div>
 

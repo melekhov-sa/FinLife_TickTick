@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 import { Button } from "@/components/primitives/Button";
+import { Popover } from "@/components/primitives/Popover";
 
 interface Props {
   task: TaskItem;
@@ -55,7 +56,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
   const [dueDate, setDueDate] = useState(isoToInputDate(task.due_date));
   const [catId, setCatId]     = useState<string>(task.category_id ? String(task.category_id) : "");
   const [titleFocused, setTitleFocused] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletePopoverOpen, setDeletePopoverOpen] = useState(false);
 
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,7 +135,6 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
   }
 
   function handleDelete() {
-    if (!confirmDelete) { setConfirmDelete(true); return; }
     del(task.task_id);
     onClose();
   }
@@ -365,21 +365,45 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
               Управление →
             </a>
           ) : (
-            <button
-              onClick={handleDelete}
-              className={clsx(
-                "flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium",
-                confirmDelete
-                  ? "bg-red-600 border-red-500 text-white"
-                  : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-              )}
-              style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
-              title={confirmDelete ? "Нажмите ещё раз для подтверждения" : "Удалить"}
-              onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
+            <Popover
+              open={deletePopoverOpen}
+              onOpenChange={setDeletePopoverOpen}
+              side="top"
+              align="end"
+              className="min-w-[240px] p-3"
+              trigger={
+                <button
+                  className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                  style={{ color: "var(--t-secondary)" }}
+                  title="Удалить"
+                >
+                  <Trash2 size={14} />
+                </button>
+              }
             >
-              <Trash2 size={14} />
-              {confirmDelete && <span>Удалить?</span>}
-            </button>
+              <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+                Удалить задачу?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setDeletePopoverOpen(false)}
+                >
+                  Отмена
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    handleDelete();
+                    setDeletePopoverOpen(false);
+                  }}
+                >
+                  Удалить
+                </Button>
+              </div>
+            </Popover>
           )}
         </div>
       </div>
