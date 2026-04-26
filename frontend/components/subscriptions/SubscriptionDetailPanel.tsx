@@ -11,7 +11,8 @@ import {
 } from "@/hooks/useSubscriptions";
 import { useMe } from "@/hooks/useMe";
 import { Stat } from "@/components/primitives/Stat";
-import { Divider } from "@/components/primitives/Divider";
+import { Popover } from "@/components/primitives/Popover";
+import { Button } from "@/components/primitives/Button";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function MemberRow({
   const [editPay, setEditPay]   = useState(false);
   const [dateVal, setDateVal]   = useState(member.paid_until ?? "");
   const [payVal, setPayVal]     = useState(member.payment_per_month?.toString() ?? "");
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removePopoverOpen, setRemovePopoverOpen] = useState(false);
 
   const { mutate: updateMember } = useUpdateMember();
   const { mutate: removeMember } = useArchiveMember();
@@ -146,23 +147,45 @@ function MemberRow({
       )}
 
       {/* Remove member */}
-      <button
-        onClick={() => {
-          if (!confirmRemove) { setConfirmRemove(true); return; }
-          removeMember({ subId, memberId: member.member_id });
-        }}
-        onBlur={() => setTimeout(() => setConfirmRemove(false), 200)}
-        className={clsx(
-          "shrink-0 w-6 h-6 rounded-lg flex items-center justify-center border transition-all",
-          confirmRemove
-            ? "bg-red-600 border-red-500 text-white"
-            : "border-transparent hover:bg-red-500/10 hover:border-red-500/20"
-        )}
-        style={{ color: confirmRemove ? undefined : "var(--t-faint)" }}
-        title={confirmRemove ? "Удалить?" : "Убрать участника"}
+      <Popover
+        open={removePopoverOpen}
+        onOpenChange={setRemovePopoverOpen}
+        side="left"
+        align="center"
+        className="min-w-[200px] p-3"
+        trigger={
+          <button
+            className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center border transition-all border-transparent hover:bg-red-500/10 hover:border-red-500/20"
+            style={{ color: "var(--t-faint)" }}
+            title="Убрать участника"
+          >
+            <UserMinus size={11} />
+          </button>
+        }
       >
-        <UserMinus size={11} />
-      </button>
+        <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+          Убрать {member.contact_name}?
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setRemovePopoverOpen(false)}
+          >
+            Отмена
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              removeMember({ subId, memberId: member.member_id });
+              setRemovePopoverOpen(false);
+            }}
+          >
+            Убрать
+          </Button>
+        </div>
+      </Popover>
     </div>
   );
 }
@@ -180,7 +203,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
   const [name, setName]               = useState(sub.name);
   const [nameFocused, setNameFocused] = useState(false);
   const [paidUntil, setPaidUntil]     = useState(sub.paid_until_self ?? "");
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
 
   const nameRef     = useRef<HTMLInputElement>(null);
@@ -354,24 +377,46 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
 
         {/* Footer */}
         <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex justify-end">
-          <button
-            onClick={() => {
-              if (!confirmDelete) { setConfirmDelete(true); return; }
-              archive(sub.id);
-              onClose();
-            }}
-            onBlur={() => setTimeout(() => setConfirmDelete(false), 300)}
-            className={clsx(
-              "flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium",
-              confirmDelete
-                ? "bg-red-600 border-red-500 text-white"
-                : "bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-            )}
-            style={{ color: confirmDelete ? undefined : "var(--t-secondary)" }}
+          <Popover
+            open={archivePopoverOpen}
+            onOpenChange={setArchivePopoverOpen}
+            side="top"
+            align="end"
+            className="min-w-[240px] p-3"
+            trigger={
+              <button
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                style={{ color: "var(--t-secondary)" }}
+              >
+                <Trash2 size={13} />
+                В архив
+              </button>
+            }
           >
-            <Trash2 size={13} />
-            {confirmDelete ? "Архивировать?" : "В архив"}
-          </button>
+            <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+              Архивировать подписку?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setArchivePopoverOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  archive(sub.id);
+                  setArchivePopoverOpen(false);
+                  onClose();
+                }}
+              >
+                Архивировать
+              </Button>
+            </div>
+          </Popover>
         </div>
       </div>
 

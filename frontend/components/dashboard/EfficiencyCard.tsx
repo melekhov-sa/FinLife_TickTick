@@ -1,6 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
+import { Card } from "@/components/primitives/Card";
 import type { EfficiencyBlock } from "@/types/api";
 
 interface Props {
@@ -34,7 +35,7 @@ export function EfficiencyCard({ efficiency }: Props) {
     "rgba(239,68,68,0.4)";
 
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
+    <Card padding="lg">
       <h2 className="block-title" style={{ color: "var(--t-primary)" }}>
         Эффективность
       </h2>
@@ -77,6 +78,6 @@ export function EfficiencyCard({ efficiency }: Props) {
           Индекс за 7 дней · {efficiency.snapshot_date}
         </p>
       )}
-    </div>
+    </Card>
   );
 }

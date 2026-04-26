@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/primitives/Card";
 import type { LevelBlock } from "@/types/api";
 
 function fmt(n: number) {
@@ -14,7 +15,7 @@ export function LevelCard({ level }: Props) {
   const pct = Math.min(100, Math.round(level.percent_progress));
 
   return (
-    <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-5">
+    <Card padding="lg">
       <h2 className="block-title" style={{ color: "var(--t-primary)" }}>
         Уровень
       </h2>
@@ -57,6 +58,6 @@ export function LevelCard({ level }: Props) {
         </span>
         <span className="t-secondary tabular-nums" style={{ color: "var(--t-faint)" }}>{fmt(level.total_xp)} всего</span>
       </div>
-    </div>
+    </Card>
   );
 }

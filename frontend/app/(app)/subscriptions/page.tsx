@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { SectionHeader } from "@/components/primitives/SectionHeader";
 import { Stat } from "@/components/primitives/Stat";
+import { AvatarStack } from "@/components/primitives/AvatarStack";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -144,9 +145,12 @@ function SubCard({ sub, onOpen, onAddMember }: { sub: SubscriptionItem; onOpen: 
           )}
         </div>
         {sub.total_members > 0 && (
-          <span className="text-[10px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
-            {sub.total_members} уч.
-          </span>
+          <AvatarStack
+            avatars={sub.members.map((m) => ({ name: m.contact_name }))}
+            max={3}
+            size="sm"
+            className="shrink-0"
+          />
         )}
       </div>
 
