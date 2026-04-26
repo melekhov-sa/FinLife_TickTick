@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { ru } from "date-fns/locale";
-import { Calendar as CalendarIcon, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "react-day-picker/dist/style.css";
 
@@ -137,8 +137,9 @@ export function DateInput({
       {open && (
         <div
           className={cn(
-            "absolute z-50 mt-1 rounded-xl border shadow-lg p-2",
-            "bg-white border-slate-200 dark:bg-[#1a1d23] dark:border-white/[0.07]"
+            "absolute z-50 mt-1.5 rounded-xl border shadow-lg p-3",
+            "bg-white border-slate-200",
+            "dark:bg-[#1a1d23] dark:border-white/[0.07]"
           )}
         >
           <DayPicker
@@ -157,19 +158,29 @@ export function DateInput({
               ...(maxDate ? [{ after: maxDate }] : []),
             ]}
             today={new Date()}
+            showOutsideDays
+            components={{
+              Chevron: ({ orientation }) =>
+                orientation === "left" ? <ChevronLeft size={14} /> : <ChevronRight size={14} />,
+            }}
             footer={
-              <div className="mt-2 flex items-center justify-between text-[12px] px-1">
+              <div
+                className={cn(
+                  "mt-2 pt-2 flex items-center justify-between text-[12px]",
+                  "border-t border-slate-200 dark:border-white/[0.07]",
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => { onChange(""); setOpen(false); }}
-                  className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                 >
                   Очистить
                 </button>
                 <button
                   type="button"
                   onClick={() => { onChange(toISO(new Date())); setOpen(false); }}
-                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors"
                 >
                   Сегодня
                 </button>
@@ -177,26 +188,40 @@ export function DateInput({
             }
             classNames={{
               root: "rdp-finlife",
-              months: "flex flex-col",
-              month: "",
-              caption: "flex items-center justify-between px-1 mb-2",
+              months: "flex flex-col gap-2",
+              month: "space-y-2",
+              month_caption: "flex items-center justify-center relative h-8",
               caption_label: "text-[13px] font-semibold text-slate-900 dark:text-slate-100 capitalize",
-              nav: "flex items-center gap-1",
-              nav_button: "w-6 h-6 inline-flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400",
-              table: "w-full border-collapse",
-              head_row: "",
-              head_cell: "text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 w-8 h-7 text-center",
-              row: "",
-              cell: "p-0 text-center align-middle",
-              day: cn(
-                "w-8 h-8 inline-flex items-center justify-center rounded-md text-[12.5px]",
-                "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
-                "transition-colors"
+              nav: "absolute inset-0 flex items-center justify-between pointer-events-none",
+              button_previous: cn(
+                "pointer-events-auto w-7 h-7 inline-flex items-center justify-center rounded-md border transition-colors",
+                "border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                "dark:border-white/[0.08] dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100",
               ),
-              day_today: "font-semibold text-indigo-600 dark:text-indigo-400",
-              day_selected: "!bg-indigo-600 !text-[#fff] hover:!bg-indigo-500",
-              day_outside: "text-slate-300 dark:text-slate-600",
-              day_disabled: "opacity-40 pointer-events-none",
+              button_next: cn(
+                "pointer-events-auto w-7 h-7 inline-flex items-center justify-center rounded-md border transition-colors",
+                "border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                "dark:border-white/[0.08] dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100",
+              ),
+              month_grid: "w-full border-collapse",
+              weekdays: "flex",
+              weekday: cn(
+                "w-9 h-7 inline-flex items-center justify-center text-[10px] font-semibold uppercase",
+                "text-slate-400 dark:text-slate-500",
+              ),
+              week: "flex w-full mt-1",
+              day: "w-9 h-9 text-center text-[13px] p-0",
+              day_button: cn(
+                "w-9 h-9 inline-flex items-center justify-center rounded-md font-medium transition-colors",
+                "text-slate-700 dark:text-slate-200",
+                "hover:bg-slate-100 dark:hover:bg-white/[0.08]",
+              ),
+              today: "[&>button]:font-bold [&>button]:text-indigo-600 dark:[&>button]:text-indigo-400",
+              selected:
+                "[&>button]:!bg-indigo-600 [&>button]:!text-[#fff] [&>button]:hover:!bg-indigo-500",
+              outside: "[&>button]:text-slate-300 dark:[&>button]:text-slate-600",
+              disabled: "opacity-40 pointer-events-none",
+              hidden: "invisible",
             }}
           />
         </div>
