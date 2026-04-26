@@ -12,6 +12,7 @@ import { Input } from "@/components/primitives/Input";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { EmptyState } from "@/components/primitives/EmptyState";
+import { Popover } from "@/components/primitives/Popover";
 import { Wallet } from "lucide-react";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -85,6 +86,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
   const [open, setOpen]               = useState(false);
   const [editTitle, setEditTitle]     = useState(wallet.title);
   const [targetBalance, setTargetBalance] = useState("");
+  const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
 
   const { mutate: rename }    = useRenameWallet();
   const { mutate: archive }   = useArchiveWallet();
@@ -125,7 +127,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
     <>
       {/* Collapsed row */}
       <div
-        className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.02] transition-colors"
+        className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/[0.05] cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
         onClick={toggle}
       >
         <div>
@@ -138,7 +140,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
           </p>
         </div>
         <span
-          className={`text-[15px] font-semibold tabular-nums ${isNegative ? "text-red-400" : ""}`}
+          className={`text-[15px] font-semibold tabular-nums ${isNegative ? "text-red-600 dark:text-red-400" : ""}`}
           style={{ color: isNegative ? undefined : "var(--t-primary)" }}
         >
           {formatAmount(wallet.balance)} {wallet.currency}
@@ -147,10 +149,10 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
 
       {/* Expanded detail */}
       {open && (
-        <div className="px-4 py-4 bg-white/[0.02] border-b border-white/[0.05] space-y-3">
+        <div className="px-4 py-4 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.05] space-y-3">
           {wallet.is_archived ? (
             /* Archived wallet: only restore */
-            <Button variant="link" size="xs" onClick={handleRestore} className="text-emerald-400 hover:text-emerald-300 px-0">
+            <Button variant="link" size="xs" onClick={handleRestore} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 px-0">
               Восстановить из архива
             </Button>
           ) : (
@@ -168,7 +170,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
               {/* Actualize balance — REGULAR and CREDIT */}
               {(wallet.wallet_type === "REGULAR" || wallet.wallet_type === "CREDIT") && (
                 <div>
-                  <label className="text-[11px] text-white/50 uppercase tracking-wider">
+                  <label className="text-[11px] text-slate-500 dark:text-white/50 uppercase tracking-wider">
                     Актуализация баланса
                   </label>
                   <div className="flex gap-2 mt-1">
@@ -190,16 +192,48 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
                       Применить
                     </Button>
                   </div>
-                  <p className="text-[10px] text-white/40 mt-1">
+                  <p className="text-[10px] text-slate-400 dark:text-white/40 mt-1">
                     Текущий: {wallet.balance} {wallet.currency}
                   </p>
                 </div>
               )}
 
-              {/* Archive */}
-              <Button variant="link" size="xs" onClick={handleArchive} className="text-red-400 hover:text-red-300 px-0">
-                В архив
-              </Button>
+              {/* Archive with confirm popover */}
+              <Popover
+                open={archivePopoverOpen}
+                onOpenChange={setArchivePopoverOpen}
+                side="bottom"
+                align="start"
+                className="min-w-[240px] p-3"
+                trigger={
+                  <Button variant="link" size="xs" className="text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 px-0">
+                    В архив
+                  </Button>
+                }
+              >
+                <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+                  Архивировать «{wallet.title}»?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setArchivePopoverOpen(false)}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      handleArchive();
+                      setArchivePopoverOpen(false);
+                    }}
+                  >
+                    Архивировать
+                  </Button>
+                </div>
+              </Popover>
             </>
           )}
         </div>
@@ -275,7 +309,7 @@ export default function WalletsPage() {
         )}
 
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">Не удалось загрузить кошельки</p>
+          <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">Не удалось загрузить кошельки</p>
         )}
 
         {!isLoading && !isError && wallets.length === 0 && (
@@ -283,7 +317,7 @@ export default function WalletsPage() {
             icon={<Wallet size={24} />}
             title={showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
             action={!showArchived ? (
-              <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-indigo-400/60 hover:text-indigo-400 px-0">
+              <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-indigo-600 dark:text-indigo-400/60 hover:text-indigo-500 dark:hover:text-indigo-400 px-0">
                 + Создать первый кошелёк
               </Button>
             ) : undefined}
@@ -291,7 +325,7 @@ export default function WalletsPage() {
         )}
 
         {!isLoading && !isError && orderedGroups.length > 0 && (
-          <div className="rounded-2xl border border-white/[0.06] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-transparent border border-slate-200 dark:border-white/[0.06] overflow-hidden">
             {orderedGroups.map(({ type, label, items }) => (
               <div key={type}>
                 {/* Group header */}
