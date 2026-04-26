@@ -18,6 +18,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { Table, type TableColumn } from "@/components/primitives/Table";
+import { Badge } from "@/components/primitives/Badge";
 
 interface TransactionItem {
   transaction_id: number;
@@ -375,23 +377,24 @@ export default function MoneyPage() {
 
         {data && data.items.length > 0 && (
           <>
-            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
+            {/* Mobile: card list */}
+            <div className="md:hidden bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl overflow-hidden">
               {data.items.map((tx, i) => (
                 <div
                   key={tx.transaction_id}
                   className={clsx(
-                    "flex items-center gap-2.5 md:gap-3 px-3 md:px-4 py-2.5 md:py-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/tx",
+                    "flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/tx",
                     i < data.items.length - 1 && "border-b border-slate-100 dark:border-white/[0.04]"
                   )}
                 >
                   <div
-                    className={clsx("w-1 h-8 md:h-9 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-slate-200")}
+                    className={clsx("w-1 h-8 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-slate-200")}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] md:text-sm font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>
+                    <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                       {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
                     </p>
-                    <p className="text-[10px] md:text-[11px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
+                    <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
                       {tx.operation_type === "TRANSFER"
                         ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
                         : walletMap[tx.wallet_id ?? 0] ?? ""}
@@ -402,23 +405,88 @@ export default function MoneyPage() {
                     <Tooltip content="Редактировать">
                       <button
                         onClick={() => setEditTx(tx)}
-                        className="md:opacity-0 md:group-hover/tx:opacity-100 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
                         style={{ color: "var(--t-faint)" }}
                       >
                         <Pencil size={12} />
                       </button>
                     </Tooltip>
                     <div className="text-right">
-                      <p className={clsx("text-[13px] md:text-sm font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
+                      <p className={clsx("text-[13px] font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
                         {formatAmount(tx.amount, tx.operation_type, tx.currency)}
                       </p>
-                      <p className="text-[9px] md:text-[11px] mt-0.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
+                      <p className="text-[9px] mt-0.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
                         {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
                       </p>
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Desktop: Table primitive */}
+            <div className="hidden md:block">
+              <Table<TransactionItem>
+                data={data.items}
+                rowKey={(tx) => tx.transaction_id}
+                onRowClick={(tx) => setEditTx(tx)}
+                variant="card"
+                columns={[
+                  {
+                    key: "occurred_at",
+                    label: "Дата",
+                    width: 110,
+                    sortable: true,
+                    render: (tx) => (
+                      <span className="tabular-nums" style={{ color: "var(--t-faint)" }}>
+                        {formatDate(tx.occurred_at)}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "description",
+                    label: "Получатель",
+                    sortable: true,
+                    render: (tx) => (
+                      <div className="min-w-0">
+                        <span className="font-medium truncate block" style={{ color: "var(--t-primary)" }}>
+                          {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
+                        </span>
+                        <span className="text-[11px] mt-0.5 truncate block" style={{ color: "var(--t-faint)" }}>
+                          {tx.operation_type === "TRANSFER"
+                            ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
+                            : walletMap[tx.wallet_id ?? 0] ?? ""}
+                        </span>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "category_title",
+                    label: "Категория",
+                    width: 160,
+                    align: "center",
+                    render: (tx) => tx.category_title ? (
+                      <Badge variant="neutral" size="md" className="!normal-case !tracking-normal !font-medium">
+                        {tx.category_title}
+                      </Badge>
+                    ) : (
+                      <span style={{ color: "var(--t-faint)" }}>—</span>
+                    ),
+                  },
+                  {
+                    key: "amount",
+                    label: "Сумма",
+                    width: 160,
+                    align: "right",
+                    sortable: true,
+                    render: (tx) => (
+                      <span className={clsx("font-semibold tabular-nums", OP_TYPE_COLORS[tx.operation_type])}>
+                        {formatAmount(tx.amount, tx.operation_type, tx.currency)}
+                      </span>
+                    ),
+                  },
+                ] as TableColumn<TransactionItem>[]}
+              />
             </div>
 
             {/* Pagination */}
