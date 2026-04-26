@@ -29,11 +29,11 @@ function getNotifMeta(n: NotificationItem) {
   else if (rule_code.startsWith("EVENT"))         Icon = Calendar;
   else if (severity === "error" || severity === "warning") Icon = AlertTriangle;
 
-  let iconColor = "text-indigo-400";
-  let iconBg    = "bg-indigo-500/10";
+  let iconColor = "text-indigo-600 dark:text-indigo-400";
+  let iconBg    = "bg-indigo-100 dark:bg-indigo-500/10";
   let leftBar   = "bg-indigo-500/40";
-  if (severity === "error")   { iconColor = "text-red-400";   iconBg = "bg-red-500/10";   leftBar = "bg-red-500/50"; }
-  if (severity === "warning") { iconColor = "text-amber-400"; iconBg = "bg-amber-500/10"; leftBar = "bg-amber-500/40"; }
+  if (severity === "error")   { iconColor = "text-red-600 dark:text-red-400";     iconBg = "bg-red-100 dark:bg-red-500/10";     leftBar = "bg-red-500/50"; }
+  if (severity === "warning") { iconColor = "text-amber-600 dark:text-amber-400"; iconBg = "bg-amber-100 dark:bg-amber-500/10"; leftBar = "bg-amber-500/40"; }
 
   let href: string | null = null;
   if (rule_code === "TASK_OVERDUE")              href = "/tasks";
@@ -93,8 +93,8 @@ function NotificationRow({
     <div
       className={clsx(
         "group relative flex items-start gap-3.5 px-4 py-3 cursor-pointer transition-colors",
-        isLast ? "" : "border-b border-white/[0.04]",
-        n.is_read ? "opacity-50 hover:opacity-70" : "hover:bg-white/[0.03]"
+        isLast ? "" : "border-b border-slate-200 dark:border-white/[0.04]",
+        n.is_read ? "opacity-50 hover:opacity-70" : "hover:bg-slate-50 dark:hover:bg-white/[0.03]"
       )}
       onClick={onClick}
     >
@@ -136,7 +136,7 @@ function NotificationRow({
         <Tooltip content="Отметить прочитанным">
           <button
             onClick={(e) => { e.stopPropagation(); onRead(); }}
-            className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.07]"
+            className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.07]"
             style={{ color: "var(--t-faint)" }}
           >
             <Eye size={13} />
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 mb-5 w-fit">
+        <div className="flex items-center gap-1 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl p-1 mb-5 w-fit">
           {FILTERS.map(({ value, label }) => (
             <button
               key={value}
@@ -214,13 +214,13 @@ export default function NotificationsPage() {
               className={clsx(
                 "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                 filter === value
-                  ? "bg-white/[0.09] text-white shadow-sm"
-                  : "text-white/55 hover:text-white/80"
+                  ? "bg-slate-100 dark:bg-white/[0.09] text-slate-900 dark:text-[#fff] shadow-sm"
+                  : "text-slate-500 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/80"
               )}
             >
               {label}
               {value === "unread" && unreadCount > 0 && (
-                <span className="ml-1.5 text-[10px] font-bold text-red-400 tabular-nums">{unreadCount}</span>
+                <span className="ml-1.5 text-[10px] font-bold text-red-600 dark:text-red-400 tabular-nums">{unreadCount}</span>
               )}
             </button>
           ))}
