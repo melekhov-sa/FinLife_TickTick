@@ -13,6 +13,8 @@ import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { Popover } from "@/components/primitives/Popover";
+import { Switch } from "@/components/primitives/Switch";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -96,6 +98,7 @@ function CategoryRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(cat.title);
+  const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { mutate: rename, isPending: renaming } = useRenameCategory();
@@ -123,9 +126,9 @@ function CategoryRow({
   return (
     <div
       className={clsx(
-        "flex items-center justify-between border-b border-white/[0.05] transition-colors",
+        "flex items-center justify-between border-b border-slate-200 dark:border-white/[0.05] transition-colors",
         isChild ? "px-4 py-2 pl-10" : "px-4 py-2.5",
-        cat.is_archived ? "opacity-50" : "hover:bg-white/[0.02]"
+        cat.is_archived ? "opacity-50" : "hover:bg-slate-50 dark:hover:bg-white/[0.02]"
       )}
     >
       {/* Title */}
@@ -186,7 +189,7 @@ function CategoryRow({
               <Tooltip content="Переименовать">
                 <button
                   onClick={startEdit}
-                  className="opacity-0 group-hover/title:opacity-100 w-5 h-5 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-all"
+                  className="opacity-0 group-hover/title:opacity-100 w-5 h-5 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <Pencil size={10} />
@@ -203,7 +206,7 @@ function CategoryRow({
           {cat.is_archived ? (
             <button
               onClick={() => restore(cat.category_id)}
-              className="flex items-center gap-1 py-1 px-2 rounded-lg border border-white/[0.07] text-[11px] hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all"
+              className="flex items-center gap-1 py-1 px-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-[11px] hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
               style={{ color: "var(--t-faint)" }}
               title="Восстановить"
             >
@@ -211,15 +214,46 @@ function CategoryRow({
               <span>Восстановить</span>
             </button>
           ) : (
-            <button
-              onClick={() => archive(cat.category_id)}
-              className="flex items-center gap-1 py-1 px-2 rounded-lg border border-white/[0.07] text-[11px] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all"
-              style={{ color: "var(--t-faint)" }}
-              title="В архив"
+            <Popover
+              open={archivePopoverOpen}
+              onOpenChange={setArchivePopoverOpen}
+              side="bottom"
+              align="end"
+              className="min-w-[240px] p-3"
+              trigger={
+                <button
+                  className="flex items-center gap-1 py-1 px-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-[11px] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                  style={{ color: "var(--t-faint)" }}
+                  title="В архив"
+                >
+                  <Archive size={11} />
+                  <span>В архив</span>
+                </button>
+              }
             >
-              <Archive size={11} />
-              <span>В архив</span>
-            </button>
+              <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+                Архивировать «{cat.title}»?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setArchivePopoverOpen(false)}
+                >
+                  Отмена
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    archive(cat.category_id);
+                    setArchivePopoverOpen(false);
+                  }}
+                >
+                  Архивировать
+                </Button>
+              </div>
+            </Popover>
           )}
         </div>
       )}
@@ -262,7 +296,7 @@ function AddCategoryForm({
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-2 px-4 py-3 bg-white/[0.03] border-t border-white/[0.06]"
+      className="flex flex-col gap-2 px-4 py-3 bg-slate-50 dark:bg-white/[0.03] border-t border-slate-200 dark:border-white/[0.06]"
     >
       <div className="flex items-center gap-2">
         <Input
@@ -375,8 +409,8 @@ export default function CategoriesPage() {
             className={clsx(
               "px-4 py-1.5 rounded-xl text-[13px] font-semibold border transition-all",
               activeTab === "EXPENSE"
-                ? "bg-red-500/15 border-red-500/30 text-red-400"
-                : "bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]"
+                ? "bg-red-500/15 border-red-500/30 text-red-600 dark:text-red-400"
+                : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.07] hover:bg-slate-50 dark:hover:bg-white/[0.06]"
             )}
             style={{ color: activeTab !== "EXPENSE" ? "var(--t-secondary)" : undefined }}
           >
@@ -388,8 +422,8 @@ export default function CategoriesPage() {
             className={clsx(
               "px-4 py-1.5 rounded-xl text-[13px] font-semibold border transition-all",
               activeTab === "INCOME"
-                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                : "bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.06]"
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.07] hover:bg-slate-50 dark:hover:bg-white/[0.06]"
             )}
             style={{ color: activeTab !== "INCOME" ? "var(--t-secondary)" : undefined }}
           >
@@ -397,25 +431,14 @@ export default function CategoriesPage() {
             <span className="ml-1.5 text-[11px] opacity-70">({incomeCount})</span>
           </button>
 
-          <label className="ml-auto flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
-              Архивные
-            </span>
-            <div
-              onClick={() => setIncludeArchived((v) => !v)}
-              className={clsx(
-                "w-8 h-4 rounded-full transition-colors relative",
-                includeArchived ? "bg-indigo-600" : "bg-white/[0.12]"
-              )}
-            >
-              <div
-                className={clsx(
-                  "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform",
-                  includeArchived ? "translate-x-4" : "translate-x-0.5"
-                )}
-              />
-            </div>
-          </label>
+          <div className="ml-auto">
+            <Switch
+              checked={includeArchived}
+              onChange={setIncludeArchived}
+              label="Архивные"
+              size="sm"
+            />
+          </div>
         </div>
 
         {/* List */}
@@ -428,7 +451,7 @@ export default function CategoriesPage() {
         )}
 
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
+          <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить категории
           </p>
         )}
@@ -470,7 +493,7 @@ export default function CategoriesPage() {
               ) : (
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors border-t border-slate-200 dark:border-white/[0.05]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <Plus size={13} />
