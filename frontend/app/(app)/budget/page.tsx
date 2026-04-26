@@ -45,7 +45,7 @@ function Bar({ plan, fact, kind }: { plan: number; fact: number; kind: "income" 
     : over ? "bg-red-500" : "bg-indigo-500";
 
   return (
-    <div className="relative h-1 w-full bg-white/[0.05] rounded-full overflow-hidden mt-1">
+    <div className="relative h-1 w-full bg-slate-200 dark:bg-white/[0.05] rounded-full overflow-hidden mt-1">
       <div className={clsx("absolute left-0 top-0 h-full rounded-full", planColor)} style={{ width: `${planPct}%` }} />
       <div className={clsx("absolute left-0 top-0 h-full rounded-full transition-all", factColor)} style={{ width: `${factPct}%` }} />
     </div>
@@ -59,11 +59,15 @@ function CategoryRow({ row, kind }: { row: BudgetRow; kind: "income" | "expense"
   const isUnder = diff < 0 && kind === "expense" && hasPlan;
   const isAbove = diff > 0 && kind === "income" && hasPlan;
 
-  const diffColor = isOver ? "text-red-400" : (isUnder || isAbove) ? "text-emerald-400" : "text-white/30";
+  const diffColor = isOver
+    ? "text-red-600 dark:text-red-400"
+    : (isUnder || isAbove)
+    ? "text-emerald-600 dark:text-emerald-400"
+    : "text-slate-400 dark:text-white/30";
 
   return (
     <div className={clsx(
-      "flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0",
+      "flex items-center gap-3 py-2 border-b border-slate-200 dark:border-white/[0.04] last:border-0",
       row.depth === 1 && "pl-4"
     )}>
       <div className="flex-1 min-w-0">
@@ -126,7 +130,7 @@ function Section({
           <div className="flex items-baseline gap-1.5 justify-end">
             <span className={clsx(
               "text-[20px] font-bold tabular-nums leading-none",
-              kind === "income" ? "text-emerald-400" : "text-red-400"
+              kind === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
             )} style={{ letterSpacing: "-0.03em" }}>
               {fmt(total.fact)}
             </span>
@@ -137,7 +141,7 @@ function Section({
             )}
           </div>
           {hasPlan && diff !== 0 && (
-            <p className={clsx("text-[12px] font-medium tabular-nums", diffPositive ? "text-emerald-400" : "text-red-400")}>
+            <p className={clsx("text-[12px] font-medium tabular-nums", diffPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
               {diff > 0 ? "+" : ""}{fmt(diff)}
             </p>
           )}
@@ -197,8 +201,8 @@ export default function BudgetPage() {
         <div className="mb-4">
           <Link
             href="/budget/matrix"
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-white/[0.04]"
-            style={{ borderColor: "rgba(255,255,255,0.07)", color: "var(--t-faint)" }}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.07] transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
+            style={{ color: "var(--t-faint)" }}
           >
             Расширенный бюджет →
           </Link>
@@ -208,7 +212,7 @@ export default function BudgetPage() {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={goBack}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-secondary)" }}
           >
             <ChevronLeft size={18} />
@@ -219,13 +223,13 @@ export default function BudgetPage() {
               {data?.period_label ?? `${month} / ${year}`}
             </h1>
             {isCurrentMonth && (
-              <span className="text-[11px] font-medium text-indigo-400/60">текущий месяц</span>
+              <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400/60">текущий месяц</span>
             )}
           </div>
 
           <button
             onClick={goForward}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-secondary)" }}
           >
             <ChevronRight size={18} />
@@ -242,7 +246,7 @@ export default function BudgetPage() {
                 </p>
                 <p className={clsx(
                   "text-[28px] font-bold tabular-nums leading-none",
-                  balance >= 0 ? "text-emerald-400" : "text-red-400"
+                  balance >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                 )} style={{ letterSpacing: "-0.04em" }}>
                   {balance >= 0 ? "+" : ""}{fmt(balance)} ₽
                 </p>
@@ -255,11 +259,11 @@ export default function BudgetPage() {
               <div className="flex flex-col gap-1.5 text-right">
                 <div>
                   <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Доходы</p>
-                  <p className="text-[14px] font-semibold text-emerald-400 tabular-nums">{fmt(data.income_total.fact)} ₽</p>
+                  <p className="text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmt(data.income_total.fact)} ₽</p>
                 </div>
                 <div>
                   <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Расходы</p>
-                  <p className="text-[14px] font-semibold text-red-400 tabular-nums">{fmt(data.expense_total.fact)} ₽</p>
+                  <p className="text-[14px] font-semibold text-red-600 dark:text-red-400 tabular-nums">{fmt(data.expense_total.fact)} ₽</p>
                 </div>
               </div>
             </div>
@@ -275,7 +279,7 @@ export default function BudgetPage() {
         )}
 
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">Не удалось загрузить бюджет</p>
+          <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">Не удалось загрузить бюджет</p>
         )}
 
         {data && (
