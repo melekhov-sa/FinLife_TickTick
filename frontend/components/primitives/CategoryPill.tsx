@@ -74,7 +74,6 @@ export const CategoryPill = forwardRef<HTMLButtonElement, CategoryPillProps>(fun
 
   return (
     <Tag
-      // @ts-expect-error — ref-тип меняется по Tag, рантайм совпадает
       ref={ref}
       type={onClick ? "button" : undefined}
       onClick={onClick}
