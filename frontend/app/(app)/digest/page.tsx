@@ -2,33 +2,32 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, RefreshCw } from "lucide-react";
+import { Sparkles, RefreshCw, AlertCircle } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useDigests, useDigestBackfill } from "@/hooks/useDigests";
 import type { DigestListItem } from "@/types/api";
 import { clsx } from "clsx";
+import { Button } from "@/components/primitives/Button";
+import { Card } from "@/components/primitives/Card";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: () => void }) {
   const pct = Math.round(digest.habits_completion_rate * 100);
   const isNew = !digest.viewed_at;
 
   return (
-    <button
+    <Card
       onClick={onClick}
+      padding="md"
       className={clsx(
-        "w-full text-left rounded-2xl border p-4 transition-opacity hover:opacity-80",
-        isNew ? "border-indigo-500/40" : "border-white/[0.07]"
+        "transition-opacity hover:opacity-80",
+        isNew && "border-indigo-400 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-500/[0.07] to-violet-500/[0.05]"
       )}
-      style={{
-        background: isNew
-          ? "linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.08) 100%)"
-          : "rgba(255,255,255,0.02)",
-      }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Sparkles
-          className={clsx("w-4 h-4 shrink-0", isNew ? "text-indigo-400" : "text-white/30")}
+          className={clsx("w-4 h-4 shrink-0", isNew ? "text-indigo-400" : "text-slate-300 dark:text-white/30")}
         />
         <span
           className="text-[14px] font-semibold"
@@ -37,10 +36,7 @@ function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: 
           Неделя {digest.period_key}
         </span>
         {isNew && (
-          <span
-            className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}
-          >
+          <span className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
             Новый
           </span>
         )}
@@ -58,7 +54,7 @@ function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: 
           {digest.ai_comment}
         </p>
       )}
-    </button>
+    </Card>
   );
 }
 
@@ -83,15 +79,17 @@ export default function DigestListPage() {
         title="Итоги"
         subtitle="Еженедельные дайджесты"
         actions={
-          <button
-            onClick={handleBackfill}
+          <Button
+            variant="ghost"
+            size="sm"
             disabled={backfilling}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-75 disabled:opacity-40"
-            style={{ background: "rgba(99,102,241,0.15)", color: "#a5b4fc" }}
+            loading={backfilling}
+            leftIcon={<RefreshCw size={14} className={clsx(backfilling && "animate-spin")} />}
+            onClick={handleBackfill}
+            className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
           >
-            <RefreshCw className={clsx("w-3.5 h-3.5", backfilling && "animate-spin")} />
             Восстановить
-          </button>
+          </Button>
         }
       />
 
@@ -106,21 +104,20 @@ export default function DigestListPage() {
           )}
 
           {isError && (
-            <p className="text-center py-12 text-[14px]" style={{ color: "var(--t-muted)" }}>
-              Не удалось загрузить дайджесты
-            </p>
+            <EmptyState
+              icon={<AlertCircle size={24} />}
+              title="Не удалось загрузить дайджесты"
+              size="md"
+            />
           )}
 
           {digests && digests.length === 0 && (
-            <div className="text-center py-16">
-              <Sparkles className="w-10 h-10 mx-auto mb-4 text-white/20" />
-              <p className="text-[15px] font-medium mb-1" style={{ color: "var(--t-primary)" }}>
-                Дайджестов пока нет
-              </p>
-              <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>
-                Нажмите «Восстановить», чтобы сгенерировать итоги за прошлые недели
-              </p>
-            </div>
+            <EmptyState
+              icon={<Sparkles size={24} />}
+              title="Дайджестов пока нет"
+              description='Нажмите «Восстановить», чтобы сгенерировать итоги за прошлые недели'
+              size="lg"
+            />
           )}
 
           {digests?.map((digest) => (

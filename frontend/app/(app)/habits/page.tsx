@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Settings2 } from "lucide-react";
+import { Plus, Settings2, AlertCircle } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
@@ -136,7 +136,7 @@ export default function HabitsPage() {
 
       {/* Slim progress strip under the topbar */}
       {!noneScheduled && (
-        <div className="h-[3px] bg-white/[0.06] shrink-0">
+        <div className="h-[3px] bg-slate-200 dark:bg-white/[0.06] shrink-0">
           <div
             className={clsx_progress(allDone)}
             style={{ width: `${pct}%`, transition: "width 0.5s" }}
@@ -154,9 +154,11 @@ export default function HabitsPage() {
         )}
 
         {isError && (
-          <p className="text-red-400/70 text-center py-12" style={{ fontSize: "var(--fs-secondary)" }}>
-            Не удалось загрузить привычки
-          </p>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить привычки"
+            size="md"
+          />
         )}
 
         {!isPending && !isError && (

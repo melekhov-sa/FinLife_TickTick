@@ -4,17 +4,19 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
-import { clsx } from "clsx";
 import {
   Bell, BellOff, Send, Smartphone, Download,
   CheckCircle2, XCircle, Moon, Zap, ArrowLeft,
   MessageCircle, AlertTriangle, Volume2, VolumeX,
 } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { getPushState, subscribePush, unsubscribePush, testPush } from "@/lib/push";
 import { Switch } from "@/components/primitives/Switch";
 import { TimeInput } from "@/components/primitives/TimeInput";
+import { Button } from "@/components/primitives/Button";
+import { Card } from "@/components/primitives/Card";
+import { Input } from "@/components/primitives/Input";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,8 +62,7 @@ function usePwaInstall() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
-  cardBorder: string; cardBg: string;
+function PushSection({ pwa, setSaved }: {
   pwa: { canInstall: boolean; isInstalled: boolean; install: () => Promise<void> };
   setSaved: (s: string) => void;
 }) {
@@ -129,7 +130,7 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
   }
 
   return (
-    <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: cardBorder, background: cardBg }}>
+    <Card padding="lg" className="space-y-3">
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-500/10">
           <Smartphone size={16} className="text-indigo-400" />
@@ -166,57 +167,67 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
           <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
             Получайте мгновенные уведомления о задачах, подписках и платежах.
           </p>
-          <button
-            onClick={handleSubscribe}
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Volume2 size={14} />}
             disabled={busy}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+            loading={busy}
+            onClick={handleSubscribe}
           >
-            <Volume2 size={14} /> {busy ? "..." : "Включить push-уведомления"}
-          </button>
+            Включить push-уведомления
+          </Button>
         </>
       )}
 
       {pushState === "subscribed" && (
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<MessageCircle size={13} />}
+            disabled={busy}
+            loading={busy}
             onClick={handleTest}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04] disabled:opacity-50"
-            style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
           >
-            <MessageCircle size={13} /> {busy ? "..." : "Тест"}
-          </button>
-          <button
+            Тест
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Volume2 size={13} />}
+            disabled={busy}
+            loading={busy}
             onClick={handleReconnect}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-indigo-500/10 disabled:opacity-50"
-            style={{ borderColor: "rgba(99,102,241,0.2)", color: "#6366f1" }}
           >
-            <Volume2 size={13} /> {busy ? "..." : "Переподключить"}
-          </button>
-          <button
+            Переподключить
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<VolumeX size={13} />}
+            disabled={busy}
+            loading={busy}
             onClick={handleUnsubscribe}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-red-500/10 disabled:opacity-50"
-            style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+            className="text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/10"
           >
-            <VolumeX size={13} /> {busy ? "..." : "Отключить"}
-          </button>
+            Отключить
+          </Button>
         </div>
       )}
 
       {/* PWA install */}
       {!pwa.isInstalled && (pushState === "unsupported" || pushState === "prompt") && (
-        <div className="border-t pt-3 mt-2" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+        <div className="border-t pt-3 mt-2 border-slate-100 dark:border-white/[0.05]">
           {pwa.canInstall ? (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Download size={14} />}
               onClick={pwa.install}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04]"
-              style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
             >
-              <Download size={14} /> Установить на главный экран
-            </button>
+              Установить на главный экран
+            </Button>
           ) : (
             <div className="space-y-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>
               <p className="font-medium" style={{ color: "var(--t-secondary)" }}>Установить приложение:</p>
@@ -226,13 +237,11 @@ function PushSection({ cardBorder, cardBg, pwa, setSaved }: {
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
 export default function NotificationSettingsPage() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
   const qc = useQueryClient();
   const pwa = usePwaInstall();
 
@@ -241,7 +250,6 @@ export default function NotificationSettingsPage() {
     queryFn: () => api.get("/api/v2/notification-settings"),
   });
 
-  // Local form state
   const [enabled, setEnabled] = useState(true);
   const [chTelegram, setChTelegram] = useState(false);
   const [quietStart, setQuietStart] = useState("");
@@ -251,7 +259,6 @@ export default function NotificationSettingsPage() {
   const [saved, setSaved] = useState("");
   const [tgError, setTgError] = useState("");
 
-  // Sync from server
   useEffect(() => {
     if (!settings) return;
     setEnabled(settings.enabled);
@@ -262,7 +269,6 @@ export default function NotificationSettingsPage() {
     if (settings.telegram_bot_token_set) setBotToken("••••••••••••");
   }, [settings]);
 
-  // Mutations
   const saveMut = useMutation({
     mutationFn: () => api.post("/api/v2/notification-settings", {
       enabled,
@@ -271,7 +277,11 @@ export default function NotificationSettingsPage() {
       quiet_start: quietStart || null,
       quiet_end: quietEnd || null,
     }),
-    onSuccess: () => { setSaved("Настройки сохранены"); qc.invalidateQueries({ queryKey: ["notification-settings"] }); setTimeout(() => setSaved(""), 2000); },
+    onSuccess: () => {
+      setSaved("Настройки сохранены");
+      qc.invalidateQueries({ queryKey: ["notification-settings"] });
+      setTimeout(() => setSaved(""), 2000);
+    },
   });
 
   const tgMut = useMutation({
@@ -279,7 +289,12 @@ export default function NotificationSettingsPage() {
       bot_token: botToken.includes("••") ? "" : botToken,
       chat_id: chatId,
     }),
-    onSuccess: () => { setSaved("Telegram сохранён"); qc.invalidateQueries({ queryKey: ["notification-settings"] }); setTgError(""); setTimeout(() => setSaved(""), 2000); },
+    onSuccess: () => {
+      setSaved("Telegram сохранён");
+      qc.invalidateQueries({ queryKey: ["notification-settings"] });
+      setTgError("");
+      setTimeout(() => setSaved(""), 2000);
+    },
     onError: (e: any) => setTgError(e.message || "Ошибка"),
   });
 
@@ -301,17 +316,15 @@ export default function NotificationSettingsPage() {
     onError: (e: any) => setTgError(e.message || "Ошибка отправки"),
   });
 
-  const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const cardBg = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
-  const inputCls = "w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 placeholder:text-white/20 font-mono";
-
   if (isLoading) {
     return (
       <>
         <AppTopbar title="Уведомления" />
         <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-lg animate-pulse space-y-4">
-            {[1,2,3].map(i => <div key={i} className="h-32 rounded-xl" style={{ background: cardBg }} />)}
+          <div className="max-w-lg space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="rect" height={128} className="rounded-xl" />
+            ))}
           </div>
         </main>
       </>
@@ -337,7 +350,7 @@ export default function NotificationSettingsPage() {
           )}
 
           {/* ── General ── */}
-          <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: cardBorder, background: cardBg }}>
+          <Card padding="lg" className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10">
                 <Bell size={16} className="text-amber-400" />
@@ -346,10 +359,7 @@ export default function NotificationSettingsPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Switch
-                checked={enabled}
-                onChange={setEnabled}
-              />
+              <Switch checked={enabled} onChange={setEnabled} />
               <span className="text-[14px]" style={{ color: "var(--t-primary)" }}>
                 Уведомления {enabled ? "включены" : "выключены"}
               </span>
@@ -370,21 +380,22 @@ export default function NotificationSettingsPage() {
               <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>Telegram и email не отправляются в это время</p>
             </div>
 
-            <button
-              onClick={() => saveMut.mutate()}
+            <Button
+              variant="primary"
+              size="sm"
               disabled={saveMut.isPending}
-              className="px-5 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
+              loading={saveMut.isPending}
+              onClick={() => saveMut.mutate()}
             >
-              {saveMut.isPending ? "..." : "Сохранить"}
-            </button>
-          </div>
+              Сохранить
+            </Button>
+          </Card>
 
           {/* ── Push Notifications ── */}
-          <PushSection cardBorder={cardBorder} cardBg={cardBg} pwa={pwa} setSaved={setSaved} />
+          <PushSection pwa={pwa} setSaved={setSaved} />
 
           {/* ── Telegram ── */}
-          <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: cardBorder, background: cardBg }}>
+          <Card padding="lg" className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-sky-500/10">
                 <Send size={16} className="text-sky-400" />
@@ -403,40 +414,33 @@ export default function NotificationSettingsPage() {
               )}
             </div>
 
-            {/* Enable channel switch */}
             <div className="flex items-center gap-3">
-              <Switch
-                checked={chTelegram}
-                onChange={setChTelegram}
-              />
+              <Switch checked={chTelegram} onChange={setChTelegram} />
               <span className="text-[13px]" style={{ color: "var(--t-primary)" }}>Отправлять уведомления в Telegram</span>
             </div>
 
-            {/* Setup fields */}
             <div className="space-y-3">
               <div>
                 <label className="text-[11px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--t-faint)" }}>
                   Токен бота
                 </label>
-                <input
+                <Input
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
                   onFocus={() => { if (botToken.includes("••")) setBotToken(""); }}
                   placeholder="123456789:AAF..."
-                  className={inputCls}
-                  style={{ color: "var(--t-primary)" }}
+                  className="font-mono"
                 />
               </div>
               <div>
                 <label className="text-[11px] font-medium uppercase tracking-wider mb-1 block" style={{ color: "var(--t-faint)" }}>
                   Chat ID
                 </label>
-                <input
+                <Input
                   value={chatId}
                   onChange={(e) => setChatId(e.target.value)}
                   placeholder="123456789"
-                  className={inputCls}
-                  style={{ color: "var(--t-primary)" }}
+                  className="font-mono"
                 />
               </div>
             </div>
@@ -447,39 +451,46 @@ export default function NotificationSettingsPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => tgMut.mutate()}
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Send size={13} />}
                 disabled={tgMut.isPending}
-                className="px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
+                loading={tgMut.isPending}
+                onClick={() => tgMut.mutate()}
+                className="from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500"
               >
-                {tgMut.isPending ? "..." : "Сохранить"}
-              </button>
+                Сохранить
+              </Button>
               {settings?.telegram_connected && (
                 <>
-                  <button
-                    onClick={() => { setTgError(""); testMut.mutate(); }}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<MessageCircle size={13} />}
                     disabled={testMut.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-white/[0.04] disabled:opacity-50"
-                    style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
+                    loading={testMut.isPending}
+                    onClick={() => { setTgError(""); testMut.mutate(); }}
                   >
-                    <MessageCircle size={13} /> {testMut.isPending ? "..." : "Тест"}
-                  </button>
-                  <button
-                    onClick={() => { if (confirm("Отключить Telegram-бота?")) disconnectMut.mutate(); }}
+                    Тест
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     disabled={disconnectMut.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium border transition-all hover:bg-red-500/10 disabled:opacity-50"
-                    style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+                    loading={disconnectMut.isPending}
+                    onClick={() => { if (confirm("Отключить Telegram-бота?")) disconnectMut.mutate(); }}
+                    className="text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/10"
                   >
-                    {disconnectMut.isPending ? "..." : "Отключить"}
-                  </button>
+                    Отключить
+                  </Button>
                 </>
               )}
             </div>
 
             {/* Instructions */}
-            <div className="rounded-lg p-3 space-y-2 text-[11px]" style={{ background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", color: "var(--t-faint)" }}>
+            <div className="rounded-lg p-3 space-y-2 text-[11px] bg-slate-50 dark:bg-white/[0.02]" style={{ color: "var(--t-faint)" }}>
               <p className="font-semibold" style={{ color: "var(--t-secondary)" }}>Как подключить:</p>
               <p>1. Откройте <span className="font-mono text-sky-400">@BotFather</span> в Telegram</p>
               <p>2. Отправьте <span className="font-mono text-sky-400">/newbot</span> и следуйте инструкциям</p>
@@ -488,11 +499,11 @@ export default function NotificationSettingsPage() {
               <p>5. Откройте <span className="font-mono text-sky-400 break-all">api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</span></p>
               <p>6. Найдите <span className="font-mono text-sky-400">chat.id</span> и вставьте в поле выше</p>
             </div>
-          </div>
+          </Card>
 
           {/* ── Rules ── */}
           {settings?.rules && settings.rules.length > 0 && (
-            <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: cardBorder, background: cardBg }}>
+            <Card padding="lg" className="space-y-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10">
                   <Zap size={16} className="text-purple-400" />
@@ -501,18 +512,21 @@ export default function NotificationSettingsPage() {
               </div>
               <div className="space-y-0.5">
                 {settings.rules.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between py-2.5 border-b" style={{ borderColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
+                  <div key={r.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-white/[0.04]">
                     <div>
                       <p className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>{r.title}</p>
                       {r.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>{r.description}</p>}
                     </div>
-                    <span className={clsx("text-[11px] font-semibold px-2 py-0.5 rounded-md", r.enabled ? "text-emerald-400 bg-emerald-500/10" : "text-red-400 bg-red-500/10")}>
+                    <span className={r.enabled
+                      ? "text-[11px] font-semibold px-2 py-0.5 rounded-md text-emerald-400 bg-emerald-500/10"
+                      : "text-[11px] font-semibold px-2 py-0.5 rounded-md text-red-400 bg-red-500/10"
+                    }>
                       {r.enabled ? "Вкл" : "Выкл"}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
         </div>

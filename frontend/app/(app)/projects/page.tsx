@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FolderOpen } from "lucide-react";
+import { Plus, FolderOpen, AlertCircle } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
 import { Button } from "@/components/primitives/Button";
+import { Chip } from "@/components/primitives/Chip";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 const STATUSES = [
   { value: undefined, label: "Активные" },
@@ -27,19 +29,15 @@ export default function ProjectsPage() {
       <main className="flex-1 overflow-auto p-6 max-w-[1400px]">
         {/* Controls */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl p-1">
             {STATUSES.map(({ value, label }) => (
-              <button
+              <Chip
                 key={label}
+                label={label}
+                size="sm"
+                selected={status === value}
                 onClick={() => setStatus(value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  status === value
-                    ? "bg-white/[0.09] text-white shadow-sm"
-                    : "text-white/65 hover:text-white/65"
-                }`}
-              >
-                {label}
-              </button>
+              />
             ))}
           </div>
 
@@ -50,11 +48,12 @@ export default function ProjectsPage() {
           </Link>
         </div>
 
-        {/* Error */}
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
-            Не удалось загрузить проекты
-          </p>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить проекты"
+            size="md"
+          />
         )}
 
         {/* Loading */}
@@ -75,18 +74,18 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {projects && projects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-28 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-5">
-              <FolderOpen size={24} className="text-white/50" />
-            </div>
-            <p className="text-sm font-medium text-white/65">Проектов пока нет</p>
-            <p className="text-xs text-white/55 mt-1 mb-5">Создайте первый проект, чтобы начать работу</p>
-            <Link href="/projects/new" className="inline-flex">
-              <Button variant="primary" size="sm">Создать проект →</Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={<FolderOpen size={24} />}
+            title="Проектов пока нет"
+            description="Создайте первый проект, чтобы начать работу"
+            size="lg"
+            action={
+              <Link href="/projects/new" className="inline-flex">
+                <Button variant="primary" size="sm">Создать проект →</Button>
+              </Link>
+            }
+          />
         )}
       </main>
     </>

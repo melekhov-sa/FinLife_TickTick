@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
+import { RefreshCw, Pencil, Check, X, Archive, RotateCcw, AlertCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { api } from "@/lib/api";
@@ -9,8 +9,12 @@ import type { TaskTemplateItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
+import { Chip } from "@/components/primitives/Chip";
+import { Card } from "@/components/primitives/Card";
+import { Select, type SelectOption } from "@/components/primitives/Select";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -36,7 +40,7 @@ const TABS = [
 
 type TabArchived = (typeof TABS)[number]["value"];
 
-const FREQ_OPTIONS = [
+const FREQ_OPTIONS: SelectOption[] = [
   { value: "DAILY",   label: "Ежедневно" },
   { value: "WEEKLY",  label: "Еженедельно" },
   { value: "MONTHLY", label: "Ежемесячно" },
@@ -109,6 +113,14 @@ function TemplateRow({
 
   const { mutate: update, isPending } = useUpdateTemplate();
 
+  const catOptions: SelectOption[] = [
+    { value: "", label: "— Без категории —" },
+    ...categories.filter((c) => !c.is_archived).map((c) => ({
+      value: String(c.category_id),
+      label: `${c.emoji ? c.emoji + " " : ""}${c.title}`,
+    })),
+  ];
+
   function startEdit() {
     setEditTitle(item.title);
     setEditNote(item.note ?? "");
@@ -134,11 +146,11 @@ function TemplateRow({
     setEditing(false);
   }
 
-  const inputCls = "w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40";
+  const rowBorder = !isLast ? "border-b border-slate-100 dark:border-white/[0.05]" : "";
 
   if (editing) {
     return (
-      <div className={`px-4 py-3 space-y-2 ${!isLast ? "border-b border-white/[0.05]" : ""}`}>
+      <div className={`px-4 py-3 space-y-2 ${rowBorder}`}>
         <div className="flex gap-2">
           <Input
             value={editTitle}
@@ -177,16 +189,13 @@ function TemplateRow({
         />
 
         <div className="flex gap-2">
-          <select
+          <Select
             value={editFreq}
-            onChange={(e) => setEditFreq(e.target.value)}
-            className={`flex-1 ${inputCls}`}
-            style={{ color: "var(--t-secondary)" }}
-          >
-            {FREQ_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={setEditFreq}
+            options={FREQ_OPTIONS}
+            size="sm"
+            className="flex-1"
+          />
           <Input
             type="number"
             min="1"
@@ -199,19 +208,13 @@ function TemplateRow({
         </div>
 
         <div className="flex gap-2">
-          <select
+          <Select
             value={editCatId}
-            onChange={(e) => setEditCatId(e.target.value)}
-            className={`flex-1 ${inputCls}`}
-            style={{ color: "var(--t-secondary)" }}
-          >
-            <option value="">— Без категории —</option>
-            {categories.filter((c) => !c.is_archived).map((c) => (
-              <option key={c.category_id} value={c.category_id}>
-                {c.emoji ? `${c.emoji} ` : ""}{c.title}
-              </option>
-            ))}
-          </select>
+            onChange={setEditCatId}
+            options={catOptions}
+            size="sm"
+            className="flex-1"
+          />
           <Input
             type="date"
             value={editActiveUntil}
@@ -226,9 +229,7 @@ function TemplateRow({
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors group/row ${
-        !isLast ? "border-b border-white/[0.05]" : ""
-      }`}
+      className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group/row ${rowBorder}`}
     >
       <span className="text-base shrink-0">
         {item.category_emoji ?? "🔄"}
@@ -265,7 +266,7 @@ function TemplateRow({
           <Tooltip content="Редактировать">
             <button
               onClick={startEdit}
-              className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+              className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all"
               style={{ color: "var(--t-faint)" }}
             >
               <Pencil size={11} />
@@ -275,7 +276,7 @@ function TemplateRow({
         <Tooltip content={archived ? "Восстановить" : "В архив"}>
           <button
             onClick={() => archived ? restoreTemplate() : archiveTemplate()}
-            className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all"
+            className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all"
             style={{ color: "var(--t-faint)" }}
           >
             {archived ? <RotateCcw size={11} /> : <Archive size={11} />}
@@ -300,25 +301,21 @@ export default function RecurringTasksPage() {
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs + count */}
         <div className="flex items-center justify-between mb-3 md:mb-5">
-          <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
             {TABS.map(({ value, label }) => (
-              <button
+              <Chip
                 key={String(value)}
+                label={label}
+                size="sm"
+                selected={archived === value}
                 onClick={() => setArchived(value)}
-                className={`px-2.5 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg text-[11px] md:text-xs font-medium transition-colors ${
-                  archived === value
-                    ? "bg-white/[0.09] text-white shadow-sm"
-                    : "text-white/55 hover:text-white/80"
-                }`}
-              >
-                {label}
-              </button>
+              />
             ))}
           </div>
 
           {templates && templates.length > 0 && (
             <span
-              className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06]"
+              className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06]"
               style={{ color: "var(--t-faint)" }}
             >
               {templates.length}
@@ -337,35 +334,24 @@ export default function RecurringTasksPage() {
 
         {/* Error */}
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
-            Не удалось загрузить шаблоны
-          </p>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить шаблоны"
+            size="md"
+          />
         )}
 
         {/* List */}
         {!isLoading && !isError && (
-          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
-            {/* Empty state */}
+          <Card padding="none" className="overflow-hidden rounded-xl md:rounded-2xl">
             {templates && templates.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
-                  <RefreshCw size={18} className="text-white/30" />
-                </div>
-                <p className="text-[13px] md:text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                  Нет повторяющихся задач
-                </p>
-                {!archived && (
-                  <a
-                    href="/legacy/tasks?mode=recurring"
-                    className="mt-2 text-xs font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-                  >
-                    Создать в старом интерфейсе
-                  </a>
-                )}
-              </div>
+              <EmptyState
+                icon={<RefreshCw size={18} />}
+                title="Нет повторяющихся задач"
+                size="sm"
+              />
             )}
 
-            {/* Rows */}
             {templates && templates.map((item, i) => (
               <TemplateRow
                 key={item.template_id}
@@ -375,19 +361,7 @@ export default function RecurringTasksPage() {
                 archived={archived}
               />
             ))}
-          </div>
-        )}
-
-        {/* Link to legacy for creating */}
-        {!isLoading && !isError && templates && templates.length > 0 && !archived && (
-          <div className="mt-4 text-center">
-            <a
-              href="/legacy/tasks?mode=recurring"
-              className="text-[11px] font-medium text-indigo-400/50 hover:text-indigo-400/80 transition-colors"
-            >
-              Управление в старом интерфейсе
-            </a>
-          </div>
+          </Card>
         )}
       </main>
     </>

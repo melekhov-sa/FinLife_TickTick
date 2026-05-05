@@ -9,10 +9,10 @@ import {
   User, Bell, Database, Shield, Users, Palette,
   ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap, Sparkles,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useMe } from "@/hooks/useMe";
-import { clsx } from "clsx";
 import { Switch } from "@/components/primitives/Switch";
+import { Button } from "@/components/primitives/Button";
+import { Card } from "@/components/primitives/Card";
 
 // ── PWA Install Hook ─────────────────────────────────────────────────────────
 
@@ -21,7 +21,6 @@ function usePwaInstall() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
       return;
@@ -32,7 +31,6 @@ function usePwaInstall() {
       setDeferredPrompt(e);
     }
     window.addEventListener("beforeinstallprompt", handler);
-
     window.addEventListener("appinstalled", () => setIsInstalled(true));
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -52,41 +50,11 @@ function usePwaInstall() {
 // ── Settings Items ───────────────────────────────────────────────────────────
 
 const SETTINGS_ITEMS = [
-  {
-    href: "/profile",
-    icon: User,
-    label: "Профиль",
-    desc: "Аккаунт, XP, активность",
-    color: "#6366f1",
-  },
-  {
-    href: "/notifications",
-    icon: Bell,
-    label: "Уведомления",
-    desc: "Список уведомлений",
-    color: "#f59e0b",
-  },
-  {
-    href: "/work-categories",
-    icon: Database,
-    label: "Категории дел",
-    desc: "Типы задач и привычек",
-    color: "#8b5cf6",
-  },
-  {
-    href: "/task-presets",
-    icon: Shield,
-    label: "Шаблоны задач",
-    desc: "Быстрое создание из шаблонов",
-    color: "#06b6d4",
-  },
-  {
-    href: "/settings/theme",
-    icon: Palette,
-    label: "Тема оформления",
-    desc: "Obsidian, Graphite, Midnight, Snow, Emerald",
-    color: "#ec4899",
-  },
+  { href: "/profile",          icon: User,    label: "Профиль",           desc: "Аккаунт, XP, активность",                          color: "#6366f1" },
+  { href: "/notifications",    icon: Bell,    label: "Уведомления",       desc: "Список уведомлений",                               color: "#f59e0b" },
+  { href: "/work-categories",  icon: Database,label: "Категории дел",     desc: "Типы задач и привычек",                            color: "#8b5cf6" },
+  { href: "/task-presets",     icon: Shield,  label: "Шаблоны задач",     desc: "Быстрое создание из шаблонов",                     color: "#06b6d4" },
+  { href: "/settings/theme",   icon: Palette, label: "Тема оформления",   desc: "Obsidian, Graphite, Midnight, Snow, Emerald",      color: "#ec4899" },
 ];
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -129,36 +97,40 @@ function PushActions() {
   }
 
   return (
-    <div className="p-3 rounded-xl border space-y-3" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+    <Card padding="sm" className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<Smartphone size={14} />}
+          disabled={busy}
+          loading={busy}
           onClick={handleReconnect}
-          disabled={busy}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
-          style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
         >
-          <Smartphone size={14} />
-          {busy ? "..." : "Подключить push"}
-        </button>
-        <button
+          Подключить push
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<Zap size={14} />}
+          disabled={busy}
+          loading={busy}
           onClick={handleTest}
-          disabled={busy}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 touch-manipulation"
-          style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}
+          className="from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500"
         >
-          <Zap size={14} />
-          {busy ? "..." : "Тест push"}
-        </button>
+          Тест push
+        </Button>
       </div>
       {result && (
-        <p className={clsx(
-          "text-[12px] font-medium",
-          result.includes("отправлен") || result.includes("подключены") ? "text-emerald-400" : "text-amber-400"
-        )}>
+        <p className={
+          result.includes("отправлен") || result.includes("подключены")
+            ? "text-[12px] font-medium text-emerald-400"
+            : "text-[12px] font-medium text-amber-400"
+        }>
           {result}
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -175,7 +147,7 @@ function AiDigestToggle() {
   const enabled = me.ai_digest_enabled;
 
   return (
-    <div className="flex items-start gap-4 p-4 rounded-xl border" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+    <Card padding="md" className="flex items-start gap-4">
       <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/10">
         <Sparkles size={18} className="text-violet-400" />
       </div>
@@ -199,13 +171,11 @@ function AiDigestToggle() {
           </span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
 export default function SettingsPage() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
   const pwa = usePwaInstall();
   const { data: me } = useMe();
 
@@ -217,9 +187,6 @@ export default function SettingsPage() {
 
   const tgConnected = notifSettings?.telegram_connected ?? false;
 
-  const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const cardBg = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
-
   return (
     <>
       <AppTopbar title="Настройки" />
@@ -227,10 +194,7 @@ export default function SettingsPage() {
         <div className="max-w-lg space-y-6">
 
           {/* ── Notifications Setup Banner ── */}
-          <div
-            className="rounded-xl border p-5 space-y-4"
-            style={{ borderColor: cardBorder, background: cardBg }}
-          >
+          <Card padding="lg" className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10">
                 <Bell size={16} className="text-amber-400" />
@@ -241,10 +205,7 @@ export default function SettingsPage() {
             </div>
 
             {/* PWA Install */}
-            <div
-              className="flex items-start gap-4 p-4 rounded-xl border"
-              style={{ borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}
-            >
+            <Card padding="md" className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-indigo-500/10">
                 <Smartphone size={18} className="text-indigo-400" />
               </div>
@@ -265,13 +226,9 @@ export default function SettingsPage() {
                 {!pwa.isInstalled && (
                   <div className="mt-3">
                     {pwa.canInstall ? (
-                      <button
-                        onClick={pwa.install}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
-                        style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}
-                      >
-                        <Download size={14} /> Установить приложение
-                      </button>
+                      <Button variant="primary" size="sm" leftIcon={<Download size={14} />} onClick={pwa.install}>
+                        Установить приложение
+                      </Button>
                     ) : (
                       <div className="space-y-2">
                         <p className="text-[11px] font-medium" style={{ color: "var(--t-secondary)" }}>
@@ -287,16 +244,13 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* Test Push Button */}
             <PushActions />
 
             {/* Telegram Bot */}
-            <div
-              className="flex items-start gap-4 p-4 rounded-xl border"
-              style={{ borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }}
-            >
+            <Card padding="md" className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-sky-500/10">
                 <Send size={18} className="text-sky-400" />
               </div>
@@ -327,16 +281,13 @@ export default function SettingsPage() {
                   </Link>
                 </div>
               </div>
-            </div>
-          </div>
+            </Card>
+          </Card>
 
           {/* ── AI Digest Toggle ── */}
-          <div
-            className="rounded-xl border p-5"
-            style={{ borderColor: cardBorder, background: cardBg }}
-          >
+          <Card padding="lg">
             <AiDigestToggle />
-          </div>
+          </Card>
 
           {/* ── Settings Links ── */}
           <div className="space-y-2">
@@ -346,8 +297,7 @@ export default function SettingsPage() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01]"
-                  style={{ borderColor: cardBorder, background: cardBg }}
+                  className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]"
                 >
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
@@ -372,8 +322,7 @@ export default function SettingsPage() {
             {notifSettings && me?.is_admin && (
               <Link
                 href="/contacts"
-                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01]"
-                style={{ borderColor: cardBorder, background: cardBg }}
+                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]"
               >
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#10b98112" }}>
                   <Users size={18} style={{ color: "#10b981" }} />
@@ -385,12 +334,12 @@ export default function SettingsPage() {
                 <ChevronRight size={16} style={{ color: "var(--t-faint)" }} className="shrink-0" />
               </Link>
             )}
-            {/* AI Settings -- admin only */}
+
+            {/* AI Settings — admin only */}
             {me?.is_admin && (
               <Link
                 href="/settings/ai"
-                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01]"
-                style={{ borderColor: cardBorder, background: cardBg }}
+                className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]"
               >
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#8b5cf612" }}>
                   <Sparkles size={18} style={{ color: "#8b5cf6" }} />

@@ -14,6 +14,9 @@ import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { Card } from "@/components/primitives/Card";
+import { Chip } from "@/components/primitives/Chip";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -190,17 +193,17 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 select-none">
+    <Card padding="md" className="select-none">
       <div className="flex items-center justify-between mb-3">
-        <button onClick={onPrevMonth} className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors" style={{ color: "var(--t-faint)" }}>
+        <Button variant="ghost" iconOnly size="xs" onClick={onPrevMonth}>
           <ChevronLeft size={14} />
-        </button>
+        </Button>
         <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
           {RU_MONTHS_FULL[month]} {year}
         </span>
-        <button onClick={onNextMonth} className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors" style={{ color: "var(--t-faint)" }}>
+        <Button variant="ghost" iconOnly size="xs" onClick={onNextMonth}>
           <ChevronRight size={14} />
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-7 mb-1">
@@ -238,15 +241,11 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
       </div>
 
       {selectedDate && (
-        <button
-          onClick={() => onSelectDate(null)}
-          className="mt-2.5 w-full text-[11px] py-1 rounded-lg hover:bg-white/[0.06] transition-colors"
-          style={{ color: "var(--t-faint)" }}
-        >
+        <Button variant="ghost" size="xs" fullWidth onClick={() => onSelectDate(null)} className="mt-2.5 text-[11px]">
           Показать все →
-        </button>
+        </Button>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -268,14 +267,17 @@ function QuickAddRow({ date }: { date: string }) {
 
   if (!active) {
     return (
-      <button
+      <Button
+        variant="ghost"
+        size="xs"
+        fullWidth
+        leftIcon={<Plus size={11} />}
         onClick={() => { setActive(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-        className="flex items-center gap-1.5 w-full py-1.5 px-3.5 text-[12px] transition-colors hover:bg-white/[0.02]"
+        className="justify-start px-3.5 h-auto py-1.5 text-[12px]"
         style={{ color: "var(--t-faint)" }}
       >
-        <Plus size={11} />
         Добавить событие
-      </button>
+      </Button>
     );
   }
 
@@ -392,7 +394,7 @@ export default function EventsPage() {
               }}
             />
             {/* Stats */}
-            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 space-y-2.5">
+            <Card padding="md" className="space-y-2.5">
               <div className="flex items-center justify-between text-[12px]">
                 <span style={{ color: "var(--t-faint)" }}>Сегодня</span>
                 <span className="font-semibold tabular-nums" style={{ color: "var(--t-primary)" }}>{todayCount}</span>
@@ -401,7 +403,7 @@ export default function EventsPage() {
                 <span style={{ color: "var(--t-faint)" }}>Впереди</span>
                 <span className="font-semibold tabular-nums" style={{ color: "var(--t-primary)" }}>{upcoming}</span>
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* ── Events list ── */}
@@ -444,31 +446,17 @@ export default function EventsPage() {
             {/* Category filters */}
             {categories.length > 0 && (
               <div className="flex items-center gap-1.5 mb-4 flex-wrap">
-                <button
-                  onClick={() => setCatFilter(null)}
-                  className={clsx(
-                    "px-3 py-1 rounded-full text-[12px] font-medium transition-colors border",
-                    !catFilter ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.07]"
-                  )}
-                  style={{ color: catFilter ? "var(--t-secondary)" : undefined }}
-                >
-                  Все
-                </button>
+                <Chip label="Все" selected={!catFilter} variant="accent" size="sm" onClick={() => setCatFilter(null)} />
                 {categories.map((cat) => (
-                  <button
+                  <Chip
                     key={cat.title}
+                    label={cat.title}
+                    emoji={cat.emoji ?? undefined}
+                    selected={catFilter === cat.title}
+                    variant="accent"
+                    size="sm"
                     onClick={() => setCatFilter(catFilter === cat.title ? null : cat.title)}
-                    className={clsx(
-                      "px-3 py-1 rounded-full text-[12px] font-medium transition-colors border flex items-center gap-1",
-                      catFilter === cat.title
-                        ? "bg-indigo-600 border-indigo-600 text-white"
-                        : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.07]"
-                    )}
-                    style={{ color: catFilter === cat.title ? undefined : "var(--t-secondary)" }}
-                  >
-                    {cat.emoji && <span>{cat.emoji}</span>}
-                    {cat.title}
-                  </button>
+                  />
                 ))}
               </div>
             )}
@@ -489,19 +477,13 @@ export default function EventsPage() {
 
             {/* Empty */}
             {!isLoading && !isError && groups.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-                  <CalendarDays size={20} style={{ color: "var(--t-faint)" }} />
-                </div>
-                <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                  {search || catFilter || selectedDate ? "Ничего не найдено" : `Нет событий на ближайшие ${days} дней`}
-                </p>
-                {!search && !catFilter && !selectedDate && (
-                  <Button variant="link" size="sm" onClick={() => setShowModal(true)} className="text-indigo-400/60 hover:text-indigo-400 px-0">
-                    + Создать событие
-                  </Button>
-                )}
-              </div>
+              <EmptyState
+                icon={<CalendarDays size={20} />}
+                title={search || catFilter || selectedDate ? "Ничего не найдено" : `Нет событий на ближайшие ${days} дней`}
+                action={!search && !catFilter && !selectedDate ? (
+                  <Button variant="link" size="sm" onClick={() => setShowModal(true)}>+ Создать событие</Button>
+                ) : undefined}
+              />
             )}
 
             {/* Grouped list */}

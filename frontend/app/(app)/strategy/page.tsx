@@ -4,6 +4,10 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { useStrategy } from "@/hooks/useStrategy";
 import type { StrategyScoreItem, StrategyHistoryPoint, StrategyTarget } from "@/types/api";
 import { SectionHeader } from "@/components/primitives/SectionHeader";
+import { Card } from "@/components/primitives/Card";
+import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
+import { AlertCircle } from "lucide-react";
 
 const RU_MONTHS = [
   "", "янв", "фев", "мар", "апр", "май", "июн",
@@ -53,25 +57,25 @@ function LifeScoreRing({ score }: { score: number }) {
 
 function ScoreCard({ item }: { item: StrategyScoreItem }) {
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-4 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors">
+    <Card padding="md" hover>
       <div className="flex items-center justify-between mb-2.5">
-        <span className="text-sm font-semibold text-white/80" style={{ letterSpacing: "-0.01em" }}>
+        <span className="text-sm font-semibold" style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}>
           {item.label}
         </span>
         <span className={`text-lg font-semibold tabular-nums ${scoreColor(item.score)}`} style={{ letterSpacing: "-0.03em" }}>
           {Math.round(item.score)}
         </span>
       </div>
-      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${scoreBarColor(item.score)}`}
           style={{ width: `${item.score}%`, boxShadow: scoreGlow(item.score) }}
         />
       </div>
       {item.raw_label && (
-        <div className="text-xs text-white/65 mt-2">{item.raw_label}</div>
+        <div className="text-xs mt-2" style={{ color: "var(--t-faint)" }}>{item.raw_label}</div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -92,8 +96,8 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
   const last = pts[pts.length - 1];
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
-      <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-4">
+    <Card padding="lg">
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--t-faint)" }}>
         История (12 мес.)
       </p>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 64 }}>
@@ -112,11 +116,11 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
           </>
         )}
       </svg>
-      <div className="flex justify-between text-[10px] font-medium text-white/55 mt-2">
+      <div className="flex justify-between text-[10px] font-medium mt-2" style={{ color: "var(--t-faint)" }}>
         <span>{RU_MONTHS[history[0]?.month]} {history[0]?.year}</span>
         <span>{RU_MONTHS[history[history.length - 1]?.month]} {history[history.length - 1]?.year}</span>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -124,22 +128,51 @@ function TargetRow({ target }: { target: StrategyTarget }) {
   const pct = target.progress_pct ?? 0;
   const barColor = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-indigo-500";
   return (
-    <div className="py-3 border-b border-white/[0.04] last:border-0">
+    <div className="py-3 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm text-white/80 font-medium">{target.title}</span>
-        <span className={`text-xs font-semibold tabular-nums ${pct >= 100 ? "text-emerald-400" : pct >= 60 ? "text-amber-400" : "text-white/72"}`}>
+        <span className="text-sm font-medium" style={{ color: "var(--t-primary)" }}>{target.title}</span>
+        <span className={`text-xs font-semibold tabular-nums ${pct >= 100 ? "text-emerald-400" : pct >= 60 ? "text-amber-400" : ""}`}
+          style={pct < 60 ? { color: "var(--t-secondary)" } : undefined}>
           {pct >= 100 ? "✓" : `${Math.round(pct)}%`}
         </span>
       </div>
-      <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
+      <div className="h-1 bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
         <div
           className={`${barColor} h-full rounded-full transition-all`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <div className="text-[11px] text-white/60 mt-1 tabular-nums">
+      <div className="text-[11px] mt-1 tabular-nums" style={{ color: "var(--t-faint)" }}>
         {target.current_value !== null ? `${target.current_value}` : "—"} / цель {target.target_value}
       </div>
+    </div>
+  );
+}
+
+function StrategySkeleton() {
+  return (
+    <div className="space-y-5">
+      <Card padding="lg" className="text-center">
+        <Skeleton variant="circle" width={148} height={148} className="mx-auto" />
+        <Skeleton variant="title" width={160} className="mx-auto mt-4" />
+        <Skeleton variant="text" width={80} className="mx-auto mt-2" />
+      </Card>
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i} padding="md">
+            <Skeleton variant="text" width="60%" className="mb-3" />
+            <Skeleton variant="rect" height={6} />
+          </Card>
+        ))}
+      </div>
+      <Card padding="lg">
+        <Skeleton variant="text" width={120} className="mb-4" />
+        <Skeleton variant="rect" height={64} />
+        <div className="flex justify-between mt-2">
+          <Skeleton variant="text" width={40} />
+          <Skeleton variant="text" width={40} />
+        </div>
+      </Card>
     </div>
   );
 }
@@ -157,20 +190,20 @@ export default function StrategyPage() {
     <>
       <AppTopbar title="Аналитика" subtitle={dateSubtitle} />
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
-        {isLoading && (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          </div>
-        )}
+        {isLoading && <StrategySkeleton />}
+
         {isError && (
-          <div className="text-white/68 text-sm text-center mt-12">
-            Не удалось загрузить данные стратегии
-          </div>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить данные стратегии"
+            size="md"
+          />
         )}
+
         {data && (
           <div className="space-y-5">
             {/* Life Score ring */}
-            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-6 text-center">
+            <Card padding="lg" className="text-center">
               <LifeScoreRing score={data.life_score} />
               <div
                 className={`mt-3 text-xl font-semibold ${scoreColor(data.life_score)}`}
@@ -182,10 +215,10 @@ export default function StrategyPage() {
                   ? "Есть над чем работать"
                   : "Требует внимания"}
               </div>
-              <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-2">
+              <div className="text-[10px] font-semibold uppercase tracking-widest mt-2" style={{ color: "var(--t-faint)" }}>
                 {RU_MONTHS[data.month]} {data.year}
               </div>
-            </div>
+            </Card>
 
             {/* Scores section */}
             <div className="px-1">
@@ -208,20 +241,13 @@ export default function StrategyPage() {
                 <div className="px-1">
                   <SectionHeader title="Цели" size="sm" />
                 </div>
-                <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5">
+                <Card padding="lg">
                   {data.targets.map((t) => (
                     <TargetRow key={t.id} target={t} />
                   ))}
-                </div>
+                </Card>
               </>
             )}
-
-            <a
-              href="/legacy/strategy"
-              className="block text-center text-xs font-medium text-white/60 hover:text-white/55 transition-colors py-2"
-            >
-              Подробная стратегия →
-            </a>
           </div>
         )}
       </main>

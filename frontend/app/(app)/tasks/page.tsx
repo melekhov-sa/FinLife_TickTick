@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Plus, CheckCircle2, ClipboardList } from "lucide-react";
+import { Plus, CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
 import type { TaskItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
+import { Chip } from "@/components/primitives/Chip";
+import { Card } from "@/components/primitives/Card";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
@@ -166,25 +169,20 @@ export default function TasksPage() {
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Controls */}
         <div className="flex items-center justify-between mb-3 md:mb-5">
-          <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
             {TABS.map(({ value, label }) => (
-              <button
+              <Chip
                 key={value}
+                label={label}
+                size="sm"
+                selected={status === value}
                 onClick={() => handleTabChange(value)}
-                className={`px-2.5 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg text-[11px] md:text-xs font-medium transition-colors ${
-                  status === value
-                    ? "bg-white/[0.09] text-white shadow-sm"
-                    : "text-white/55 hover:text-white/80"
-                }`}
-              >
-                {label}
-              </button>
+              />
             ))}
           </div>
 
-          {/* Count badge */}
           {tasks && tasks.length > 0 && (
-            <span className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06]"
+            <span className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06]"
               style={{ color: "var(--t-faint)" }}>
               {tasks.length}
             </span>
@@ -200,20 +198,21 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Error */}
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
-            Не удалось загрузить задачи
-          </p>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить задачи"
+            size="md"
+          />
         )}
 
         {/* Task list + quick-add */}
         {!isLoading && !isError && (
-          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
+          <Card padding="none" className="overflow-hidden rounded-xl md:rounded-2xl">
 
             {/* Quick-add row (active tab only) */}
             {status === "ACTIVE" && (
-              <div className="flex items-center gap-2 px-3 py-2 md:py-2.5 border-b border-white/[0.05] bg-indigo-500/[0.03]">
+              <div className="flex items-center gap-2 px-3 py-2 md:py-2.5 border-b border-slate-100 dark:border-white/[0.05] bg-indigo-500/[0.03]">
                 <button
                   onClick={submitQuickAdd}
                   className="shrink-0 w-5 h-5 rounded-full border-[1.5px] border-indigo-400/30 flex items-center justify-center hover:border-indigo-400/60 hover:bg-indigo-500/10 transition-all"
@@ -229,7 +228,7 @@ export default function TasksPage() {
                     if (e.key === "Escape") { setQuickTitle(""); quickInputRef.current?.blur(); }
                   }}
                   placeholder="Новая задача..."
-                  className="flex-1 bg-transparent outline-none text-base md:text-[14px] placeholder-indigo-300/25 font-medium"
+                  className="flex-1 bg-transparent outline-none text-base md:text-[14px] placeholder-slate-300 dark:placeholder-indigo-300/25 font-medium"
                   style={{ color: "var(--t-secondary)" }}
                 />
               </div>
@@ -237,30 +236,23 @@ export default function TasksPage() {
 
             {/* Empty state */}
             {tasks && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
-                  {status === "DONE" ? (
-                    <CheckCircle2 size={18} className="text-emerald-400/40" />
-                  ) : (
-                    <ClipboardList size={18} className="text-white/30" />
-                  )}
-                </div>
-                <p className="text-[13px] md:text-sm font-medium" style={{ color: "var(--t-muted)" }}>
-                  {status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
-                </p>
-                {status === "ACTIVE" && (
-                  <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="mt-2 text-indigo-400/60 hover:text-indigo-400 px-0">
+              <EmptyState
+                icon={status === "DONE" ? <CheckCircle2 size={18} /> : <ClipboardList size={18} />}
+                title={status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
+                size="sm"
+                action={status === "ACTIVE" ? (
+                  <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                     Напишите задачу выше
                   </Button>
-                )}
-              </div>
+                ) : undefined}
+              />
             )}
 
             {/* Rows */}
             {tasks && status !== "ACTIVE" && tasks.map((task, i) => (
               <div
                 key={task.task_id}
-                className={i < tasks.length - 1 ? "border-b border-white/[0.04]" : ""}
+                className={i < tasks.length - 1 ? "border-b border-slate-100 dark:border-white/[0.04]" : ""}
                 onDragEnter={() => onDragEnter(task.task_id)}
               >
                 <TaskRow
@@ -314,7 +306,7 @@ export default function TasksPage() {
                 </div>
               ));
             })()}
-          </div>
+          </Card>
         )}
       </main>
     </>

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
-import { Target } from "lucide-react";
+import { Target, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
+import { Card } from "@/components/primitives/Card";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { ProgressBar } from "@/components/primitives/ProgressBar";
@@ -52,7 +53,7 @@ function GoalCard({ goal }: { goal: GoalItem }) {
   const pct = Math.min(goal.percent ?? 0, 100);
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5 space-y-3 hover:bg-slate-100 dark:hover:bg-white/[0.045] transition-all">
+    <Card padding="lg" hover className="space-y-3">
       {/* Title row */}
       <div className="flex items-center justify-between gap-2">
         <h3
@@ -93,7 +94,7 @@ function GoalCard({ goal }: { goal: GoalItem }) {
         {goal.wallet_count}{" "}
         {goal.wallet_count === 1 ? "кошелёк" : goal.wallet_count >= 2 && goal.wallet_count <= 4 ? "кошелька" : "кошельков"}
       </p>
-    </div>
+    </Card>
   );
 }
 
@@ -126,21 +127,12 @@ export default function GoalsPage() {
             title="Накопительные цели"
             size="sm"
             actions={
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
-                  label="Архивные"
-                  size="sm"
-                />
-                <a
-                  href="/legacy/goals"
-                  className="text-[12px] font-medium transition-colors hover:text-indigo-400"
-                  style={{ color: "var(--t-muted)" }}
-                >
-                  Управление целями →
-                </a>
-              </div>
+              <Checkbox
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                label="Архивные"
+                size="sm"
+              />
             }
           />
         </div>
@@ -154,11 +146,12 @@ export default function GoalsPage() {
           </div>
         )}
 
-        {/* Error */}
         {isError && (
-          <p className="text-red-400/70 text-sm text-center py-12">
-            Не удалось загрузить цели
-          </p>
+          <EmptyState
+            icon={<AlertCircle size={24} />}
+            title="Не удалось загрузить цели"
+            size="md"
+          />
         )}
 
         {/* Goal grid */}
@@ -175,14 +168,6 @@ export default function GoalsPage() {
           <EmptyState
             icon={<Target size={24} />}
             title={showArchived ? "Нет архивных целей" : "Нет активных целей"}
-            action={!showArchived ? (
-              <a
-                href="/legacy/goals"
-                className="text-[13px] font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors"
-              >
-                Создать цель →
-              </a>
-            ) : undefined}
           />
         )}
       </main>

@@ -172,6 +172,27 @@
   --color-income:  #22C55E;
   --color-expense: #EF4444;
   --color-transfer: #3B82F6;
+
+  /* Semantic palette — bg/fg/ink триплеты под бейджи, чипы, тосты, AmountText */
+  --c-success-bg:   #ECFDF5;
+  --c-success-fg:   #047857;
+  --c-success-ink:  #059669;
+
+  --c-danger-bg:    #FEF2F2;
+  --c-danger-fg:    #B91C1C;
+  --c-danger-ink:   #DC2626;
+
+  --c-warning-bg:   #FFFBEB;
+  --c-warning-fg:   #B45309;
+  --c-warning-ink:  #D97706;
+
+  --c-info-bg:      #EFF6FF;
+  --c-info-fg:      #1D4ED8;
+  --c-info-ink:     #2563EB;
+
+  --c-neutral-bg:   #F1F5F9;
+  --c-neutral-fg:   #475569;
+  --c-neutral-ink:  #334155;
 }
 
 /* ── Desktop typography scale (≥768px) ─────────────────────────────────── */
@@ -223,6 +244,27 @@
   --color-income:  #4ADE80;
   --color-expense: #F87171;
   --color-transfer: #60A5FA;
+
+  /* Semantic palette — dark mode */
+  --c-success-bg:   rgba(16,185,129,.12);
+  --c-success-fg:   #6EE7B7;
+  --c-success-ink:  #34D399;
+
+  --c-danger-bg:    rgba(239,68,68,.13);
+  --c-danger-fg:    #FCA5A5;
+  --c-danger-ink:   #F87171;
+
+  --c-warning-bg:   rgba(245,158,11,.13);
+  --c-warning-fg:   #FCD34D;
+  --c-warning-ink:  #FBBF24;
+
+  --c-info-bg:      rgba(59,130,246,.14);
+  --c-info-fg:      #93C5FD;
+  --c-info-ink:     #60A5FA;
+
+  --c-neutral-bg:   rgba(148,163,184,.12);
+  --c-neutral-fg:   #CBD5E1;
+  --c-neutral-ink:  #94A3B8;
 }
 
 /* ── Light mode: white-opacity text → explicit grays ────────────────────── */
