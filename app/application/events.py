@@ -193,6 +193,9 @@ class CreateEventUseCase:
         self.db.commit()
         EventsProjector(self.db).run(account_id, event_types=["calendar_event_created"])
 
+        if freq:
+            OccurrenceGenerator(self.db).generate_event_occurrences(account_id)
+
         # Auto-create occurrence for one-time events
         if not freq and occ_start_date:
             CreateEventOccurrenceUseCase(self.db).execute(

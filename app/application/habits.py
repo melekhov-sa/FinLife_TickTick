@@ -12,6 +12,7 @@ from app.readmodels.projectors.habits import HabitsProjector
 from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
+from app.application.occurrence_generator import OccurrenceGenerator
 
 TOGGLE_WINDOW_DAYS = 14
 
@@ -89,6 +90,7 @@ class CreateHabitUseCase:
         )
         self.db.commit()
         HabitsProjector(self.db).run(account_id, event_types=["habit_created"])
+        OccurrenceGenerator(self.db).generate_habit_occurrences(account_id)
         return habit_id
 
     def _generate_id(self) -> int:

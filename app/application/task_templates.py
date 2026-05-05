@@ -10,6 +10,7 @@ from app.readmodels.projectors.task_templates import TaskTemplatesProjector
 from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
+from app.application.occurrence_generator import OccurrenceGenerator
 
 
 class TaskTemplateValidationError(ValueError):
@@ -78,6 +79,7 @@ class CreateTaskTemplateUseCase:
         )
         self.db.commit()
         TaskTemplatesProjector(self.db).run(account_id, event_types=["task_template_created"])
+        OccurrenceGenerator(self.db).generate_task_occurrences(account_id)
         return template_id
 
     def _generate_id(self) -> int:
