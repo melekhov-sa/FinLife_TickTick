@@ -10,6 +10,7 @@ import {
   Heart,
   ListChecks,
   Sparkles,
+  CalendarDays,
   ChevronsLeft,
   ChevronsRight,
   type LucideIcon,
@@ -26,6 +27,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Дашборд",  href: "/dashboard", icon: LayoutDashboard },
   { id: "plan",      label: "План",     href: "/plan",      icon: ClipboardList  },
+  { id: "events",    label: "События",  href: "/events",    icon: CalendarDays   },
   { id: "money",     label: "Деньги",   href: "/money",     icon: Wallet         },
   { id: "budget",    label: "Бюджет",   href: "/budget",    icon: PieChart       },
   { id: "habits",    label: "Привычки", href: "/habits",    icon: Heart          },
@@ -47,6 +49,9 @@ function isActive(href: string, pathname: string | null): boolean {
   }
   if (href === "/budget") {
     return pathname.startsWith("/budget") || pathname.startsWith("/planned-ops");
+  }
+  if (href === "/events") {
+    return pathname.startsWith("/events") || pathname.startsWith("/event-templates");
   }
   return pathname === href || pathname.startsWith(href + "/");
 }

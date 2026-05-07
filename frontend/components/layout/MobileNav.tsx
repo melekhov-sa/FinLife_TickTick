@@ -22,8 +22,10 @@ export function MobileNav({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
-  const isActive = (href: string) =>
-    pathname === href || pathname?.startsWith(href + "/");
+  const isActive = (href: string) => {
+    if (href === "/events") return !!(pathname?.startsWith("/events") || pathname?.startsWith("/event-templates"));
+    return pathname === href || pathname?.startsWith(href + "/");
+  };
 
   const handleCreate = () => {
     // Если переданы оба — показываем меню выбора.
