@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.v2.deps import get_user_id
+from app.application.occurrence_generator import OccurrenceGenerator
 from app.infrastructure.db.models import EventOccurrenceModel, CalendarEventModel, WorkCategory
 from app.infrastructure.db.session import get_db
 
@@ -60,6 +61,8 @@ def get_events(
     user_id: int = Depends(get_user_id),
     db: Session = Depends(get_db),
 ):
+    OccurrenceGenerator(db).generate_event_occurrences(user_id)
+
     today = date.today()
     until = today + timedelta(days=days)
 
