@@ -530,6 +530,7 @@ class TaskOccurrence(Base):
     template_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
     scheduled_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    display_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)  # set when rescheduled
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="ACTIVE")  # ACTIVE/DONE/SKIPPED
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
@@ -576,6 +577,7 @@ class OperationOccurrence(Base):
     template_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
     scheduled_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    display_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)  # set when rescheduled
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="ACTIVE")  # ACTIVE/DONE/SKIPPED
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     transaction_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> transactions_feed (when confirmed)

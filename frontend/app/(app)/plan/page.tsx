@@ -866,6 +866,9 @@ export default function PlanPage() {
       if (kind === "planned_op") {
         return api.patch(`/api/v2/planned-ops/occurrences/${id}`, { scheduled_date: newDate });
       }
+      if (kind === "task_occ") {
+        return api.post(`/api/v2/task-occurrences/${id}/reschedule`, { new_date: newDate });
+      }
       throw new Error("Unsupported kind: " + kind);
     },
     onMutate: async ({ kind, id, newDate }) => {

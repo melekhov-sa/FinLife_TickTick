@@ -168,7 +168,9 @@ def update_planned_op_occurrence(
         new_date = date.fromisoformat(body.scheduled_date)
     except ValueError:
         raise HTTPException(status_code=400, detail="Некорректная дата")
-    occ.scheduled_date = new_date
+    # display_date overrides the shown date without touching scheduled_date,
+    # so the generator's idempotency check stays intact.
+    occ.display_date = new_date
     db.commit()
     return {"ok": True}
 

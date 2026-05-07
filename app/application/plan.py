@@ -224,24 +224,26 @@ def _query_task_occurrences(
             ).first()
         return tmpl_cache[template_id]
 
+    _task_eff = func.coalesce(TaskOccurrence.display_date, TaskOccurrence.scheduled_date)
+
     if tab == "active":
-        # In-range
+        # In-range (use effective display date)
         rows = db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "ACTIVE",
-            TaskOccurrence.scheduled_date >= date_from,
-            TaskOccurrence.scheduled_date <= date_to,
+            _task_eff >= date_from,
+            _task_eff <= date_to,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
                 items.append(_task_occ_to_item(occ, tmpl, today, wc_map))
 
-        # Overdue
+        # Overdue (effective date is in the past)
         overdue = db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "ACTIVE",
-            TaskOccurrence.scheduled_date < today,
+            _task_eff < today,
         ).all()
         for occ in overdue:
             tmpl = _get_tmpl(occ.template_id)
@@ -252,8 +254,8 @@ def _query_task_occurrences(
         rows = db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "DONE",
-            TaskOccurrence.scheduled_date >= date_from,
-            TaskOccurrence.scheduled_date <= date_to,
+            _task_eff >= date_from,
+            _task_eff <= date_to,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -274,12 +276,13 @@ def _query_task_occurrences(
 
 
 def _task_occ_to_item(occ: TaskOccurrence, tmpl: TaskTemplateModel, today: date, wc_map: dict) -> dict:
-    is_overdue = occ.status == "ACTIVE" and occ.scheduled_date < today
+    effective_date = occ.display_date or occ.scheduled_date
+    is_overdue = occ.status == "ACTIVE" and effective_date < today
     return {
         "kind": "task_occ",
         "id": occ.id,
         "title": tmpl.title,
-        "date": occ.scheduled_date,
+        "date": effective_date,
         "time": None,
         "is_done": occ.status == "DONE",
         "is_overdue": is_overdue,
@@ -399,24 +402,26 @@ def _query_operation_occurrences(
             ).first()
         return tmpl_cache[template_id]
 
+    _op_eff = func.coalesce(OperationOccurrence.display_date, OperationOccurrence.scheduled_date)
+
     if tab == "active":
-        # In-range
+        # In-range (use effective display date)
         rows = db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "ACTIVE",
-            OperationOccurrence.scheduled_date >= date_from,
-            OperationOccurrence.scheduled_date <= date_to,
+            _op_eff >= date_from,
+            _op_eff <= date_to,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
                 items.append(_op_occ_to_item(occ, tmpl, today, wc_map))
 
-        # Overdue
+        # Overdue (effective date is in the past)
         overdue = db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "ACTIVE",
-            OperationOccurrence.scheduled_date < today,
+            _op_eff < today,
         ).all()
         for occ in overdue:
             tmpl = _get_tmpl(occ.template_id)
@@ -427,8 +432,8 @@ def _query_operation_occurrences(
         rows = db.query(OperationOccurrence).filter(
             OperationOccurrence.account_id == account_id,
             OperationOccurrence.status == "DONE",
-            OperationOccurrence.scheduled_date >= date_from,
-            OperationOccurrence.scheduled_date <= date_to,
+            _op_eff >= date_from,
+            _op_eff <= date_to,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -448,12 +453,13 @@ def _query_operation_occurrences(
 
 
 def _op_occ_to_item(occ: OperationOccurrence, tmpl: OperationTemplateModel, today: date, wc_map: dict) -> dict:
-    is_overdue = occ.status == "ACTIVE" and occ.scheduled_date < today
+    effective_date = occ.display_date or occ.scheduled_date
+    is_overdue = occ.status == "ACTIVE" and effective_date < today
     return {
         "kind": "planned_op",
         "id": occ.id,
         "title": tmpl.title,
-        "date": occ.scheduled_date,
+        "date": effective_date,
         "time": None,
         "is_done": occ.status == "DONE",
         "is_overdue": is_overdue,

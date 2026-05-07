@@ -1043,3 +1043,33 @@ def skip_task_occurrence(occurrence_id: int, request: Request, db: Session = Dep
     except TaskTemplateValidationError:
         raise HTTPException(status_code=404, detail="Вхождение не найдено")
     return {"ok": True}
+
+
+class RescheduleTaskOccurrenceRequest(BaseModel):
+    new_date: str  # YYYY-MM-DD
+
+
+@router.post("/task-occurrences/{occurrence_id}/reschedule", status_code=200)
+def reschedule_task_occurrence(
+    occurrence_id: int,
+    body: RescheduleTaskOccurrenceRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    occ = db.query(TaskOccurrence).filter(
+        TaskOccurrence.id == occurrence_id,
+        TaskOccurrence.account_id == user_id,
+        TaskOccurrence.status == "ACTIVE",
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Вхождение не найдено")
+    try:
+        new_date = date.fromisoformat(body.new_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректная дата")
+    # display_date overrides the shown date without touching scheduled_date,
+    # so the generator's idempotency check stays intact.
+    occ.display_date = new_date
+    db.commit()
+    return {"ok": True}
