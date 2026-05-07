@@ -861,7 +861,7 @@ export default function PlanPage() {
         return api.patch(`/api/v2/tasks/${id}`, { due_date: newDate });
       }
       if (kind === "event") {
-        return api.patch(`/api/v2/events/occurrences/${id}`, { start_date: newDate });
+        return api.post(`/api/v2/events/occurrences/${id}/reschedule`, { new_date: newDate });
       }
       if (kind === "planned_op") {
         return api.patch(`/api/v2/planned-ops/occurrences/${id}`, { scheduled_date: newDate });

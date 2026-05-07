@@ -1,9 +1,10 @@
 """
-GET    /api/v2/events                          — upcoming event occurrences
-POST   /api/v2/events                          — create a one-time event
-PATCH  /api/v2/events/occurrences/{id}         — update occurrence + parent event
-DELETE /api/v2/events/occurrences/{id}         — cancel occurrence
-POST   /api/v2/events/occurrences/{id}/duplicate — duplicate occurrence
+GET    /api/v2/events                              — upcoming event occurrences
+POST   /api/v2/events                              — create a one-time event
+PATCH  /api/v2/events/occurrences/{id}             — update occurrence + parent event
+DELETE /api/v2/events/occurrences/{id}             — cancel occurrence
+POST   /api/v2/events/occurrences/{id}/duplicate   — duplicate occurrence
+POST   /api/v2/events/occurrences/{id}/reschedule  — reschedule a single occurrence
 """
 from datetime import date, time as t_time, timedelta
 
@@ -331,6 +332,52 @@ def duplicate_occurrence(
     db.commit()
     db.refresh(new_occ)
     return {"id": new_occ.id}
+
+
+class RescheduleOccurrenceRequest(BaseModel):
+    new_date: str  # YYYY-MM-DD
+
+
+@router.post("/events/occurrences/{occurrence_id}/reschedule", status_code=200)
+def reschedule_occurrence(
+    occurrence_id: int,
+    body: RescheduleOccurrenceRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    occ = db.query(EventOccurrenceModel).filter(
+        EventOccurrenceModel.id == occurrence_id,
+        EventOccurrenceModel.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+
+    try:
+        new_date = date.fromisoformat(body.new_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректная дата")
+
+    if occ.source == "rule":
+        # Cancel the rule-generated occurrence so the generator won't recreate it,
+        # then create a manual one on the new date.
+        occ.is_cancelled = True
+        new_occ = EventOccurrenceModel(
+            account_id=user_id,
+            event_id=occ.event_id,
+            start_date=new_date,
+            start_time=occ.start_time,
+            end_date=None,
+            is_cancelled=False,
+            source="manual",
+        )
+        db.add(new_occ)
+    else:
+        # Manual occurrence — just move it directly.
+        occ.start_date = new_date
+
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/event-templates")
