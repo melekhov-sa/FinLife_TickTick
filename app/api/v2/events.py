@@ -69,11 +69,13 @@ def get_events(
 
     occurrences = (
         db.query(EventOccurrenceModel)
+        .join(CalendarEventModel, CalendarEventModel.event_id == EventOccurrenceModel.event_id)
         .filter(
             EventOccurrenceModel.account_id == user_id,
             EventOccurrenceModel.start_date >= today.replace(day=1),
             EventOccurrenceModel.start_date <= until,
             EventOccurrenceModel.is_cancelled == False,  # noqa: E712
+            CalendarEventModel.is_active == True,  # noqa: E712
         )
         .order_by(
             EventOccurrenceModel.start_date,
