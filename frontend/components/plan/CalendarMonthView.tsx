@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { CalendarDayCell, type PlanEntry } from "./CalendarDayCell";
 
+const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
 interface HolidayInfo {
   name: string;
   icon: string;
@@ -94,8 +96,42 @@ export function CalendarMonthView({
   const todayISO = data.today;
   const currentMonth = monthStart.getMonth();
 
+  const horizonISO = useMemo(() => {
+    const d = new Date(data.today + "T00:00:00");
+    d.setDate(d.getDate() + 90);
+    return toISO(d);
+  }, [data.today]);
+
+  const horizonLabel = useMemo(() => {
+    const d = new Date(horizonISO + "T00:00:00");
+    return `${d.getDate()} ${RU_MONTHS[d.getMonth()]}`;
+  }, [horizonISO]);
+
+  const hasHorizonCells = useMemo(
+    () => cells.some((d) => d.getMonth() === currentMonth && toISO(d) > horizonISO),
+    [cells, currentMonth, horizonISO],
+  );
+
   return (
     <div className="w-full select-none">
+      {/* Horizon banner */}
+      {hasHorizonCells && (
+        <div className="flex items-center gap-2 mb-2.5 px-3 py-2 rounded-xl border text-[12px]"
+          style={{
+            background: "rgba(251,191,36,0.07)",
+            borderColor: "rgba(251,191,36,0.2)",
+            color: "var(--t-secondary)",
+          }}
+        >
+          <span className="text-amber-500 shrink-0">⏳</span>
+          <span>
+            Повторяющиеся события отображаются до{" "}
+            <span className="font-semibold text-amber-600 dark:text-amber-400">{horizonLabel}</span>
+            {" "}— серые ячейки появятся позже
+          </span>
+        </div>
+      )}
+
       {/* Weekday header */}
       <div className="grid grid-cols-7 mb-px">
         {WEEKDAY_LABELS.map((label, i) => (
@@ -125,6 +161,7 @@ export function CalendarMonthView({
               isCurrentMonth={isCurrentMonth}
               isToday={isToday}
               group={group}
+              horizonISO={horizonISO}
               onDayClick={onDayClick}
               onEntryClick={onEntryClick}
             />

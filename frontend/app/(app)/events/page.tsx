@@ -175,10 +175,11 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
 
 // ── MiniCalendar ──────────────────────────────────────────────────────────────
 
-function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onPrevMonth, onNextMonth }: {
+function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onPrevMonth, onNextMonth, horizonISO }: {
   year: number; month: number; eventDates: Set<string>;
   selectedDate: string | null; onSelectDate: (d: string | null) => void;
   onPrevMonth: () => void; onNextMonth: () => void;
+  horizonISO: string;
 }) {
   const today       = isoToday();
   const firstDow    = new Date(year, month, 1).getDay();
@@ -216,9 +217,10 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
         {cells.map((day, i) => {
           if (!day) return <div key={i} />;
           const iso = toISO(day);
-          const isToday    = iso === today;
-          const hasEvents  = eventDates.has(iso);
-          const isSelected = iso === selectedDate;
+          const isToday      = iso === today;
+          const hasEvents    = eventDates.has(iso);
+          const isSelected   = iso === selectedDate;
+          const beyondHorizon = iso > horizonISO;
           return (
             <button
               key={i}
@@ -229,7 +231,11 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
                 : isToday  ? "bg-indigo-500/15 text-indigo-400"
                 : "hover:bg-white/[0.06]"
               )}
-              style={{ color: isSelected || isToday ? undefined : "var(--t-secondary)" }}
+              style={{
+                color: isSelected || isToday ? undefined
+                  : beyondHorizon ? "var(--t-faint)"
+                  : "var(--t-secondary)",
+              }}
             >
               {day}
               {hasEvents && !isSelected && (
@@ -317,6 +323,12 @@ export default function EventsPage() {
   const [calYear,  setCalYear]  = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth());
 
+  const horizonISO = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 90);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
   const effectiveDays = useMemo(() => {
     if (!selectedDate) return days;
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -384,6 +396,7 @@ export default function EventsPage() {
               eventDates={eventDates}
               selectedDate={selectedDate}
               onSelectDate={setSelectedDate}
+              horizonISO={horizonISO}
               onPrevMonth={() => {
                 if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11); }
                 else setCalMonth((m) => m - 1);
@@ -393,6 +406,26 @@ export default function EventsPage() {
                 else setCalMonth((m) => m + 1);
               }}
             />
+            {selectedDate && selectedDate > horizonISO && (() => {
+              const d = new Date(selectedDate + "T00:00:00");
+              d.setDate(d.getDate() - 90);
+              const willAppearFrom = d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }).replace(/\s\d{4}$/, "");
+              return (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl border text-[11px] leading-snug"
+                  style={{
+                    background: "rgba(251,191,36,0.07)",
+                    borderColor: "rgba(251,191,36,0.2)",
+                    color: "var(--t-secondary)",
+                  }}
+                >
+                  <span className="text-amber-500 shrink-0 mt-px">⏳</span>
+                  <span>
+                    Повторяющиеся события за эту дату появятся с{" "}
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">{willAppearFrom}</span>
+                  </span>
+                </div>
+              );
+            })()}
             {/* Stats */}
             <Card padding="md" className="space-y-2.5">
               <div className="flex items-center justify-between text-[12px]">

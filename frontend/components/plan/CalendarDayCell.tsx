@@ -37,6 +37,7 @@ interface CalendarDayCellProps {
   isCurrentMonth: boolean;
   isToday: boolean;
   group: DayGroup | null;
+  horizonISO?: string;
   onDayClick: (date: string) => void;
   onEntryClick: (entry: PlanEntry) => void;
 }
@@ -115,6 +116,7 @@ export function CalendarDayCell({
   isCurrentMonth,
   isToday,
   group,
+  horizonISO,
   onDayClick,
   onEntryClick,
 }: CalendarDayCellProps) {
@@ -128,6 +130,7 @@ export function CalendarDayCell({
 
   const dayNum = parseInt(dateISO.split("-")[2], 10);
   const isWeekend = group?.day_type === "weekend" || group?.day_type === "holiday";
+  const beyondHorizon = !!horizonISO && dateISO > horizonISO;
 
   return (
     <div
@@ -142,6 +145,12 @@ export function CalendarDayCell({
       )}
       onClick={() => onDayClick(dateISO)}
     >
+      {beyondHorizon && isCurrentMonth && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "rgba(148,163,184,0.07)" }}
+        />
+      )}
       {/* Day number + holiday icon */}
       <div className="flex items-start justify-between mb-0.5">
         <span
