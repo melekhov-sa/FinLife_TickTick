@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { ChevronDown, Plus, Check, X as XIcon } from "lucide-react";
 import { clsx } from "clsx";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
@@ -98,6 +98,30 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── Создание категории ────────────────────────────────────────
+  const [showCatCreate, setShowCatCreate] = useState(false);
+  const [newCatTitle, setNewCatTitle] = useState("");
+  const [newCatEmoji, setNewCatEmoji] = useState("");
+  const newCatTitleRef = useRef<HTMLInputElement>(null);
+
+  const { mutate: createCategory, isPending: catCreating } = useMutation({
+    mutationFn: (data: { title: string; emoji: string | null }) =>
+      api.post<{ category_id: number }>("/api/v2/work-categories", data),
+    onSuccess: (res: { category_id: number }) => {
+      qc.invalidateQueries({ queryKey: ["work-categories"] });
+      if (res?.category_id) setCategoryId(res.category_id);
+      setShowCatCreate(false);
+      setNewCatTitle("");
+      setNewCatEmoji("");
+    },
+  });
+
+  const handleCreateCategory = useCallback(() => {
+    const t = newCatTitle.trim();
+    if (!t) return;
+    createCategory({ title: t, emoji: newCatEmoji.trim() || null });
+  }, [newCatTitle, newCatEmoji, createCategory]);
 
   const { data: categories } = useQuery<WorkCategoryItem[]>({
     queryKey: ["work-categories"],
@@ -271,22 +295,69 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       </div>
 
       {/* ── Категория * ── */}
-      {categories && categories.length > 0 && (
-        <div>
-          <label className={labelCls}>Категория *</label>
-          <Select
-            value={categoryId}
-            onChange={(v) => { setCategoryId(v ? Number(v) : ""); clearFieldError("category_id"); }}
-            placeholder="Выберите категорию"
-            options={categories.map((c) => ({
-              value: String(c.category_id),
-              label: c.title,
-              emoji: c.emoji ?? undefined,
-            }))}
-          />
-          {fieldErrors.category_id && <p className={errTextCls}>{fieldErrors.category_id}</p>}
-        </div>
-      )}
+      <div>
+        <label className={labelCls}>Категория *</label>
+        <Select
+          value={categoryId}
+          onChange={(v) => { setCategoryId(v ? Number(v) : ""); clearFieldError("category_id"); }}
+          placeholder="Выберите категорию"
+          options={(categories ?? []).map((c) => ({
+            value: String(c.category_id),
+            label: c.title,
+            emoji: c.emoji ?? undefined,
+          }))}
+          footer={
+            <button
+              type="button"
+              onClick={() => { setShowCatCreate(true); setTimeout(() => newCatTitleRef.current?.focus(), 50); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+            >
+              <Plus size={13} />
+              Создать категорию
+            </button>
+          }
+        />
+        {fieldErrors.category_id && <p className={errTextCls}>{fieldErrors.category_id}</p>}
+
+        {/* Inline-форма создания */}
+        {showCatCreate && (
+          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5">
+            <input
+              value={newCatEmoji}
+              onChange={(e) => setNewCatEmoji(e.target.value)}
+              placeholder="🎯"
+              maxLength={2}
+              className="w-10 h-9 text-center text-base rounded-lg border border-slate-300 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+            />
+            <input
+              ref={newCatTitleRef}
+              value={newCatTitle}
+              onChange={(e) => setNewCatTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); handleCreateCategory(); }
+                if (e.key === "Escape") { setShowCatCreate(false); setNewCatTitle(""); setNewCatEmoji(""); }
+              }}
+              placeholder="Название категории"
+              className={`${inputCls} flex-1`}
+            />
+            <button
+              type="button"
+              onClick={handleCreateCategory}
+              disabled={catCreating || !newCatTitle.trim()}
+              className="h-9 w-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowCatCreate(false); setNewCatTitle(""); setNewCatEmoji(""); }}
+              className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-300 dark:border-white/[0.08] text-slate-400 hover:text-slate-600 dark:hover:text-white/60 transition-colors shrink-0"
+            >
+              <XIcon size={14} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── Дата * ── */}
       <div>

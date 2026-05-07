@@ -29,6 +29,7 @@ export interface SelectProps {
   disabled?: boolean;
   searchable?: boolean;
   className?: string;
+  footer?: React.ReactNode;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -62,6 +63,7 @@ export function Select({
   disabled = false,
   searchable,
   className = "",
+  footer,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -269,6 +271,15 @@ export function Select({
           </div>
         ))}
       </div>
+
+      {footer && (
+        <>
+          <div className="mx-2 my-1" style={{ height: 1, background: c.panelBorder }} />
+          <div onClick={() => { setOpen(false); setSearch(""); }}>
+            {footer}
+          </div>
+        </>
+      )}
     </div>
   );
 
