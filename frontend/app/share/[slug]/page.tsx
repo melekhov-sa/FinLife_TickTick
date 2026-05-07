@@ -92,6 +92,7 @@ export default function SharedListPage() {
 
   const [reservingId, setReservingId] = useState<number | null>(null);
   const [reserveName, setReserveName] = useState("");
+  const [reserveError, setReserveError] = useState("");
 
   const { mutate: reserveItem, isPending: reserving } = useMutation({
     mutationFn: ({ itemId, name }: { itemId: number; name: string }) =>
@@ -100,6 +101,10 @@ export default function SharedListPage() {
       qc.invalidateQueries({ queryKey: ["shared-list-public", slug] });
       setReservingId(null);
       setReserveName("");
+      setReserveError("");
+    },
+    onError: () => {
+      setReserveError("Не удалось зарезервировать. Возможно, подарок уже занят.");
     },
   });
 
@@ -273,19 +278,22 @@ export default function SharedListPage() {
 
         {/* Reserve modal */}
         {reservingId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setReservingId(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => { setReservingId(null); setReserveError(""); }}>
             <div className="bg-white rounded-2xl p-5 w-[320px] shadow-xl" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-[16px] font-bold text-slate-800 mb-3">Зарезервировать подарок</h3>
               <p className="text-[13px] text-slate-500 mb-3">Введите ваше имя, чтобы владелец списка знал, что подарок за вами</p>
               <input
                 value={reserveName}
-                onChange={(e) => setReserveName(e.target.value)}
+                onChange={(e) => { setReserveName(e.target.value); setReserveError(""); }}
                 placeholder="Ваше имя"
                 className="w-full px-3 h-10 text-[15px] rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 mb-3"
                 autoFocus
               />
+              {reserveError && (
+                <p className="text-[12px] text-red-500 mb-3">{reserveError}</p>
+              )}
               <div className="flex gap-2">
-                <button onClick={() => setReservingId(null)} className="flex-1 py-2 text-[13px] font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+                <button onClick={() => { setReservingId(null); setReserveError(""); }} className="flex-1 py-2 text-[13px] font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
                   Отмена
                 </button>
                 <button

@@ -213,11 +213,11 @@ class SharedListService:
         return True
 
     def reserve_item(self, slug: str, item_id: int, reserved_by: str) -> dict | None:
-        """Public action — reserve an item on a giftlist (no auth required)."""
+        """Public action — reserve an item on a giftlist/wishlist (no auth required)."""
         lst = self.db.query(SharedList).filter(
             SharedList.slug == slug,
             SharedList.is_public == True,  # noqa: E712
-            SharedList.list_type == "giftlist",
+            SharedList.list_type.in_(["giftlist", "wishlist"]),
         ).first()
         if not lst:
             return None
