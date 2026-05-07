@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DayPicker } from "react-day-picker";
 import { ru } from "date-fns/locale";
 import { CalendarClock, X } from "lucide-react";
@@ -30,6 +31,7 @@ const sizeClasses: Record<Size, string> = {
 };
 
 const TIME_PRESETS = ["09:00", "12:00", "15:00", "18:00", "21:00"];
+const CALENDAR_WIDTH = 304;
 
 function parseValue(v: string): { date: Date | undefined; time: string } {
   if (!v) return { date: undefined, time: "" };
@@ -81,8 +83,9 @@ export function DateTimeInput({
 }: DateTimeInputProps) {
   const [open, setOpen] = useState(false);
   const [manualTime, setManualTime] = useState("");
-  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const calendarRef = useRef<HTMLDivElement | null>(null);
 
   const { date: selectedDate, time: selectedTime } = parseValue(value);
   const minDate = parseDateOnly(min);
@@ -93,10 +96,43 @@ export function DateTimeInput({
     setManualTime(selectedTime || "");
   }, [selectedTime]);
 
+  function calcCoords() {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - r.bottom;
+    const flip = spaceBelow < 380;
+    let left = r.left;
+    if (left + CALENDAR_WIDTH > window.innerWidth - 8) {
+      left = window.innerWidth - CALENDAR_WIDTH - 8;
+    }
+    setCoords({ top: flip ? r.top - 6 : r.bottom + 6, left });
+  }
+
+  useLayoutEffect(() => {
+    if (open) calcCoords();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => calcCoords();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        calendarRef.current &&
+        !calendarRef.current.contains(e.target as Node) &&
+        !triggerRef.current?.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -114,27 +150,127 @@ export function DateTimeInput({
 
   function pickDate(d: Date | undefined) {
     if (!d) return;
-    const next = combine(d, selectedTime);
-    onChange(next);
+    onChange(combine(d, selectedTime));
   }
 
   function pickTime(t: string) {
-    if (!selectedDate) {
-      // если даты нет — берём сегодня
-      onChange(combine(new Date(), t));
-    } else {
-      onChange(combine(selectedDate, t));
-    }
+    onChange(combine(selectedDate ?? new Date(), t));
   }
 
   function commitManualTime() {
-    if (isValidTime(manualTime)) {
-      pickTime(manualTime);
-    }
+    if (isValidTime(manualTime)) pickTime(manualTime);
   }
 
+  const calendar = open ? (
+    <div
+      ref={calendarRef}
+      className={cn(
+        "fixed z-[9999] rounded-xl border shadow-xl p-2",
+        "bg-white border-slate-200 dark:bg-[#1a1d23] dark:border-white/[0.07]",
+      )}
+      style={{ top: coords.top, left: coords.left, width: CALENDAR_WIDTH }}
+    >
+      <DayPicker
+        mode="single"
+        locale={ru}
+        weekStartsOn={1}
+        selected={selectedDate}
+        onSelect={pickDate}
+        disabled={[
+          ...(minDate ? [{ before: minDate }] : []),
+          ...(maxDate ? [{ after: maxDate }] : []),
+        ]}
+        today={new Date()}
+        classNames={{
+          root: "rdp-finlife",
+          months: "flex flex-col",
+          month: "",
+          caption: "flex items-center justify-between px-1 mb-2",
+          caption_label: "text-[13px] font-semibold text-slate-900 dark:text-slate-100 capitalize",
+          nav: "flex items-center gap-1",
+          nav_button:
+            "w-6 h-6 inline-flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400",
+          table: "w-full border-collapse",
+          head_row: "",
+          head_cell: "text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 w-8 h-7 text-center",
+          row: "",
+          cell: "p-0 text-center align-middle",
+          day: cn(
+            "w-8 h-8 inline-flex items-center justify-center rounded-md text-[12.5px]",
+            "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
+            "transition-colors",
+          ),
+          day_today: "font-semibold text-indigo-600 dark:text-indigo-400",
+          day_selected: "!bg-indigo-600 !text-[#fff] hover:!bg-indigo-500",
+          day_outside: "text-slate-300 dark:text-slate-600",
+          day_disabled: "opacity-40 pointer-events-none",
+        }}
+      />
+
+      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.05]">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 px-1 pb-1.5">
+          Время
+        </div>
+        <div className="flex flex-wrap gap-1.5 px-1 pb-2">
+          {TIME_PRESETS.map((t) => {
+            const active = t === selectedTime;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => pickTime(t)}
+                className={cn(
+                  "h-7 px-2.5 rounded-md text-[12px] tabular-nums transition-colors",
+                  active
+                    ? "bg-indigo-600 text-[#fff] dark:bg-indigo-500"
+                    : "bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]",
+                )}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-1.5 px-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={manualTime}
+            onChange={(e) => setManualTime(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitManualTime();
+              }
+            }}
+            placeholder="ЧЧ:ММ"
+            className={cn(
+              "flex-1 h-8 px-2.5 rounded-md border text-[13px] tabular-nums outline-none",
+              "bg-white border-slate-300 text-slate-900",
+              "dark:bg-white/[0.03] dark:border-white/15 dark:text-slate-100",
+              "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
+              manualTime && !isValidTime(manualTime) && "border-red-500 focus:border-red-500 focus:ring-red-500/30",
+            )}
+          />
+          <button
+            type="button"
+            onClick={commitManualTime}
+            disabled={!isValidTime(manualTime)}
+            className={cn(
+              "h-8 px-3 rounded-md text-[13px] font-medium transition-colors",
+              "bg-indigo-600 text-[#fff] hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
+              "disabled:opacity-50 disabled:pointer-events-none",
+            )}
+          >
+            ОК
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div ref={wrapRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
         ref={triggerRef}
         type="button"
@@ -173,111 +309,7 @@ export function DateTimeInput({
         )}
       </button>
 
-      {open && (
-        <div
-          className={cn(
-            "absolute z-50 mt-1 rounded-xl border shadow-lg p-2",
-            "bg-white border-slate-200 dark:bg-[#1a1d23] dark:border-white/[0.07]",
-          )}
-        >
-          <DayPicker
-            mode="single"
-            locale={ru}
-            weekStartsOn={1}
-            selected={selectedDate}
-            onSelect={pickDate}
-            disabled={[
-              ...(minDate ? [{ before: minDate }] : []),
-              ...(maxDate ? [{ after: maxDate }] : []),
-            ]}
-            today={new Date()}
-            classNames={{
-              root: "rdp-finlife",
-              months: "flex flex-col",
-              month: "",
-              caption: "flex items-center justify-between px-1 mb-2",
-              caption_label: "text-[13px] font-semibold text-slate-900 dark:text-slate-100 capitalize",
-              nav: "flex items-center gap-1",
-              nav_button:
-                "w-6 h-6 inline-flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400",
-              table: "w-full border-collapse",
-              head_row: "",
-              head_cell: "text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500 w-8 h-7 text-center",
-              row: "",
-              cell: "p-0 text-center align-middle",
-              day: cn(
-                "w-8 h-8 inline-flex items-center justify-center rounded-md text-[12.5px]",
-                "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
-                "transition-colors",
-              ),
-              day_today: "font-semibold text-indigo-600 dark:text-indigo-400",
-              day_selected: "!bg-indigo-600 !text-[#fff] hover:!bg-indigo-500",
-              day_outside: "text-slate-300 dark:text-slate-600",
-              day_disabled: "opacity-40 pointer-events-none",
-            }}
-          />
-
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.05]">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 px-1 pb-1.5">
-              Время
-            </div>
-            <div className="flex flex-wrap gap-1.5 px-1 pb-2">
-              {TIME_PRESETS.map((t) => {
-                const active = t === selectedTime;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => pickTime(t)}
-                    className={cn(
-                      "h-7 px-2.5 rounded-md text-[12px] tabular-nums transition-colors",
-                      active
-                        ? "bg-indigo-600 text-[#fff] dark:bg-indigo-500"
-                        : "bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]",
-                    )}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex gap-1.5 px-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={manualTime}
-                onChange={(e) => setManualTime(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    commitManualTime();
-                  }
-                }}
-                placeholder="ЧЧ:ММ"
-                className={cn(
-                  "flex-1 h-8 px-2.5 rounded-md border text-[13px] tabular-nums outline-none",
-                  "bg-white border-slate-300 text-slate-900",
-                  "dark:bg-white/[0.03] dark:border-white/15 dark:text-slate-100",
-                  "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
-                  manualTime && !isValidTime(manualTime) && "border-red-500 focus:border-red-500 focus:ring-red-500/30",
-                )}
-              />
-              <button
-                type="button"
-                onClick={commitManualTime}
-                disabled={!isValidTime(manualTime)}
-                className={cn(
-                  "h-8 px-3 rounded-md text-[13px] font-medium transition-colors",
-                  "bg-indigo-600 text-[#fff] hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
-                  "disabled:opacity-50 disabled:pointer-events-none",
-                )}
-              >
-                ОК
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {typeof document !== "undefined" && createPortal(calendar, document.body)}
     </div>
   );
 }
