@@ -44,14 +44,6 @@ const WEEKDAYS = [
   { value: "SU", label: "Вс" },
 ];
 
-const MONTHS = [
-  { value: "1", label: "Январь" }, { value: "2", label: "Февраль" },
-  { value: "3", label: "Март" }, { value: "4", label: "Апрель" },
-  { value: "5", label: "Май" }, { value: "6", label: "Июнь" },
-  { value: "7", label: "Июль" }, { value: "8", label: "Август" },
-  { value: "9", label: "Сентябрь" }, { value: "10", label: "Октябрь" },
-  { value: "11", label: "Ноябрь" }, { value: "12", label: "Декабрь" },
-];
 
 const REMINDER_OPTIONS = [
   { value: "", label: "Нет" },
@@ -98,9 +90,6 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [description, setDescription] = useState("");
   const [endTime, setEndTime] = useState("");
   const [recWeekdays, setRecWeekdays] = useState<string[]>([]);
-  const [recDay, setRecDay] = useState("");
-  const [recMonth, setRecMonth] = useState("");
-  const [recDayYearly, setRecDayYearly] = useState("");
   const [recInterval, setRecInterval] = useState("1");
   const [untilDate, setUntilDate] = useState("");
 
@@ -143,10 +132,12 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       body.start_date_rule = startDate;
       body.until_date = untilDate || null;
       if (repeat === "weekly") body.rec_weekdays = recWeekdays.join(",") || null;
-      if (repeat === "monthly") body.rec_day = recDay ? Number(recDay) : null;
+      if (repeat === "monthly") {
+        body.rec_day = startDate ? Number(startDate.split("-")[2]) : null;
+      }
       if (repeat === "yearly") {
-        body.rec_month = recMonth ? Number(recMonth) : null;
-        body.rec_day_yearly = recDayYearly ? Number(recDayYearly) : null;
+        body.rec_month = startDate ? Number(startDate.split("-")[1]) : null;
+        body.rec_day_yearly = startDate ? Number(startDate.split("-")[2]) : null;
       }
       if (repeat === "interval") body.rec_interval = recInterval ? Number(recInterval) : null;
     }
@@ -420,52 +411,6 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                       </button>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {/* Повторение: день месяца (monthly) */}
-            {repeat === "monthly" && (
-              <div>
-                <label className={labelCls}>День месяца (1–31)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={recDay}
-                  onChange={(e) => setRecDay(e.target.value)}
-                  placeholder="1"
-                  className={inputCls}
-                />
-              </div>
-            )}
-
-            {/* Повторение: месяц + день (yearly) */}
-            {repeat === "yearly" && (
-              <div className="space-y-2">
-                <div>
-                  <label className={labelCls}>Месяц</label>
-                  <Select
-                    value={recMonth}
-                    onChange={(v) => setRecMonth(v)}
-                    placeholder="— выберите —"
-                    options={[
-                      { value: "", label: "— выберите —" },
-                      ...MONTHS.map((m) => ({ value: m.value, label: m.label })),
-                    ]}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>День (1–31)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={recDayYearly}
-                    onChange={(e) => setRecDayYearly(e.target.value)}
-                    placeholder="1"
-                    className={inputCls}
-                  />
                 </div>
               </div>
             )}
