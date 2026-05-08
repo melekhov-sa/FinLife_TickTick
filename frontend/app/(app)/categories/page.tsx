@@ -398,6 +398,7 @@ export default function CategoriesPage() {
         { href: "/wallets", label: "Кошельки" },
         { href: "/subscriptions", label: "Подписки" },
         { href: "/categories", label: "Категории" },
+        { href: "/goals", label: "Цели" },
       ]} />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">

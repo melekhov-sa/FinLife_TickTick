@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageTabs } from "@/components/layout/PageTabs";
 import { Target, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
@@ -115,10 +116,14 @@ export default function GoalsPage() {
 
   return (
     <>
-      <AppTopbar
-        title="Аналитика"
-        subtitle={goals ? (showArchived ? "Архивные" : `${goals.length} активных`) : undefined}
-      />
+      <AppTopbar title="Деньги" />
+      <PageTabs tabs={[
+        { href: "/money", label: "Операции" },
+        { href: "/wallets", label: "Кошельки" },
+        { href: "/subscriptions", label: "Подписки" },
+        { href: "/categories", label: "Категории" },
+        { href: "/goals", label: "Цели" },
+      ]} />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-4xl">
         {/* Header actions */}

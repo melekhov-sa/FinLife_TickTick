@@ -270,6 +270,7 @@ export default function MoneyPage() {
           { href: "/wallets", label: "Кошельки" },
           { href: "/subscriptions", label: "Подписки" },
           { href: "/categories", label: "Категории" },
+          { href: "/goals", label: "Цели" },
         ]} />
       </div>
 

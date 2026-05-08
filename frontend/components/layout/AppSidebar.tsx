@@ -44,7 +44,8 @@ function isActive(href: string, pathname: string | null): boolean {
       pathname.startsWith("/money") ||
       pathname.startsWith("/wallets") ||
       pathname.startsWith("/subscriptions") ||
-      pathname.startsWith("/categories")
+      pathname.startsWith("/categories") ||
+      pathname.startsWith("/goals")
     );
   }
   if (href === "/budget") {
