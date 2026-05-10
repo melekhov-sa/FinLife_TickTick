@@ -28,6 +28,8 @@ class GoalsProjector(BaseProjector):
             self._handle_goal_updated(event)
         elif event.event_type == "goal_archived":
             self._handle_goal_archived(event)
+        elif event.event_type == "goal_unarchived":
+            self._handle_goal_unarchived(event)
 
     def _handle_goal_created(self, event: EventLog) -> None:
         payload = event.payload_json
@@ -84,6 +86,16 @@ class GoalsProjector(BaseProjector):
 
         if goal:
             goal.is_archived = True
+
+    def _handle_goal_unarchived(self, event: EventLog) -> None:
+        payload = event.payload_json
+
+        goal = self.db.query(GoalInfo).filter(
+            GoalInfo.goal_id == payload["goal_id"]
+        ).first()
+
+        if goal:
+            goal.is_archived = False
 
     def reset(self, account_id: int) -> None:
         self.db.query(GoalInfo).filter(

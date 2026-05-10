@@ -71,3 +71,11 @@ class Goal:
             "goal_id": goal_id,
             "archived_at": datetime.utcnow().isoformat()
         }
+
+    @staticmethod
+    def unarchive(goal_id: int) -> Dict[str, Any]:
+        """Создать событие goal_unarchived"""
+        return {
+            "goal_id": goal_id,
+            "unarchived_at": datetime.utcnow().isoformat()
+        }

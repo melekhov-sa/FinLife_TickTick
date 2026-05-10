@@ -164,6 +164,77 @@ class UpdateGoalUseCase:
         projector.run(account_id, event_types=["goal_updated"])
 
 
+class ArchiveGoalUseCase:
+    """Use case: Архивировать цель"""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, goal_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        goal = self.db.query(GoalInfo).filter(
+            GoalInfo.goal_id == goal_id,
+            GoalInfo.account_id == account_id
+        ).first()
+
+        if not goal:
+            raise GoalValidationError(f"Цель #{goal_id} не найдена")
+
+        if goal.is_system:
+            raise GoalValidationError("Нельзя архивировать системную цель")
+
+        if goal.is_archived:
+            return
+
+        event_payload = Goal.archive(goal_id)
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="goal_archived",
+            payload=event_payload,
+            actor_user_id=actor_user_id
+        )
+
+        self.db.commit()
+
+        projector = GoalsProjector(self.db)
+        projector.run(account_id, event_types=["goal_archived"])
+
+
+class UnarchiveGoalUseCase:
+    """Use case: Восстановить цель из архива"""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, goal_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        goal = self.db.query(GoalInfo).filter(
+            GoalInfo.goal_id == goal_id,
+            GoalInfo.account_id == account_id
+        ).first()
+
+        if not goal:
+            raise GoalValidationError(f"Цель #{goal_id} не найдена")
+
+        if not goal.is_archived:
+            return
+
+        event_payload = Goal.unarchive(goal_id)
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="goal_unarchived",
+            payload=event_payload,
+            actor_user_id=actor_user_id
+        )
+
+        self.db.commit()
+
+        projector = GoalsProjector(self.db)
+        projector.run(account_id, event_types=["goal_unarchived"])
+
+
 class EnsureSystemGoalUseCase:
     """
     Use case: Создать системную цель 'Без цели' при первом входе
