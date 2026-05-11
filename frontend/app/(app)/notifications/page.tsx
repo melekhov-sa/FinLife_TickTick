@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +7,7 @@ import {
   AlertTriangle, Eye,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useNotifications, useMarkRead, useMarkAllRead } from "@/hooks/useNotifications";
 import type { NotificationItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
@@ -184,7 +184,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <AppTopbar title="Уведомления" />
+      <PageHeader title="Уведомления" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
 
         {/* Header bar */}

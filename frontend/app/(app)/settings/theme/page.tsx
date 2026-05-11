@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Check, Moon, Sun } from "lucide-react";
 import Link from "next/link";
@@ -80,7 +80,7 @@ export default function ThemeSettingsPage() {
 
   return (
     <>
-      <AppTopbar title="Тема оформления" />
+      <PageHeader title="Тема оформления" density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-lg space-y-5">
 

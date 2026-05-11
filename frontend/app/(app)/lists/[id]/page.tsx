@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { clsx } from "clsx";
@@ -983,7 +983,7 @@ export default function ListDetailPage() {
         </BottomSheet>
       )}
 
-      <AppTopbar title={list?.title ?? "Список"} />
+      <PageHeader title={list?.title ?? "Список"} density="compact" />
       <main className={clsx(
         "touch-manipulation",
         viewMode === "kanban"

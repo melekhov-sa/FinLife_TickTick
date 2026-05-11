@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
@@ -199,7 +199,7 @@ export default function ListsPage() {
         </BottomSheet>
       )}
 
-      <AppTopbar title="Списки" />
+      <PageHeader title="Списки" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
 

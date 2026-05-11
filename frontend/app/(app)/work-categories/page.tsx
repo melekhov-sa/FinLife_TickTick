@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { Pencil, Check, X, Archive, ArchiveRestore, Plus } from "lucide-react";
 import { clsx } from "clsx";
@@ -289,10 +289,7 @@ export default function WorkCategoriesPage() {
 
   return (
     <>
-      <AppTopbar
-        title="Категории дел"
-        subtitle="Для задач, привычек и событий"
-      />
+      <PageHeader title="Категории дел" subtitle="Для задач, привычек и событий" density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
 

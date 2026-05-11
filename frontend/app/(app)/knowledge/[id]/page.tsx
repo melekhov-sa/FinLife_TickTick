@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { ArrowLeft, Pencil, Pin, Calendar } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -63,7 +63,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
 
   return (
     <>
-      <AppTopbar title={data?.title ?? "Статья"} />
+      <PageHeader title={data?.title ?? "Статья"} density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-[720px]">
           {isLoading && (

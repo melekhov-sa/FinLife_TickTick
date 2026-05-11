@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import {
   Pencil,
@@ -465,10 +465,7 @@ export default function TaskPresetsPage() {
 
   return (
     <>
-      <AppTopbar
-        title="Шаблоны задач"
-        subtitle="Быстрое заполнение формы создания задачи"
-      />
+      <PageHeader title="Шаблоны задач" subtitle="Быстрое заполнение формы создания задачи" density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs */}

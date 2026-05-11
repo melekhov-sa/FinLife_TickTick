@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Plus, CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasks, useCompleteTask, useCompleteTaskOccurrence, useCreateTask } from "@/hooks/useTasks";
@@ -164,7 +164,7 @@ export default function TasksPage() {
         />
       )}
 
-      <AppTopbar title="Задачи" />
+      <PageHeader title="Задачи" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Controls */}

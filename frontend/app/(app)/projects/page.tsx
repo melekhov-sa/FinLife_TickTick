@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { Plus, FolderOpen, AlertCircle } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { useProjects } from "@/hooks/useProjects";
 import { Button } from "@/components/primitives/Button";
@@ -25,7 +25,7 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <AppTopbar title="Проекты" />
+      <PageHeader title="Проекты" density="compact" />
       <main className="flex-1 overflow-auto p-6 max-w-[1400px]">
         {/* Controls */}
         <div className="flex items-center justify-between mb-6">

@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { BookOpen } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useKnowledge } from "@/hooks/useKnowledge";
 import { Select } from "@/components/ui/Select";
 import type { ArticleListItem } from "@/types/api";
@@ -92,7 +92,7 @@ export default function KnowledgePage() {
 
   return (
     <>
-      <AppTopbar title="База знаний" />
+      <PageHeader title="База знаний" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Controls */}
         <div className="flex gap-2 mb-6 items-start">

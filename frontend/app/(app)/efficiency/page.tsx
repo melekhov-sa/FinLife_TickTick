@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useEfficiency } from "@/hooks/useEfficiency";
 import type { MetricCard } from "@/types/api";
 import { Badge } from "@/components/primitives/Badge";
@@ -134,7 +134,7 @@ export default function EfficiencyPage() {
 
   return (
     <>
-      <AppTopbar title="Аналитика" subtitle={dateSubtitle} />
+      <PageHeader title="Аналитика" subtitle={dateSubtitle} density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {isLoading && (
           <div className="flex items-center justify-center h-48">

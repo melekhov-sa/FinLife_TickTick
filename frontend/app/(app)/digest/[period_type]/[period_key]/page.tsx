@@ -6,7 +6,7 @@ import {
   CheckSquare, TrendingUp, TrendingDown, Heart, Zap, Sparkles, ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useDigest, useDigestMarkViewed } from "@/hooks/useDigests";
 import type { DigestDetail } from "@/types/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -417,9 +417,8 @@ export default function DigestDetailPage() {
 
   return (
     <>
-      <AppTopbar
+      <PageHeader
         title={digest ? `Итоги ${digest.period_key}` : "Дайджест"}
-        subtitle={undefined}
         actions={
           <button
             onClick={() => router.push("/digest")}

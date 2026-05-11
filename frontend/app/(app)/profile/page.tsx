@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { clsx } from "clsx";
 import { ArrowRight, Star, Zap, TrendingUp, Bell, Wallet, Lock } from "lucide-react";
 import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
@@ -74,7 +74,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <AppTopbar title="Профиль" />
+      <PageHeader title="Профиль" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
           {isLoading && (

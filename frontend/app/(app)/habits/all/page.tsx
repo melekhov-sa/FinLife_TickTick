@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
 import { AdminBlock } from "@/components/habits/AdminBlock";
@@ -27,7 +27,7 @@ export default function HabitsAllPage() {
       )}
       {showCreateModal && <CreateHabitModal onClose={() => setShowCreateModal(false)} />}
 
-      <AppTopbar title="Все привычки" subtitle={`${activeHabits.length} активных · ${archivedHabits.length} в архиве`} />
+      <PageHeader title="Все привычки" subtitle={`${activeHabits.length} активных · ${archivedHabits.length} в архиве`} density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Back link */}

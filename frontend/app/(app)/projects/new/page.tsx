@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import { FolderPlus } from "lucide-react";
@@ -53,7 +53,7 @@ export default function NewProjectPage() {
 
   return (
     <>
-      <AppTopbar title="Новый проект" />
+      <PageHeader title="Новый проект" density="compact" />
       <main className="flex-1 overflow-auto p-6 flex items-start justify-center">
         <div className="w-full max-w-[500px]">
           {/* Card */}

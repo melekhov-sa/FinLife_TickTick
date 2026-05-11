@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
 import { CalendarClock, LayoutList, Play, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
@@ -479,7 +479,7 @@ export default function PlannedOpsPage() {
   return (
     <>
       {showCreateOp && <CreateOperationModal onClose={() => setShowCreateOp(false)} />}
-      <AppTopbar title="Плановые операции" />
+      <PageHeader title="Плановые операции" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
 

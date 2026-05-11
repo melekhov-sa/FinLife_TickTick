@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { RefreshCw, Pencil, Check, X, Archive, RotateCcw, AlertCircle } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import type { TaskTemplateItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
@@ -296,7 +296,7 @@ export default function RecurringTasksPage() {
 
   return (
     <>
-      <AppTopbar title="Повторяющиеся задачи" />
+      <PageHeader title="Повторяющиеся задачи" density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs + count */}

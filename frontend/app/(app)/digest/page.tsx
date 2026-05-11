@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, RefreshCw, AlertCircle } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { useDigests, useDigestBackfill } from "@/hooks/useDigests";
 import type { DigestListItem } from "@/types/api";
 import { clsx } from "clsx";
@@ -75,7 +75,7 @@ export default function DigestListPage() {
 
   return (
     <>
-      <AppTopbar
+      <PageHeader
         title="Итоги"
         subtitle="Еженедельные дайджесты"
         actions={

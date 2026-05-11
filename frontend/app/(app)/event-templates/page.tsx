@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { CalendarDays, Pencil, Archive, RotateCcw, X, Check } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
@@ -83,7 +83,7 @@ export default function EventTemplatesPage() {
 
   return (
     <>
-      <AppTopbar title="Шаблоны событий" />
+      <PageHeader title="Шаблоны событий" density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs + count */}

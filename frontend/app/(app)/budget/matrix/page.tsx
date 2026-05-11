@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm,
 import { useMutation } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import Link from "next/link";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 import { Checkbox } from "@/components/primitives/Checkbox";
@@ -1049,7 +1049,7 @@ export default function BudgetMatrixPage() {
           onClose={() => setPlanEditTarget(null)}
         />
       )}
-      <AppTopbar title="Бюджет (матрица)" />
+      <PageHeader title="Бюджет (матрица)" density="compact" />
 
       <main className="flex-1 flex flex-col overflow-hidden">
 

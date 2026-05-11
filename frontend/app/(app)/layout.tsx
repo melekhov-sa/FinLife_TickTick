@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppTopbar } from "@/components/layout/AppTopbar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
 import { OnboardingModal } from "@/components/layout/OnboardingModal";
@@ -63,12 +64,15 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           />
         </div>
 
-        {/* Main column — pages render their own AppTopbar */}
+        {/* Main column */}
         <main
-          className="flex-1 flex flex-col min-w-0 overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0"
+          className="flex-1 flex flex-col min-w-0"
           style={{ background: "var(--app-bg)" }}
         >
-          {children}
+          <AppTopbar />
+          <div className="flex-1 flex flex-col overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0">
+            {children}
+          </div>
         </main>
 
         {/* Bottom nav — mobile only */}

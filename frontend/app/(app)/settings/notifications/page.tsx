@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import {
   Bell, BellOff, Send, Smartphone, Download,
@@ -319,7 +319,7 @@ export default function NotificationSettingsPage() {
   if (isLoading) {
     return (
       <>
-        <AppTopbar title="Уведомления" />
+        <PageHeader title="Уведомления" density="compact" />
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-lg space-y-4">
             {[1, 2, 3].map((i) => (
@@ -333,7 +333,7 @@ export default function NotificationSettingsPage() {
 
   return (
     <>
-      <AppTopbar title="Настройки уведомлений" />
+      <PageHeader title="Настройки уведомлений" density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-lg space-y-5">
 

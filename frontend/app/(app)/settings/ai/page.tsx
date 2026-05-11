@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { useMe } from "@/hooks/useMe";
 import { useRouter } from "next/navigation";
@@ -99,7 +99,7 @@ export default function AISettingsPage() {
   if (meLoading || !me) {
     return (
       <>
-        <AppTopbar title="Настройки AI" />
+        <PageHeader title="Настройки AI" density="compact" />
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-lg animate-pulse space-y-4">
             {[1, 2, 3].map((i) => (
@@ -143,7 +143,7 @@ export default function AISettingsPage() {
 
   return (
     <>
-      <AppTopbar title="Настройки AI" />
+      <PageHeader title="Настройки AI" density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-lg space-y-5">
 

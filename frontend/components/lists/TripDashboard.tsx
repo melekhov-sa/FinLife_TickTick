@@ -5,7 +5,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Pencil, Plane, Check } from "lucide-react";
 
 import { api } from "@/lib/api";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -725,7 +725,7 @@ export function TripDashboard({ list }: { list: TripList }) {
 
   return (
     <>
-      <AppTopbar title={list.title} subtitle="Поездка" />
+      <PageHeader title={list.title} subtitle="Поездка" />
 
       <main className="flex-1 overflow-auto">
         <div className="p-3 md:p-6 space-y-4 max-w-[900px] mx-auto">

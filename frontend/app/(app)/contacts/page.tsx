@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { useMe } from "@/hooks/useMe";
 import { UserPlus, Trash2 } from "lucide-react";
@@ -48,7 +48,7 @@ export default function ContactsPage() {
 
   return (
     <>
-      <AppTopbar title="Участники" />
+      <PageHeader title="Участники" density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-md space-y-4">
           <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>

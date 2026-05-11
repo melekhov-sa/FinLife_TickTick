@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import Link from "next/link";
 import {
@@ -189,7 +189,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppTopbar title="Настройки" />
+      <PageHeader title="Настройки" density="compact" />
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-lg space-y-6">
 

@@ -10,16 +10,7 @@ import { SearchBar } from "@/components/layout/SearchBar";
 import { Avatar } from "@/components/primitives/Avatar";
 import { Popover } from "@/components/primitives/Popover";
 
-interface AppTopbarProps {
-  /** Заголовок раздела (белым). Если не передан — ничего не рендерим. */
-  title?: string;
-  /** Мелкая белая подпись справа от заголовка, 50% opacity */
-  subtitle?: string;
-  /** Доп. действия между actions и иконками (колокольчик/аватар) */
-  actions?: ReactNode;
-}
-
-export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
+export function AppTopbar() {
   const { data: me } = useMe();
   const email = me?.email ?? "";
 
@@ -46,33 +37,18 @@ export function AppTopbar({ title, subtitle, actions }: AppTopbarProps) {
         }}
       />
 
-      {/* Заголовок + подпись */}
-      <div className="flex items-baseline gap-3 min-w-0 relative">
-        {title && (
-          <h1
-            className="text-[15px] sm:text-[16px] font-semibold truncate"
-            style={{
-              color: "var(--app-topbar-text)",
-              letterSpacing: "-0.015em",
-            }}
-          >
-            {title}
-          </h1>
-        )}
-        {subtitle && (
-          <span
-            className="hidden sm:inline text-[12px] truncate"
-            style={{ color: "rgba(255,255,255,.6)" }}
-          >
-            {subtitle}
-          </span>
-        )}
+      {/* Лого — только мобиле (десктоп — сайдбар) */}
+      <div className="md:hidden flex items-center gap-2">
+        <span
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+        >
+          <span className="text-white text-[10px] font-bold tracking-tight">FL</span>
+        </span>
       </div>
 
       {/* Правая часть */}
-      <div className="flex items-center gap-1.5 sm:gap-2 relative">
-        {actions}
-
+      <div className="flex items-center gap-1.5 sm:gap-2 relative ml-auto">
         <SearchBar />
 
         {/* Существующий компонент уведомлений */}

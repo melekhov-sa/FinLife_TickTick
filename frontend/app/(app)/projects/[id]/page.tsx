@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
 import { use, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Settings, Plus, X, Check } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
 import { KanbanBoard } from "@/components/projects/KanbanBoard";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { useProject } from "@/hooks/useProjects";
@@ -230,7 +229,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   if (isLoading) {
     return (
       <>
-        <AppTopbar />
         <main className="flex-1 p-6">
           <div className="flex gap-4 overflow-x-auto">
             {[...Array(4)].map((_, i) => (
@@ -245,7 +243,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   if (isError || !project) {
     return (
       <>
-        <AppTopbar />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-red-400/70 text-sm">Проект не найден</p>
         </main>
@@ -255,7 +252,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   return (
     <>
-      <AppTopbar />
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Project header */}
         <div className="px-6 pt-5 pb-4 border-b border-white/[0.05] flex items-center gap-4 shrink-0">
