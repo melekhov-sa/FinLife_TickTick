@@ -1001,3 +1001,14 @@ html.dark[data-color-theme="emerald"] {
   color: var(--t-faint);
   pointer-events: none;
 }
+
+/* ── Этап 3.C — PageHeader helpers ──────────────────────────────────────── */
+.ph-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ph-scroll-x::-webkit-scrollbar { display: none; }
+
+@media (max-width: 640px) {
+  .page-header { padding-top: 12px !important; padding-bottom: 12px !important; }
+}

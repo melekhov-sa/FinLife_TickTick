@@ -1,6 +1,6 @@
 "use client";
 
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
 import { UpcomingPayments } from "@/components/dashboard/UpcomingPayments";
@@ -23,10 +23,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <AppTopbar
-        title="Главная"
-        subtitle={todayLabel}
-      />
+      <PageHeader title="Главная" subtitle={todayLabel} density="regular" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6">
         {isError && (

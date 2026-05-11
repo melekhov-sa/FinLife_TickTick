@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
-import { PageTabs } from "@/components/layout/PageTabs";
+import { usePathname, useRouter } from "next/navigation";
+import { PageHeader } from "@/components/primitives/PageHeader";
+import { Tabs } from "@/components/primitives/Tabs";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { SubscriptionDetailPanel } from "@/components/subscriptions/SubscriptionDetailPanel";
 import { CreateSubscriptionModal } from "@/components/modals/CreateSubscriptionModal";
@@ -207,7 +208,26 @@ function applySort(subs: SubscriptionItem[], sort: SortKind): SubscriptionItem[]
   });
 }
 
+const MONEY_TABS = [
+  { id: "/money",         label: "Операции" },
+  { id: "/wallets",       label: "Кошельки" },
+  { id: "/subscriptions", label: "Подписки" },
+  { id: "/categories",    label: "Категории" },
+  { id: "/goals",         label: "Цели" },
+];
+
+function getMoneyTab(pathname: string | null): string {
+  if (!pathname) return "/money";
+  if (pathname.startsWith("/wallets"))       return "/wallets";
+  if (pathname.startsWith("/subscriptions")) return "/subscriptions";
+  if (pathname.startsWith("/categories"))    return "/categories";
+  if (pathname.startsWith("/goals"))         return "/goals";
+  return "/money";
+}
+
 export default function SubscriptionsPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [showArchived, setShowArchived] = useState(false);
   const { data, isLoading, isError } = useSubscriptions(showArchived);
   const [filter, setFilter]         = useState<FilterKind>("all");
@@ -243,14 +263,16 @@ export default function SubscriptionsPage() {
       {addMemberSubId !== null && (
         <AddMemberModal subId={addMemberSubId} onClose={() => setAddMemberSubId(null)} />
       )}
-      <AppTopbar title="Деньги" />
-      <PageTabs tabs={[
-        { href: "/money", label: "Операции" },
-        { href: "/wallets", label: "Кошельки" },
-        { href: "/subscriptions", label: "Подписки" },
-        { href: "/categories", label: "Категории" },
-        { href: "/goals", label: "Цели" },
-      ]} />
+      <PageHeader
+        title="Деньги"
+        tabs={
+          <Tabs
+            items={MONEY_TABS}
+            active={getMoneyTab(pathname)}
+            onChange={(id) => router.push(id)}
+          />
+        }
+      />
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
 

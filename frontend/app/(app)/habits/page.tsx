@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Plus, Settings2, AlertCircle } from "lucide-react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
 import { HabitRow } from "@/components/habits/HabitRow";
@@ -118,20 +118,21 @@ export default function HabitsPage() {
       )}
       {showCreateModal && <CreateHabitModal onClose={() => setShowCreateModal(false)} />}
 
-      <AppTopbar
+      <PageHeader
         title="Привычки"
         subtitle={topbarSubtitle}
         actions={
           <Link
             href="/habits/all"
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium hover:bg-white/10 transition-colors"
-            style={{ color: "var(--app-topbar-text)" }}
+            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors border"
+            style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
             title="Управление привычками"
           >
             <Settings2 size={13} />
             Управление
           </Link>
         }
+        density="compact"
       />
 
       {/* Slim progress strip under the topbar */}

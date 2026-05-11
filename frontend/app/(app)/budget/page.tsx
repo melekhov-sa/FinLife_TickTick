@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
 
@@ -193,7 +193,7 @@ export default function BudgetPage() {
   return (
     <>
 
-      <AppTopbar title="Бюджет" />
+      <PageHeader title="Бюджет" density="compact" />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
 

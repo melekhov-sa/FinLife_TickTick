@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
-import { PageTabs } from "@/components/layout/PageTabs";
+import { usePathname, useRouter } from "next/navigation";
+import { PageHeader } from "@/components/primitives/PageHeader";
+import { Tabs } from "@/components/primitives/Tabs";
 import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
@@ -225,7 +226,26 @@ function GoalCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const MONEY_TABS = [
+  { id: "/money",         label: "Операции" },
+  { id: "/wallets",       label: "Кошельки" },
+  { id: "/subscriptions", label: "Подписки" },
+  { id: "/categories",    label: "Категории" },
+  { id: "/goals",         label: "Цели" },
+];
+
+function getMoneyTab(pathname: string | null): string {
+  if (!pathname) return "/money";
+  if (pathname.startsWith("/wallets"))       return "/wallets";
+  if (pathname.startsWith("/subscriptions")) return "/subscriptions";
+  if (pathname.startsWith("/categories"))    return "/categories";
+  if (pathname.startsWith("/goals"))         return "/goals";
+  return "/money";
+}
+
 export default function GoalsPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [showArchived, setShowArchived] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<GoalItem | null>(null);
@@ -243,15 +263,15 @@ export default function GoalsPage() {
 
   return (
     <>
-      <AppTopbar title="Деньги" />
-      <PageTabs
-        tabs={[
-          { href: "/money", label: "Операции" },
-          { href: "/wallets", label: "Кошельки" },
-          { href: "/subscriptions", label: "Подписки" },
-          { href: "/categories", label: "Категории" },
-          { href: "/goals", label: "Цели" },
-        ]}
+      <PageHeader
+        title="Деньги"
+        tabs={
+          <Tabs
+            items={MONEY_TABS}
+            active={getMoneyTab(pathname)}
+            onChange={(id) => router.push(id)}
+          />
+        }
       />
 
       <main className="flex-1 overflow-auto p-4 md:p-6 max-w-4xl">

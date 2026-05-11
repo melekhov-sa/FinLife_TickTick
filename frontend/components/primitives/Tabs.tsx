@@ -1,152 +1,69 @@
 "use client";
 
-import { ReactNode, useRef, KeyboardEvent } from "react";
-import { LucideIcon } from "lucide-react";
+import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "underline" | "segmented" | "pills";
-type Size = "sm" | "md";
+/**
+ * Tabs — два варианта: underline (главные разделы страницы) и pills (вторичные).
+ *
+ * Скроллится горизонтально на мобиле — на overflow контейнер вешает `.ph-scroll-x`.
+ */
 
-export interface TabOption<V extends string = string> {
-  value: V;
+export type TabsVariant = "underline" | "pills";
+
+export interface TabItem {
+  id: string;
   label: ReactNode;
-  icon?: LucideIcon;
-  count?: number;
-  disabled?: boolean;
+  /** Числовой бейдж (количество). */
+  count?: number | string;
 }
 
-interface TabsProps<V extends string = string> {
-  value: V;
-  onChange: (v: V) => void;
-  options: TabOption<V>[];
-  variant?: Variant;
-  size?: Size;
+export interface TabsProps {
+  items: TabItem[];
+  active: string;
+  onChange: (id: string) => void;
+  variant?: TabsVariant;
   className?: string;
 }
 
-const sizeCfg: Record<Size, { h: string; text: string; px: string; iconSize: number }> = {
-  sm: { h: "h-8", text: "text-[12px]", px: "px-3", iconSize: 12 },
-  md: { h: "h-9", text: "text-[13px]", px: "px-3.5", iconSize: 14 },
-};
-
-function Count({
-  n,
-  active,
-  variant,
-}: {
-  n: number;
-  active: boolean;
-  variant: Variant;
-}) {
-  let cls: string;
-  if (variant === "pills" && active) {
-    cls = "bg-white text-indigo-700";
-  } else if (active) {
-    cls = "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300";
-  } else {
-    cls = "bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-slate-300";
-  }
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center font-semibold uppercase tracking-wide rounded h-4 px-1 text-[10px] tabular-nums",
-        cls,
-      )}
-    >
-      {n}
-    </span>
-  );
-}
-
-export function Tabs<V extends string = string>({
-  value,
-  onChange,
-  options,
-  variant = "underline",
-  size = "md",
-  className,
-}: TabsProps<V>) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const enabled = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i !== -1);
-  const sz = sizeCfg[size];
-
-  function onKey(e: KeyboardEvent<HTMLButtonElement>, idx: number) {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    const pos = enabled.indexOf(idx);
-    const dir = e.key === "ArrowRight" ? 1 : -1;
-    const next = enabled[(pos + dir + enabled.length) % enabled.length];
-    refs.current[next]?.focus();
-    onChange(options[next].value);
-  }
-
-  if (variant === "segmented") {
-    return (
-      <div role="tablist" className={cn("inline-flex items-center rounded-lg p-1 bg-slate-100 dark:bg-white/[0.04]", className)}>
-        {options.map((o, i) => {
-          const active = o.value === value;
-          const IconC = o.icon;
-          return (
-            <button
-              key={o.value}
-              ref={(el) => { refs.current[i] = el; }}
-              role="tab"
-              aria-selected={active}
-              disabled={o.disabled}
-              tabIndex={active ? 0 : -1}
-              onClick={() => onChange(o.value)}
-              onKeyDown={(e) => onKey(e, i)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md font-medium transition-all",
-                sz.h,
-                sz.text,
-                sz.px,
-                active
-                  ? "bg-white text-slate-900 shadow-sm dark:bg-white/[0.10] dark:text-slate-100"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200",
-                o.disabled && "opacity-50 cursor-not-allowed",
-              )}
-            >
-              {IconC && <IconC size={sz.iconSize} />}
-              <span>{o.label}</span>
-              {typeof o.count === "number" && <Count n={o.count} active={active} variant={variant} />}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
+export function Tabs({ items, active, onChange, variant = "underline", className }: TabsProps) {
   if (variant === "pills") {
     return (
-      <div role="tablist" className={cn("inline-flex items-center gap-1.5 flex-wrap", className)}>
-        {options.map((o, i) => {
-          const active = o.value === value;
-          const IconC = o.icon;
+      <div className={cn("inline-flex flex-wrap gap-1.5", className)}>
+        {items.map((it) => {
+          const isActive = active === it.id;
           return (
             <button
-              key={o.value}
-              ref={(el) => { refs.current[i] = el; }}
-              role="tab"
-              aria-selected={active}
-              disabled={o.disabled}
-              tabIndex={active ? 0 : -1}
-              onClick={() => onChange(o.value)}
-              onKeyDown={(e) => onKey(e, i)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",
-                sz.h,
-                sz.text,
-                sz.px,
-                active
-                  ? "bg-indigo-600 text-[#fff] dark:bg-indigo-500"
-                  : "bg-transparent text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/[0.06]",
-                o.disabled && "opacity-50 cursor-not-allowed",
-              )}
+              key={it.id}
+              type="button"
+              onClick={() => onChange(it.id)}
+              aria-pressed={isActive}
+              className="inline-flex items-center gap-1.5 transition-colors"
+              style={{
+                height: 32,
+                padding: "0 12px",
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 500,
+                background: isActive ? "var(--app-accent-weak)" : "transparent",
+                color: isActive ? "var(--app-accent-ink)" : "var(--t-muted)",
+                border: isActive ? "1px solid transparent" : "1px solid var(--app-border)",
+              }}
             >
-              {IconC && <IconC size={sz.iconSize} />}
-              <span>{o.label}</span>
-              {typeof o.count === "number" && <Count n={o.count} active={active} variant={variant} />}
+              {it.label}
+              {it.count != null && (
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: isActive ? "var(--app-accent-ink)" : "var(--t-faint)",
+                    opacity: isActive ? 1 : 0.7,
+                  }}
+                >
+                  {it.count}
+                </span>
+              )}
             </button>
           );
         })}
@@ -154,42 +71,59 @@ export function Tabs<V extends string = string>({
     );
   }
 
-  // underline
   return (
     <div
-      role="tablist"
-      className={cn("flex items-center gap-1 border-b border-slate-200 dark:border-white/[0.07]", className)}
+      className={cn("flex items-end ph-scroll-x", className)}
+      style={{
+        borderBottom: "1px solid var(--app-border)",
+        marginBottom: -1,
+      }}
     >
-      {options.map((o, i) => {
-        const active = o.value === value;
-        const IconC = o.icon;
+      {items.map((it) => {
+        const isActive = active === it.id;
         return (
           <button
-            key={o.value}
-            ref={(el) => { refs.current[i] = el; }}
-            role="tab"
-            aria-selected={active}
-            disabled={o.disabled}
-            tabIndex={active ? 0 : -1}
-            onClick={() => onChange(o.value)}
-            onKeyDown={(e) => onKey(e, i)}
-            className={cn(
-              "inline-flex items-center gap-1.5 font-medium transition-colors -mb-px border-b-2",
-              sz.h,
-              sz.text,
-              sz.px,
-              active
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
-                : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200",
-              o.disabled && "opacity-50 cursor-not-allowed",
-            )}
+            key={it.id}
+            type="button"
+            onClick={() => onChange(it.id)}
+            aria-pressed={isActive}
+            className="inline-flex items-center gap-2 transition-colors shrink-0"
+            style={{
+              height: 40,
+              padding: "0 14px",
+              fontSize: 13.5,
+              fontWeight: 500,
+              color: isActive ? "var(--t-primary)" : "var(--t-muted)",
+              borderBottom: isActive
+                ? "2px solid var(--app-accent)"
+                : "2px solid transparent",
+              marginBottom: -1,
+            }}
           >
-            {IconC && <IconC size={sz.iconSize} />}
-            <span>{o.label}</span>
-            {typeof o.count === "number" && <Count n={o.count} active={active} variant={variant} />}
+            {it.label}
+            {it.count != null && (
+              <span
+                className="inline-flex items-center justify-center"
+                style={{
+                  fontVariantNumeric: "tabular-nums",
+                  minWidth: 20,
+                  height: 18,
+                  padding: "0 6px",
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: isActive ? "var(--app-accent-weak)" : "var(--c-neutral-bg)",
+                  color: isActive ? "var(--app-accent-ink)" : "var(--t-muted)",
+                }}
+              >
+                {it.count}
+              </span>
+            )}
           </button>
         );
       })}
     </div>
   );
 }
+
+export default Tabs;

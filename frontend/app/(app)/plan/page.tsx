@@ -17,7 +17,7 @@ import {
   type DraggableAttributes,
 } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
@@ -1062,7 +1062,7 @@ export default function PlanPage() {
         />
       )}
 
-      <AppTopbar title="План" />
+      <PageHeader title="План" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
         <div className="w-full">
 

@@ -2,8 +2,9 @@
 
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppTopbar } from "@/components/layout/AppTopbar";
-import { PageTabs } from "@/components/layout/PageTabs";
+import { usePathname, useRouter } from "next/navigation";
+import { PageHeader } from "@/components/primitives/PageHeader";
+import { Tabs } from "@/components/primitives/Tabs";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { Pencil, Check, X, Archive, ArchiveRestore, Plus } from "lucide-react";
@@ -349,7 +350,26 @@ function AddCategoryForm({
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const MONEY_TABS = [
+  { id: "/money",         label: "Операции" },
+  { id: "/wallets",       label: "Кошельки" },
+  { id: "/subscriptions", label: "Подписки" },
+  { id: "/categories",    label: "Категории" },
+  { id: "/goals",         label: "Цели" },
+];
+
+function getMoneyTab(pathname: string | null): string {
+  if (!pathname) return "/money";
+  if (pathname.startsWith("/wallets"))       return "/wallets";
+  if (pathname.startsWith("/subscriptions")) return "/subscriptions";
+  if (pathname.startsWith("/categories"))    return "/categories";
+  if (pathname.startsWith("/goals"))         return "/goals";
+  return "/money";
+}
+
 export default function CategoriesPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("EXPENSE");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -389,17 +409,16 @@ export default function CategoriesPage() {
 
   return (
     <>
-      <AppTopbar
+      <PageHeader
         title="Деньги"
-        subtitle="Категории доходов и расходов"
+        tabs={
+          <Tabs
+            items={MONEY_TABS}
+            active={getMoneyTab(pathname)}
+            onChange={(id) => router.push(id)}
+          />
+        }
       />
-      <PageTabs tabs={[
-        { href: "/money", label: "Операции" },
-        { href: "/wallets", label: "Кошельки" },
-        { href: "/subscriptions", label: "Подписки" },
-        { href: "/categories", label: "Категории" },
-        { href: "/goals", label: "Цели" },
-      ]} />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
 

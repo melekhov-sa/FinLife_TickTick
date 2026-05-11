@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
-import { AppTopbar } from "@/components/layout/AppTopbar";
+import { PageHeader } from "@/components/primitives/PageHeader";
 import { EventDetailPanel } from "@/components/events/EventDetailPanel";
 import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
@@ -380,11 +380,20 @@ export default function EventsPage() {
       )}
       {showModal && <CreateEventModal onClose={() => setShowModal(false)} />}
 
-      <AppTopbar title="События" subtitle={dateSubtitle} actions={
-        <a href="/event-templates" className="text-[12px] font-medium px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-all" style={{ color: "var(--t-secondary)" }}>
-          Все события
-        </a>
-      } />
+      <PageHeader
+        title="События"
+        subtitle={dateSubtitle}
+        density="compact"
+        actions={
+          <a
+            href="/event-templates"
+            className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+            style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
+          >
+            Шаблоны
+          </a>
+        }
+      />
 
       <main className="flex-1 overflow-auto p-4 md:p-6">
         <div className="max-w-[900px] flex gap-5 items-start">
