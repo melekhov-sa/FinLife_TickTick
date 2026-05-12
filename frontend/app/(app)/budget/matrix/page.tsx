@@ -66,12 +66,19 @@ interface PlanEditTarget {
 }
 
 interface EditingProps {
-  openPlanEdit: (target: PlanEditTarget) => void;
+  openPlanEdit: (target: PlanEditTarget) => void;  // shift+click → copy-forward modal
   openFactDetail: (target: FactDetailTarget) => void;
   dragHandlers: DragHandlers;
   toggleVisibility?: (catId: number) => void;
   hiddenCatIds?: Set<number>;
   showHidden?: boolean;
+  // Inline editing
+  activeEditKey: string | null;
+  inlineValue: string;
+  onInlineStart: (key: string, currentValue: number) => void;
+  onInlineChange: (value: string) => void;
+  onInlineSave: (target: PlanEditTarget) => void;
+  onInlineCancel: () => void;
 }
 
 interface DragHandlers {
@@ -79,6 +86,41 @@ interface DragHandlers {
   onDragOver: (e: React.DragEvent, catId: number, parentId: number | null) => void;
   onDragEnd: (e: React.DragEvent) => void;
   dragOverId: number | null;
+}
+
+// ── Inline cell input ────────────────────────────────────────────────────────
+
+function InlineCellInput({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const cancelledRef = React.useRef(false);
+  return (
+    <input
+      autoFocus
+      type="text"
+      inputMode="decimal"
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/[^0-9.,\-]/g, ""))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") { cancelledRef.current = true; (e.target as HTMLInputElement).blur(); }
+      }}
+      onBlur={() => {
+        if (cancelledRef.current) { cancelledRef.current = false; onCancel(); }
+        else onSave();
+      }}
+      className="w-full min-w-[40px] text-right bg-transparent outline-none tabular-nums text-[12px] px-2 py-1.5"
+      style={{ color: "var(--app-accent-ink)" }}
+    />
+  );
 }
 
 // ── Plan Edit Modal ──────────────────────────────────────────────────────────
@@ -300,7 +342,7 @@ function PlanTd({ cell, isMuted, extraStyle }: { cell: BudgetCell; isMuted?: boo
   );
 }
 
-// Editable plan <td> for category rows — click opens modal, hover shows note tooltip
+// Editable plan <td> — click = inline edit, Shift+click = modal (copy-forward)
 function EditablePlanTd({
   cell,
   period,
@@ -316,29 +358,39 @@ function EditablePlanTd({
   heatBg?: string;
   extraStyle?: React.CSSProperties;
 }) {
-  const { openPlanEdit } = editing;
   const canEdit = period.has_manual_plan && !!row.category_id && !row.is_group;
-
+  const key = `cat:${row.category_id}:${row.kind}:${period.year}:${period.month}`;
+  const isEditing = editing.activeEditKey === key;
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
   const hasNote = !!cell.note;
 
-  if (!hasPlan && !hasFact && !canEdit) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", ...extraStyle }}>—</td>;
+  const target: PlanEditTarget = {
+    categoryId: row.category_id!,
+    kind: row.kind,
+    year: period.year,
+    month: period.month,
+    periodLabel: period.label,
+    categoryTitle: row.title,
+    currentAmount: cell.plan,
+    currentNote: cell.note ?? "",
+  };
+
+  if (isEditing) {
+    return (
+      <td className="tabular-nums p-0 text-[12px]" style={{ background: "var(--app-accent-weak)", ...extraStyle }}>
+        <InlineCellInput
+          value={editing.inlineValue}
+          onChange={editing.onInlineChange}
+          onSave={() => editing.onInlineSave(target)}
+          onCancel={editing.onInlineCancel}
+        />
+      </td>
+    );
   }
 
-  function handleClick() {
-    if (!canEdit) return;
-    openPlanEdit({
-      categoryId: row.category_id!,
-      kind: row.kind,
-      year: period.year,
-      month: period.month,
-      periodLabel: period.label,
-      categoryTitle: row.title,
-      currentAmount: cell.plan,
-      currentNote: cell.note ?? "",
-    });
+  if (!hasPlan && !hasFact && !canEdit) {
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
   return (
@@ -347,12 +399,16 @@ function EditablePlanTd({
       style={{ color: "var(--t-muted)", background: heatBg, ...extraStyle }}
     >
       <span
-        onClick={handleClick}
+        onClick={(e) => {
+          if (!canEdit) return;
+          if (e.shiftKey) editing.openPlanEdit(target);
+          else editing.onInlineStart(key, cell.plan);
+        }}
         className={clsx(
           canEdit && "cursor-pointer hover:text-indigo-400 transition-colors",
           hasNote && "border-b border-dotted border-amber-400/60"
         )}
-        title={cell.note || undefined}
+        title={cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · Shift+клик — скопировать вперёд" : undefined)}
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
         {hasNote && <span className="text-[9px] text-amber-400 ml-0.5 align-super font-bold drop-shadow-[0_0_3px_rgba(251,191,36,0.6)]">●</span>}
@@ -723,22 +779,6 @@ function GoalDataRow({
   isHidden?: boolean;
   onToggleVisibility?: () => void;
 }) {
-  function openGoalPlan(p: BudgetPeriod, cell: BudgetCell) {
-    if (!editing || !p.has_manual_plan) return;
-    editing.openPlanEdit({
-      categoryId: 0,
-      kind: kind === "income" ? "INCOME" : "EXPENSE",
-      year: p.year,
-      month: p.month,
-      periodLabel: p.label,
-      categoryTitle: row.title,
-      currentAmount: cell.plan,
-      currentNote: cell.note ?? "",
-      goalId: row.goal_id,
-      goalPlanType: goalPlanType || "goal",
-    });
-  }
-
   return (
     <tr className="transition-colors">
       <td
@@ -764,15 +804,22 @@ function GoalDataRow({
       {row.cells.slice(0, periodCount).map((cell, i) => {
         const p = periods?.[i];
         const pk = p ? getPeriodKind(p) : "current";
-        const canClick = !!p?.has_manual_plan && !!editing;
-        const planSpan = (
-          <span
-            onClick={canClick && p ? () => openGoalPlan(p, cell) : undefined}
-            className={canClick ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
-          >
-            {cell.plan ? fmt(cell.plan) : (canClick ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
-          </span>
-        );
+        const canEdit = !!p?.has_manual_plan && !!editing;
+        const key = `goal:${row.goal_id}:${goalPlanType ?? "goal"}:${p?.year}:${p?.month}`;
+        const isInlineEditing = canEdit && editing?.activeEditKey === key;
+
+        const target: PlanEditTarget | undefined = p ? {
+          categoryId: 0,
+          kind: kind === "income" ? "INCOME" : "EXPENSE",
+          year: p.year,
+          month: p.month,
+          periodLabel: p.label,
+          categoryTitle: row.title,
+          currentAmount: cell.plan,
+          currentNote: cell.note ?? "",
+          goalId: row.goal_id,
+          goalPlanType: goalPlanType || "goal",
+        } : undefined;
 
         const pBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
 
@@ -782,11 +829,36 @@ function GoalDataRow({
             <DeviationCell cell={cell} kind={kind} />
           </React.Fragment>
         );
+
+        const planTd = isInlineEditing && editing && target ? (
+          <td className="tabular-nums p-0 text-[12px]" style={{ background: "var(--app-accent-weak)", ...pBorder }}>
+            <InlineCellInput
+              value={editing.inlineValue}
+              onChange={editing.onInlineChange}
+              onSave={() => editing.onInlineSave(target)}
+              onCancel={editing.onInlineCancel}
+            />
+          </td>
+        ) : (
+          <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>
+            <span
+              onClick={(e) => {
+                if (!canEdit || !editing || !target) return;
+                if (e.shiftKey) editing.openPlanEdit(target);
+                else editing.onInlineStart(key, cell.plan);
+              }}
+              className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
+            >
+              {cell.plan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+            </span>
+          </td>
+        );
+
         if (pk === "current") {
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>{planSpan}</td>
+              {planTd}
               <FactCell cell={cell} kind={kind} />
               <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "var(--t-muted)" : "#DC2626" }}>
                 {cell.plan ? fmt(remainder) : "—"}
@@ -795,11 +867,7 @@ function GoalDataRow({
           );
         }
         // future
-        return (
-          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>
-            {planSpan}
-          </td>
-        );
+        return <React.Fragment key={i}>{planTd}</React.Fragment>;
       })}
       <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)" }} />
       <FactCell cell={row.total} kind={kind} />
@@ -867,6 +935,11 @@ export default function BudgetMatrixPage() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [rangeCount, setRangeCount] = useState(4);
 
+  // Mobile default: 2 periods on narrow screens
+  React.useEffect(() => {
+    if (window.innerWidth < 640) setRangeCount(2);
+  }, []);
+
   const [incomeOpen, setIncomeOpen] = useState(true);
   const [expenseOpen, setExpenseOpen] = useState(true);
   const [goalsOpen, setGoalsOpen] = useState(true);
@@ -875,6 +948,27 @@ export default function BudgetMatrixPage() {
   const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
   const [factDetailTarget, setFactDetailTarget] = useState<FactDetailTarget | null>(null);
   const [showHidden, setShowHidden] = useState(false);
+
+  // Inline editing
+  const [activeEditKey, setActiveEditKey] = useState<string | null>(null);
+  const [inlineValue, setInlineValue] = useState("");
+
+  function handleInlineStart(key: string, currentValue: number) {
+    setActiveEditKey(key);
+    setInlineValue(currentValue ? String(Math.round(currentValue)) : "");
+  }
+
+  async function handleInlineSave(target: PlanEditTarget) {
+    const val = inlineValue;
+    setActiveEditKey(null);
+    setInlineValue("");
+    await savePlan(target, val, target.currentNote, false);
+  }
+
+  function handleInlineCancel() {
+    setActiveEditKey(null);
+    setInlineValue("");
+  }
 
   // ── Drag-and-drop reorder state ──
   const dragSrc = useRef<{ catId: number; parentId: number | null } | null>(null);
@@ -1035,6 +1129,12 @@ export default function BudgetMatrixPage() {
     toggleVisibility: showHidden ? toggleVisibility : undefined,
     hiddenCatIds: showHidden ? hiddenCatIds : undefined,
     showHidden,
+    activeEditKey,
+    inlineValue,
+    onInlineStart: handleInlineStart,
+    onInlineChange: setInlineValue,
+    onInlineSave: handleInlineSave,
+    onInlineCancel: handleInlineCancel,
   };
 
   return (
@@ -1052,16 +1152,10 @@ export default function BudgetMatrixPage() {
           onClose={() => setPlanEditTarget(null)}
         />
       )}
-      <PageHeader title="Бюджет (матрица)" density="compact" />
-
-      <main className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Controls bar */}
-        <div
-          className="flex items-center gap-3 px-4 py-3 border-b shrink-0 flex-wrap gap-y-2"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          {/* Navigation */}
+      <PageHeader
+        title="Расширенный бюджет"
+        density="compact"
+        period={
           <div className="flex items-center gap-1">
             <Tooltip content="Назад">
               <button
@@ -1088,31 +1182,29 @@ export default function BudgetMatrixPage() {
               </button>
             </Tooltip>
           </div>
-
-          {/* Period count selector */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Периодов:</span>
-            <div className="flex gap-px">
-              {[1, 2, 3, 4, 6, 12].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setRangeCount(n)}
-                  className={clsx(
-                    "w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                    rangeCount === n
-                      ? "bg-indigo-600 text-white"
-                      : "hover:bg-[var(--app-accent-light)]"
-                  )}
-                  style={rangeCount !== n ? { color: "var(--t-muted)" } : undefined}
-                >
-                  {n}
-                </button>
-              ))}
+        }
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Периодов:</span>
+              <div className="flex gap-px">
+                {[1, 2, 3, 4, 6, 12].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setRangeCount(n)}
+                    className={clsx(
+                      "w-7 h-6 text-[11px] font-medium rounded transition-colors",
+                      rangeCount === n
+                        ? "bg-indigo-600 text-white"
+                        : "hover:bg-[var(--app-accent-light)]"
+                    )}
+                    style={rangeCount !== n ? { color: "var(--t-muted)" } : undefined}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Controls right */}
-          <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowHidden(v => !v)}
               className={clsx(
@@ -1132,7 +1224,10 @@ export default function BudgetMatrixPage() {
               Простой вид
             </Link>
           </div>
-        </div>
+        }
+      />
+
+      <main className="flex-1 flex flex-col overflow-hidden">
 
         {/* Table area — this div is the scroll container, sticky works inside it */}
         <div className="flex-1 overflow-auto relative">
