@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil } from "lucide-react";
 import { clsx } from "clsx";
@@ -988,17 +989,28 @@ function PeriodPicker({ value, onChange, label }: {
   label: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [cYear, setCYear] = useState(value.year);
   const [cMonth, setCMonth] = useState(value.month);
   const [cCount, setCCount] = useState(value.rangeCount);
 
   React.useEffect(() => { setCYear(value.year); setCMonth(value.month); setCCount(value.rangeCount); }, [value.year, value.month, value.rangeCount]);
 
+  function handleToggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 6, left: r.left });
+    }
+    setOpen(v => !v);
+  }
+
   React.useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!dropRef.current?.contains(t) && !btnRef.current?.contains(t)) setOpen(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
@@ -1024,73 +1036,84 @@ function PeriodPicker({ value, onChange, label }: {
 
   const apply = (v: PeriodSelection) => { onChange(v); setOpen(false); };
 
+  const dropdown = open ? (
+    <div
+      ref={dropRef}
+      className="rounded-xl shadow-2xl p-4"
+      style={{
+        position: "fixed",
+        top: dropPos.top,
+        left: dropPos.left,
+        zIndex: 9999,
+        background: "var(--app-card-bg)",
+        border: "1px solid var(--app-border)",
+        minWidth: 310,
+      }}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Быстрый выбор</p>
+      <div className="grid grid-cols-3 gap-1.5 mb-4">
+        {presets.map(p => (
+          <button
+            key={p.label}
+            onClick={() => apply(p)}
+            className="text-[11px] font-medium px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--app-accent-weak)]"
+            style={{ color: "var(--t-secondary)", border: "1px solid var(--app-border)" }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Произвольный период</p>
+        <div className="flex items-center gap-2">
+          <select value={cYear} onChange={e => setCYear(+e.target.value)}
+            className="h-8 px-2 rounded-lg text-[12px] flex-1"
+            style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
+            {[cy-3,cy-2,cy-1,cy,cy+1,cy+2].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select value={cMonth} onChange={e => setCMonth(+e.target.value)}
+            className="h-8 px-2 rounded-lg text-[12px] flex-1"
+            style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
+            {MONTHS_RU.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="text-[11px] shrink-0" style={{ color: "var(--t-faint)" }}>Периодов:</span>
+          <div className="flex gap-px">
+            {[1,2,3,4,6,12].map(n => (
+              <button key={n} onClick={() => setCCount(n)}
+                className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
+                  cCount === n ? "bg-indigo-600 text-white" : "hover:bg-[var(--app-accent-light)]")}
+                style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button
+          onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
+          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+        >
+          Применить
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleToggle}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors hover:bg-[var(--app-accent-weak)]"
         style={{ color: "var(--t-primary)", border: "1px solid var(--app-border)", background: "var(--app-card-bg)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em" }}
       >
         {label}
         <ChevronDown size={13} style={{ color: "var(--t-muted)", flexShrink: 0 }} />
       </button>
-
-      {open && (
-        <div
-          className="absolute top-full left-0 mt-1.5 rounded-xl shadow-2xl z-50 p-4"
-          style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)", minWidth: 310 }}
-        >
-          <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Быстрый выбор</p>
-          <div className="grid grid-cols-3 gap-1.5 mb-4">
-            {presets.map(p => (
-              <button
-                key={p.label}
-                onClick={() => apply(p)}
-                className="text-[11px] font-medium px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--app-accent-weak)]"
-                style={{ color: "var(--t-secondary)", border: "1px solid var(--app-border)" }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Произвольный период</p>
-            <div className="flex items-center gap-2">
-              <select value={cYear} onChange={e => setCYear(+e.target.value)}
-                className="h-8 px-2 rounded-lg text-[12px] flex-1"
-                style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
-                {[cy-3,cy-2,cy-1,cy,cy+1,cy+2].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <select value={cMonth} onChange={e => setCMonth(+e.target.value)}
-                className="h-8 px-2 rounded-lg text-[12px] flex-1"
-                style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
-                {MONTHS_RU.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className="text-[11px] shrink-0" style={{ color: "var(--t-faint)" }}>Периодов:</span>
-              <div className="flex gap-px">
-                {[1,2,3,4,6,12].map(n => (
-                  <button key={n} onClick={() => setCCount(n)}
-                    className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                      cCount === n ? "bg-indigo-600 text-white" : "hover:bg-[var(--app-accent-light)]")}
-                    style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
-              className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
-            >
-              Применить
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      {typeof window !== "undefined" && dropdown ? createPortal(dropdown, document.body) : null}
+    </>
   );
 }
 
