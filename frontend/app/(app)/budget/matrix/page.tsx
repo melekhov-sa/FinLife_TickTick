@@ -75,7 +75,7 @@ interface EditingProps {
   // Inline editing
   activeEditKey: string | null;
   inlineValue: string;
-  onInlineStart: (key: string, currentValue: number) => void;
+  onInlineStart: (key: string, currentValue: number, initialStr?: string) => void;
   onInlineChange: (value: string) => void;
   onInlineSave: (target: PlanEditTarget) => void;
   onInlineCancel: () => void;
@@ -340,17 +340,15 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
 // ── Cell rendering ────────────────────────────────────────────────────────────
 
 // Non-editable plan <td> (used in totals, goal rows, result row)
-function PlanTd({ cell, isMuted, extraStyle }: { cell: BudgetCell; isMuted?: boolean; extraStyle?: React.CSSProperties }) {
+function PlanTd({ cell, isMuted, extraStyle, totalCol }: { cell: BudgetCell; isMuted?: boolean; extraStyle?: React.CSSProperties; totalCol?: boolean }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
+  const cls = clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", totalCol && "bgt-tc-plan");
   if (!hasPlan && !hasFact) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
+    return <td className={cls} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
   return (
-    <td
-      className="tabular-nums text-right px-2 py-1.5 text-[12px]"
-      style={{ color: isMuted ? "var(--t-muted)" : "var(--t-secondary)", ...extraStyle }}
-    >
+    <td className={cls} style={{ color: isMuted ? "var(--t-muted)" : "var(--t-secondary)", ...extraStyle }}>
       {hasPlan ? fmt(cell.plan) : "—"}
     </td>
   );
@@ -411,8 +409,13 @@ function EditablePlanTd({
 
   return (
     <td
-      className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group"
+      className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group outline-none"
+      tabIndex={canEdit ? 0 : undefined}
       style={{ color: "var(--t-muted)", background: heatBg, ...extraStyle }}
+      onKeyDown={canEdit ? (e) => {
+        if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editing.onInlineStart(key, 0, e.key); }
+        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan); }
+      } : undefined}
     >
       <span
         onClick={(e) => {
@@ -439,12 +442,14 @@ function FactCell({
   isBold,
   onClick,
   extraStyle,
+  totalCol,
 }: {
   cell: BudgetCell;
   kind: "income" | "expense" | "neutral";
   isBold?: boolean;
   onClick?: () => void;
   extraStyle?: React.CSSProperties;
+  totalCol?: boolean;
 }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
@@ -458,12 +463,12 @@ function FactCell({
   }
 
   if (!hasFact && !hasPlan) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
+    return <td className={clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", totalCol && "bgt-tc-fact")} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
   return (
     <td
-      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold")}
+      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
       style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
     >
       {hasFact && onClick ? (
@@ -480,10 +485,14 @@ function FactCell({
 // ── Period pair headers ───────────────────────────────────────────────────────
 
 function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
+  const firstYear = periods[0]?.year;
+  const multiYear = periods.some(p => p.year !== firstYear);
+  const totHdrStyle = { color: "var(--t-muted)", background: "var(--bgt-head-bg)", border: "1px solid var(--bgt-cell-border-strong)" };
   return (
     <>
       {periods.map((p) => {
         const kind = getPeriodKind(p);
+        const label = multiYear ? `${p.short_label} '${String(p.year).slice(2)}` : p.short_label;
         return (
           <th
             key={p.index}
@@ -498,17 +507,12 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
               border: "1px solid var(--bgt-cell-border-strong)",
             }}
           >
-            {p.short_label}
+            {label}
           </th>
         );
       })}
-      <th
-        colSpan={2}
-        className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center"
-        style={{ color: "var(--t-muted)", background: "var(--bgt-head-bg)", border: "1px solid var(--bgt-cell-border-strong)" }}
-      >
-        Итого
-      </th>
+      <th className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center bgt-th-plan" style={totHdrStyle}>П</th>
+      <th className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center bgt-th-fact" style={totHdrStyle}>Ф</th>
     </>
   );
 }
@@ -538,8 +542,8 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
         return <th key={p.index} className={subHdrCls} style={subHdrStyle}>П</th>;
       })}
       {/* Итого: П + Ф */}
-      <th className={subHdrCls} style={subHdrStyle}>П</th>
-      <th className={subHdrCls} style={subHdrStyle}>Ф</th>
+      <th className={clsx(subHdrCls, "bgt-th-plan")} style={subHdrStyle}>П</th>
+      <th className={clsx(subHdrCls, "bgt-th-fact")} style={subHdrStyle}>Ф</th>
     </>
   );
 }
@@ -625,8 +629,8 @@ function TotalsRow({
         // future
         return <PlanTd key={i} cell={cell} isMuted />;
       })}
-      <PlanTd cell={totals.total} isMuted />
-      <FactCell cell={totals.total} kind={kind} isBold />
+      <PlanTd cell={totals.total} isMuted extraStyle={{ background: "var(--bgt-totals-bg)" }} totalCol />
+      <FactCell cell={totals.total} kind={kind} isBold extraStyle={{ background: "var(--bgt-totals-bg)" }} totalCol />
     </tr>
   );
 }
@@ -768,8 +772,8 @@ function CategoryDataRow({
           </React.Fragment>
         );
       })}
-      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)" }} />
-      <FactCell cell={row.total} kind={kind} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)", background: "var(--bgt-row-bg)" }} totalCol />
+      <FactCell cell={row.total} kind={kind} extraStyle={{ background: "var(--bgt-row-bg)" }} totalCol />
     </tr>
   );
 }
@@ -887,8 +891,8 @@ function GoalDataRow({
         // future
         return <React.Fragment key={i}>{planTd}</React.Fragment>;
       })}
-      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)" }} />
-      <FactCell cell={row.total} kind={kind} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)", background: "var(--bgt-row-bg)" }} totalCol />
+      <FactCell cell={row.total} kind={kind} extraStyle={{ background: "var(--bgt-row-bg)" }} totalCol />
     </tr>
   );
 }
@@ -935,13 +939,131 @@ function ResultRow({
         // future
         return <td key={i} className={tdCls} style={{ color: planColor }}>{fmtSigned(cell.plan)}</td>;
       })}
-      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: result.total.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>
+      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bgt-tc-plan" style={{ color: result.total.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)", background: "var(--app-sidebar-bg)" }}>
         {fmtSigned(result.total.plan)}
       </td>
-      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: result.total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>
+      <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bgt-tc-fact" style={{ color: result.total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)", background: "var(--app-sidebar-bg)" }}>
         {fmtSigned(result.total.fact)}
       </td>
     </tr>
+  );
+}
+
+// ── Period picker ─────────────────────────────────────────────────────────────
+
+const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+
+interface PeriodSelection { year: number; month: number; rangeCount: number; }
+
+function PeriodPicker({ value, onChange, label }: {
+  value: PeriodSelection;
+  onChange: (v: PeriodSelection) => void;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [cYear, setCYear] = useState(value.year);
+  const [cMonth, setCMonth] = useState(value.month);
+  const [cCount, setCCount] = useState(value.rangeCount);
+
+  React.useEffect(() => { setCYear(value.year); setCMonth(value.month); setCCount(value.rangeCount); }, [value.year, value.month, value.rangeCount]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth() + 1;
+  const curQStart = Math.floor((cm - 1) / 3) * 3 + 1;
+  const prevQStart = curQStart > 3 ? curQStart - 3 : 10;
+  const prevQYear = curQStart > 3 ? cy : cy - 1;
+  const prevM = cm === 1 ? 12 : cm - 1;
+  const prevMY = cm === 1 ? cy - 1 : cy;
+
+  const presets: Array<{ label: string } & PeriodSelection> = [
+    { label: "Текущий месяц",    year: cy,       month: cm,          rangeCount: 1  },
+    { label: "Текущий квартал",  year: cy,       month: curQStart,   rangeCount: 3  },
+    { label: "Текущий год",      year: cy,       month: 1,           rangeCount: 12 },
+    { label: "Прошлый месяц",    year: prevMY,   month: prevM,       rangeCount: 1  },
+    { label: "Прошлый квартал",  year: prevQYear,month: prevQStart,  rangeCount: 3  },
+    { label: "Прошлый год",      year: cy - 1,   month: 1,           rangeCount: 12 },
+  ];
+
+  const apply = (v: PeriodSelection) => { onChange(v); setOpen(false); };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors hover:bg-[var(--app-accent-weak)]"
+        style={{ color: "var(--t-primary)", border: "1px solid var(--app-border)", background: "var(--app-card-bg)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em" }}
+      >
+        {label}
+        <ChevronDown size={13} style={{ color: "var(--t-muted)", flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1.5 rounded-xl shadow-2xl z-50 p-4"
+          style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)", minWidth: 310 }}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Быстрый выбор</p>
+          <div className="grid grid-cols-3 gap-1.5 mb-4">
+            {presets.map(p => (
+              <button
+                key={p.label}
+                onClick={() => apply(p)}
+                className="text-[11px] font-medium px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--app-accent-weak)]"
+                style={{ color: "var(--t-secondary)", border: "1px solid var(--app-border)" }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Произвольный период</p>
+            <div className="flex items-center gap-2">
+              <select value={cYear} onChange={e => setCYear(+e.target.value)}
+                className="h-8 px-2 rounded-lg text-[12px] flex-1"
+                style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
+                {[cy-3,cy-2,cy-1,cy,cy+1,cy+2].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <select value={cMonth} onChange={e => setCMonth(+e.target.value)}
+                className="h-8 px-2 rounded-lg text-[12px] flex-1"
+                style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
+                {MONTHS_RU.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="text-[11px] shrink-0" style={{ color: "var(--t-faint)" }}>Периодов:</span>
+              <div className="flex gap-px">
+                {[1,2,3,4,6,12].map(n => (
+                  <button key={n} onClick={() => setCCount(n)}
+                    className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
+                      cCount === n ? "bg-indigo-600 text-white" : "hover:bg-[var(--app-accent-light)]")}
+                    style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
+              className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            >
+              Применить
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -998,8 +1120,8 @@ function OtherRow({
         );
         return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...pBorder }}>—</td>;
       })}
-      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
-      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: total?.fact ? factColor : "var(--bgt-dash)" }}>
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bgt-tc-plan" style={{ color: "var(--bgt-dash)", borderLeft: "2px solid var(--bgt-sticky-border)", background: "var(--bgt-row-bg)" }}>—</td>
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bgt-tc-fact" style={{ color: total?.fact ? factColor : "var(--bgt-dash)", background: "var(--bgt-row-bg)" }}>
         {total?.fact ? fmt(total.fact) : "—"}
       </td>
     </tr>
@@ -1019,10 +1141,27 @@ export default function BudgetMatrixPage() {
     if (window.innerWidth < 640) setRangeCount(2);
   }, []);
 
-  const [incomeOpen, setIncomeOpen] = useState(true);
-  const [expenseOpen, setExpenseOpen] = useState(true);
-  const [goalsOpen, setGoalsOpen] = useState(true);
-  const [withdrawOpen, setWithdrawOpen] = useState(true);
+  // Section collapse — persisted in localStorage
+  const [sections, setSectionsState] = useState<{ incomeOpen: boolean; expenseOpen: boolean; goalsOpen: boolean; withdrawOpen: boolean }>(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem("bgt_sections") || "{}");
+      return { incomeOpen: s.incomeOpen ?? true, expenseOpen: s.expenseOpen ?? true, goalsOpen: s.goalsOpen ?? true, withdrawOpen: s.withdrawOpen ?? true };
+    } catch { return { incomeOpen: true, expenseOpen: true, goalsOpen: true, withdrawOpen: true }; }
+  });
+
+  function setSections(updater: (prev: typeof sections) => typeof sections) {
+    setSectionsState(prev => {
+      const next = updater(prev);
+      try { localStorage.setItem("bgt_sections", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  const { incomeOpen, expenseOpen, goalsOpen, withdrawOpen } = sections;
+  const setIncomeOpen  = (v: boolean) => setSections(p => ({ ...p, incomeOpen: v }));
+  const setExpenseOpen = (v: boolean) => setSections(p => ({ ...p, expenseOpen: v }));
+  const setGoalsOpen   = (v: boolean) => setSections(p => ({ ...p, goalsOpen: v }));
+  const setWithdrawOpen= (v: boolean) => setSections(p => ({ ...p, withdrawOpen: v }));
 
   const [planEditTarget, setPlanEditTarget] = useState<PlanEditTarget | null>(null);
   const [factDetailTarget, setFactDetailTarget] = useState<FactDetailTarget | null>(null);
@@ -1032,9 +1171,9 @@ export default function BudgetMatrixPage() {
   const [activeEditKey, setActiveEditKey] = useState<string | null>(null);
   const [inlineValue, setInlineValue] = useState("");
 
-  function handleInlineStart(key: string, currentValue: number) {
+  function handleInlineStart(key: string, currentValue: number, initialStr?: string) {
     setActiveEditKey(key);
-    setInlineValue(currentValue ? String(Math.round(currentValue)) : "");
+    setInlineValue(initialStr !== undefined ? initialStr : (currentValue ? String(Math.round(currentValue)) : ""));
   }
 
   async function handleInlineSave(target: PlanEditTarget) {
@@ -1181,6 +1320,45 @@ export default function BudgetMatrixPage() {
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
+  // ── CSV export ──
+
+  function downloadCSV() {
+    if (!data) return;
+    const ps = periods;
+    const hdr = ["Категория", ...ps.flatMap(p => {
+      const k = getPeriodKind(p);
+      const lbl = multiYear ? `${p.short_label}'${String(p.year).slice(2)}` : p.short_label;
+      if (k === "past") return [`${lbl} Ф`, `${lbl} Δ`];
+      if (k === "current") return [`${lbl} П`, `${lbl} Ф`, `${lbl} Ост`];
+      return [`${lbl} П`];
+    }), "Итого П", "Итого Ф"];
+
+    const rowToCsv = (title: string, cells: BudgetCell[], total: BudgetCell) =>
+      [title, ...cells.slice(0, rangeCount).flatMap((c, i) => {
+        const k = getPeriodKind(ps[i]);
+        if (k === "past") return [fmt(c.fact), fmtSigned(c.deviation)];
+        if (k === "current") return [fmt(c.plan), fmt(c.fact), fmt(c.plan - c.fact)];
+        return [fmt(c.plan)];
+      }), fmt(total.plan), fmt(total.fact)];
+
+    const rows: string[][] = [hdr];
+    rows.push(["ДОХОДЫ"]);
+    data.income_rows.forEach(r => rows.push(rowToCsv(r.title, r.cells, r.total)));
+    rows.push(["ВЗЯТЬ ИЗ ОТЛОЖЕННОГО"]);
+    data.withdrawal_rows.forEach(r => rows.push(rowToCsv(r.title, r.cells, r.total)));
+    rows.push(["РАСХОДЫ"]);
+    data.expense_rows.forEach(r => rows.push(rowToCsv(r.title, r.cells, r.total)));
+    rows.push(["ОТЛОЖИТЬ"]);
+    data.goal_rows.forEach(r => rows.push(rowToCsv(r.title, r.cells, r.total)));
+
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `budget_${year}_${String(month).padStart(2,"0")}_${rangeCount}m.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
   // ── Tab navigation (needs data) ──
 
   const editableKeys = React.useMemo(() => {
@@ -1259,8 +1437,10 @@ export default function BudgetMatrixPage() {
   }
 
   const periods = data?.periods ?? [];
+  const multiYear = periods.length > 1 && periods.some(p => p.year !== periods[0].year);
+  const fmtPeriodLabel = (p: BudgetPeriod) => multiYear ? `${p.short_label} '${String(p.year).slice(2)}` : p.short_label;
   const periodLabel = periods.length > 0
-    ? `${periods[0].short_label} — ${periods[periods.length - 1].short_label}`
+    ? `${fmtPeriodLabel(periods[0])} — ${fmtPeriodLabel(periods[periods.length - 1])}`
     : `${month}/${year}`;
 
   // Dynamic column count based on period kind
@@ -1324,12 +1504,11 @@ export default function BudgetMatrixPage() {
                 <ChevronLeft size={16} />
               </button>
             </Tooltip>
-            <span
-              className="text-[13px] font-semibold tabular-nums min-w-[130px] text-center"
-              style={{ color: "var(--t-primary)", letterSpacing: "-0.01em" }}
-            >
-              {periodLabel}
-            </span>
+            <PeriodPicker
+              value={{ year, month, rangeCount }}
+              onChange={({ year: y, month: m, rangeCount: rc }) => { setYear(y); setMonth(m); setRangeCount(rc); }}
+              label={periodLabel}
+            />
             <Tooltip content="Вперёд">
               <button
                 onClick={goForward}
@@ -1342,27 +1521,13 @@ export default function BudgetMatrixPage() {
           </div>
         }
         actions={
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Периодов:</span>
-              <div className="flex gap-px">
-                {[1, 2, 3, 4, 6, 12].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setRangeCount(n)}
-                    className={clsx(
-                      "w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                      rangeCount === n
-                        ? "bg-indigo-600 text-white"
-                        : "hover:bg-[var(--app-accent-light)]"
-                    )}
-                    style={rangeCount !== n ? { color: "var(--t-muted)" } : undefined}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={downloadCSV}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5 border-slate-200 text-slate-500 hover:bg-slate-50"
+            >
+              CSV
+            </button>
             <button
               onClick={() => setShowHidden(v => !v)}
               className={clsx(
@@ -1414,6 +1579,11 @@ export default function BudgetMatrixPage() {
                 .bgt-matrix thead { position: sticky; top: 0; z-index: 20; }
                 .bgt-matrix thead th { background: var(--bgt-head-bg); }
                 .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid var(--app-accent) !important; }
+                .bgt-matrix .bgt-tc-plan { position: sticky; right: 80px; z-index: 6; min-width: 80px; }
+                .bgt-matrix .bgt-tc-fact { position: sticky; right: 0; z-index: 6; min-width: 80px; }
+                .bgt-matrix .bgt-th-plan { position: sticky; right: 80px; z-index: 25; min-width: 80px; background: var(--bgt-head-bg); }
+                .bgt-matrix .bgt-th-fact { position: sticky; right: 0; z-index: 25; min-width: 80px; background: var(--bgt-head-bg); }
+                .bgt-matrix tr:hover .bgt-tc-plan, .bgt-matrix tr:hover .bgt-tc-fact { background-color: var(--bgt-hover-bg) !important; }
               `}</style>
               <table className="bgt-matrix w-full text-left" style={{ border: "1px solid var(--bgt-cell-border-strong)", borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
@@ -1444,7 +1614,7 @@ export default function BudgetMatrixPage() {
                     label="Доходы"
                     colSpan={totalCols}
                     expanded={incomeOpen}
-                    onToggle={() => setIncomeOpen((v) => !v)}
+                    onToggle={() => setIncomeOpen(!incomeOpen)}
                   />
                   {incomeOpen && data.income_rows.map((row, i) => (
                     <CategoryDataRow
@@ -1484,7 +1654,7 @@ export default function BudgetMatrixPage() {
                         label="Взять из отложенного"
                         colSpan={totalCols}
                         expanded={withdrawOpen}
-                        onToggle={() => setWithdrawOpen((v) => !v)}
+                        onToggle={() => setWithdrawOpen(!withdrawOpen)}
                       />
                       {withdrawOpen && data.withdrawal_rows.map((row, i) => (
                         <GoalDataRow
@@ -1514,7 +1684,7 @@ export default function BudgetMatrixPage() {
                     label="Расходы"
                     colSpan={totalCols}
                     expanded={expenseOpen}
-                    onToggle={() => setExpenseOpen((v) => !v)}
+                    onToggle={() => setExpenseOpen(!expenseOpen)}
                   />
                   {expenseOpen && data.expense_rows.map((row, i) => (
                     <CategoryDataRow
@@ -1554,7 +1724,7 @@ export default function BudgetMatrixPage() {
                         label="Отложить"
                         colSpan={totalCols}
                         expanded={goalsOpen}
-                        onToggle={() => setGoalsOpen((v) => !v)}
+                        onToggle={() => setGoalsOpen(!goalsOpen)}
                       />
                       {goalsOpen && data.goal_rows.map((row, i) => (
                         <GoalDataRow
