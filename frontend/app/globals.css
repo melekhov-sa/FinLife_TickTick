@@ -193,6 +193,19 @@
   --c-neutral-bg:   #F1F5F9;
   --c-neutral-fg:   #475569;
   --c-neutral-ink:  #334155;
+
+  /* Budget matrix table */
+  --bgt-cell-border:        #CBD5E1;
+  --bgt-cell-border-strong: #94A3B8;
+  --bgt-sticky-border:      #64748B;
+  --bgt-row-bg:             #FAFBFD;
+  --bgt-row-group:          #F1F5F9;
+  --bgt-section-bg:         #E2E8F0;
+  --bgt-head-bg:            #EDF0F4;
+  --bgt-subhead-bg:         #E2E8F0;
+  --bgt-totals-bg:          #EEF2FF;
+  --bgt-hover-bg:           #EFF6FF;
+  --bgt-dash:               #D1D5DB;
 }
 
 /* ── Desktop typography scale (≥768px) ─────────────────────────────────── */
@@ -240,6 +253,19 @@
   --shadow-topbar: 0 1px 0 rgba(255, 255, 255, .04);
   --shadow-fab:    0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px -8px rgba(124, 58, 237, .55);
   --shadow-mobile: 0 1px 0 rgba(255, 255, 255, .04), 0 -4px 24px -8px rgba(0, 0, 0, .6);
+
+  /* Budget matrix table */
+  --bgt-cell-border:        rgba(255,255,255,0.06);
+  --bgt-cell-border-strong: rgba(255,255,255,0.12);
+  --bgt-sticky-border:      rgba(255,255,255,0.16);
+  --bgt-row-bg:             #0c1122;
+  --bgt-row-group:          #0f172a;
+  --bgt-section-bg:         rgba(255,255,255,0.04);
+  --bgt-head-bg:            #0c1122;
+  --bgt-subhead-bg:         rgba(0,0,0,0.25);
+  --bgt-totals-bg:          rgba(99,102,241,0.12);
+  --bgt-hover-bg:           rgba(99,102,241,0.06);
+  --bgt-dash:               rgba(255,255,255,0.18);
 
   --color-income:  #4ADE80;
   --color-expense: #F87171;

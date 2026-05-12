@@ -3,7 +3,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -124,7 +123,7 @@ function PlanEditModal({
           План на {target.periodLabel}
         </p>
 
-        <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1">
+        <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--t-faint)" }}>
           Сумма
         </label>
         <input
@@ -135,10 +134,11 @@ function PlanEditModal({
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,\-]/g, ""))}
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
           placeholder="0"
-          className="w-full px-3 h-10 text-base rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors tabular-nums"
+          className="w-full px-3 h-10 text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-colors tabular-nums"
+          style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
 
-        <label className="block text-[11px] font-medium text-white/50 uppercase tracking-wider mb-1 mt-3">
+        <label className="block text-[11px] font-medium uppercase tracking-wider mb-1 mt-3" style={{ color: "var(--t-faint)" }}>
           Комментарий
         </label>
         <textarea
@@ -146,7 +146,8 @@ function PlanEditModal({
           onChange={(e) => setNote(e.target.value)}
           placeholder="Необязательно"
           rows={2}
-          className="w-full px-3 py-2 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
+          className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-colors resize-none"
+          style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
 
         {remainingMonths > 0 && (
@@ -176,7 +177,8 @@ function PlanEditModal({
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors"
+            className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
+            style={{ border: "1px solid var(--app-border)", color: "var(--t-muted)", background: "var(--app-card-bg)" }}
           >
             Отмена
           </button>
@@ -342,7 +344,7 @@ function EditablePlanTd({
   return (
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group"
-      style={{ color: "#475569", background: heatBg, ...extraStyle }}
+      style={{ color: "var(--t-muted)", background: heatBg, ...extraStyle }}
     >
       <span
         onClick={handleClick}
@@ -416,9 +418,13 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
             colSpan={periodColCount(kind)}
             className={clsx(
               "text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center",
-              kind === "current" ? "bg-indigo-50 dark:bg-indigo-500/[0.06]" : "bg-slate-100 dark:bg-transparent"
+              kind === "current" ? "bg-indigo-50 dark:bg-indigo-500/[0.06]" : ""
             )}
-            style={{ color: kind === "current" ? "var(--t-primary)" : "var(--t-muted)", border: "1px solid #94A3B8" }}
+            style={{
+              color: kind === "current" ? "var(--t-primary)" : "var(--t-muted)",
+              background: kind !== "current" ? "var(--bgt-head-bg)" : undefined,
+              border: "1px solid var(--bgt-cell-border-strong)",
+            }}
           >
             {p.short_label}
           </th>
@@ -426,8 +432,8 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
       })}
       <th
         colSpan={2}
-        className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center bg-slate-100 dark:bg-transparent"
-        style={{ color: "var(--t-muted)", border: "1px solid #94A3B8" }}
+        className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center"
+        style={{ color: "var(--t-muted)", background: "var(--bgt-head-bg)", border: "1px solid var(--bgt-cell-border-strong)" }}
       >
         Итого
       </th>
@@ -435,8 +441,8 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
   );
 }
 
-const subHdrCls = "text-[10px] font-bold px-2 py-1 text-right bg-slate-200 dark:bg-[#0c1122]";
-const subHdrStyle: React.CSSProperties = { color: "#334155", border: "1px solid #94A3B8" };
+const subHdrCls = "text-[10px] font-bold px-2 py-1 text-right";
+const subHdrStyle: React.CSSProperties = { color: "var(--t-label)", border: "1px solid var(--bgt-cell-border-strong)", background: "var(--bgt-subhead-bg)" };
 
 function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
   return (
@@ -483,20 +489,20 @@ function SectionHeaderRow({
     <tr
       className="cursor-pointer select-none transition-colors"
       onClick={onToggle}
-      style={{ background: "#E2E8F0" }}
+      style={{ background: "var(--bgt-section-bg)" }}
     >
-      <td className="px-3 py-2 !bg-[#E2E8F0]" colSpan={1} style={{ border: "1px solid #94A3B8" }}>
+      <td className="px-3 py-2" colSpan={1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: "var(--bgt-section-bg)" }}>
         <div className="flex items-center gap-1.5">
           {expanded
-            ? <ChevronDown size={12} className="text-slate-500" />
-            : <ChevronRightSm size={12} className="text-slate-500" />
+            ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
+            : <ChevronRightSm size={12} style={{ color: "var(--t-muted)" }} />
           }
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>
             {label}
           </span>
         </div>
       </td>
-      <td colSpan={colSpan - 1} style={{ border: "1px solid #94A3B8", background: "#E2E8F0" }} />
+      <td colSpan={colSpan - 1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: "var(--bgt-section-bg)" }} />
     </tr>
   );
 }
@@ -516,14 +522,11 @@ function TotalsRow({
   periodCount: number;
   periods?: BudgetPeriod[];
 }) {
-  const labelColor =
-    kind === "income" ? "rgb(52 211 153)" : kind === "expense" ? "rgb(248 113 113)" : "var(--t-primary)";
-
   return (
-    <tr style={{ background: "#EEF2FF", borderTop: "2px solid #6366F1", borderBottom: "2px solid #6366F1" }}>
+    <tr style={{ background: "var(--bgt-totals-bg)", borderTop: "2px solid var(--app-accent)", borderBottom: "2px solid var(--app-accent)" }}>
       <td
         className="text-[12px] font-extrabold px-3 py-2 sticky left-0 z-10"
-        style={{ color: "#4338CA", background: "#EEF2FF", border: "1px solid #94A3B8" }}
+        style={{ color: "var(--app-accent-ink)", background: "var(--bgt-totals-bg)", border: "1px solid var(--bgt-cell-border-strong)" }}
       >
         {label}
       </td>
@@ -558,7 +561,7 @@ function TotalsRow({
 
 function DeviationCell({ cell, kind }: { cell: BudgetCell; kind: "income" | "expense" | "neutral" }) {
   if (!cell.plan && !cell.fact) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>;
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>;
   }
   const dev = cell.deviation;
   let color = "var(--t-faint)";
@@ -619,9 +622,9 @@ function CategoryDataRow({
           isTopLevel ? "font-bold" : "font-normal"
         )}
         style={{
-          color: isTopLevel ? "#0F172A" : "#1E293B",
-          background: isTopLevel ? "#F1F5F9" : "#FAFBFD",
-          borderRight: "2px solid #64748B",
+          color: "var(--t-primary)",
+          background: isTopLevel ? "var(--bgt-row-group)" : "var(--bgt-row-bg)",
+          borderRight: "2px solid var(--bgt-sticky-border)",
         }}
         title={row.title}
       >
@@ -664,7 +667,7 @@ function CategoryDataRow({
           factAmount: cell.fact,
         }) : undefined;
 
-        const periodBorder = { borderLeft: "2px solid #94A3B8" } as React.CSSProperties;
+        const periodBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
 
         if (pk === "past") {
           return (
@@ -693,7 +696,7 @@ function CategoryDataRow({
           </React.Fragment>
         );
       })}
-      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid #64748B" }} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)" }} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -740,7 +743,7 @@ function GoalDataRow({
     <tr className="transition-colors">
       <td
         className="text-[12px] py-1.5 px-3 sticky left-0 z-10 max-w-[200px] truncate font-normal"
-        style={{ color: "#1E293B", background: "#FAFBFD", borderRight: "2px solid #64748B" }}
+        style={{ color: "var(--t-secondary)", background: "var(--bgt-row-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
         title={row.title}
       >
         <span className="inline-flex items-center gap-1 group/goal">
@@ -771,7 +774,7 @@ function GoalDataRow({
           </span>
         );
 
-        const pBorder = { borderLeft: "2px solid #94A3B8" } as React.CSSProperties;
+        const pBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
 
         if (pk === "past") return (
           <React.Fragment key={i}>
@@ -783,9 +786,9 @@ function GoalDataRow({
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#475569", ...pBorder }}>{planSpan}</td>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>{planSpan}</td>
               <FactCell cell={cell} kind={kind} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "#475569" : "#DC2626" }}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "var(--t-muted)" : "#DC2626" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -793,12 +796,12 @@ function GoalDataRow({
         }
         // future
         return (
-          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#475569", ...pBorder }}>
+          <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>
             {planSpan}
           </td>
         );
       })}
-      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid #64748B" }} />
+      <PlanTd cell={row.total} extraStyle={{ borderLeft: "2px solid var(--bgt-sticky-border)" }} />
       <FactCell cell={row.total} kind={kind} />
     </tr>
   );
@@ -816,7 +819,7 @@ function ResultRow({
   periods?: BudgetPeriod[];
 }) {
   return (
-    <tr className="border-t-2 border-white/[0.12]">
+    <tr className="border-t-2" style={{ borderColor: "var(--bgt-cell-border-strong)" }}>
       <td
         className="text-[11px] font-bold px-3 py-2.5 uppercase tracking-wider sticky left-0 z-10"
         style={{ color: "var(--t-primary)", background: "var(--app-sidebar-bg)" }}
@@ -1098,8 +1101,9 @@ export default function BudgetMatrixPage() {
                     "w-7 h-6 text-[11px] font-medium rounded transition-colors",
                     rangeCount === n
                       ? "bg-indigo-600 text-white"
-                      : "text-white/50 hover:bg-white/[0.06] hover:text-white/80"
+                      : "hover:bg-[var(--app-accent-light)]"
                   )}
+                  style={rangeCount !== n ? { color: "var(--t-muted)" } : undefined}
                 >
                   {n}
                 </button>
@@ -1150,33 +1154,31 @@ export default function BudgetMatrixPage() {
             <div className="min-w-max">
               <style>{`
                 .bgt-matrix { border-spacing: 0; }
-                .bgt-matrix td, .bgt-matrix th { border: 1px solid #CBD5E1; }
-                .bgt-matrix td { font-size: 13px; padding: 3px 7px; color: #0F172A; }
-                .bgt-matrix td:first-child { border-right: 2px solid #64748B !important; background: #FAFBFD; position: sticky; left: 0; z-index: 5; font-size: 12px; }
-                .bgt-matrix tr:hover td { background-color: #EFF6FF !important; }
+                .bgt-matrix td, .bgt-matrix th { border: 1px solid var(--bgt-cell-border); }
+                .bgt-matrix td { font-size: 13px; padding: 3px 7px; color: var(--t-primary); }
+                .bgt-matrix td:first-child { border-right: 2px solid var(--bgt-sticky-border) !important; background: var(--bgt-row-bg); position: sticky; left: 0; z-index: 5; font-size: 12px; }
+                .bgt-matrix tr:hover td { background-color: var(--bgt-hover-bg) !important; }
                 .bgt-matrix thead { position: sticky; top: 0; z-index: 20; }
-                .bgt-matrix thead th { background: #EDF0F4; }
-                .dark .bgt-matrix td { border-color: rgba(255,255,255,0.06); color: #E2E8F0; }
-                .dark .bgt-matrix td:first-child { background: #0c1122; border-right-color: rgba(255,255,255,0.1); }
-                .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid #6366F1 !important; }
+                .bgt-matrix thead th { background: var(--bgt-head-bg); }
+                .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid var(--app-accent) !important; }
               `}</style>
               <table className="bgt-matrix w-full text-left" style={{ border: "1px solid #94A3B8", borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   {/* Period headers */}
-                  <tr className="bg-slate-100 dark:bg-[#0c1122]">
+                  <tr style={{ background: "var(--bgt-head-bg)" }}>
                     <th
-                      className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 sticky left-0 z-30 min-w-[180px] bg-slate-100 dark:bg-[#0c1122] text-slate-700 dark:text-slate-400"
-                      style={{ border: "1px solid #94A3B8" }}
+                      className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 sticky left-0 z-30 min-w-[180px]"
+                      style={{ background: "var(--bgt-head-bg)", color: "var(--t-muted)", border: "1px solid var(--bgt-cell-border-strong)" }}
                     >
                       Категория
                     </th>
                     <PeriodHeaders periods={periods} />
                   </tr>
                   {/* P / F sub-headers */}
-                  <tr className="bg-slate-200 dark:bg-[#0c1122]">
+                  <tr style={{ background: "var(--bgt-subhead-bg)" }}>
                     <th
-                      className="sticky left-0 z-30 bg-slate-100 dark:bg-[#0c1122]"
-                      style={{ border: "1px solid #94A3B8" }}
+                      className="sticky left-0 z-30"
+                      style={{ background: "var(--bgt-head-bg)", border: "1px solid var(--bgt-cell-border-strong)" }}
                     />
                     <SubHeaders periods={periods} />
                   </tr>
@@ -1212,23 +1214,23 @@ export default function BudgetMatrixPage() {
                         const pk = getPeriodKind(periods[i]);
                         const p = periods[i];
                         const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие доходы", kind: "INCOME", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
-                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "#D1D5DB" }}>—</span>;
+                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
                         if (pk === "past") return (
                           <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#1E293B", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
                           </React.Fragment>
                         );
                         if (pk === "current") return (
                           <React.Fragment key={i}>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#1E293B" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>{factEl}</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
                           </React.Fragment>
                         );
                         return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
                       })}
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid #64748B" }}>—</td>
+                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
                       <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_income?.total?.fact ? "#1E293B" : "#D1D5DB" }}>{data.other_income?.total?.fact ? fmt(data.other_income.total.fact) : "—"}</td>
                     </tr>
                   )}
@@ -1300,23 +1302,23 @@ export default function BudgetMatrixPage() {
                         const pk = getPeriodKind(periods[i]);
                         const p = periods[i];
                         const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие расходы", kind: "EXPENSE", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
-                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "#D1D5DB" }}>—</span>;
+                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
                         if (pk === "past") return (
                           <React.Fragment key={i}>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
                           </React.Fragment>
                         );
                         if (pk === "current") return (
                           <React.Fragment key={i}>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
                             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB" }}>—</td>
+                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
                           </React.Fragment>
                         );
                         return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
                       })}
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid #64748B" }}>—</td>
+                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
                       <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_expense?.total?.fact ? "#DC2626" : "#D1D5DB" }}>{data.other_expense?.total?.fact ? fmt(data.other_expense.total.fact) : "—"}</td>
                     </tr>
                   )}
