@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -415,22 +415,39 @@ function EditablePlanTd({
       onKeyDown={canEdit ? (e) => {
         if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editing.onInlineStart(key, 0, e.key); }
         else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan); }
+        else if (e.key === "n") { e.preventDefault(); editing.openPlanEdit(target); }
       } : undefined}
     >
+      {canEdit && (
+        <button
+          type="button"
+          className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-400"
+          style={{ color: "var(--t-faint)", padding: 2 }}
+          title="Изменить с комментарием"
+          onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
+        >
+          <Pencil size={9} />
+        </button>
+      )}
       <span
         onClick={(e) => {
           if (!canEdit) return;
-          if (e.shiftKey) editing.openPlanEdit(target);
-          else editing.onInlineStart(key, cell.plan);
+          editing.onInlineStart(key, cell.plan);
         }}
         className={clsx(
           canEdit && "cursor-pointer hover:text-indigo-400 transition-colors",
           hasNote && "border-b border-dotted border-amber-400/60"
         )}
-        title={cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · Shift+клик — скопировать вперёд" : undefined)}
+        title={cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · N — с комментарием" : undefined)}
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
-        {hasNote && <span className="text-[9px] text-amber-400 ml-0.5 align-super font-bold drop-shadow-[0_0_3px_rgba(251,191,36,0.6)]">●</span>}
+        {hasNote && (
+          <span
+            className="text-[9px] text-amber-400 ml-0.5 align-super font-bold drop-shadow-[0_0_3px_rgba(251,191,36,0.6)] cursor-pointer"
+            title={`📝 ${cell.note} — нажмите чтобы изменить`}
+            onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
+          >●</span>
+        )}
       </span>
     </td>
   );
@@ -862,12 +879,22 @@ function GoalDataRow({
             />
           </td>
         ) : (
-          <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-muted)", ...pBorder }}>
+          <td className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group" style={{ color: "var(--t-muted)", ...pBorder }}>
+            {canEdit && editing && target && (
+              <button
+                type="button"
+                className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-400"
+                style={{ color: "var(--t-faint)", padding: 2 }}
+                title="Изменить с комментарием"
+                onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
+              >
+                <Pencil size={9} />
+              </button>
+            )}
             <span
               onClick={(e) => {
                 if (!canEdit || !editing || !target) return;
-                if (e.shiftKey) editing.openPlanEdit(target);
-                else editing.onInlineStart(key, cell.plan);
+                editing.onInlineStart(key, cell.plan);
               }}
               className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
             >
@@ -1201,7 +1228,13 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
           >
             {row.title}
           </span>
-          {!!cell.note && <span className="text-amber-400 text-[9px] ml-0.5 font-bold shrink-0">●</span>}
+          {!!cell.note && (
+            <span
+              className="text-amber-400 text-[9px] ml-0.5 font-bold shrink-0 cursor-pointer"
+              title={`📝 ${cell.note}`}
+              onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(planTarget); }}
+            >●</span>
+          )}
         </div>
         {pct !== null && (
           <div className="mt-1.5 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--app-border)" }}>
@@ -1209,21 +1242,34 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
           </div>
         )}
       </div>
-      <div
-        className="tabular-nums text-right text-[12px] shrink-0"
-        style={{ width: 60, color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
-        onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
-      >
-        {isEditing ? (
-          <InlineCellInput
-            value={editing.inlineValue}
-            onChange={editing.onInlineChange}
-            onSave={() => editing.onInlineSave(planTarget)}
-            onCancel={editing.onInlineCancel}
-          />
-        ) : (
-          hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+      <div className="flex items-center justify-end gap-1 shrink-0" style={{ width: 60 }}>
+        {canEdit && !isEditing && (
+          <button
+            type="button"
+            className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
+            style={{ color: "var(--t-faint)" }}
+            title="С комментарием"
+            onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(planTarget); }}
+          >
+            <Pencil size={10} />
+          </button>
         )}
+        <div
+          className="tabular-nums text-right text-[12px]"
+          style={{ color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+          onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+        >
+          {isEditing ? (
+            <InlineCellInput
+              value={editing.inlineValue}
+              onChange={editing.onInlineChange}
+              onSave={() => editing.onInlineSave(planTarget)}
+              onCancel={editing.onInlineCancel}
+            />
+          ) : (
+            hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+          )}
+        </div>
       </div>
       <div
         className="tabular-nums text-right text-[13px] font-medium shrink-0"
@@ -1297,21 +1343,34 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
           </div>
         )}
       </div>
-      <div
-        className="tabular-nums text-right text-[12px] shrink-0"
-        style={{ width: 60, color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
-        onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
-      >
-        {isEditing ? (
-          <InlineCellInput
-            value={editing.inlineValue}
-            onChange={editing.onInlineChange}
-            onSave={() => editing.onInlineSave(target)}
-            onCancel={editing.onInlineCancel}
-          />
-        ) : (
-          hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+      <div className="flex items-center justify-end gap-1 shrink-0" style={{ width: 60 }}>
+        {canEdit && !isEditing && (
+          <button
+            type="button"
+            className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
+            style={{ color: "var(--t-faint)" }}
+            title="С комментарием"
+            onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
+          >
+            <Pencil size={10} />
+          </button>
         )}
+        <div
+          className="tabular-nums text-right text-[12px]"
+          style={{ color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+          onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+        >
+          {isEditing ? (
+            <InlineCellInput
+              value={editing.inlineValue}
+              onChange={editing.onInlineChange}
+              onSave={() => editing.onInlineSave(target)}
+              onCancel={editing.onInlineCancel}
+            />
+          ) : (
+            hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+          )}
+        </div>
       </div>
       <div
         className="tabular-nums text-right text-[13px] font-medium shrink-0"
