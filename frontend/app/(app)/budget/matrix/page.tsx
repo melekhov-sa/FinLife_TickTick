@@ -1128,6 +1128,291 @@ function OtherRow({
   );
 }
 
+// ── Mobile view components ───────────────────────────────────────────────────
+
+function MobileSecHead({ label, expanded, onToggle }: { label: string; expanded: boolean; onToggle: () => void }) {
+  return (
+    <div
+      className="flex items-center gap-1.5 px-4 py-2.5 cursor-pointer select-none border-b"
+      onClick={onToggle}
+      style={{ background: "var(--bgt-section-bg)", borderColor: "var(--app-border)" }}
+    >
+      {expanded
+        ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
+        : <ChevronRightSm size={12} style={{ color: "var(--t-muted)" }} />}
+      <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>{label}</span>
+    </div>
+  );
+}
+
+function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
+  row: BudgetRow;
+  focusPeriod: BudgetPeriod | undefined;
+  focusIdx: number;
+  editing: EditingProps;
+  kind: "income" | "expense";
+}) {
+  const cell = row.cells[focusIdx] ?? { plan: 0, fact: 0, deviation: 0, note: null };
+  const canEdit = !!focusPeriod?.has_manual_plan && !!row.category_id && !row.is_group;
+  const key = `cat:${row.category_id}:${row.kind}:${focusPeriod?.year}:${focusPeriod?.month}`;
+  const isEditing = editing.activeEditKey === key;
+  const isGroup = row.is_group || row.parent_id === null;
+  const hasPlan = cell.plan !== 0;
+  const hasFact = cell.fact !== 0;
+  const pk = focusPeriod ? getPeriodKind(focusPeriod) : "current";
+
+  let factColor = "var(--t-primary)";
+  if (hasFact && hasPlan) {
+    const isGood = (kind === "income" && cell.fact >= cell.plan) || (kind === "expense" && cell.fact <= cell.plan);
+    factColor = isGood ? "rgb(22 163 74)" : "rgb(220 38 38)";
+  }
+
+  const pct = hasPlan && pk !== "future" ? cell.fact / cell.plan : null;
+  const barColor = kind === "expense"
+    ? (pct !== null && pct > 1 ? "rgb(220 38 38)" : pct !== null && pct > 0.85 ? "rgb(251 146 60)" : "rgb(99 102 241)")
+    : "rgb(52 211 153)";
+
+  const planTarget: PlanEditTarget = {
+    categoryId: row.category_id!,
+    kind: row.kind,
+    year: focusPeriod?.year ?? 0,
+    month: focusPeriod?.month ?? 0,
+    periodLabel: focusPeriod?.label ?? "",
+    categoryTitle: row.title,
+    currentAmount: cell.plan,
+    currentNote: cell.note ?? "",
+  };
+
+  return (
+    <div
+      className={clsx("flex items-center gap-3 border-b", row.depth > 0 ? "pl-8" : "pl-4", "pr-4 py-2.5")}
+      style={{ borderColor: "var(--app-border)", background: isGroup ? "var(--bgt-row-group)" : "var(--bgt-row-bg)" }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          {row.depth > 0 && <span className="text-[10px] shrink-0" style={{ color: "var(--t-faint)" }}>└</span>}
+          <span
+            className={clsx(
+              "text-[13px] truncate",
+              isGroup ? "font-bold" : "font-normal",
+              editing.hiddenCatIds?.has(row.category_id!) ? "opacity-40 line-through" : ""
+            )}
+            style={{ color: "var(--t-primary)" }}
+          >
+            {row.title}
+          </span>
+          {!!cell.note && <span className="text-amber-400 text-[9px] ml-0.5 font-bold shrink-0">●</span>}
+        </div>
+        {pct !== null && (
+          <div className="mt-1.5 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--app-border)" }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%`, background: barColor }} />
+          </div>
+        )}
+      </div>
+      <div
+        className="tabular-nums text-right text-[12px] shrink-0"
+        style={{ width: 60, color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+        onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+      >
+        {isEditing ? (
+          <InlineCellInput
+            value={editing.inlineValue}
+            onChange={editing.onInlineChange}
+            onSave={() => editing.onInlineSave(planTarget)}
+            onCancel={editing.onInlineCancel}
+          />
+        ) : (
+          hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+        )}
+      </div>
+      <div
+        className="tabular-nums text-right text-[13px] font-medium shrink-0"
+        style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)", cursor: hasFact && row.category_id ? "pointer" : "default" }}
+        onClick={hasFact && row.category_id && focusPeriod ? () => editing.openFactDetail({
+          categoryId: row.category_id!,
+          categoryTitle: row.title,
+          kind: row.kind,
+          periodLabel: focusPeriod.label,
+          dateFrom: focusPeriod.range_start,
+          dateTo: focusPeriod.range_end,
+          factAmount: cell.fact,
+        }) : undefined}
+      >
+        {hasFact ? fmt(cell.fact) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType }: {
+  row: BudgetGoalRow;
+  focusPeriod: BudgetPeriod | undefined;
+  focusIdx: number;
+  editing: EditingProps;
+  kind: "income" | "expense";
+  goalPlanType: string;
+}) {
+  const cell = row.cells[focusIdx] ?? { plan: 0, fact: 0, deviation: 0, note: null };
+  const canEdit = !!focusPeriod?.has_manual_plan;
+  const key = `goal:${row.goal_id}:${goalPlanType}:${focusPeriod?.year}:${focusPeriod?.month}`;
+  const isEditing = editing.activeEditKey === key;
+  const pk = focusPeriod ? getPeriodKind(focusPeriod) : "current";
+  const hasPlan = cell.plan !== 0;
+  const hasFact = cell.fact !== 0;
+
+  let factColor = "var(--t-primary)";
+  if (hasFact && hasPlan) {
+    const isGood = (kind === "income" && cell.fact >= cell.plan) || (kind === "expense" && cell.fact <= cell.plan);
+    factColor = isGood ? "rgb(22 163 74)" : "rgb(220 38 38)";
+  }
+
+  const pct = hasPlan && pk !== "future" ? cell.fact / cell.plan : null;
+  const barColor = kind === "expense"
+    ? (pct !== null && pct > 1 ? "rgb(220 38 38)" : pct !== null && pct > 0.85 ? "rgb(251 146 60)" : "rgb(99 102 241)")
+    : "rgb(52 211 153)";
+
+  const target: PlanEditTarget = {
+    categoryId: 0,
+    kind: kind === "income" ? "INCOME" : "EXPENSE",
+    year: focusPeriod?.year ?? 0,
+    month: focusPeriod?.month ?? 0,
+    periodLabel: focusPeriod?.label ?? "",
+    categoryTitle: row.title,
+    currentAmount: cell.plan,
+    currentNote: cell.note ?? "",
+    goalId: row.goal_id,
+    goalPlanType,
+  };
+
+  return (
+    <div
+      className="flex items-center gap-3 pl-4 pr-4 py-2.5 border-b"
+      style={{ borderColor: "var(--app-border)", background: "var(--bgt-row-bg)" }}
+    >
+      <div className="flex-1 min-w-0">
+        <span className="text-[13px] truncate block font-normal" style={{ color: "var(--t-secondary)" }}>{row.title}</span>
+        {pct !== null && (
+          <div className="mt-1.5 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--app-border)" }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%`, background: barColor }} />
+          </div>
+        )}
+      </div>
+      <div
+        className="tabular-nums text-right text-[12px] shrink-0"
+        style={{ width: 60, color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+        onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+      >
+        {isEditing ? (
+          <InlineCellInput
+            value={editing.inlineValue}
+            onChange={editing.onInlineChange}
+            onSave={() => editing.onInlineSave(target)}
+            onCancel={editing.onInlineCancel}
+          />
+        ) : (
+          hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+        )}
+      </div>
+      <div
+        className="tabular-nums text-right text-[13px] font-medium shrink-0"
+        style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)" }}
+      >
+        {hasFact ? fmt(cell.fact) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function MobileTotRow({ label, totals, kind }: {
+  label: string;
+  totals: BudgetSectionTotals;
+  kind: "income" | "expense" | "neutral";
+}) {
+  const total = totals.total;
+  const hasFact = total.fact !== 0;
+  const hasPlan = total.plan !== 0;
+  const factColor = hasFact && hasPlan
+    ? ((kind === "income" && total.fact >= total.plan) || (kind === "expense" && total.fact <= total.plan)
+      ? "rgb(22 163 74)" : "rgb(220 38 38)")
+    : "var(--t-primary)";
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 border-b"
+      style={{ borderColor: "var(--app-border)", borderTop: "2px solid var(--app-accent)", background: "var(--bgt-totals-bg)" }}
+    >
+      <div className="flex-1 text-[12px] font-extrabold" style={{ color: "var(--app-accent-ink)" }}>{label}</div>
+      <div className="tabular-nums text-right text-[12px] font-semibold shrink-0" style={{ width: 60, color: "var(--t-secondary)" }}>
+        {hasPlan ? fmt(total.plan) : "—"}
+      </div>
+      <div className="tabular-nums text-right text-[13px] font-bold shrink-0" style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)" }}>
+        {hasFact ? fmt(total.fact) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick }: {
+  label: string;
+  kind: "INCOME" | "EXPENSE";
+  cells?: BudgetCell[];
+  focusPeriod: BudgetPeriod | undefined;
+  focusIdx: number;
+  onFactClick: (target: FactDetailTarget) => void;
+}) {
+  const cell = cells?.[focusIdx] ?? { plan: 0, fact: 0, deviation: 0 };
+  const factColor = kind === "EXPENSE" ? "rgb(220 38 38)" : "var(--t-secondary)";
+  const hasFact = cell.fact !== 0;
+
+  return (
+    <div
+      className="flex items-center gap-3 pl-4 pr-4 py-2.5 border-b italic"
+      style={{ borderColor: "var(--app-border)", background: "var(--bgt-row-bg)" }}
+    >
+      <div className="flex-1 text-[13px] truncate" style={{ color: "var(--t-faint)" }}>{label}</div>
+      <div className="tabular-nums text-right text-[12px] shrink-0" style={{ width: 60, color: "var(--bgt-dash)" }}>—</div>
+      <div
+        className="tabular-nums text-right text-[13px] font-medium shrink-0"
+        style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)", cursor: hasFact ? "pointer" : "default" }}
+        onClick={hasFact && focusPeriod ? () => onFactClick({
+          categoryId: -1,
+          categoryTitle: label,
+          kind,
+          periodLabel: focusPeriod.label,
+          dateFrom: focusPeriod.range_start,
+          dateTo: focusPeriod.range_end,
+          factAmount: cell.fact,
+        }) : undefined}
+      >
+        {hasFact ? fmt(cell.fact) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function MobileResultRow({ result }: { result: BudgetMatrix["result"] }) {
+  const total = result.total;
+  const planColor = total.plan >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
+  const factColor = total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3"
+      style={{ background: "var(--app-sidebar-bg)", borderTop: "2px solid var(--app-border)" }}
+    >
+      <div className="flex-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--t-primary)" }}>
+        Результат
+      </div>
+      <div className="tabular-nums text-right text-[13px] font-semibold shrink-0" style={{ width: 60, color: planColor }}>
+        {fmtSigned(total.plan)}
+      </div>
+      <div className="tabular-nums text-right text-[13px] font-semibold shrink-0" style={{ width: 60, color: factColor }}>
+        {fmtSigned(total.fact)}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BudgetMatrixPage() {
@@ -1437,6 +1722,18 @@ export default function BudgetMatrixPage() {
   }
 
   const periods = data?.periods ?? [];
+
+  // Focus period for mobile view: prefer current, then last past, then first period
+  const focusIdx = React.useMemo(() => {
+    const ci = periods.findIndex(p => getPeriodKind(p) === "current");
+    if (ci >= 0) return ci;
+    for (let i = periods.length - 1; i >= 0; i--) {
+      if (getPeriodKind(periods[i]) === "past") return i;
+    }
+    return 0;
+  }, [periods]);
+  const focusPeriod = periods[focusIdx];
+
   const multiYear = periods.length > 1 && periods.some(p => p.year !== periods[0].year);
   const fmtPeriodLabel = (p: BudgetPeriod) => multiYear ? `${p.short_label} '${String(p.year).slice(2)}` : p.short_label;
   const periodLabel = periods.length > 0
@@ -1551,6 +1848,125 @@ export default function BudgetMatrixPage() {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── MOBILE VIEW ── */}
+        <div className="md:hidden flex-1 overflow-auto" style={{ background: "var(--app-bg)" }}>
+          {isPending && (
+            <div className="p-4 space-y-2">
+              {[...Array(8)].map((_, i) => (
+                <Skeleton key={i} variant="rect" height={48} className="rounded-xl" />
+              ))}
+            </div>
+          )}
+          {isError && (
+            <p className="text-red-400/70 text-sm text-center py-16">
+              Не удалось загрузить матрицу бюджета
+            </p>
+          )}
+          {data && (
+            <>
+              {/* Column header bar */}
+              <div
+                className="flex items-center gap-3 px-4 py-2 border-b sticky top-0 z-20"
+                style={{ background: "var(--bgt-head-bg)", borderColor: "var(--app-border)" }}
+              >
+                <div className="flex-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
+                  {focusPeriod ? fmtPeriodLabel(focusPeriod) : ""}
+                </div>
+                <div className="text-[10px] font-bold uppercase text-right shrink-0" style={{ width: 60, color: "var(--t-faint)" }}>П</div>
+                <div className="text-[10px] font-bold uppercase text-right shrink-0" style={{ width: 60, color: "var(--t-faint)" }}>Ф</div>
+              </div>
+
+              {/* ДОХОДЫ */}
+              <MobileSecHead label="Доходы" expanded={incomeOpen} onToggle={() => setIncomeOpen(!incomeOpen)} />
+              {incomeOpen && <>
+                {data.income_rows.map((row, i) => (
+                  <MobileCatRow
+                    key={row.category_id ?? `m-inc-${i}`}
+                    row={row}
+                    focusPeriod={focusPeriod}
+                    focusIdx={focusIdx}
+                    editing={editingProps}
+                    kind="income"
+                  />
+                ))}
+                <MobileOtherRow
+                  label="Прочие доходы"
+                  kind="INCOME"
+                  cells={data.other_income?.cells as BudgetCell[] | undefined}
+                  focusPeriod={focusPeriod}
+                  focusIdx={focusIdx}
+                  onFactClick={setFactDetailTarget}
+                />
+              </>}
+              <MobileTotRow label="Итого доходы" totals={data.income_totals} kind="income" />
+
+              {/* ВЗЯТЬ ИЗ ОТЛОЖЕННОГО */}
+              {data.withdrawal_rows.length > 0 && <>
+                <MobileSecHead label="Взять из отложенного" expanded={withdrawOpen} onToggle={() => setWithdrawOpen(!withdrawOpen)} />
+                {withdrawOpen && data.withdrawal_rows.map((row, i) => (
+                  <MobileGoalRow
+                    key={row.goal_id ?? `m-wd-${i}`}
+                    row={row}
+                    focusPeriod={focusPeriod}
+                    focusIdx={focusIdx}
+                    editing={editingProps}
+                    kind="income"
+                    goalPlanType="withdrawal"
+                  />
+                ))}
+                <MobileTotRow label="Итого взять" totals={data.withdrawal_totals} kind="income" />
+              </>}
+
+              {/* РАСХОДЫ */}
+              <MobileSecHead label="Расходы" expanded={expenseOpen} onToggle={() => setExpenseOpen(!expenseOpen)} />
+              {expenseOpen && <>
+                {data.expense_rows.map((row, i) => (
+                  <MobileCatRow
+                    key={row.category_id ?? `m-exp-${i}`}
+                    row={row}
+                    focusPeriod={focusPeriod}
+                    focusIdx={focusIdx}
+                    editing={editingProps}
+                    kind="expense"
+                  />
+                ))}
+                <MobileOtherRow
+                  label="Прочие расходы"
+                  kind="EXPENSE"
+                  cells={data.other_expense?.cells as BudgetCell[] | undefined}
+                  focusPeriod={focusPeriod}
+                  focusIdx={focusIdx}
+                  onFactClick={setFactDetailTarget}
+                />
+              </>}
+              <MobileTotRow label="Итого расходы" totals={data.expense_totals} kind="expense" />
+
+              {/* ОТЛОЖИТЬ */}
+              {data.goal_rows.length > 0 && <>
+                <MobileSecHead label="Отложить" expanded={goalsOpen} onToggle={() => setGoalsOpen(!goalsOpen)} />
+                {goalsOpen && data.goal_rows.map((row, i) => (
+                  <MobileGoalRow
+                    key={row.goal_id ?? `m-goal-${i}`}
+                    row={row}
+                    focusPeriod={focusPeriod}
+                    focusIdx={focusIdx}
+                    editing={editingProps}
+                    kind="expense"
+                    goalPlanType="goal"
+                  />
+                ))}
+                <MobileTotRow label="Итого отложить" totals={data.goal_totals} kind="expense" />
+              </>}
+
+              {/* РЕЗУЛЬТАТ */}
+              <MobileResultRow result={data.result} />
+            </>
+          )}
+        </div>
+
+        {/* ── DESKTOP TABLE ── */}
+        <div className="hidden md:flex flex-1 flex-col overflow-hidden">
 
         {/* Table area — this div is the scroll container, sticky works inside it */}
         <div className="flex-1 overflow-auto relative">
@@ -1757,6 +2173,7 @@ export default function BudgetMatrixPage() {
             </div>
           )}
         </div>
+        </div>{/* end desktop wrapper */}
       </main>
     </>
   );
