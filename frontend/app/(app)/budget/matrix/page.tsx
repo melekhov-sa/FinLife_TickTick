@@ -900,6 +900,13 @@ function GoalDataRow({
               className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
             >
               {cell.plan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+              {cell.note && (
+                <span
+                  className="text-[9px] text-amber-400 ml-0.5 align-super font-bold cursor-pointer"
+                  title={`📝 ${cell.note}`}
+                  onClick={(e) => { e.stopPropagation(); editing?.openPlanEdit(target!); }}
+                >●</span>
+              )}
             </span>
           </td>
         );
@@ -1001,19 +1008,27 @@ function PeriodPicker({ value, onChange, label }: {
   function handleToggle() {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setDropPos({ top: r.bottom + 6, left: r.left });
+      const left = Math.min(r.left, window.innerWidth - 318);
+      setDropPos({ top: r.bottom + 6, left: Math.max(8, left) });
     }
     setOpen(v => !v);
   }
 
   React.useEffect(() => {
     if (!open) return;
-    function handle(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
       const t = e.target as Node;
       if (!dropRef.current?.contains(t) && !btnRef.current?.contains(t)) setOpen(false);
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    function handleScroll() { setOpen(false); }
+    document.addEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, [open]);
 
   const now = new Date();
@@ -1266,11 +1281,11 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
         )}
       </div>
       <div className="flex items-center justify-end gap-1 shrink-0" style={{ width: 60 }}>
-        {canEdit && !isEditing && (
+        {canEdit && (
           <button
             type="button"
             className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
-            style={{ color: "var(--t-faint)" }}
+            style={{ color: "var(--t-faint)", visibility: isEditing ? "hidden" : "visible" }}
             title="С комментарием"
             onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(planTarget); }}
           >
@@ -1367,11 +1382,11 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
         )}
       </div>
       <div className="flex items-center justify-end gap-1 shrink-0" style={{ width: 60 }}>
-        {canEdit && !isEditing && (
+        {canEdit && (
           <button
             type="button"
             className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
-            style={{ color: "var(--t-faint)" }}
+            style={{ color: "var(--t-faint)", visibility: isEditing ? "hidden" : "visible" }}
             title="С комментарием"
             onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
           >
