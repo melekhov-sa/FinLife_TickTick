@@ -79,6 +79,7 @@ interface EditingProps {
   onInlineChange: (value: string) => void;
   onInlineSave: (target: PlanEditTarget) => void;
   onInlineCancel: () => void;
+  onTabNav: (dir: "next" | "prev", fromKey: string, savedTarget: PlanEditTarget) => void;
 }
 
 interface DragHandlers {
@@ -95,13 +96,18 @@ function InlineCellInput({
   onChange,
   onSave,
   onCancel,
+  onTabNext,
+  onTabPrev,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  onTabNext?: () => void;
+  onTabPrev?: () => void;
 }) {
   const cancelledRef = React.useRef(false);
+  const tabbedRef = React.useRef(false);
   return (
     <input
       autoFocus
@@ -112,10 +118,18 @@ function InlineCellInput({
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "Escape") { cancelledRef.current = true; (e.target as HTMLInputElement).blur(); }
+        if (e.key === "Tab") {
+          e.preventDefault();
+          tabbedRef.current = true;
+          (e.target as HTMLInputElement).blur();
+          if (e.shiftKey) onTabPrev?.();
+          else onTabNext?.();
+        }
       }}
       onBlur={() => {
-        if (cancelledRef.current) { cancelledRef.current = false; onCancel(); }
-        else onSave();
+        if (cancelledRef.current) { cancelledRef.current = false; onCancel(); return; }
+        if (tabbedRef.current) { tabbedRef.current = false; return; }
+        onSave();
       }}
       className="w-full min-w-[40px] text-right bg-transparent outline-none tabular-nums text-[12px] px-2 py-1.5"
       style={{ color: "var(--app-accent-ink)" }}
@@ -330,12 +344,12 @@ function PlanTd({ cell, isMuted, extraStyle }: { cell: BudgetCell; isMuted?: boo
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
   if (!hasPlan && !hasFact) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", ...extraStyle }}>—</td>;
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
   return (
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px]"
-      style={{ color: isMuted ? "#64748B" : "#475569", ...extraStyle }}
+      style={{ color: isMuted ? "var(--t-muted)" : "var(--t-secondary)", ...extraStyle }}
     >
       {hasPlan ? fmt(cell.plan) : "—"}
     </td>
@@ -384,6 +398,8 @@ function EditablePlanTd({
           onChange={editing.onInlineChange}
           onSave={() => editing.onInlineSave(target)}
           onCancel={editing.onInlineCancel}
+          onTabNext={() => { editing.onInlineSave(target); editing.onTabNav("next", key, target); }}
+          onTabPrev={() => { editing.onInlineSave(target); editing.onTabNav("prev", key, target); }}
         />
       </td>
     );
@@ -433,22 +449,22 @@ function FactCell({
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
 
-  let color = "#1E293B";
+  let color = "var(--t-primary)";
   if (hasFact && hasPlan) {
     const isGood =
       (kind === "income" && cell.fact >= cell.plan) ||
       (kind === "expense" && cell.fact <= cell.plan);
-    color = isGood ? "#16A34A" : "#DC2626";
+    color = isGood ? "rgb(22 163 74)" : "rgb(220 38 38)";
   }
 
   if (!hasFact && !hasPlan) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", ...extraStyle }}>—</td>;
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
   return (
     <td
       className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold")}
-      style={{ color: hasFact ? color : "#D1D5DB", ...extraStyle }}
+      style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
     >
       {hasFact && onClick ? (
         <span onClick={onClick} className="cursor-pointer hover:underline hover:text-indigo-600">
@@ -837,6 +853,8 @@ function GoalDataRow({
               onChange={editing.onInlineChange}
               onSave={() => editing.onInlineSave(target)}
               onCancel={editing.onInlineCancel}
+              onTabNext={() => { editing.onInlineSave(target); editing.onTabNav("next", key, target); }}
+              onTabPrev={() => { editing.onInlineSave(target); editing.onTabNav("prev", key, target); }}
             />
           </td>
         ) : (
@@ -922,6 +940,67 @@ function ResultRow({
       </td>
       <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold" style={{ color: result.total.fact >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)" }}>
         {fmtSigned(result.total.fact)}
+      </td>
+    </tr>
+  );
+}
+
+// ── "Прочие" row (income / expense uncategorised) ────────────────────────────
+
+function OtherRow({
+  label,
+  kind,
+  cells,
+  total,
+  periods,
+  rangeCount,
+  onFactClick,
+}: {
+  label: string;
+  kind: "INCOME" | "EXPENSE";
+  cells?: BudgetCell[];
+  total?: BudgetCell | null;
+  periods: BudgetPeriod[];
+  rangeCount: number;
+  onFactClick: (target: FactDetailTarget) => void;
+}) {
+  const factColor = kind === "EXPENSE" ? "rgb(220 38 38)" : "var(--t-secondary)";
+  const displayCells = (cells ?? periods.map(() => ({ plan: 0, fact: 0, deviation: 0 } as BudgetCell))).slice(0, rangeCount);
+
+  return (
+    <tr>
+      <td
+        className="text-[12px] py-1.5 pl-3 italic"
+        style={{ color: "var(--t-faint)", background: "var(--bgt-row-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
+      >
+        {label}
+      </td>
+      {displayCells.map((cell, i) => {
+        const pk = getPeriodKind(periods[i]);
+        const p = periods[i];
+        const pBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
+        const factEl = cell.fact
+          ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact })} className="cursor-pointer hover:underline hover:text-indigo-600" style={{ color: factColor }}>{fmt(cell.fact)}</span>
+          : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
+
+        if (pk === "past") return (
+          <React.Fragment key={i}>
+            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={pBorder}>{factEl}</td>
+            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
+          </React.Fragment>
+        );
+        if (pk === "current") return (
+          <React.Fragment key={i}>
+            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...pBorder }}>—</td>
+            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]">{factEl}</td>
+            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
+          </React.Fragment>
+        );
+        return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...pBorder }}>—</td>;
+      })}
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: total?.fact ? factColor : "var(--bgt-dash)" }}>
+        {total?.fact ? fmt(total.fact) : "—"}
       </td>
     </tr>
   );
@@ -1102,6 +1181,83 @@ export default function BudgetMatrixPage() {
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
+  // ── Tab navigation (needs data) ──
+
+  const editableKeys = React.useMemo(() => {
+    if (!data) return [];
+    const ps = data.periods;
+    const keys: string[] = [];
+    if (incomeOpen) {
+      for (const row of data.income_rows) {
+        if (!row.category_id || row.is_group) continue;
+        ps.forEach(p => { if (p.has_manual_plan) keys.push(`cat:${row.category_id}:${row.kind}:${p.year}:${p.month}`); });
+      }
+    }
+    if (withdrawOpen) {
+      for (const row of data.withdrawal_rows) {
+        ps.forEach(p => { if (p.has_manual_plan) keys.push(`goal:${row.goal_id}:withdrawal:${p.year}:${p.month}`); });
+      }
+    }
+    if (expenseOpen) {
+      for (const row of data.expense_rows) {
+        if (!row.category_id || row.is_group) continue;
+        ps.forEach(p => { if (p.has_manual_plan) keys.push(`cat:${row.category_id}:${row.kind}:${p.year}:${p.month}`); });
+      }
+    }
+    if (goalsOpen) {
+      for (const row of data.goal_rows) {
+        ps.forEach(p => { if (p.has_manual_plan) keys.push(`goal:${row.goal_id}:goal:${p.year}:${p.month}`); });
+      }
+    }
+    return keys;
+  }, [data, incomeOpen, expenseOpen, goalsOpen, withdrawOpen]);
+
+  function getEditableValue(key: string): string {
+    if (!data) return "";
+    const parts = key.split(":");
+    let plan = 0;
+    if (parts[0] === "cat") {
+      const catId = parseInt(parts[1]);
+      const kind = parts[2];
+      const yr = parseInt(parts[3]);
+      const mo = parseInt(parts[4]);
+      for (const rows of [data.income_rows, data.expense_rows]) {
+        const row = rows.find(r => r.category_id === catId && r.kind === kind);
+        if (row) {
+          const pi = data.periods.findIndex(p => p.year === yr && p.month === mo);
+          if (pi >= 0) plan = row.cells[pi]?.plan ?? 0;
+          break;
+        }
+      }
+    } else {
+      const goalId = parseInt(parts[1]);
+      const yr = parseInt(parts[3]);
+      const mo = parseInt(parts[4]);
+      for (const row of [...data.goal_rows, ...data.withdrawal_rows]) {
+        if (row.goal_id === goalId) {
+          const pi = data.periods.findIndex(p => p.year === yr && p.month === mo);
+          if (pi >= 0) plan = row.cells[pi]?.plan ?? 0;
+          break;
+        }
+      }
+    }
+    return plan ? String(Math.round(plan)) : "";
+  }
+
+  function handleTabNav(dir: "next" | "prev", fromKey: string, savedTarget: PlanEditTarget) {
+    const val = inlineValue;
+    setActiveEditKey(null);
+    setInlineValue("");
+    savePlan(savedTarget, val, savedTarget.currentNote, false);
+    const idx = editableKeys.indexOf(fromKey);
+    if (idx < 0) return;
+    const nextIdx = dir === "next" ? idx + 1 : idx - 1;
+    if (nextIdx < 0 || nextIdx >= editableKeys.length) return;
+    const nextKey = editableKeys[nextIdx];
+    setActiveEditKey(nextKey);
+    setInlineValue(getEditableValue(nextKey));
+  }
+
   const periods = data?.periods ?? [];
   const periodLabel = periods.length > 0
     ? `${periods[0].short_label} — ${periods[periods.length - 1].short_label}`
@@ -1135,6 +1291,7 @@ export default function BudgetMatrixPage() {
     onInlineChange: setInlineValue,
     onInlineSave: handleInlineSave,
     onInlineCancel: handleInlineCancel,
+    onTabNav: handleTabNav,
   };
 
   return (
@@ -1155,6 +1312,7 @@ export default function BudgetMatrixPage() {
       <PageHeader
         title="Расширенный бюджет"
         density="compact"
+        sticky
         period={
           <div className="flex items-center gap-1">
             <Tooltip content="Назад">
@@ -1257,7 +1415,7 @@ export default function BudgetMatrixPage() {
                 .bgt-matrix thead th { background: var(--bgt-head-bg); }
                 .bgt-matrix tr[data-drag-over="true"] td:first-child { border-top: 3px solid var(--app-accent) !important; }
               `}</style>
-              <table className="bgt-matrix w-full text-left" style={{ border: "1px solid #94A3B8", borderCollapse: "separate", borderSpacing: 0 }}>
+              <table className="bgt-matrix w-full text-left" style={{ border: "1px solid var(--bgt-cell-border-strong)", borderCollapse: "separate", borderSpacing: 0 }}>
                 <thead>
                   {/* Period headers */}
                   <tr style={{ background: "var(--bgt-head-bg)" }}>
@@ -1301,33 +1459,15 @@ export default function BudgetMatrixPage() {
                   ))}
                   {/* Прочие доходы — always visible */}
                   {incomeOpen && (
-                    <tr>
-                      <td className="text-[12px] py-1.5 pl-3 italic" style={{ color: "var(--t-faint)", background: "#FAFBFD", borderRight: "2px solid #64748B" }}>
-                        Прочие доходы
-                      </td>
-                      {(data.other_income?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
-                        const pk = getPeriodKind(periods[i]);
-                        const p = periods[i];
-                        const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие доходы", kind: "INCOME", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
-                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
-                        if (pk === "past") return (
-                          <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
-                          </React.Fragment>
-                        );
-                        if (pk === "current") return (
-                          <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--t-secondary)" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
-                          </React.Fragment>
-                        );
-                        return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
-                      })}
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_income?.total?.fact ? "#1E293B" : "#D1D5DB" }}>{data.other_income?.total?.fact ? fmt(data.other_income.total.fact) : "—"}</td>
-                    </tr>
+                    <OtherRow
+                      label="Прочие доходы"
+                      kind="INCOME"
+                      cells={data.other_income?.cells as BudgetCell[] | undefined}
+                      total={data.other_income?.total as BudgetCell | undefined}
+                      periods={periods}
+                      rangeCount={rangeCount}
+                      onFactClick={setFactDetailTarget}
+                    />
                   )}
                   <TotalsRow
                     label="Итого доходы"
@@ -1389,33 +1529,15 @@ export default function BudgetMatrixPage() {
                   ))}
                   {/* Прочие расходы — always visible, clickable */}
                   {expenseOpen && (
-                    <tr>
-                      <td className="text-[12px] py-1.5 pl-3 italic" style={{ color: "var(--t-faint)", background: "#FAFBFD", borderRight: "2px solid #64748B" }}>
-                        Прочие расходы
-                      </td>
-                      {(data.other_expense?.cells ?? periods.map(() => ({ plan: 0, fact: 0 }))).slice(0, rangeCount).map((cell, i) => {
-                        const pk = getPeriodKind(periods[i]);
-                        const p = periods[i];
-                        const clickFact = cell.fact ? () => setFactDetailTarget({ categoryId: -1, categoryTitle: "Прочие расходы", kind: "EXPENSE", periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact }) : undefined;
-                        const factEl = cell.fact ? <span onClick={clickFact} className="cursor-pointer hover:underline hover:text-indigo-600">{fmt(cell.fact)}</span> : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
-                        if (pk === "past") return (
-                          <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626", borderLeft: "2px solid #94A3B8" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
-                          </React.Fragment>
-                        );
-                        if (pk === "current") return (
-                          <React.Fragment key={i}>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#DC2626" }}>{factEl}</td>
-                            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
-                          </React.Fragment>
-                        );
-                        return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "#D1D5DB", borderLeft: "2px solid #94A3B8" }}>—</td>;
-                      })}
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ borderLeft: "2px solid var(--bgt-sticky-border)" }}>—</td>
-                      <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: data.other_expense?.total?.fact ? "#DC2626" : "#D1D5DB" }}>{data.other_expense?.total?.fact ? fmt(data.other_expense.total.fact) : "—"}</td>
-                    </tr>
+                    <OtherRow
+                      label="Прочие расходы"
+                      kind="EXPENSE"
+                      cells={data.other_expense?.cells as BudgetCell[] | undefined}
+                      total={data.other_expense?.total as BudgetCell | undefined}
+                      periods={periods}
+                      rangeCount={rangeCount}
+                      onFactClick={setFactDetailTarget}
+                    />
                   )}
                   <TotalsRow
                     label="Итого расходы"
