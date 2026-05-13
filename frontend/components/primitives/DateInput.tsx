@@ -222,7 +222,7 @@ export function DateInput({
           ),
           today: "[&>button]:font-bold [&>button]:text-indigo-600 dark:[&>button]:text-indigo-400",
           selected:
-            "[&>button]:!bg-indigo-600 [&>button]:!text-[#fff] [&>button]:hover:!bg-indigo-500",
+            "[&>button]:!bg-indigo-600 [&>button]:!text-white [&>button]:hover:!bg-indigo-500",
           outside: "[&>button]:text-slate-300 dark:[&>button]:text-slate-600",
           disabled: "opacity-40 pointer-events-none",
           hidden: "invisible",

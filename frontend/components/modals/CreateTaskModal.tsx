@@ -88,7 +88,7 @@ const WEEKDAYS = [
 // ── Style constants ────────────────────────────────────────────────────────
 
 const chipActiveCls =
-  "bg-indigo-600 border-indigo-500 text-[#fff]";
+  "bg-indigo-600 border-indigo-500 text-white";
 const chipInactiveCls =
   "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/72 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 const chipBaseCls =

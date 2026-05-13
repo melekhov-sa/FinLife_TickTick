@@ -160,7 +160,7 @@ export function TimeInput({
                   className={cn(
                     "h-8 rounded-md text-[13px] tabular-nums transition-colors",
                     active
-                      ? "bg-indigo-600 text-[#fff] dark:bg-indigo-500"
+                      ? "bg-indigo-600 text-white dark:bg-indigo-500"
                       : "bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]",
                   )}
                 >
@@ -201,7 +201,7 @@ export function TimeInput({
                 disabled={!isValidTime(manual) && manual !== ""}
                 className={cn(
                   "h-8 px-3 rounded-md text-[13px] font-medium transition-colors",
-                  "bg-indigo-600 text-[#fff] hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
+                  "bg-indigo-600 text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
                   "disabled:opacity-50 disabled:pointer-events-none",
                 )}
               >
