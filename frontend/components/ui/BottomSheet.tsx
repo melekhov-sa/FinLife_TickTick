@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -15,8 +16,9 @@ export interface BottomSheetProps {
 
 /**
  * Unified modal component:
- * - Mobile: fullscreen bottom sheet, keyboard-safe
+ * - Mobile: bottom sheet anchored to bottom, always shows dark overlay at top
  * - Desktop: centered modal dialog
+ * Rendered via createPortal into document.body to escape any stacking context.
  */
 export function BottomSheet({ open, onClose, title, footer, children, onSubmit }: BottomSheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -34,35 +36,27 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  // ── Lock body scroll — full iOS-safe approach ────────────────────────────
-  // position:fixed prevents background scroll even when keyboard opens
+  // ── Lock body scroll ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
-    // Simple scroll lock — no position:fixed which causes iOS nav glitch
     const html = document.documentElement;
     const prevOverflow = html.style.overflow;
     html.style.overflow = "hidden";
-
     return () => {
       html.style.overflow = prevOverflow;
     };
   }, [open]);
 
   // ── Visual Viewport tracking (iOS keyboard) ─────────────────────────────
-  // When iOS keyboard opens, visualViewport shrinks. We track it to resize
-  // the sheet so the footer stays visible above the keyboard.
   useEffect(() => {
     if (!open) return;
     const vv = window.visualViewport;
     if (!vv) return;
-
     function onResize() {
       if (!vv) return;
       setViewportH(vv.height);
     }
-
-    onResize(); // set initial
+    onResize();
     vv.addEventListener("resize", onResize);
     return () => vv.removeEventListener("resize", onResize);
   }, [open]);
@@ -73,7 +67,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     function onFocusIn(e: FocusEvent) {
       const el = e.target as HTMLElement;
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-        // Only scroll if the element is inside our sheet content
         if (contentRef.current?.contains(el)) {
           setTimeout(() => {
             el.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -91,21 +84,28 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   }, [onClose]);
 
   if (!open) return null;
+  if (typeof document === "undefined") return null;
 
   const Wrapper = onSubmit ? "form" : "div";
   const wrapperProps = onSubmit ? { onSubmit } : {};
 
-  return (
+  // On mobile: paddingTop leaves 80px of dark overlay visible at the top so the
+  // user sees modal context. When keyboard opens (viewportH shrinks), remove it
+  // to give the sheet maximum space.
+  const isMobile = window.innerWidth < 768;
+  const overlayPaddingTop = viewportH ? 0 : isMobile ? 80 : 0;
+
+  const modal = (
     <div
       ref={overlayRef}
       className="modal-overlay fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
+      style={{ paddingTop: overlayPaddingTop }}
       onClick={handleOverlayClick}
     >
       <Wrapper
         {...wrapperProps}
         ref={sheetRef as React.Ref<HTMLFormElement & HTMLDivElement>}
         className={clsx(
-          // Base
           "flex flex-col border shadow-2xl overflow-hidden",
           "bg-white dark:bg-[#1a1d23] border-slate-200 dark:border-white/[0.09]",
           // Mobile: bottom sheet, full width
@@ -115,12 +115,12 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         )}
         style={{ maxHeight: viewportH ? `${viewportH - 20}px` : "calc(100dvh - 24px)" }}
       >
-        {/* Handle bar — mobile only */}
+        {/* Handle bar — mobile only, slightly darker for visibility */}
         <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
-          <div className="w-9 h-1 rounded-full bg-slate-300 dark:bg-white/[0.15]" />
+          <div className="w-9 h-1 rounded-full bg-slate-400/60 dark:bg-white/25" />
         </div>
 
-        {/* Header — always fixed at top */}
+        {/* Header */}
         <div className="flex items-center justify-between px-5 md:px-6 pt-2 md:pt-5 pb-3 md:pb-4 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
           <h2 className="text-[15px] md:text-base font-semibold text-slate-800 dark:text-white/90" style={{ letterSpacing: "-0.02em" }}>
             {title}
@@ -143,25 +143,11 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           {children}
         </div>
 
-        {/* Sticky footer — stays above keyboard and above MobileNav on mobile */}
+        {/* Sticky footer */}
         {footer && (
           <div
             className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-slate-200 dark:border-white/[0.06]"
-            style={{
-              paddingBottom: (() => {
-                const keyboardOpen =
-                  viewportH !== null &&
-                  typeof window !== "undefined" &&
-                  viewportH < window.innerHeight * 0.85;
-                if (keyboardOpen) return "12px";
-                // Mobile: add clearance for fixed MobileNav (~88px) + home indicator
-                const isMobile =
-                  typeof window !== "undefined" && window.innerWidth < 768;
-                return isMobile
-                  ? "calc(88px + env(safe-area-inset-bottom, 0px))"
-                  : "max(12px, env(safe-area-inset-bottom))";
-              })(),
-            }}
+            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
           >
             {footer}
           </div>
@@ -169,4 +155,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
       </Wrapper>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
