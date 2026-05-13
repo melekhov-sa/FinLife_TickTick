@@ -64,7 +64,9 @@ def check_db_connection() -> None:
         psycopg.OperationalError: если БД недоступна
     """
     settings = get_settings()
-    with psycopg.connect(settings.DATABASE_URL, connect_timeout=3) as conn:
+    # psycopg.connect нужен чистый postgresql://, а не SQLAlchemy-формат postgresql+psycopg://
+    raw_url = settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(raw_url, connect_timeout=3) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT 1;")
             cur.fetchone()
