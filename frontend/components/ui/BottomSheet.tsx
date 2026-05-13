@@ -95,13 +95,10 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   const Wrapper = onSubmit ? "form" : "div";
   const wrapperProps = onSubmit ? { onSubmit } : {};
 
-  // On mobile, limit sheet height to visual viewport (shrinks when keyboard opens)
-  const mobileMaxH = viewportH ? `${viewportH}px` : "100dvh";
-
   return (
     <div
       ref={overlayRef}
-      className="modal-overlay fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="modal-overlay fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
     >
       <Wrapper
@@ -146,14 +143,24 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           {children}
         </div>
 
-        {/* Sticky footer — stays above keyboard */}
+        {/* Sticky footer — stays above keyboard and above MobileNav on mobile */}
         {footer && (
           <div
             className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-slate-200 dark:border-white/[0.06]"
             style={{
-              paddingBottom: viewportH && viewportH < (window?.innerHeight ?? 9999) * 0.85
-                ? "12px"  /* keyboard open — no safe area needed */
-                : "max(12px, env(safe-area-inset-bottom))",
+              paddingBottom: (() => {
+                const keyboardOpen =
+                  viewportH !== null &&
+                  typeof window !== "undefined" &&
+                  viewportH < window.innerHeight * 0.85;
+                if (keyboardOpen) return "12px";
+                // Mobile: add clearance for fixed MobileNav (~88px) + home indicator
+                const isMobile =
+                  typeof window !== "undefined" && window.innerWidth < 768;
+                return isMobile
+                  ? "calc(88px + env(safe-area-inset-bottom, 0px))"
+                  : "max(12px, env(safe-area-inset-bottom))";
+              })(),
             }}
           >
             {footer}

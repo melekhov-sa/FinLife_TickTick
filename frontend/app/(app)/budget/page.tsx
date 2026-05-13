@@ -282,12 +282,23 @@ export default function BudgetPage() {
           <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">Не удалось загрузить бюджет</p>
         )}
 
-        {data && (
-          <div className="space-y-4">
-            <Section label="Доходы" rows={data.income_rows} total={data.income_total} kind="income" />
-            <Section label="Расходы" rows={data.expense_rows} total={data.expense_total} kind="expense" />
-          </div>
-        )}
+        {data && (() => {
+          const incomeEmpty = data.income_rows.length === 0 && data.income_total.fact === 0;
+          const expenseEmpty = data.expense_rows.length === 0 && data.expense_total.fact === 0;
+          if (incomeEmpty && expenseEmpty) {
+            return (
+              <div className="py-16 text-center" style={{ color: "var(--t-muted)" }}>
+                <p className="text-sm">Нет данных за этот период</p>
+              </div>
+            );
+          }
+          return (
+            <div className="space-y-4">
+              <Section label="Доходы" rows={data.income_rows} total={data.income_total} kind="income" />
+              <Section label="Расходы" rows={data.expense_rows} total={data.expense_total} kind="expense" />
+            </div>
+          );
+        })()}
 
       </main>
     </>

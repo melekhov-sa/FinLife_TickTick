@@ -558,7 +558,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
       {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
       <div
-        className="rounded-xl md:rounded-2xl border p-3.5 md:p-5 relative overflow-hidden"
+        className="rounded-xl md:rounded-2xl border p-3.5 md:p-5 relative"
         style={{
           borderColor: "rgba(99,102,241,0.25)",
           background: "linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.12))",
