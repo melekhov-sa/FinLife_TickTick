@@ -45,11 +45,11 @@ export function AppTopbar() {
         {pageMeta?.title && (
           <div className="hidden md:flex flex-col justify-center min-w-0">
             {pageMeta.eyebrow && (
-              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
+              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--app-topbar-text)", opacity: 0.72 }}>
                 {pageMeta.eyebrow}
               </span>
             )}
-            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--t-primary)" }}>
+            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
               {pageMeta.title}
             </span>
           </div>
@@ -59,11 +59,11 @@ export function AppTopbar() {
         {pageMeta?.title ? (
           <div className="md:hidden flex flex-col justify-center min-w-0">
             {pageMeta.eyebrow && (
-              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
+              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--app-topbar-text)", opacity: 0.72 }}>
                 {pageMeta.eyebrow}
               </span>
             )}
-            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--t-primary)" }}>
+            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
               {pageMeta.title}
             </span>
           </div>
