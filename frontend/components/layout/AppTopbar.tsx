@@ -5,6 +5,7 @@ import Link from "next/link";
 import { User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
+import { usePageTitleMeta } from "@/contexts/PageTitle";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { Avatar } from "@/components/primitives/Avatar";
@@ -13,6 +14,7 @@ import { Popover } from "@/components/primitives/Popover";
 export function AppTopbar() {
   const { data: me } = useMe();
   const email = me?.email ?? "";
+  const pageMeta = usePageTitleMeta();
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -37,14 +39,44 @@ export function AppTopbar() {
         }}
       />
 
-      {/* Лого — только мобиле (десктоп — сайдбар) */}
-      <div className="md:hidden flex items-center gap-2">
-        <span
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
-        >
-          <span className="text-white text-[10px] font-bold tracking-tight">FL</span>
-        </span>
+      {/* Левая часть: title на десктопе, лого на мобиле (если нет title) */}
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Десктоп: title + eyebrow из PageTitleContext */}
+        {pageMeta?.title && (
+          <div className="hidden md:flex flex-col justify-center min-w-0">
+            {pageMeta.eyebrow && (
+              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
+                {pageMeta.eyebrow}
+              </span>
+            )}
+            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--t-primary)" }}>
+              {pageMeta.title}
+            </span>
+          </div>
+        )}
+
+        {/* Мобиле: title вместо лого если есть, иначе лого FL */}
+        {pageMeta?.title ? (
+          <div className="md:hidden flex flex-col justify-center min-w-0">
+            {pageMeta.eyebrow && (
+              <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--t-muted)" }}>
+                {pageMeta.eyebrow}
+              </span>
+            )}
+            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--t-primary)" }}>
+              {pageMeta.title}
+            </span>
+          </div>
+        ) : (
+          <div className="md:hidden flex items-center gap-2">
+            <span
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+            >
+              <span className="text-white text-[10px] font-bold tracking-tight">FL</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Правая часть */}

@@ -11,6 +11,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 import { useLevelUpWatcher } from "@/hooks/useLevelUpWatcher";
+import { PageTitleProvider } from "@/contexts/PageTitle";
 import { api } from "@/lib/api";
 import type { UserMe } from "@/types/api";
 
@@ -100,5 +101,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayoutInner>{children}</AppLayoutInner>;
+  return (
+    <PageTitleProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </PageTitleProvider>
+  );
 }

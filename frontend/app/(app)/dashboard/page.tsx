@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { useSetPageTitle } from "@/contexts/PageTitle";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
 import { UpcomingPayments } from "@/components/dashboard/UpcomingPayments";
@@ -21,9 +22,14 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
+  useSetPageTitle({ title: "Главная", eyebrow: todayLabel });
+
   return (
     <>
-      <PageHeader title="Главная" eyebrow={todayLabel} density="regular" />
+      {/* На мобиле PageHeader остаётся, на десктопе title уже в AppTopbar */}
+      <div className="md:hidden">
+        <PageHeader title="Главная" eyebrow={todayLabel} density="regular" />
+      </div>
 
       <main className="flex-1 overflow-auto p-3 md:p-6">
         {isError && (
