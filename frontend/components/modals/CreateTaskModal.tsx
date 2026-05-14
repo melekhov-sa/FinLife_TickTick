@@ -16,7 +16,6 @@ import {
   type FieldErrors,
 } from "@/lib/formErrors";
 import { Button } from "@/components/primitives/Button";
-import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
@@ -514,25 +513,22 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
           )}
         </FormRow>
 
-        {/* ── Category — chip buttons (toggle, no default selection) ── */}
+        {/* ── Category — select dropdown ── */}
         {categories && categories.length > 0 && (
-          <FormRow label="Категория" hint={categoryId === "" ? "Без категории" : undefined}>
-            <div className="flex flex-wrap gap-1">
-              {categories.map((c) => (
-                <Chip
-                  key={c.category_id}
-                  label={c.title}
-                  emoji={c.emoji ?? undefined}
-                  selected={categoryId === c.category_id}
-                  variant="accent"
-                  size="sm"
-                  onClick={() => {
-                    setCategoryId(categoryId === c.category_id ? "" : c.category_id);
-                    clearFieldError("category_id");
-                  }}
-                />
-              ))}
-            </div>
+          <FormRow label="Категория">
+            <Select
+              value={categoryId}
+              onChange={(v) => { setCategoryId(v ? Number(v) : ""); clearFieldError("category_id"); }}
+              placeholder="Без категории"
+              options={[
+                { value: "", label: "Без категории" },
+                ...categories.map((c) => ({
+                  value: String(c.category_id),
+                  label: c.title,
+                  emoji: c.emoji ?? undefined,
+                })),
+              ]}
+            />
           </FormRow>
         )}
 
