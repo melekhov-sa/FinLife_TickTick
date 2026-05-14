@@ -226,3 +226,9 @@ frontend/out/
 
 # Uploaded files
 uploads/
+
+# Playwright
+frontend/e2e/.auth/
+frontend/e2e/.env.test.local
+frontend/playwright-report/
+frontend/test-results/
