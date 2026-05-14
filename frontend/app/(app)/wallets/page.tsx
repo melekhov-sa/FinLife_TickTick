@@ -46,7 +46,10 @@ function useRenameWallet() {
   return useMutation({
     mutationFn: ({ walletId, title }: { walletId: number; title: string }) =>
       api.patch(`/api/v2/wallets/${walletId}`, { title }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -77,7 +80,10 @@ function useActualizeBalance() {
   return useMutation({
     mutationFn: ({ walletId, targetBalance }: { walletId: number; targetBalance: string }) =>
       api.post(`/api/v2/wallets/${walletId}/actualize-balance`, { target_balance: targetBalance }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wallets"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 

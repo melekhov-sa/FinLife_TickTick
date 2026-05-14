@@ -279,6 +279,7 @@ export default function MoneyPage() {
             setEditTx(null);
             qc.invalidateQueries({ queryKey: ["transactions"] });
             qc.invalidateQueries({ queryKey: ["wallets"] });
+            qc.invalidateQueries({ queryKey: ["dashboard"] });
           }}
         />
       )}
