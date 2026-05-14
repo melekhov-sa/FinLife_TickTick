@@ -227,7 +227,7 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
               onClick={() => onSelectDate(isSelected ? null : iso)}
               className={clsx(
                 "relative flex flex-col items-center justify-center h-7 w-full rounded-lg text-[12px] font-medium transition-colors",
-                isSelected ? "bg-indigo-600 text-white"
+                isSelected ? "bg-indigo-600 text-[#fff]"
                 : isToday  ? "bg-indigo-500/15 text-indigo-400"
                 : "hover:bg-white/[0.06]"
               )}
@@ -473,7 +473,7 @@ export default function EventsPage() {
                     onClick={() => setDays(d)}
                     className={clsx(
                       "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                      days === d ? "bg-indigo-600 text-white" : "text-white/55 hover:text-white/80 hover:bg-white/[0.05]"
+                      days === d ? "bg-indigo-600 text-[#fff]" : "text-white/55 hover:text-white/80 hover:bg-white/[0.05]"
                     )}
                   >
                     {d}д

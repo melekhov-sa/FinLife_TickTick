@@ -94,7 +94,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
                 "0 1px 2px rgba(99,102,241,.3), 0 4px 12px -4px rgba(99,102,241,.4)",
             }}
           >
-            <span className="text-white text-[11px] font-bold tracking-tight">
+            <span className="text-[#fff] text-[11px] font-bold tracking-tight">
               FL
             </span>
           </span>

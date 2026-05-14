@@ -477,7 +477,7 @@ function TasksSection({ listId }: { listId: number }) {
                   >
                     {done ? (
                       <div className="w-[18px] h-[18px] rounded-full bg-emerald-500 flex items-center justify-center">
-                        <Check size={10} className="text-white" strokeWidth={3} />
+                        <Check size={10} className="text-[#fff]" strokeWidth={3} />
                       </div>
                     ) : (
                       <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-slate-300 dark:border-white/30" />

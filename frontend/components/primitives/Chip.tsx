@@ -48,8 +48,8 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip(
   // resolve color tokens
   const stateClasses = selected
     ? variant === "accent"
-      ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:border-indigo-500"
-      : "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:border-white"
+      ? "bg-indigo-600 text-[#fff] border-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:border-indigo-500"
+      : "bg-slate-900 text-[#fff] border-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:border-white"
     : variant === "accent"
       ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 " +
         "dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30 dark:hover:bg-indigo-500/15"

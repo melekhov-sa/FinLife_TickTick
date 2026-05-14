@@ -142,7 +142,7 @@ function Item({
               "w-[16px] h-[16px] rounded-[5px] border-[1.5px] flex items-center justify-center",
               isDone ? "bg-emerald-500 border-emerald-500" : "border-slate-200"
             )}>
-              {isDone && <span className="text-white text-[7px] font-bold">✓</span>}
+              {isDone && <span className="text-[#fff] text-[7px] font-bold">✓</span>}
             </span>
           </div>
         )}

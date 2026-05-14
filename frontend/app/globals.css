@@ -319,18 +319,6 @@ html:not(.dark) .text-white\/20  { color: #D1D5DB !important; }
 html:not(.dark) .text-white\/15  { color: #E5E7EB !important; }
 html:not(.dark) .text-white       { color: #111827 !important; }
 
-/* ── text-white on colored backgrounds → keep white (higher specificity) ─── */
-/* [class*="bg-X-"] + .text-white = attr(1)+class(1)+pseudo(1)+el(1) > plain  */
-html:not(.dark) [class*="bg-indigo-"].text-white,
-html:not(.dark) [class*="bg-violet-"].text-white,
-html:not(.dark) [class*="bg-red-"].text-white,
-html:not(.dark) [class*="bg-rose-"].text-white,
-html:not(.dark) [class*="bg-emerald-"].text-white,
-html:not(.dark) [class*="bg-green-"].text-white,
-html:not(.dark) [class*="bg-blue-"].text-white,
-html:not(.dark) [class*="bg-amber-"].text-white,
-html:not(.dark) [class*="bg-orange-"].text-white { color: #ffffff !important; }
-
 /* ── Active tab / pill (selected state) ──────────────────────────────────── */
 html:not(.dark) .bg-white\/\[0\.12\]  { background-color: #E5E7EB !important; box-shadow: none !important; }
 html:not(.dark) .bg-white\/\[0\.09\]  { background-color: #E5E7EB !important; box-shadow: none !important; }

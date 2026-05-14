@@ -133,7 +133,7 @@ function QuickAdd({ listId, onAdded }: { listId: number; onAdded: () => void }) 
         <button
           onClick={submit}
           disabled={saving}
-          className="px-3 py-2 text-[13px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors shadow-sm shrink-0"
+          className="px-3 py-2 text-[13px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors shadow-sm shrink-0"
         >
           {saving ? "..." : "Добавить"}
         </button>
@@ -386,7 +386,7 @@ export default function ListDetailPage() {
       >
         <button onClick={() => updateItem({ itemId: item.id, status: item.status === "done" ? "open" : "done" })} className="shrink-0 touch-manipulation">
           {item.status === "done" ? (
-            <div className="w-[18px] h-[18px] rounded-full bg-emerald-500 flex items-center justify-center"><Check size={10} className="text-white" strokeWidth={3} /></div>
+            <div className="w-[18px] h-[18px] rounded-full bg-emerald-500 flex items-center justify-center"><Check size={10} className="text-[#fff]" strokeWidth={3} /></div>
           ) : item.status === "reserved" ? (
             <div className="w-[18px] h-[18px] rounded-full bg-pink-100 dark:bg-pink-500/20 border-[1.5px] border-pink-300 flex items-center justify-center"><span className="text-[8px]">🎁</span></div>
           ) : (
@@ -444,7 +444,7 @@ export default function ListDetailPage() {
             className="absolute top-2 left-2 touch-manipulation"
           >
             {item.status === "done" ? (
-              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow"><Check size={12} className="text-white" strokeWidth={3} /></div>
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow"><Check size={12} className="text-[#fff]" strokeWidth={3} /></div>
             ) : item.status === "reserved" ? (
               <div className="w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center shadow"><span className="text-[10px]">🎁</span></div>
             ) : (
@@ -687,7 +687,7 @@ export default function ListDetailPage() {
                 autoFocus
               />
               <div className="flex gap-1.5 mt-1.5">
-                <button onClick={() => handleInlineAdd(group.id)} disabled={!inlineAddTitle.trim()} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                <button onClick={() => handleInlineAdd(group.id)} disabled={!inlineAddTitle.trim()} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-40 transition-colors">
                   Добавить
                 </button>
                 <button onClick={() => setInlineAddGroupId(null)} className="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors" style={{ color: "var(--t-faint)" }}>
@@ -798,7 +798,7 @@ export default function ListDetailPage() {
       {/* Add item modal */}
       {showAddItem && (
         <BottomSheet open onClose={() => setShowAddItem(false)} title="Добавить элемент" footer={
-          <button onClick={handleAddItem} disabled={creatingItem || !itemTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors">
+          <button onClick={handleAddItem} disabled={creatingItem || !itemTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
             {creatingItem ? "..." : "Добавить"}
           </button>
         }>
@@ -843,7 +843,7 @@ export default function ListDetailPage() {
       {/* Edit item modal */}
       {editingItem && (
         <BottomSheet open onClose={() => setEditingItem(null)} title="Редактировать" footer={
-          <button onClick={handleEditSave} disabled={!editTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors">
+          <button onClick={handleEditSave} disabled={!editTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
             Сохранить
           </button>
         }>
@@ -917,7 +917,7 @@ export default function ListDetailPage() {
       {/* Add group modal */}
       {showAddGroup && (
         <BottomSheet open onClose={() => setShowAddGroup(false)} title="Новая группа" footer={
-          <button onClick={handleAddGroup} disabled={creatingGroup || !groupTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors">
+          <button onClick={handleAddGroup} disabled={creatingGroup || !groupTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
             {creatingGroup ? "..." : "Создать"}
           </button>
         }>
@@ -960,7 +960,7 @@ export default function ListDetailPage() {
                   placeholder="Название"
                   className="flex-1 px-3 h-9 text-[14px] rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
                 />
-                <button onClick={addStatus} disabled={!newStatusLabel.trim()} className="px-3 h-9 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                <button onClick={addStatus} disabled={!newStatusLabel.trim()} className="px-3 h-9 text-[12px] font-semibold rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-40 transition-colors">
                   +
                 </button>
               </div>
@@ -1039,7 +1039,7 @@ export default function ListDetailPage() {
                   <button onClick={() => setShowAddGroup(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] hover:bg-slate-50" style={{ color: "var(--t-secondary)" }}>
                     <FolderPlus size={13} /><span className="hidden md:inline">Группа</span>
                   </button>
-                  <button onClick={() => setShowAddItem(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[12px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm">
+                  <button onClick={() => setShowAddItem(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-[12px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm">
                     <Plus size={14} /><span className="hidden md:inline">Добавить</span>
                   </button>
                 </div>

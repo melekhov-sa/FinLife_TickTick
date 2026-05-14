@@ -300,7 +300,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
             className={clsx(
               "px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
               archived === opt.value
-                ? "bg-indigo-600 text-white shadow-sm"
+                ? "bg-indigo-600 text-[#fff] shadow-sm"
                 : "hover:bg-white/[0.05]"
             )}
             style={{ color: archived === opt.value ? undefined : "var(--t-secondary)" }}
@@ -506,7 +506,7 @@ export default function PlannedOpsPage() {
                 className={clsx(
                   "px-4 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
                   tab === t.value
-                    ? "bg-indigo-600 text-white shadow-sm"
+                    ? "bg-indigo-600 text-[#fff] shadow-sm"
                     : "hover:bg-white/[0.05]"
                 )}
                 style={{ color: tab === t.value ? undefined : "var(--t-secondary)" }}

@@ -218,7 +218,7 @@ export function OnboardingModal({ onComplete }: Props) {
                 className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
               >
-                <span className="text-white text-xl font-bold">FL</span>
+                <span className="text-[#fff] text-xl font-bold">FL</span>
               </div>
               <div>
                 <h2 className="text-lg font-bold mb-1.5" style={{ color: "var(--t-primary, #E6EAF2)" }}>
@@ -291,7 +291,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading || !walletName.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)" }}>
+                <button onClick={handleNext} disabled={loading || !walletName.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)" }}>
                   {loading ? "..." : "Создать"}
                 </button>
               </div>
@@ -317,7 +317,7 @@ export function OnboardingModal({ onComplete }: Props) {
                 {cats.map((c, i) => c.type === "INCOME" && (
                   <div key={i} className="flex items-center gap-2 group">
                     <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-indigo-500 border-indigo-500" : "border-white/15 bg-transparent")}>
-                      {c.enabled && <Check size={12} className="text-white" />}
+                      {c.enabled && <Check size={12} className="text-[#fff]" />}
                     </button>
                     <span className="flex-1 text-[13px]" style={{ color: c.enabled ? "var(--t-primary, #E6EAF2)" : "var(--t-faint, #6B7280)" }}>{c.title}</span>
                     <button onClick={() => removeCat(i)} className="opacity-0 group-hover:opacity-60 transition-opacity"><Trash2 size={13} className="text-red-400" /></button>
@@ -328,7 +328,7 @@ export function OnboardingModal({ onComplete }: Props) {
                 {cats.map((c, i) => c.type === "EXPENSE" && (
                   <div key={i} className="flex items-center gap-2 group">
                     <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-indigo-500 border-indigo-500" : "border-white/15 bg-transparent")}>
-                      {c.enabled && <Check size={12} className="text-white" />}
+                      {c.enabled && <Check size={12} className="text-[#fff]" />}
                     </button>
                     <span className="flex-1 text-[13px]" style={{ color: c.enabled ? "var(--t-primary, #E6EAF2)" : "var(--t-faint, #6B7280)" }}>{c.title}</span>
                     <button onClick={() => removeCat(i)} className="opacity-0 group-hover:opacity-60 transition-opacity"><Trash2 size={13} className="text-red-400" /></button>
@@ -363,7 +363,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}>
+                <button onClick={handleNext} disabled={loading} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}>
                   {loading ? "..." : `Добавить (${cats.filter((c) => c.enabled).length})`}
                 </button>
               </div>
@@ -389,7 +389,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     <button
                       key={t}
                       onClick={() => setOpType(t)}
-                      className={clsx("flex-1 py-2 rounded-md text-[13px] font-semibold transition-all", opType === t ? "bg-indigo-600 text-white shadow-sm" : "hover:bg-white/[0.05]")}
+                      className={clsx("flex-1 py-2 rounded-md text-[13px] font-semibold transition-all", opType === t ? "bg-indigo-600 text-[#fff] shadow-sm" : "hover:bg-white/[0.05]")}
                       style={{ color: opType === t ? undefined : "var(--t-secondary, #9AA3B2)" }}
                     >
                       {t === "INCOME" ? "Доход" : "Расход"}
@@ -425,7 +425,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading || !opAmount.trim() || !createdWalletId} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}>
+                <button onClick={handleNext} disabled={loading || !opAmount.trim() || !createdWalletId} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}>
                   {loading ? "..." : "Записать"}
                 </button>
               </div>
@@ -457,7 +457,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading || !taskTitle.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
+                <button onClick={handleNext} disabled={loading || !taskTitle.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" }}>
                   {loading ? "..." : "Создать"}
                 </button>
               </div>
@@ -489,7 +489,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading || !habitTitle.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-white disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)" }}>
+                <button onClick={handleNext} disabled={loading || !habitTitle.trim()} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)" }}>
                   {loading ? "..." : "Завершить"}
                 </button>
               </div>

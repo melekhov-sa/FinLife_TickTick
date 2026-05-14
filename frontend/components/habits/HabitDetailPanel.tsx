@@ -196,7 +196,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
                   className={clsx(
                     "flex-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
                     level === l.value
-                      ? "bg-indigo-600 border-indigo-600 text-white"
+                      ? "bg-indigo-600 border-indigo-600 text-[#fff]"
                       : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.08]"
                   )}
                   style={{ color: level === l.value ? undefined : "var(--t-muted)" }}

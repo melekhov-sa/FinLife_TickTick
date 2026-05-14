@@ -177,7 +177,7 @@ export function MobileNav({
                     "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
                 }}
               >
-                <span className="text-white text-[11px] font-bold tracking-tight">
+                <span className="text-[#fff] text-[11px] font-bold tracking-tight">
                   FL
                 </span>
               </span>

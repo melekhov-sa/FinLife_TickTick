@@ -299,7 +299,7 @@ export default function SharedListPage() {
                 <button
                   onClick={() => reserveName.trim() && reserveItem({ itemId: reservingId, name: reserveName.trim() })}
                   disabled={reserving || !reserveName.trim()}
-                  className="flex-1 py-2 text-[13px] font-semibold rounded-xl bg-pink-500 text-white hover:bg-pink-600 disabled:opacity-50 transition-colors"
+                  className="flex-1 py-2 text-[13px] font-semibold rounded-xl bg-pink-500 text-[#fff] hover:bg-pink-600 disabled:opacity-50 transition-colors"
                 >
                   {reserving ? "..." : "Подтвердить"}
                 </button>

@@ -107,7 +107,7 @@ export function Tooltip({
           <span
             className={cn(
               "inline-block rounded-md px-2 py-1 text-[12px] font-medium whitespace-nowrap shadow-md",
-              "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900",
+              "bg-slate-900 text-[#fff] dark:bg-slate-100 dark:text-slate-900",
               className,
             )}
           >

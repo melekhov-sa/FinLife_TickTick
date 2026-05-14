@@ -112,7 +112,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
           <button
             onClick={handleSave}
             disabled={saving || !contactId}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
           >
             {saving ? "Сохраняем…" : "Добавить"}
           </button>

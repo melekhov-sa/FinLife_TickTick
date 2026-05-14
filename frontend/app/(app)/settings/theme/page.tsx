@@ -135,7 +135,7 @@ export default function ThemeSettingsPage() {
 
                   {selected && (
                     <span className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
-                      <Check size={13} className="text-white" />
+                      <Check size={13} className="text-[#fff]" />
                     </span>
                   )}
                 </button>

@@ -29,7 +29,7 @@ export default function AppError({
       </pre>
       <button
         onClick={reset}
-        className="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+        className="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] transition-colors"
       >
         Попробовать снова
       </button>

@@ -142,7 +142,7 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
       </h3>
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         {!showArchived && (
-          <button onClick={onCreateNew} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl px-3 py-1.5 transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
+          <button onClick={onCreateNew} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] font-semibold rounded-xl px-3 py-1.5 transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
             <Plus size={12} strokeWidth={2.5} />
             Создать привычку
           </button>

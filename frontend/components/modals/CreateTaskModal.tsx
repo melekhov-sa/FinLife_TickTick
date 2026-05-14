@@ -87,7 +87,7 @@ const WEEKDAYS = [
 // ── Style constants ────────────────────────────────────────────────────────
 
 const chipActiveCls =
-  "bg-indigo-600 border-indigo-500 text-white";
+  "bg-indigo-600 border-indigo-500 text-[#fff]";
 const chipInactiveCls =
   "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/72 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 const chipBaseCls =
@@ -632,7 +632,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                         type="button"
                         onClick={addMultiDate}
                         disabled={!multiDateInput}
-                        className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-white disabled:opacity-40 transition-colors whitespace-nowrap"
+                        className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
                       >
                         Добавить
                       </button>
@@ -694,7 +694,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
                             type="button"
                             onClick={addReminder}
                             disabled={!selectedReminderPreset}
-                            className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-white disabled:opacity-40 transition-colors whitespace-nowrap"
+                            className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
                           >
                             Добавить
                           </button>

@@ -108,7 +108,7 @@ export default function KnowledgePage() {
           </div>
           <a
             href="/legacy/knowledge/create"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl px-4 py-2 transition-colors whitespace-nowrap"
+            className="bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-xs font-medium rounded-xl px-4 py-2 transition-colors whitespace-nowrap"
           >
             + Статья
           </a>

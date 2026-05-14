@@ -90,7 +90,7 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-[#fff] disabled:opacity-50 transition-colors"
           >
             {loading ? "Сохраняем…" : "Выполнено ✓"}
           </button>

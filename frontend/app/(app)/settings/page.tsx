@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 <div className="mt-3">
                   <Link
                     href="/settings/notifications"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-semibold text-[#fff] transition-all hover:opacity-90"
                     style={{ background: tgConnected ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
                   >
                     <Send size={14} /> {tgConnected ? "Настройки" : "Подключить Telegram"}

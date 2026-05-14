@@ -73,7 +73,7 @@ export function AppTopbar() {
               className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
             >
-              <span className="text-white text-[10px] font-bold tracking-tight">FL</span>
+              <span className="text-[#fff] text-[10px] font-bold tracking-tight">FL</span>
             </span>
           </div>
         )}

@@ -97,7 +97,7 @@ export default function ContactsPage() {
                   className={clsx(
                     "w-7 h-7 rounded-lg flex items-center justify-center border transition-all",
                     confirmId === c.id
-                      ? "bg-red-600 border-red-500 text-white"
+                      ? "bg-red-600 border-red-500 text-[#fff]"
                       : "border-transparent hover:bg-red-500/10 hover:border-red-500/20"
                   )}
                   style={{ color: confirmId === c.id ? undefined : "var(--t-faint)" }}

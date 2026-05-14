@@ -197,7 +197,7 @@ function ProjectSettingsPopover({
               <button
                 onClick={() => { if (newTagName.trim()) createTag({ name: newTagName.trim(), color: newTagColor }); }}
                 disabled={!newTagName.trim()}
-                className="w-6 h-6 flex items-center justify-center rounded-md bg-indigo-600/80 hover:bg-indigo-600 text-white disabled:opacity-40 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-indigo-600/80 hover:bg-indigo-600 text-[#fff] disabled:opacity-40 transition-colors"
               >
                 <Plus size={10} />
               </button>

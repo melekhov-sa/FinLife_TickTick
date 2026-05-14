@@ -368,7 +368,7 @@ function EntryRow({
           </button>
         ) : entry.is_done && isCompletable(entry.kind) ? (
           <div className="w-[16px] h-[16px] rounded-full bg-emerald-500 flex items-center justify-center">
-            <span className="text-[8px] text-white font-bold">✓</span>
+            <span className="text-[8px] text-[#fff] font-bold">✓</span>
           </div>
         ) : isOp ? (
           <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0" />
@@ -1144,7 +1144,7 @@ export default function PlanPage() {
                 closeOnClickInside
                 className="!p-0 w-40 overflow-hidden"
                 trigger={
-                  <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm">
+                  <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm">
                     <Plus size={14} />
                     <span className="hidden md:inline">Добавить</span>
                     <ChevronDown size={12} className={clsx("transition-transform hidden md:block", showAddMenu && "rotate-180")} />

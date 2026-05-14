@@ -228,7 +228,7 @@ function PlanEditModal({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
           >
             {saving ? "Сохраняем…" : "Сохранить"}
           </button>
@@ -1099,7 +1099,7 @@ function PeriodPicker({ value, onChange, label }: {
             {[1,2,3,4,6,12].map(n => (
               <button key={n} onClick={() => setCCount(n)}
                 className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                  cCount === n ? "bg-indigo-600 text-white" : "hover:bg-[var(--app-accent-light)]")}
+                  cCount === n ? "bg-indigo-600 text-[#fff]" : "hover:bg-[var(--app-accent-light)]")}
                 style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
                 {n}
               </button>
@@ -1108,7 +1108,7 @@ function PeriodPicker({ value, onChange, label }: {
         </div>
         <button
           onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
-          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 transition-colors"
         >
           Применить
         </button>

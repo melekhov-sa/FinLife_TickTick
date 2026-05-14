@@ -368,7 +368,7 @@ export default function SubscriptionsPage() {
                         className={clsx(
                           "px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
                           filter === f.value
-                            ? "bg-indigo-600 text-white shadow-sm"
+                            ? "bg-indigo-600 text-[#fff] shadow-sm"
                             : "hover:bg-white/[0.05]"
                         )}
                         style={{ color: filter === f.value ? undefined : "var(--t-secondary)" }}

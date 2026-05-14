@@ -227,7 +227,7 @@ export default function AISettingsPage() {
               <button
                 onClick={() => saveMut.mutate(keyInput)}
                 disabled={!keyInput.trim() || saveMut.isPending}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-[#fff] transition-all hover:opacity-90 disabled:opacity-40"
                 style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}
               >
                 <Save size={14} />

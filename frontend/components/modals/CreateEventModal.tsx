@@ -258,7 +258,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       <button
         type="submit"
         disabled={saving}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 transition-colors"
+        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
       >
         {saving ? "Создаём…" : "Создать"}
       </button>
@@ -344,7 +344,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
               type="button"
               onClick={handleCreateCategory}
               disabled={catCreating || !newCatTitle.trim()}
-              className="h-9 w-9 flex items-center justify-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+              className="h-9 w-9 flex items-center justify-center rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
             >
               <Check size={14} />
             </button>
@@ -474,7 +474,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                         className={clsx(
                           "px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors",
                           active
-                            ? "bg-indigo-600 border-indigo-500 text-white"
+                            ? "bg-indigo-600 border-indigo-500 text-[#fff]"
                             : "bg-white/[0.05] border-white/[0.08] text-white/50 hover:bg-white/[0.08]",
                         )}
                       >

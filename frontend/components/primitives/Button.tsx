@@ -20,7 +20,7 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-indigo-600 text-white shadow-sm " +
+    "bg-indigo-600 text-[#fff] shadow-sm " +
     "hover:bg-indigo-500 hover:shadow-md " +
     "active:bg-indigo-700",
   secondary:
@@ -33,7 +33,7 @@ const variantClasses: Record<Variant, string> = {
     "border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 " +
     "dark:border-white/15 dark:bg-transparent dark:text-slate-300 dark:hover:border-white/25 dark:hover:bg-white/5",
   destructive:
-    "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 shadow-sm",
+    "bg-red-600 text-[#fff] hover:bg-red-500 active:bg-red-700 shadow-sm",
   link:
     "bg-transparent text-indigo-600 hover:text-indigo-500 underline underline-offset-4 " +
     "dark:text-indigo-400 dark:hover:text-indigo-300",
