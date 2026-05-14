@@ -65,6 +65,7 @@ export function useDuplicateEvent() {
       api.post(`/api/v2/events/occurrences/${occurrenceId}/duplicate`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

@@ -465,7 +465,11 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
       api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
+    },
   });
 
   const { mutate: reorderTasks, isPending: isReordering } = useReorderTasks();

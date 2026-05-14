@@ -31,6 +31,7 @@ export function useCompleteTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
     },
   });
 }
@@ -42,6 +43,7 @@ export function useCompleteTaskOccurrence() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
     },
   });
 }
@@ -52,6 +54,8 @@ export function useArchiveTask() {
     mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/archive`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
     },
   });
 }
@@ -76,6 +80,7 @@ export function useDeleteTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
     },
   });
 }
@@ -86,6 +91,8 @@ export function useDuplicateTask() {
     mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/duplicate`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["plan"] });
     },
   });
 }

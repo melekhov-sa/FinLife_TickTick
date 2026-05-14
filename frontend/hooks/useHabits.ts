@@ -38,6 +38,7 @@ export function useSkipHabitToday() {
     mutationFn: (habitId: number) => api.post(`/api/v2/habits/${habitId}/skip-today`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -60,6 +61,7 @@ export function useUpdateHabit() {
     }) => api.patch(`/api/v2/habits/${habitId}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
