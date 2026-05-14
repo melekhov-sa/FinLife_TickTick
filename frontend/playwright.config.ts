@@ -17,7 +17,7 @@ export default defineConfig({
   },
 
   use: {
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    baseURL: process.env.BASE_URL || "https://centricore.ru",
     trace: "on-first-retry",
   },
 
@@ -49,16 +49,10 @@ export default defineConfig({
         ...devices["iPhone 14"],
         storageState: "e2e/.auth/user.json",
         colorScheme: "light",
+        ignoreHTTPSErrors: true,
       },
       testMatch: "**/visual.spec.ts",
     },
   ],
 
-  // Starts dev server automatically if not already running
-  webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
 });

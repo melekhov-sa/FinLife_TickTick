@@ -77,23 +77,20 @@ test("habits", async ({ page }) => {
 // ── Key modals ────────────────────────────────────────────────────────────────
 
 test("modal: create task", async ({ page }) => {
-  await page.goto("/dashboard");
+  await page.goto("/plan");
   await waitForReady(page);
 
-  // Open via MobileNav FAB (mobile) or trigger from page
-  // Desktop: find "+ Создать" or equivalent button
-  // We trigger via URL param if available, otherwise click
-  await page.evaluate(() => {
-    // Dispatch custom event that MobileNav listens to, or just look for button
-  });
-
-  // Click the FAB / create button — adjust selector if needed
-  const fab = page.locator('[aria-label*="задач"], [aria-label*="создат"]').first();
-  if (await fab.isVisible()) {
-    await fab.click();
-    await page.waitForTimeout(400);
-    await expect(page).toHaveScreenshot("modal-create-task.png");
+  // Mobile nav has "Создать" FAB → "Новая задача"; desktop has plan header "Добавить" → "Задача"
+  const mobileCreateBtn = page.getByRole("button", { name: "Создать" });
+  if (await mobileCreateBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await mobileCreateBtn.click();
+    await page.getByRole("button", { name: "Новая задача" }).click();
+  } else {
+    await page.getByRole("button", { name: "Добавить", exact: true }).click();
+    await page.getByRole("button", { name: /^задача$/i }).click();
   }
+  await page.waitForTimeout(400);
+  await expect(page).toHaveScreenshot("modal-create-task.png");
 });
 
 test("modal: create operation", async ({ page }) => {
