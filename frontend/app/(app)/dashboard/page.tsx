@@ -1,6 +1,5 @@
 "use client";
 
-import { PageHeader } from "@/components/primitives/PageHeader";
 import { useSetPageTitle } from "@/contexts/PageTitle";
 import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
@@ -26,11 +25,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* На мобиле PageHeader остаётся, на десктопе title уже в AppTopbar */}
-      <div className="md:hidden">
-        <PageHeader title="Главная" eyebrow={todayLabel} density="regular" />
-      </div>
-
       <main className="flex-1 overflow-auto p-3 md:p-6">
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
