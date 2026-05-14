@@ -20,9 +20,9 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm " +
-    "hover:from-indigo-500 hover:to-violet-500 hover:shadow-md " +
-    "active:from-indigo-700 active:to-violet-700",
+    "bg-indigo-600 text-white shadow-sm " +
+    "hover:bg-indigo-500 hover:shadow-md " +
+    "active:bg-indigo-700",
   secondary:
     "bg-slate-100 text-slate-900 hover:bg-slate-200 active:bg-slate-300 " +
     "dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 dark:active:bg-white/15",

@@ -23,7 +23,7 @@ const heightClasses: Record<Size, string> = {
 };
 
 const fillClasses: Record<Variant, string> = {
-  primary: "bg-gradient-to-r from-indigo-500 to-violet-500",
+  primary: "bg-indigo-500",
   success: "bg-emerald-500",
   warning: "bg-amber-500",
   danger:  "bg-red-500",
