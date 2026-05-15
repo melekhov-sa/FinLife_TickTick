@@ -13,6 +13,7 @@ export interface PlanEntry {
   is_overdue: boolean;
   status: string | null;
   category_emoji: string | null;
+  category_title?: string | null;
   meta: Record<string, unknown>;
 }
 
@@ -29,6 +30,7 @@ interface DayGroup {
   is_overdue_group: boolean;
   day_type?: string;
   holiday?: HolidayInfo | null;
+  vacation?: boolean;
   entries: PlanEntry[];
 }
 
@@ -120,7 +122,14 @@ export function CalendarDayCell({
   onDayClick,
   onEntryClick,
 }: CalendarDayCellProps) {
-  const entries = group?.entries ?? [];
+  const isVacation = group?.vacation === true;
+  const allEntries = group?.entries ?? [];
+  // Hide the "Отпуск" event pill — the cell background already communicates it
+  const entries = isVacation
+    ? allEntries.filter(
+        (e) => !(e.kind === "event" && e.category_title?.toLowerCase() === "отпуск"),
+      )
+    : allEntries;
   const visibleEntries = entries.slice(0, MAX_PILLS);
   const overflowCount = entries.length - MAX_PILLS;
 
@@ -131,6 +140,7 @@ export function CalendarDayCell({
   const dayNum = parseInt(dateISO.split("-")[2], 10);
   const isWeekend = group?.day_type === "weekend" || group?.day_type === "holiday";
   const beyondHorizon = !!horizonISO && dateISO > horizonISO;
+  const isHoliday = !!group?.holiday;
 
   return (
     <div
@@ -140,7 +150,9 @@ export function CalendarDayCell({
         "bg-white dark:bg-[#0f1221]",
         isOver && "ring-2 ring-inset ring-indigo-400/60 bg-indigo-50/40 dark:bg-indigo-500/[0.07]",
         isToday && !isOver && "ring-2 ring-inset ring-indigo-400/50",
-        isWeekend && !isToday && !isOver && "bg-slate-50/80 dark:bg-white/[0.02]",
+        isVacation && !isOver && "bg-cyan-50/60 dark:bg-cyan-500/[0.07]",
+        isHoliday && !isVacation && !isToday && !isOver && "bg-red-50/50 dark:bg-red-500/[0.05]",
+        isWeekend && !isVacation && !isHoliday && !isToday && !isOver && "bg-slate-50/80 dark:bg-white/[0.02]",
         !isCurrentMonth && "opacity-40",
       )}
       onClick={() => onDayClick(dateISO)}
@@ -151,13 +163,15 @@ export function CalendarDayCell({
           style={{ background: "rgba(148,163,184,0.07)" }}
         />
       )}
-      {/* Day number + holiday icon */}
+      {/* Day number + holiday/vacation icons */}
       <div className="flex items-start justify-between mb-0.5">
         <span
           className={clsx(
             "text-[11px] md:text-[12px] font-semibold leading-none px-0.5",
             isToday
               ? "text-indigo-600 dark:text-indigo-400"
+              : isVacation
+              ? "text-cyan-600 dark:text-cyan-400"
               : isWeekend
               ? "text-rose-500 dark:text-rose-400/80"
               : "text-slate-600 dark:text-white/60",
@@ -165,11 +179,18 @@ export function CalendarDayCell({
         >
           {dayNum}
         </span>
-        {group?.holiday && (
-          <span className="text-[10px] leading-none" title={group.holiday.name}>
-            {group.holiday.icon}
-          </span>
-        )}
+        <div className="flex items-center gap-0.5">
+          {isVacation && (
+            <span className="text-[10px] leading-none" title="Отпуск">
+              🏖️
+            </span>
+          )}
+          {group?.holiday && (
+            <span className="text-[10px] leading-none" title={group.holiday.name}>
+              {group.holiday.icon}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Entry pills */}

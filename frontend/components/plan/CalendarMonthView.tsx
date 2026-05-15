@@ -18,6 +18,7 @@ interface DayGroup {
   is_overdue_group: boolean;
   day_type?: string;
   holiday?: HolidayInfo | null;
+  vacation?: boolean;
   entries: PlanEntry[];
 }
 
