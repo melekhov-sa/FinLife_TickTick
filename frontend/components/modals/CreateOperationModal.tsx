@@ -50,6 +50,12 @@ interface TripListOption {
   list_type: string;
 }
 
+function fmtBalance(balance: string, currency: string): string {
+  const n = parseFloat(balance);
+  if (isNaN(n)) return balance;
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n) + " " + currency;
+}
+
 const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
 const chipActiveCls = "bg-indigo-600 border-indigo-500 text-[#fff]";
 const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
@@ -128,14 +134,12 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     staleTime: 60_000,
   });
 
-  const relevantCats = finCats?.filter((c) => c.category_type === opType && c.parent_id !== null) ?? [];
-  const parentCats = finCats?.filter((c) => c.category_type === opType && c.parent_id === null) ?? [];
   const freqCats = finCats?.filter((c) => c.category_type === opType && c.is_frequent) ?? [];
 
   const visibleWallets = (wallets ?? [])
     .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
     .slice()
-    .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
+    .sort((a, b) => b.operations_count_30d - a.operations_count_30d);
 
   const selectedFromWallet = (wallets ?? []).find((w) => w.wallet_id === fromWalletId);
   const selectedToWallet = (wallets ?? []).find((w) => w.wallet_id === toWalletId);
@@ -146,35 +150,34 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     const opts: SelectOption[] = [{ value: "", label: "— выберите кошелёк —" }];
     const top3 = visibleWallets.slice(0, 3);
     const rest = visibleWallets.slice(3);
+    const label = (w: WalletItem) => `${w.title} · ${fmtBalance(w.balance, w.currency)}`;
     if (rest.length > 0) {
-      top3.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})`, group: "★ Частые" }));
-      rest.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})`, group: "Все кошельки" }));
+      top3.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "★ Частые" }));
+      rest.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "Все кошельки" }));
     } else {
-      visibleWallets.forEach((w) => opts.push({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` }));
+      visibleWallets.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w) }));
     }
     return opts;
   }, [visibleWallets]);
 
   const allWalletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— кошелёк —" },
-    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: w.title })),
+    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} · ${fmtBalance(w.balance, w.currency)}` })),
   ], [wallets]);
 
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];
+    const freqIds = new Set(freqCats.map((c) => c.category_id));
+    const allForType = finCats?.filter((c) => c.category_type === opType) ?? [];
+    const rest = allForType
+      .filter((c) => !freqIds.has(c.category_id))
+      .sort((a, b) => a.title.localeCompare(b.title, "ru"));
     if (freqCats.length > 0) {
       freqCats.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые" }));
     }
-    parentCats.forEach((parent) => {
-      const children = relevantCats.filter((c) => c.parent_id === parent.category_id);
-      if (children.length === 0) {
-        opts.push({ value: String(parent.category_id), label: parent.title });
-      } else {
-        children.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: parent.title }));
-      }
-    });
+    rest.forEach((c) => opts.push({ value: String(c.category_id), label: c.title }));
     return opts;
-  }, [freqCats, parentCats, relevantCats]);
+  }, [freqCats, finCats, opType]);
 
   const subscriptionOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— выберите подписку —" },
@@ -255,12 +258,28 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
     // Layer 2: Business rules
     const custom: FieldErrors = {};
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) custom.amount = "Введите корректную сумму";
+    const amountVal = parseFloat(amount);
+    if (!amount || isNaN(amountVal) || amountVal <= 0) custom.amount = "Введите корректную сумму";
     if (opType !== "TRANSFER" && !walletId) custom.wallet_id = "Выберите кошелёк";
     if (opType === "TRANSFER") {
       if (!fromWalletId) custom.from_wallet_id = "Выберите кошелёк-источник";
       if (!toWalletId) custom.to_wallet_id = "Выберите кошелёк-получатель";
       if (fromWalletId && toWalletId && fromWalletId === toWalletId) custom.to_wallet_id = "Кошельки должны отличаться";
+    }
+    // Balance check: REGULAR wallets cannot go negative
+    if (!isNaN(amountVal) && amountVal > 0) {
+      if (opType === "EXPENSE" && walletId) {
+        const w = (wallets ?? []).find((x) => x.wallet_id === walletId);
+        if (w?.wallet_type === "REGULAR" && amountVal > parseFloat(w.balance)) {
+          custom.wallet_id = `Недостаточно средств (баланс: ${fmtBalance(w.balance, w.currency)})`;
+        }
+      }
+      if (opType === "TRANSFER" && fromWalletId) {
+        const w = (wallets ?? []).find((x) => x.wallet_id === fromWalletId);
+        if (w?.wallet_type === "REGULAR" && amountVal > parseFloat(w.balance)) {
+          custom.from_wallet_id = `Недостаточно средств (баланс: ${fmtBalance(w.balance, w.currency)})`;
+        }
+      }
     }
 
     const merged = mergeErrors(zodErrs, custom);
