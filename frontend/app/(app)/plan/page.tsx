@@ -63,6 +63,7 @@ export interface DayGroup {
   is_overdue_group: boolean;
   day_type?: string;
   holiday?: HolidayInfo | null;
+  vacation?: boolean;
   entries: PlanEntry[];
 }
 
@@ -81,6 +82,13 @@ const HOLIDAY_THEME_CLS: Record<string, { bg: string; border: string; badgeBg: s
 function holidayTheme(theme: string): typeof HOLIDAY_THEME_CLS[string] {
   return HOLIDAY_THEME_CLS[theme] ?? HOLIDAY_THEME_CLS.winter;
 }
+
+const VACATION_THEME = {
+  bg: "bg-cyan-50 dark:bg-cyan-500/[0.07]",
+  border: "border-cyan-300/60 dark:border-cyan-500/25",
+  badgeBg: "bg-cyan-100 dark:bg-cyan-500/15",
+  badgeText: "text-cyan-700 dark:text-cyan-300",
+};
 
 interface PlanSummary {
   today_count: number;
@@ -517,6 +525,7 @@ function DayGroupCard({
 
   if (isEmpty) {
     const hTheme = group.holiday ? holidayTheme(group.holiday.theme) : null;
+    const vTheme = !hTheme && group.vacation ? VACATION_THEME : null;
     return (
       <div
         ref={setDropRef}
@@ -525,6 +534,8 @@ function DayGroupCard({
           isOver && "ring-2 ring-indigo-400/50 bg-indigo-50/60 dark:bg-indigo-500/[0.08]",
           !isOver && (hTheme
             ? `${hTheme.bg} ${hTheme.border}`
+            : vTheme
+            ? `${vTheme.bg} ${vTheme.border}`
             : group.day_type === "holiday"
             ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
             : group.day_type === "weekend"
@@ -543,6 +554,11 @@ function DayGroupCard({
               <span>{group.holiday.icon}</span>{group.holiday.name}
             </span>
           )}
+          {group.vacation && (
+            <span className={clsx("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium", VACATION_THEME.badgeBg, VACATION_THEME.badgeText)}>
+              🏖️ Отпуск
+            </span>
+          )}
           <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>
             — нет дел
           </span>
@@ -558,6 +574,7 @@ function DayGroupCard({
   }
 
   const hTheme = group.holiday && !group.is_overdue_group && !group.is_today ? holidayTheme(group.holiday.theme) : null;
+  const vTheme = !hTheme && group.vacation && !group.is_overdue_group && !group.is_today ? VACATION_THEME : null;
   return (
     <div
       ref={setDropRef}
@@ -570,6 +587,8 @@ function DayGroupCard({
           ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
           : hTheme
           ? `${hTheme.bg} ${hTheme.border}`
+          : vTheme
+          ? `${vTheme.bg} ${vTheme.border}`
           : group.day_type === "holiday"
           ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
           : group.day_type === "weekend"
@@ -605,6 +624,11 @@ function DayGroupCard({
             title={group.holiday.name}
           >
             <span>{group.holiday.icon}</span>{group.holiday.name}
+          </span>
+        )}
+        {group.vacation && (
+          <span className={clsx("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium", VACATION_THEME.badgeBg, VACATION_THEME.badgeText)}>
+            🏖️ Отпуск
           </span>
         )}
         <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>

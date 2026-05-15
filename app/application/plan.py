@@ -965,6 +965,17 @@ def _group_by_date(items: list[dict], today: date, day_types: dict | None = None
     for it in deduped_normal:
         by_date[it["date"]].append(it)
 
+    # Vacation spans: events with category "Отпуск" covering a date range
+    vacation_spans: list[tuple[date, date]] = [
+        (it["date"], it["meta"].get("end_date") or it["date"])
+        for it in deduped_normal
+        if it.get("kind") == "event"
+        and (it.get("category_title") or "").strip().lower() == "отпуск"
+    ]
+
+    def _is_vacation(d: date) -> bool:
+        return any(start <= d <= end for start, end in vacation_spans)
+
     for d in sorted(by_date.keys()):
         by_date[d].sort(key=_sort_key)
         holiday = get_holiday_ru(d)
@@ -978,6 +989,7 @@ def _group_by_date(items: list[dict], today: date, day_types: dict | None = None
                 {"name": holiday.name, "icon": holiday.icon, "theme": holiday.theme}
                 if holiday else None
             ),
+            "vacation": _is_vacation(d),
             "entries": by_date[d],
         })
 

@@ -57,6 +57,7 @@ def _serialize_group(group: dict) -> dict:
             {"name": holiday["name"], "icon": holiday["icon"], "theme": holiday["theme"]}
             if holiday else None
         ),
+        "vacation": group.get("vacation", False),
         "entries": [_serialize_item(e) for e in group["entries"]],
     }
 
