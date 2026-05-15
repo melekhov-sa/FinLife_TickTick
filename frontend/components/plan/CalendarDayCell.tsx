@@ -2,6 +2,9 @@
 
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { clsx } from "clsx";
+import { getHolidayRU } from "@/lib/holidays";
+
+export interface VacationSpan { start: string; end: string; }
 
 export interface PlanEntry {
   kind: string;
@@ -40,6 +43,7 @@ interface CalendarDayCellProps {
   isToday: boolean;
   group: DayGroup | null;
   horizonISO?: string;
+  vacationSpans?: VacationSpan[];
   onDayClick: (date: string) => void;
   onEntryClick: (entry: PlanEntry) => void;
 }
@@ -119,10 +123,17 @@ export function CalendarDayCell({
   isToday,
   group,
   horizonISO,
+  vacationSpans,
   onDayClick,
   onEntryClick,
 }: CalendarDayCellProps) {
-  const isVacation = group?.vacation === true;
+  // Vacation: from spans prop (works for empty cells) or from the group flag
+  const isVacation =
+    (vacationSpans ?? []).some((s) => s.start <= dateISO && dateISO <= s.end) ||
+    group?.vacation === true;
+  // Holiday: computed from static lookup (works for empty cells)
+  const cellHoliday = getHolidayRU(dateISO);
+
   const allEntries = group?.entries ?? [];
   // Hide the "Отпуск" event pill — the cell background already communicates it
   const entries = isVacation
@@ -140,7 +151,7 @@ export function CalendarDayCell({
   const dayNum = parseInt(dateISO.split("-")[2], 10);
   const isWeekend = group?.day_type === "weekend" || group?.day_type === "holiday";
   const beyondHorizon = !!horizonISO && dateISO > horizonISO;
-  const isHoliday = !!group?.holiday;
+  const isHoliday = !!cellHoliday;
 
   return (
     <div
@@ -185,9 +196,9 @@ export function CalendarDayCell({
               🏖️
             </span>
           )}
-          {group?.holiday && (
-            <span className="text-[10px] leading-none" title={group.holiday.name}>
-              {group.holiday.icon}
+          {cellHoliday && (
+            <span className="text-[10px] leading-none" title={cellHoliday.name}>
+              {cellHoliday.icon}
             </span>
           )}
         </div>

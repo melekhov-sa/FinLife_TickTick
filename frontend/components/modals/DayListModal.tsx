@@ -20,6 +20,8 @@ interface PlanEntry {
 interface Props {
   dateISO: string;
   entries: PlanEntry[];
+  holiday?: { name: string; icon: string } | null;
+  vacation?: boolean;
   onClose: () => void;
   onEntryClick: (entry: PlanEntry) => void;
   onAddTask: () => void;
@@ -62,7 +64,7 @@ function formatDayTitle(iso: string): string {
   return `${dayMonth} · ${capitalized}`;
 }
 
-export function DayListModal({ dateISO, entries, onClose, onEntryClick, onAddTask }: Props) {
+export function DayListModal({ dateISO, entries, holiday, vacation, onClose, onEntryClick, onAddTask }: Props) {
   const title = formatDayTitle(dateISO);
 
   const grouped = useMemo(
@@ -77,6 +79,23 @@ export function DayListModal({ dateISO, entries, onClose, onEntryClick, onAddTas
 
   return (
     <BottomSheet open onClose={onClose} title={title}>
+      {/* Holiday / vacation banners */}
+      {(vacation || holiday) && (
+        <div className="flex flex-col gap-1.5 mb-3">
+          {vacation && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-50 dark:bg-cyan-500/[0.08] border border-cyan-300/60 dark:border-cyan-500/25">
+              <span className="text-[16px] leading-none">🏖️</span>
+              <span className="text-[13px] font-semibold text-cyan-700 dark:text-cyan-300">Отпуск</span>
+            </div>
+          )}
+          {holiday && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/[0.08] border border-rose-300/60 dark:border-rose-500/25">
+              <span className="text-[16px] leading-none">{holiday.icon}</span>
+              <span className="text-[13px] font-semibold text-rose-700 dark:text-rose-300">{holiday.name}</span>
+            </div>
+          )}
+        </div>
+      )}
       {entries.length === 0 ? (
         <div className="py-8 text-center space-y-3">
           <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>

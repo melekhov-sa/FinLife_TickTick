@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { getHolidayRU } from "@/lib/holidays";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
@@ -993,6 +994,21 @@ export default function PlanPage() {
     enabled: viewMode === "calendar",
   });
 
+  // Vacation spans from calendar data (used by DayListModal for any date)
+  const calendarVacationSpans = useMemo(() => {
+    const spans: { start: string; end: string }[] = [];
+    for (const g of (calendarData ?? data)?.day_groups ?? []) {
+      for (const e of g.entries) {
+        if (e.kind === "event" && (e as { category_title?: string | null }).category_title?.toLowerCase() === "отпуск") {
+          const start = e.date ?? "";
+          const end = (e.meta?.end_date as string | undefined) || start;
+          if (start) spans.push({ start, end });
+        }
+      }
+    }
+    return spans;
+  }, [calendarData, data]);
+
   // Filter wishes, then fill in empty days within the range
   const filteredData = useMemo(() => {
     if (!data) return undefined;
@@ -1061,6 +1077,8 @@ export default function PlanPage() {
           entries={
             (calendarData ?? data)?.day_groups.find((g) => g.date === dayModalDate)?.entries.filter((e) => e.kind !== "wish") ?? []
           }
+          holiday={getHolidayRU(dayModalDate)}
+          vacation={calendarVacationSpans.some((s) => s.start <= dayModalDate && dayModalDate <= s.end)}
           onClose={() => setDayModalDate(null)}
           onEntryClick={(entry) => { setDayModalDate(null); setDetailEntry(entry); }}
           onAddTask={() => { setDayModalDate(null); setCreateTaskDate(dayModalDate ?? ""); }}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CalendarDayCell, type PlanEntry } from "./CalendarDayCell";
+import { CalendarDayCell, type PlanEntry, type VacationSpan } from "./CalendarDayCell";
 
 const RU_MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
@@ -94,6 +94,21 @@ export function CalendarMonthView({
     return map;
   }, [data.day_groups]);
 
+  // Vacation spans: derived from plan entries (works even for empty cells)
+  const vacationSpans = useMemo((): VacationSpan[] => {
+    const spans: VacationSpan[] = [];
+    for (const g of data.day_groups) {
+      for (const e of g.entries) {
+        if (e.kind === "event" && (e as { category_title?: string | null }).category_title?.toLowerCase() === "отпуск") {
+          const start = e.date ?? "";
+          const end = (e.meta?.end_date as string | undefined) || start;
+          if (start) spans.push({ start, end });
+        }
+      }
+    }
+    return spans;
+  }, [data.day_groups]);
+
   const todayISO = data.today;
   const currentMonth = monthStart.getMonth();
 
@@ -163,6 +178,7 @@ export function CalendarMonthView({
               isToday={isToday}
               group={group}
               horizonISO={horizonISO}
+              vacationSpans={vacationSpans}
               onDayClick={onDayClick}
               onEntryClick={onEntryClick}
             />
