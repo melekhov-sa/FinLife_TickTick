@@ -24,6 +24,28 @@ const RU_WEEKDAYS_SHORT = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const RU_MONTHS         = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 const RU_MONTHS_FULL    = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 
+// Russian federal holidays (mirrors app/application/holidays.py)
+const RU_HOLIDAYS: Record<string, { name: string; icon: string }> = {
+  "01-01": { name: "Новый год",                   icon: "🎄" },
+  "01-02": { name: "Новогодние каникулы",          icon: "🎄" },
+  "01-03": { name: "Новогодние каникулы",          icon: "🎄" },
+  "01-04": { name: "Новогодние каникулы",          icon: "🎄" },
+  "01-05": { name: "Новогодние каникулы",          icon: "🎄" },
+  "01-06": { name: "Новогодние каникулы",          icon: "🎄" },
+  "01-07": { name: "Рождество Христово",           icon: "✨" },
+  "01-08": { name: "Новогодние каникулы",          icon: "🎄" },
+  "02-23": { name: "День защитника Отечества",     icon: "🎖️" },
+  "03-08": { name: "Международный женский день",   icon: "🌷" },
+  "05-01": { name: "Праздник весны и труда",       icon: "🌱" },
+  "05-09": { name: "День Победы",                  icon: "🎗️" },
+  "06-12": { name: "День России",                  icon: "🇷🇺" },
+  "11-04": { name: "День народного единства",      icon: "🤝" },
+};
+
+function getHoliday(dateISO: string): { name: string; icon: string } | null {
+  return RU_HOLIDAYS[dateISO.slice(5)] ?? null; // slice "YYYY-" → "MM-DD"
+}
+
 const CAT_PALETTES = [
   { border: "border-l-indigo-500",  icon: "text-indigo-400",  bg: "bg-indigo-500/10" },
   { border: "border-l-emerald-500", icon: "text-emerald-400", bg: "bg-emerald-500/10" },
@@ -341,6 +363,17 @@ export default function EventsPage() {
   const { mutate: deleteEvent }      = useDeleteEvent();
   const { mutate: duplicateEvent }   = useDuplicateEvent();
 
+  // Vacation spans: multi-day events categorised as "Отпуск"
+  const vacationSpans = useMemo(() => {
+    return (data ?? [])
+      .filter((e) => e.category_title?.toLowerCase() === "отпуск" && e.end_date && e.end_date > e.start_date)
+      .map((e) => ({ start: e.start_date, end: e.end_date! }));
+  }, [data]);
+
+  const isVacationDay = useCallback((dateISO: string) =>
+    vacationSpans.some((s) => s.start <= dateISO && dateISO <= s.end),
+  [vacationSpans]);
+
   const categories = Array.from(
     new Map((data ?? [])
       .filter((e) => e.category_title)
@@ -533,24 +566,48 @@ export default function EventsPage() {
               <div className="space-y-5">
                 {groups.map((g) => {
                   const { label, isToday, weekday } = formatDayHeader(g.date);
+                  const holiday  = getHoliday(g.date);
+                  const vacation = isVacationDay(g.date);
                   return (
-                    <div key={g.date}>
+                    <div key={g.date} className={clsx(
+                      "rounded-xl transition-colors",
+                      vacation && "bg-cyan-500/[0.04] ring-1 ring-cyan-500/10 px-2 pt-1 pb-0.5",
+                      holiday && !vacation && "bg-rose-500/[0.04] ring-1 ring-rose-500/10 px-2 pt-1 pb-0.5",
+                    )}>
                       {/* Day header */}
                       <div className="flex items-center gap-2 mb-1.5">
                         <div className={clsx(
                           "flex items-center gap-1.5 px-2.5 py-1 rounded-full border",
                           isToday
                             ? "bg-indigo-500/10 border-indigo-500/25"
+                            : vacation
+                            ? "bg-cyan-500/10 border-cyan-500/20"
+                            : holiday
+                            ? "bg-rose-500/10 border-rose-500/20"
                             : "bg-white/[0.03] border-white/[0.06]"
                         )}>
                           {isToday && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                          <span className={clsx(
-                            "text-[11px] font-semibold uppercase tracking-widest",
-                          )} style={{ color: isToday ? "rgb(129,140,248)" : "var(--t-faint)" }}>
+                          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{
+                            color: isToday ? "rgb(129,140,248)"
+                              : vacation ? "rgb(8,145,178)"
+                              : holiday ? "rgb(225,29,72)"
+                              : "var(--t-faint)",
+                          }}>
                             {isToday ? "Сегодня" : label}
                           </span>
                           <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>{weekday}</span>
                         </div>
+                        {/* Holiday / vacation badges */}
+                        {vacation && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            🏖️ Отпуск
+                          </span>
+                        )}
+                        {holiday && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                            {holiday.icon} {holiday.name}
+                          </span>
+                        )}
                         <div className="flex-1 h-px bg-white/[0.04]" />
                         <span className="text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>{g.items.length}</span>
                       </div>
