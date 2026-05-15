@@ -665,6 +665,16 @@ export function TodayBlock({ today, plannedOps }: Props) {
           );
         })()}
 
+        {/* Vacation banner */}
+        {today.vacation && (
+          <div className="mt-2 mb-1.5 px-3 py-2 rounded-lg border flex items-center gap-2 bg-cyan-50 dark:bg-cyan-500/[0.08] border-cyan-300/60 dark:border-cyan-500/25">
+            <span className="text-[18px] leading-none shrink-0">🏖️</span>
+            <span className="text-[13px] font-semibold text-cyan-700 dark:text-cyan-300">
+              Сегодня отпуск — отдыхайте!
+            </span>
+          </div>
+        )}
+
         {/* CTA banner — visible when there is an unviewed weekly digest */}
         <DigestCtaBanner />
 

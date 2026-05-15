@@ -108,6 +108,12 @@ class DashboardService:
         from app.application.holidays import get_holiday_ru
         holiday = get_holiday_ru(today)
 
+        # Vacation today: any event with work category "Отпуск" covering today
+        vacation = any(
+            (e.get("category_name") or "").strip().lower() == "отпуск"
+            for e in events
+        )
+
         return {
             "overdue": overdue,
             "active": active,
@@ -118,6 +124,7 @@ class DashboardService:
                 {"name": holiday.name, "icon": holiday.icon, "theme": holiday.theme}
                 if holiday else None
             ),
+            "vacation": vacation,
         }
 
     # --- One-off tasks ---

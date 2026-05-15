@@ -47,6 +47,7 @@ export interface TodayBlock {
   events: DashboardItem[];
   progress: ProgressBlock;
   holiday: HolidayInfo | null;
+  vacation?: boolean;
 }
 
 export interface UpcomingPayment {
