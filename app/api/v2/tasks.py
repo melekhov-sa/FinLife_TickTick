@@ -182,9 +182,27 @@ class WorkCategoryFullItem(BaseModel):
     is_archived: bool
 
 
+def _seed_system_work_categories(db: Session, user_id: int) -> None:
+    """Ensure predefined system categories exist for the user."""
+    from sqlalchemy import func as sa_func
+    system = [("Отпуск", "🏖️")]
+    for title, emoji in system:
+        exists = db.query(WorkCategory).filter(
+            WorkCategory.account_id == user_id,
+            sa_func.lower(WorkCategory.title) == title.lower(),
+        ).first()
+        if not exists:
+            from app.application.work_categories import CreateWorkCategoryUseCase
+            try:
+                CreateWorkCategoryUseCase(db).execute(user_id, title, emoji)
+            except Exception:
+                pass  # already exists or concurrent insert
+
+
 @router.get("/work-categories")
 def list_work_categories(request: Request, db: Session = Depends(get_db), include_archived: bool = Query(False)):
     user_id = get_user_id(request, db)
+    _seed_system_work_categories(db, user_id)
     q = db.query(WorkCategory).filter(WorkCategory.account_id == user_id)
     if not include_archived:
         q = q.filter(WorkCategory.is_archived == False)  # noqa: E712
