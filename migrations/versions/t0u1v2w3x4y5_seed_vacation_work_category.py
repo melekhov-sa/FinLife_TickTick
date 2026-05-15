@@ -34,9 +34,9 @@ def upgrade() -> None:
             LOOP
                 current_max_id := current_max_id + 1;
                 INSERT INTO work_categories
-                    (category_id, account_id, title, emoji, is_archived, created_at, updated_at)
+                    (category_id, account_id, title, emoji, is_archived, created_at)
                 VALUES
-                    (current_max_id, user_record.id, 'Отпуск', '🏖️', false, NOW(), NOW());
+                    (current_max_id, user_record.id, 'Отпуск', '🏖️', false, NOW());
             END LOOP;
         END $$;
     """)
