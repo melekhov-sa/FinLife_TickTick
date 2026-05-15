@@ -161,13 +161,21 @@ export function CalendarDayCell({
         "bg-white dark:bg-[#0f1221]",
         isOver && "ring-2 ring-inset ring-indigo-400/60 bg-indigo-50/40 dark:bg-indigo-500/[0.07]",
         isToday && !isOver && "ring-2 ring-inset ring-indigo-400/50",
-        isVacation && !isOver && "bg-cyan-50/60 dark:bg-cyan-500/[0.07]",
-        isHoliday && !isVacation && !isToday && !isOver && "bg-red-50/50 dark:bg-red-500/[0.05]",
+        isVacation && !isOver && "bg-cyan-50 dark:bg-cyan-500/[0.07]",
+        isHoliday && !isVacation && !isToday && !isOver && "bg-rose-50 dark:bg-rose-500/[0.05]",
         isWeekend && !isVacation && !isHoliday && !isToday && !isOver && "bg-slate-50/80 dark:bg-white/[0.02]",
         !isCurrentMonth && "opacity-40",
       )}
       onClick={() => onDayClick(dateISO)}
     >
+      {/* Colored top stripe for vacation / holiday */}
+      {isVacation && !isOver && (
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-cyan-400 dark:bg-cyan-500/60 pointer-events-none" />
+      )}
+      {isHoliday && !isVacation && !isOver && (
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-rose-400 dark:bg-rose-500/60 pointer-events-none" />
+      )}
+
       {beyondHorizon && isCurrentMonth && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -175,7 +183,7 @@ export function CalendarDayCell({
         />
       )}
       {/* Day number + holiday/vacation icons */}
-      <div className="flex items-start justify-between mb-0.5">
+      <div className="flex items-start justify-between mt-1 mb-0.5">
         <span
           className={clsx(
             "text-[11px] md:text-[12px] font-semibold leading-none px-0.5",
@@ -183,6 +191,8 @@ export function CalendarDayCell({
               ? "text-indigo-600 dark:text-indigo-400"
               : isVacation
               ? "text-cyan-600 dark:text-cyan-400"
+              : isHoliday
+              ? "text-rose-500 dark:text-rose-400"
               : isWeekend
               ? "text-rose-500 dark:text-rose-400/80"
               : "text-slate-600 dark:text-white/60",
@@ -192,12 +202,12 @@ export function CalendarDayCell({
         </span>
         <div className="flex items-center gap-0.5">
           {isVacation && (
-            <span className="text-[10px] leading-none" title="Отпуск">
+            <span className="text-[11px] leading-none" title="Отпуск">
               🏖️
             </span>
           )}
           {cellHoliday && (
-            <span className="text-[10px] leading-none" title={cellHoliday.name}>
+            <span className="text-[11px] leading-none" title={cellHoliday.name}>
               {cellHoliday.icon}
             </span>
           )}
