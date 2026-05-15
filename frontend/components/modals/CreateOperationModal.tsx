@@ -167,15 +167,15 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];
-    const freqIds = new Set(freqCats.map((c) => c.category_id));
-    const allForType = finCats?.filter((c) => c.category_type === opType) ?? [];
-    const rest = allForType
-      .filter((c) => !freqIds.has(c.category_id))
-      .sort((a, b) => a.title.localeCompare(b.title, "ru"));
-    if (freqCats.length > 0) {
-      freqCats.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые" }));
+    const allForType = (finCats ?? []).filter((c) => c.category_type === opType);
+    const freq = allForType.filter((c) => c.is_frequent).slice(0, 5);
+    const all = [...allForType].sort((a, b) => a.title.localeCompare(b.title, "ru"));
+    if (freq.length > 0) {
+      freq.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые" }));
     }
-    rest.forEach((c) => opts.push({ value: String(c.category_id), label: c.title }));
+    if (all.length > 0) {
+      all.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "Все категории" }));
+    }
     return opts;
   }, [freqCats, finCats, opType]);
 
