@@ -1018,6 +1018,21 @@ export default function PlanPage() {
       entries: g.entries.filter(e => e.kind !== "wish"),
     }));
 
+    // Compute vacation spans from list data so empty days get the flag too
+    const listVacationSpans: { start: string; end: string }[] = [];
+    for (const g of populated) {
+      for (const e of g.entries) {
+        if (e.kind === "event" && (e as { category_title?: string | null }).category_title?.toLowerCase() === "отпуск") {
+          const start = e.date ?? "";
+          const end = (e.meta?.end_date as string | undefined) || start;
+          if (start) listVacationSpans.push({ start, end });
+        }
+      }
+    }
+    function isVacationDay(iso: string) {
+      return listVacationSpans.some((s) => s.start <= iso && iso <= s.end);
+    }
+
     // Build full date range from today
     const today = data.today;
     const allDays: DayGroup[] = [];
@@ -1031,12 +1046,15 @@ export default function PlanPage() {
       if (existing && existing.entries.length > 0) {
         allDays.push(existing);
       } else {
+        const staticHoliday = getHolidayRU(iso);
         allDays.push({
           date: iso,
           date_label: formatDayHeader(iso),
           is_today: iso === today,
           is_overdue_group: false,
           day_type: existing?.day_type,
+          holiday: existing?.holiday ?? staticHoliday ?? null,
+          vacation: existing?.vacation ?? isVacationDay(iso),
           entries: [],
         });
       }
