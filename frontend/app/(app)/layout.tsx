@@ -14,6 +14,8 @@ import { useLevelUpWatcher } from "@/hooks/useLevelUpWatcher";
 import { PageTitleProvider } from "@/contexts/PageTitle";
 import { api } from "@/lib/api";
 import type { UserMe } from "@/types/api";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { OfflineBanner } from "@/components/primitives/OfflineBanner";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
@@ -51,6 +53,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   // Level-up celebration
   const { celebrateLevel, dismiss } = useLevelUpWatcher();
 
+  const onlineStatus = useOnlineStatus();
+
   return (
     <AuthGuard>
       <div
@@ -71,6 +75,10 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           style={{ background: "var(--app-bg)" }}
         >
           <AppTopbar />
+          <OfflineBanner
+            state={onlineStatus}
+            onRetry={() => window.location.reload()}
+          />
           <div className="flex-1 flex flex-col overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0">
             {children}
           </div>
