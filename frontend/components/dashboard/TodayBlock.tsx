@@ -666,14 +666,31 @@ export function TodayBlock({ today, plannedOps }: Props) {
         })()}
 
         {/* Vacation banner */}
-        {today.vacation && (
-          <div className="mt-2 mb-1.5 px-3 py-2 rounded-lg border flex items-center gap-2 bg-cyan-50 dark:bg-cyan-500/[0.08] border-cyan-300/60 dark:border-cyan-500/25">
-            <span className="text-[18px] leading-none shrink-0">🏖️</span>
-            <span className="text-[13px] font-semibold text-cyan-700 dark:text-cyan-300">
-              Сегодня отпуск — отдыхайте!
-            </span>
-          </div>
-        )}
+        {today.vacation && (() => {
+          const endISO = today.vacation_end;
+          let label = "Отпуск — отдыхайте!";
+          if (endISO) {
+            const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+            const endMidnight = new Date(endISO + "T00:00:00");
+            const daysLeft = Math.round((endMidnight.getTime() - todayMidnight.getTime()) / 86_400_000);
+            if (daysLeft === 0) {
+              label = "Отпуск · последний день — наслаждайтесь!";
+            } else {
+              const mod10 = daysLeft % 10, mod100 = daysLeft % 100;
+              const word = (mod100 >= 11 && mod100 <= 14) ? "дней"
+                : mod10 === 1 ? "день"
+                : mod10 >= 2 && mod10 <= 4 ? "дня"
+                : "дней";
+              label = `Отпуск · ещё ${daysLeft} ${word}`;
+            }
+          }
+          return (
+            <div className="mt-2 mb-1.5 px-3 py-2 rounded-lg border flex items-center gap-2 bg-cyan-50 dark:bg-cyan-500/[0.08] border-cyan-300/60 dark:border-cyan-500/25">
+              <span className="text-[18px] leading-none shrink-0">🏖️</span>
+              <span className="text-[13px] font-semibold text-cyan-700 dark:text-cyan-300">{label}</span>
+            </div>
+          );
+        })()}
 
         {/* CTA banner — visible when there is an unviewed weekly digest */}
         <DigestCtaBanner />

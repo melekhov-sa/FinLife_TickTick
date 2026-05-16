@@ -109,10 +109,18 @@ class DashboardService:
         holiday = get_holiday_ru(today)
 
         # Vacation today: any event with work category "Отпуск" covering today
-        vacation = any(
-            (e.get("category_name") or "").strip().lower() == "отпуск"
-            for e in events
+        vacation_event = next(
+            (e for e in events if (e.get("category_name") or "").strip().lower() == "отпуск"),
+            None,
         )
+        vacation = vacation_event is not None
+        vacation_end: str | None = None
+        if vacation_event:
+            end = vacation_event["meta"].get("end_date")
+            if end:
+                vacation_end = end.isoformat()
+            elif vacation_event.get("date"):
+                vacation_end = vacation_event["date"].isoformat()
 
         return {
             "overdue": overdue,
@@ -125,6 +133,7 @@ class DashboardService:
                 if holiday else None
             ),
             "vacation": vacation,
+            "vacation_end": vacation_end,
         }
 
     # --- One-off tasks ---
@@ -419,6 +428,7 @@ class DashboardService:
                         "occurrence_id": occ.id,
                         "event_id": occ.event_id,
                         "reminders": reminders_by_event.get(occ.event_id, []),
+                        "end_date": occ.end_date,
                     },
                 })
 

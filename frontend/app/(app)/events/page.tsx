@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo } from "react";
+import { getHolidayRU } from "@/lib/holidays";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { EventDetailPanel } from "@/components/events/EventDetailPanel";
 import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
@@ -24,27 +25,6 @@ const RU_WEEKDAYS_SHORT = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 const RU_MONTHS         = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 const RU_MONTHS_FULL    = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 
-// Russian federal holidays (mirrors app/application/holidays.py)
-const RU_HOLIDAYS: Record<string, { name: string; icon: string }> = {
-  "01-01": { name: "Новый год",                   icon: "🎄" },
-  "01-02": { name: "Новогодние каникулы",          icon: "🎄" },
-  "01-03": { name: "Новогодние каникулы",          icon: "🎄" },
-  "01-04": { name: "Новогодние каникулы",          icon: "🎄" },
-  "01-05": { name: "Новогодние каникулы",          icon: "🎄" },
-  "01-06": { name: "Новогодние каникулы",          icon: "🎄" },
-  "01-07": { name: "Рождество Христово",           icon: "✨" },
-  "01-08": { name: "Новогодние каникулы",          icon: "🎄" },
-  "02-23": { name: "День защитника Отечества",     icon: "🎖️" },
-  "03-08": { name: "Международный женский день",   icon: "🌷" },
-  "05-01": { name: "Праздник весны и труда",       icon: "🌱" },
-  "05-09": { name: "День Победы",                  icon: "🎗️" },
-  "06-12": { name: "День России",                  icon: "🇷🇺" },
-  "11-04": { name: "День народного единства",      icon: "🤝" },
-};
-
-function getHoliday(dateISO: string): { name: string; icon: string } | null {
-  return RU_HOLIDAYS[dateISO.slice(5)] ?? null; // slice "YYYY-" → "MM-DD"
-}
 
 const CAT_PALETTES = [
   { border: "border-l-indigo-500",  icon: "text-indigo-400",  bg: "bg-indigo-500/10" },
@@ -566,7 +546,7 @@ export default function EventsPage() {
               <div className="space-y-5">
                 {groups.map((g) => {
                   const { label, isToday, weekday } = formatDayHeader(g.date);
-                  const holiday  = getHoliday(g.date);
+                  const holiday  = getHolidayRU(g.date);
                   const vacation = isVacationDay(g.date);
                   return (
                     <div key={g.date} className={clsx(
