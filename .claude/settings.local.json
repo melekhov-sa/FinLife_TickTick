@@ -96,7 +96,9 @@
       "Bash(git push:*)",
       "Bash(git add:*)",
       "Bash(git status:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install *)"
     ]
   }
 }
