@@ -58,7 +58,8 @@ export function TasksWeekWidget({ instanceId: _ }: WidgetProps) {
             <YAxis tick={{ fontSize: 10, fill: "var(--t-faint)" }}
               axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip
-              formatter={(v: number | undefined) => [v != null ? `${v} задач` : "", ""]}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(v: any) => [typeof v === "number" ? `${v} задач` : "", ""]}
               contentStyle={{
                 background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
                 borderRadius: 10, fontSize: 12, color: "var(--t-primary)",

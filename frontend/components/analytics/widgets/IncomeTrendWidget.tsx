@@ -111,8 +111,9 @@ export function IncomeTrendWidget({ instanceId: _ }: WidgetProps) {
             width={48}
           />
           <Tooltip
-            formatter={(value: number | undefined, name: string) => [
-              value != null ? `${sym} ${value.toLocaleString("uk-UA", { maximumFractionDigits: 0 })}` : "",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(value: any, name: any) => [
+              typeof value === "number" ? `${sym} ${value.toLocaleString("uk-UA", { maximumFractionDigits: 0 })}` : "",
               name === "income" ? "Доходы" : "Расходы",
             ]}
             contentStyle={{

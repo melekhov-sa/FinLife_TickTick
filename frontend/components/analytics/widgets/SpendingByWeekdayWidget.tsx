@@ -69,7 +69,8 @@ export function SpendingByWeekdayWidget({ instanceId: _ }: WidgetProps) {
               axisLine={false} tickLine={false} allowDecimals={false}
               tickFormatter={(v) => fmt(v)} />
             <Tooltip
-              formatter={(v: number | undefined) => [v != null ? `${sym}${fmt(v)}` : "", "Среднее"]}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(v: any) => [typeof v === "number" ? `${sym}${fmt(v)}` : "", "Среднее"]}
               contentStyle={{
                 background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
                 borderRadius: 10, fontSize: 12, color: "var(--t-primary)",

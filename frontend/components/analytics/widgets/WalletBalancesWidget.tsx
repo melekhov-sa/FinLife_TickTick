@@ -84,7 +84,8 @@ export function WalletBalancesWidget({ instanceId: _ }: WidgetProps) {
               <XAxis dataKey="label" tick={{ fontSize: 9, fill: "var(--t-faint)" }}
                 axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(v: number | undefined) => [v != null ? `${sym}${fmt(v)}` : "", "Баланс"]}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(v: any) => [typeof v === "number" ? `${sym}${fmt(v)}` : "", "Баланс"]}
                 contentStyle={{
                   background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
                   borderRadius: 10, fontSize: 12, color: "var(--t-primary)",

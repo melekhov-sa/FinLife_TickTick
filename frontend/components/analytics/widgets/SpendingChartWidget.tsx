@@ -94,10 +94,8 @@ export function SpendingChartWidget({ instanceId: _ }: WidgetProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number | undefined) => [
-                value != null ? `${sym} ${fmt(value)}` : "",
-                "",
-              ]}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(value: any) => [typeof value === "number" ? `${sym} ${fmt(value)}` : "", ""]}
               contentStyle={{
                 background: "var(--app-card-bg)",
                 border: "1px solid var(--app-border)",
