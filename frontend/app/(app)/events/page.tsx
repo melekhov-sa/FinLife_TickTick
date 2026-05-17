@@ -535,7 +535,7 @@ export default function EventsPage() {
               <EmptyState
                 icon={<CalendarDays size={20} />}
                 title={search || catFilter || selectedDate ? "Ничего не найдено" : `Нет событий на ближайшие ${days} дней`}
-                action={!search && !catFilter && !selectedDate ? (
+                actions={!search && !catFilter && !selectedDate ? (
                   <Button variant="link" size="sm" onClick={() => setShowModal(true)}>+ Создать событие</Button>
                 ) : undefined}
               />

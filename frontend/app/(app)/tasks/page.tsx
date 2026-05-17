@@ -200,6 +200,7 @@ export default function TasksPage() {
 
         {isError && (
           <EmptyState
+            variant="error"
             icon={<AlertCircle size={24} />}
             title="Не удалось загрузить задачи"
             size="md"
@@ -240,7 +241,7 @@ export default function TasksPage() {
                 icon={status === "DONE" ? <CheckCircle2 size={18} /> : <ClipboardList size={18} />}
                 title={status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
                 size="sm"
-                action={status === "ACTIVE" ? (
+                actions={status === "ACTIVE" ? (
                   <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                     Напишите задачу выше
                   </Button>

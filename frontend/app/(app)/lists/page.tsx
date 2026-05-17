@@ -232,7 +232,7 @@ export default function ListsPage() {
             <EmptyState
               icon={<ShoppingBag size={24} />}
               title="Пока нет списков"
-              action={
+              actions={
                 <button onClick={() => setShowCreate(true)} className="text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">
                   + Создать первый список
                 </button>

@@ -313,6 +313,7 @@ export default function GoalsPage() {
 
         {isError && (
           <EmptyState
+            variant="error"
             icon={<AlertCircle size={24} />}
             title="Не удалось загрузить цели"
             size="md"
@@ -344,7 +345,7 @@ export default function GoalsPage() {
                 ? "Создайте первую цель, чтобы начать откладывать деньги"
                 : undefined
             }
-            action={
+            actions={
               !showArchived ? (
                 <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
                   <Plus size={13} className="mr-1" />

@@ -156,6 +156,7 @@ export default function HabitsPage() {
 
         {isError && (
           <EmptyState
+            variant="error"
             icon={<AlertCircle size={24} />}
             title="Не удалось загрузить привычки"
             size="md"
@@ -169,7 +170,7 @@ export default function HabitsPage() {
               <EmptyState
                 icon={<Sparkles size={24} />}
                 title="У вас ещё нет привычек"
-                action={
+                actions={
                   <Button
                     onClick={() => setShowCreateModal(true)}
                     variant="primary"

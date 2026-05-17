@@ -50,6 +50,7 @@ export default function ProjectsPage() {
 
         {isError && (
           <EmptyState
+            variant="error"
             icon={<AlertCircle size={24} />}
             title="Не удалось загрузить проекты"
             size="md"
@@ -80,7 +81,7 @@ export default function ProjectsPage() {
             title="Проектов пока нет"
             description="Создайте первый проект, чтобы начать работу"
             size="lg"
-            action={
+            actions={
               <Link href="/projects/new" className="inline-flex">
                 <Button variant="primary" size="sm">Создать проект →</Button>
               </Link>

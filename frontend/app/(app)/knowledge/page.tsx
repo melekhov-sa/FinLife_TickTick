@@ -126,7 +126,7 @@ export default function KnowledgePage() {
           <EmptyState
             icon={<BookOpen size={24} />}
             title={debouncedSearch || typeFilter ? "Ничего не найдено" : "База знаний пуста"}
-            action={!debouncedSearch && !typeFilter ? (
+            actions={!debouncedSearch && !typeFilter ? (
               <a
                 href="/legacy/knowledge/create"
                 className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"

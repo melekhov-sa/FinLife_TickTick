@@ -399,7 +399,7 @@ export default function SubscriptionsPage() {
                 <EmptyState
                   icon={<CreditCard size={24} />}
                   title={showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
-                  action={!showArchived && filter === "all" ? (
+                  actions={!showArchived && filter === "all" ? (
                     <Button variant="link" size="sm" onClick={() => setShowCreate(true)} className="text-indigo-400/70 hover:text-indigo-400 px-0">
                       + Добавить подписку
                     </Button>
