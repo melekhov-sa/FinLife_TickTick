@@ -1,0 +1,160 @@
+"use client";
+
+import { useDashboard } from "@/hooks/useDashboard";
+import { useHabits } from "@/hooks/useHabits";
+import type { WidgetProps } from "../types";
+
+const CURRENCY_SYM: Record<string, string> = {
+  UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
+};
+
+function fmt(n: number) {
+  return Math.abs(n).toLocaleString("uk-UA", { maximumFractionDigits: 0 });
+}
+
+function Skeleton() {
+  return (
+    <div className="h-full grid grid-cols-3 gap-4 animate-pulse">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex flex-col justify-center gap-2">
+          <div className="h-3 w-12 rounded" style={{ background: "var(--c-neutral-bg)" }} />
+          <div className="h-8 w-20 rounded-lg" style={{ background: "var(--c-neutral-bg)" }} />
+          <div className="h-1.5 w-full rounded-full" style={{ background: "var(--c-neutral-bg)" }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatCol({
+  label,
+  value,
+  sub,
+  pct,
+  color,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  pct?: number;
+  color?: string;
+}) {
+  return (
+    <div className="flex flex-col justify-center gap-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+        {label}
+      </span>
+      <span
+        className="text-[22px] font-bold tabular-nums leading-none"
+        style={{ color: color ?? "var(--t-primary)", letterSpacing: "-0.02em" }}
+      >
+        {value}
+      </span>
+      {pct !== undefined && (
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${pct}%`, background: color ?? "var(--app-accent)" }}
+          />
+        </div>
+      )}
+      {sub && (
+        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+          {sub}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
+  const { data: dash, isLoading: loadDash } = useDashboard();
+  const { data: habits, isLoading: loadHabits } = useHabits();
+
+  if (loadDash || loadHabits || !dash || !habits) return <Skeleton />;
+
+  const { total, done, left } = dash.today.progress;
+  const overdue = dash.today.overdue.length;
+  const taskPct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const scheduled = habits.filter((h) => h.scheduled_today);
+  const habitDone = habits.filter((h) => h.done_today && h.scheduled_today).length;
+  const habitTotal = scheduled.length;
+  const habitPct = habitTotal > 0 ? Math.round((habitDone / habitTotal) * 100) : 0;
+
+  const finEntries = Object.entries(dash.financial_summary);
+  const [mainCurrency, finBlock] = finEntries[0] ?? ["UAH", null];
+  const sym = CURRENCY_SYM[mainCurrency] ?? mainCurrency;
+
+  const netWorth = dash.fin_state.regular_total + dash.fin_state.savings_total;
+
+  return (
+    <div className="h-full grid grid-cols-3 divide-x" style={{ divideColor: "var(--app-border)" }}>
+      {/* Tasks */}
+      <div className="flex flex-col justify-center gap-1.5 pr-4">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+          Задачи
+        </span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[28px] font-bold tabular-nums leading-none"
+            style={{ color: taskPct === 100 ? "var(--c-success-ink)" : "var(--t-primary)", letterSpacing: "-0.02em" }}>
+            {done}
+          </span>
+          <span className="text-[14px]" style={{ color: "var(--t-faint)" }}>/ {total}</span>
+        </div>
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
+          <div className="h-full rounded-full transition-all"
+            style={{ width: `${taskPct}%`, background: taskPct === 100 ? "var(--c-success-ink)" : "var(--app-accent)" }} />
+        </div>
+        <span className="text-[11px]" style={{ color: overdue > 0 ? "var(--c-danger-ink)" : "var(--t-muted)" }}>
+          {overdue > 0 ? `+${overdue} просрочено` : left === 0 && total > 0 ? "всё готово 🎉" : `осталось ${left}`}
+        </span>
+      </div>
+
+      {/* Habits */}
+      <div className="flex flex-col justify-center gap-1.5 px-4">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+          Привычки
+        </span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[28px] font-bold tabular-nums leading-none"
+            style={{ color: habitPct === 100 ? "var(--c-success-ink)" : "var(--t-primary)", letterSpacing: "-0.02em" }}>
+            {habitDone}
+          </span>
+          <span className="text-[14px]" style={{ color: "var(--t-faint)" }}>/ {habitTotal}</span>
+        </div>
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
+          <div className="h-full rounded-full transition-all"
+            style={{ width: `${habitPct}%`, background: habitPct === 100 ? "var(--c-success-ink)" : "var(--app-accent)" }} />
+        </div>
+        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+          {habitTotal === 0 ? "нет привычек" : habitPct === 100 ? "все выполнено 🔥" : `${habitPct}% выполнено`}
+        </span>
+      </div>
+
+      {/* Finance */}
+      <div className="flex flex-col justify-center gap-1.5 pl-4">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+          Финансы
+        </span>
+        <span className="text-[22px] font-bold tabular-nums leading-none"
+          style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
+          {sym}&nbsp;{fmt(netWorth)}
+        </span>
+        {finBlock && (
+          <div className="flex gap-3 mt-0.5">
+            <span className="text-[11px] tabular-nums" style={{ color: "var(--c-success-ink)" }}>
+              +{sym}&nbsp;{fmt(finBlock.income)}
+            </span>
+            <span className="text-[11px] tabular-nums" style={{ color: "var(--c-danger-ink)" }}>
+              -{sym}&nbsp;{fmt(finBlock.expense)}
+            </span>
+          </div>
+        )}
+        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+          капитал · доходы/расходы
+        </span>
+      </div>
+    </div>
+  );
+}

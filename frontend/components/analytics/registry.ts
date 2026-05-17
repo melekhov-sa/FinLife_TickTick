@@ -2,10 +2,16 @@ import type { WidgetDef } from "./types";
 import { PlaceholderWidget } from "./widgets/PlaceholderWidget";
 import { NetWorthWidget } from "./widgets/NetWorthWidget";
 import { TasksTodayWidget } from "./widgets/TasksTodayWidget";
+import { TasksWeekWidget } from "./widgets/TasksWeekWidget";
+import { TasksOverdueWidget } from "./widgets/TasksOverdueWidget";
 import { HabitsCompletionWidget } from "./widgets/HabitsCompletionWidget";
+import { HabitsStreaksWidget } from "./widgets/HabitsStreaksWidget";
 import { BalanceOverviewWidget } from "./widgets/BalanceOverviewWidget";
 import { SpendingChartWidget } from "./widgets/SpendingChartWidget";
 import { IncomeTrendWidget } from "./widgets/IncomeTrendWidget";
+import { GoalsProgressWidget } from "./widgets/GoalsProgressWidget";
+import { SubscriptionsCostWidget } from "./widgets/SubscriptionsCostWidget";
+import { KpiTodayWidget } from "./widgets/KpiTodayWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -15,7 +21,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Задачи, привычки и баланс за сегодня одним взглядом",
     category: "overview",
     defaultW: 4, defaultH: 2, minW: 2, minH: 2,
-    component: PlaceholderWidget,
+    component: KpiTodayWidget,
     emoji: "☀️",
   },
 
@@ -62,7 +68,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Суммарные расходы на подписки в месяц",
     category: "finance",
     defaultW: 1, defaultH: 2, minW: 1, minH: 2,
-    component: PlaceholderWidget,
+    component: SubscriptionsCostWidget,
     emoji: "🔄",
   },
 
@@ -82,7 +88,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Прогресс выполнения задач по дням",
     category: "tasks",
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
-    component: PlaceholderWidget,
+    component: TasksWeekWidget,
     emoji: "📋",
   },
   {
@@ -91,7 +97,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Количество просроченных задач",
     category: "tasks",
     defaultW: 1, defaultH: 2, minW: 1, minH: 2,
-    component: PlaceholderWidget,
+    component: TasksOverdueWidget,
     emoji: "⚠️",
   },
 
@@ -111,7 +117,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Текущие серии выполнения привычек",
     category: "habits",
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
-    component: PlaceholderWidget,
+    component: HabitsStreaksWidget,
     emoji: "🔥",
   },
   {
@@ -131,7 +137,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Активные цели и процент выполнения",
     category: "goals",
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
-    component: PlaceholderWidget,
+    component: GoalsProgressWidget,
     emoji: "🎯",
   },
 ];
