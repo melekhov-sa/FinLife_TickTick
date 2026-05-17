@@ -1,5 +1,5 @@
 import type { WidgetDef } from "./types";
-import { PlaceholderWidget } from "./widgets/PlaceholderWidget";
+import { HabitsHeatmapWidget } from "./widgets/HabitsHeatmapWidget";
 import { NetWorthWidget } from "./widgets/NetWorthWidget";
 import { TasksTodayWidget } from "./widgets/TasksTodayWidget";
 import { TasksWeekWidget } from "./widgets/TasksWeekWidget";
@@ -126,7 +126,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Тепловая карта выполнения за месяц",
     category: "habits",
     defaultW: 4, defaultH: 4, minW: 3, minH: 3,
-    component: PlaceholderWidget,
+    component: HabitsHeatmapWidget,
     emoji: "🗓️",
   },
 
