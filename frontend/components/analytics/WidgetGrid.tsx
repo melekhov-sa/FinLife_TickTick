@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import GridLayout from "react-grid-layout";
+import GridLayoutLib from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 import { WidgetCard } from "./WidgetCard";
 import { getWidgetDef } from "./registry";
 import type { WidgetInstance } from "./types";
+
+// ESM default export has mismatched TS types — cast to any to bypass
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const GridLayout = GridLayoutLib as any;
 
 const COLS = 4;
 const ROW_H = 80;
@@ -70,7 +74,8 @@ export function WidgetGrid({
     };
   });
 
-  function handleStop(newLayout: readonly { i: string; x: number; y: number; w: number; h: number }[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function handleStop(newLayout: any[]) {
     onUpdateLayout(
       newLayout.map((item) => ({
         i: item.i,
