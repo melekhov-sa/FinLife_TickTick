@@ -1269,7 +1269,6 @@ export default function PlanPage() {
               );
             })}
           </div>
-          </div>
 
           {/* ── Calendar navigation ───────────────────────────────── */}
           {viewMode === "calendar" && (
