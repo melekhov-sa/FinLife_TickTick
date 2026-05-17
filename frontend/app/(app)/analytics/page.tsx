@@ -1,25 +1,66 @@
-﻿"use client";
+"use client";
 
+import { useState } from "react";
+import { Settings2, Plus, Check } from "lucide-react";
 import { PageHeader } from "@/components/primitives/PageHeader";
-import { BarChart3 } from "lucide-react";
+import { Button } from "@/components/primitives/Button";
+import { WidgetGrid } from "@/components/analytics/WidgetGrid";
+import { AddWidgetDrawer } from "@/components/analytics/AddWidgetDrawer";
+import { useAnalyticsLayout } from "@/components/analytics/useAnalyticsLayout";
 
 export default function AnalyticsPage() {
+  const { instances, add, remove, resize, rename } = useAnalyticsLayout();
+  const [editing, setEditing] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <>
-      <PageHeader title="Аналитика" density="compact" />
-      <main className="flex-1 overflow-auto p-6 flex items-center justify-center">
-        <div className="text-center max-w-sm">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-            <BarChart3 size={24} className="text-indigo-500" />
+      <PageHeader
+        title="Аналитика"
+        density="compact"
+        actions={
+          <div className="flex items-center gap-2">
+            {editing && (
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setDrawerOpen(true)}
+                leftIcon={<Plus size={14} strokeWidth={1.9} />}
+              >
+                Добавить
+              </Button>
+            )}
+            <Button
+              variant={editing ? "primary" : "outline"}
+              size="md"
+              onClick={() => setEditing((v) => !v)}
+              leftIcon={
+                editing ? (
+                  <Check size={14} strokeWidth={2} />
+                ) : (
+                  <Settings2 size={14} strokeWidth={1.9} />
+                )
+              }
+            >
+              {editing ? "Готово" : "Настроить"}
+            </Button>
           </div>
-          <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--t-primary)" }}>
-            Раздел в разработке
-          </h2>
-          <p className="text-[14px]" style={{ color: "var(--t-faint)" }}>
-            Аналитика будет полностью переработана с нуля
-          </p>
-        </div>
+        }
+      />
+      <main className="flex-1 overflow-auto p-6">
+        <WidgetGrid
+          instances={instances}
+          editing={editing}
+          onRemove={remove}
+          onResize={resize}
+          onRename={rename}
+        />
       </main>
+      <AddWidgetDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onAdd={add}
+      />
     </>
   );
 }

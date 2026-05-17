@@ -1,0 +1,148 @@
+import type { WidgetDef } from "./types";
+import { PlaceholderWidget } from "./widgets/PlaceholderWidget";
+
+export const WIDGET_REGISTRY: WidgetDef[] = [
+  // ── Обзор ────────────────────────────────────────────────────────────────
+  {
+    id: "kpi-today",
+    title: "Сегодня",
+    description: "Задачи, привычки и баланс за сегодня одним взглядом",
+    category: "overview",
+    defaultSize: "xl",
+    allowedSizes: ["xl"],
+    component: PlaceholderWidget,
+    emoji: "☀️",
+  },
+
+  // ── Финансы ───────────────────────────────────────────────────────────────
+  {
+    id: "balance-overview",
+    title: "Баланс",
+    description: "Доходы, расходы и остаток за месяц",
+    category: "finance",
+    defaultSize: "md",
+    allowedSizes: ["sm", "md", "xl"],
+    component: PlaceholderWidget,
+    emoji: "💰",
+  },
+  {
+    id: "spending-chart",
+    title: "Расходы по категориям",
+    description: "Диаграмма трат за период",
+    category: "finance",
+    defaultSize: "lg",
+    allowedSizes: ["md", "lg", "xl"],
+    component: PlaceholderWidget,
+    emoji: "📊",
+  },
+  {
+    id: "income-expense-trend",
+    title: "Доходы и расходы",
+    description: "Линейный график за последние месяцы",
+    category: "finance",
+    defaultSize: "xl",
+    allowedSizes: ["lg", "xl"],
+    component: PlaceholderWidget,
+    emoji: "📈",
+  },
+  {
+    id: "net-worth",
+    title: "Чистый капитал",
+    description: "Сумма по всем кошелькам",
+    category: "finance",
+    defaultSize: "sm",
+    allowedSizes: ["sm", "md"],
+    component: PlaceholderWidget,
+    emoji: "🏦",
+  },
+  {
+    id: "subscriptions-cost",
+    title: "Подписки",
+    description: "Суммарные расходы на подписки в месяц",
+    category: "finance",
+    defaultSize: "sm",
+    allowedSizes: ["sm", "md"],
+    component: PlaceholderWidget,
+    emoji: "🔄",
+  },
+
+  // ── Задачи ────────────────────────────────────────────────────────────────
+  {
+    id: "tasks-today",
+    title: "Задачи сегодня",
+    description: "Выполненные и оставшиеся задачи на сегодня",
+    category: "tasks",
+    defaultSize: "sm",
+    allowedSizes: ["sm", "md"],
+    component: PlaceholderWidget,
+    emoji: "✅",
+  },
+  {
+    id: "tasks-week",
+    title: "Задачи за неделю",
+    description: "Прогресс выполнения задач по дням",
+    category: "tasks",
+    defaultSize: "md",
+    allowedSizes: ["md", "lg", "xl"],
+    component: PlaceholderWidget,
+    emoji: "📋",
+  },
+  {
+    id: "tasks-overdue",
+    title: "Просроченные",
+    description: "Количество просроченных задач",
+    category: "tasks",
+    defaultSize: "sm",
+    allowedSizes: ["sm", "md"],
+    component: PlaceholderWidget,
+    emoji: "⚠️",
+  },
+
+  // ── Привычки ─────────────────────────────────────────────────────────────
+  {
+    id: "habits-streaks",
+    title: "Стрики привычек",
+    description: "Текущие серии выполнения привычек",
+    category: "habits",
+    defaultSize: "md",
+    allowedSizes: ["sm", "md", "lg"],
+    component: PlaceholderWidget,
+    emoji: "🔥",
+  },
+  {
+    id: "habits-completion",
+    title: "Выполнение привычек",
+    description: "Процент выполнения за неделю",
+    category: "habits",
+    defaultSize: "sm",
+    allowedSizes: ["sm", "md"],
+    component: PlaceholderWidget,
+    emoji: "💪",
+  },
+  {
+    id: "habits-heatmap",
+    title: "Карта привычек",
+    description: "Тепловая карта выполнения за месяц",
+    category: "habits",
+    defaultSize: "lg",
+    allowedSizes: ["lg", "xl"],
+    component: PlaceholderWidget,
+    emoji: "🗓️",
+  },
+
+  // ── Цели ─────────────────────────────────────────────────────────────────
+  {
+    id: "goals-progress",
+    title: "Цели",
+    description: "Активные цели и процент выполнения",
+    category: "goals",
+    defaultSize: "md",
+    allowedSizes: ["md", "lg"],
+    component: PlaceholderWidget,
+    emoji: "🎯",
+  },
+];
+
+export function getWidgetDef(id: string): WidgetDef | undefined {
+  return WIDGET_REGISTRY.find((w) => w.id === id);
+}
