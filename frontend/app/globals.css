@@ -519,7 +519,95 @@ html:not(.dark)[data-color-theme="snow"] {
   --t-faint: #A8A29E;
 }
 
-/* ── 5. Emerald — dark with green accent ───────────────────────────────── */
+/* ── 5. Claude — warm cream light + coral accent (also works in dark) ───── */
+html:not(.dark)[data-color-theme="claude"] {
+  --app-bg:            #FAF9F6;
+  --app-sidebar-bg:    #F4F2EE;
+  --app-topbar-bg:     #FAF9F6;
+  --app-topbar-text:   #1C1917;
+  --app-border:        rgba(28,25,23,0.09);
+  --app-border-subtle: rgba(28,25,23,0.05);
+
+  --t-primary:   #1C1917;
+  --t-secondary: #44403C;
+  --t-muted:     #78716C;
+  --t-faint:     #A8A29E;
+  --t-label:     #57534E;
+
+  --app-card-bg:     #FFFFFF;
+  --app-card-border: rgba(28,25,23,0.07);
+  --app-card-shadow: 0 1px 4px rgba(28,25,23,0.07), 0 4px 20px rgba(28,25,23,0.04);
+
+  --app-accent:       #D97756;
+  --app-accent-light: rgba(217,119,86,0.10);
+  --app-accent-weak:  #FEF0E8;
+  --app-accent-ink:   #9A4E30;
+
+  --app-sidebar-border: rgba(28,25,23,0.07);
+
+  --shadow-card:   0 1px 3px rgba(28,25,23,0.07), 0 8px 24px -12px rgba(28,25,23,0.08);
+  --shadow-topbar: 0 1px 0 rgba(28,25,23,0.08);
+  --shadow-fab:    0 4px 14px rgba(217,119,86,0.40), 0 1px 3px rgba(28,25,23,0.15);
+  --shadow-mobile: 0 -4px 24px rgba(28,25,23,0.08);
+
+  --c-neutral-bg:  #EDE9E4;
+  --c-neutral-fg:  #57534E;
+  --c-neutral-ink: #44403C;
+
+  --bgt-totals-bg: #FEF0E8;
+  --bgt-hover-bg:  #FEF5F0;
+  --bgt-row-bg:    #FAF9F6;
+  --bgt-row-group: #F4F2EE;
+  --bgt-head-bg:   #F0EDE8;
+  --bgt-subhead-bg: #E8E4DF;
+}
+
+html.dark[data-color-theme="claude"] {
+  --app-bg:            radial-gradient(ellipse 55% 40% at 12% 6%, rgba(217,119,86,0.07) 0%, transparent 55%),
+                       #1C1917;
+  --app-sidebar-bg:    #211F1D;
+  --app-topbar-bg:     #211F1D;
+  --app-topbar-text:   rgba(250,249,246,0.85);
+  --app-border:        rgba(255,255,255,0.08);
+  --app-border-subtle: rgba(255,255,255,0.04);
+
+  --t-primary:   #FAF9F6;
+  --t-secondary: #E7E5E0;
+  --t-muted:     #A8A29E;
+  --t-faint:     #78716C;
+  --t-label:     #A8A29E;
+
+  --app-card-bg:     #292524;
+  --app-card-border: rgba(255,255,255,0.06);
+  --app-card-shadow: 0 1px 3px rgba(0,0,0,0.4);
+
+  --app-accent:       #E8916F;
+  --app-accent-light: rgba(232,145,111,0.14);
+  --app-accent-weak:  rgba(232,145,111,0.16);
+  --app-accent-ink:   #F5C4A8;
+
+  --app-sidebar-border: rgba(255,255,255,0.06);
+
+  --shadow-card:   0 1px 0 rgba(0,0,0,0.4);
+  --shadow-topbar: 0 1px 0 rgba(255,255,255,0.04);
+  --shadow-fab:    0 4px 14px rgba(217,119,86,0.45), 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-mobile: 0 -4px 24px rgba(0,0,0,0.6);
+
+  --c-neutral-bg:  rgba(168,162,158,0.13);
+  --c-neutral-fg:  #D6D3D1;
+  --c-neutral-ink: #A8A29E;
+
+  --bgt-row-bg:    #211F1D;
+  --bgt-row-group: #1C1917;
+  --bgt-section-bg: rgba(255,255,255,0.04);
+  --bgt-head-bg:   #211F1D;
+  --bgt-subhead-bg: rgba(0,0,0,0.3);
+  --bgt-totals-bg: rgba(217,119,86,0.12);
+  --bgt-hover-bg:  rgba(217,119,86,0.07);
+  --bgt-dash:      rgba(255,255,255,0.18);
+}
+
+/* ── 6. Emerald — dark with green accent ───────────────────────────────── */
 html.dark[data-color-theme="emerald"] {
   --app-bg: radial-gradient(ellipse 60% 40% at 15% 5%, rgba(16,185,129,0.06) 0%, transparent 50%),
             radial-gradient(ellipse 50% 40% at 85% 90%, rgba(5,150,105,0.04) 0%, transparent 50%),

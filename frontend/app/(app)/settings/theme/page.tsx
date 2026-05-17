@@ -47,6 +47,13 @@ const THEMES: ThemeDef[] = [
     preview: { bg: "#FAFAF9", sidebar: "#FFFFFF", accent: "#4F46E5", card: "#FFFFFF" },
   },
   {
+    id: "claude",
+    name: "Claude",
+    desc: "Тёплый крем + коралловый акцент. Работает в светлом и тёмном режиме.",
+    mode: "light",
+    preview: { bg: "#FAF9F6", sidebar: "#F4F2EE", accent: "#D97756", card: "#FFFFFF" },
+  },
+  {
     id: "emerald",
     name: "Emerald",
     desc: "Тёмный + зелёный акцент. Финансовый стиль.",
@@ -98,9 +105,10 @@ export default function ThemeSettingsPage() {
                   className={clsx(
                     "w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
                     selected
-                      ? "border-indigo-500/50 bg-indigo-500/[0.06]"
+                      ? "border-[var(--app-accent)]/40 bg-[var(--app-accent)]/[0.06]"
                       : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]"
                   )}
+                  style={selected ? { borderColor: `${theme.preview.accent}55`, background: `${theme.preview.accent}0f` } : {}}
                 >
                   {/* Preview swatch */}
                   <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/[0.08] relative" style={{ background: theme.preview.bg }}>
@@ -134,7 +142,8 @@ export default function ThemeSettingsPage() {
                   </div>
 
                   {selected && (
-                    <span className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: theme.preview.accent }}>
                       <Check size={13} className="text-[#fff]" />
                     </span>
                   )}
