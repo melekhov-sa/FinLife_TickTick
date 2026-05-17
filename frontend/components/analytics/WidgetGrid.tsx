@@ -1,56 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  TouchSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import { useEffect, useState } from "react";
+import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
 import { WidgetCard } from "./WidgetCard";
 import { getWidgetDef } from "./registry";
-import type { WidgetInstance, WidgetSize } from "./types";
+import type { WidgetInstance } from "./types";
+
+const RGL = WidthProvider(GridLayout);
+
+const COLS = 4;
+const ROW_H = 80;
+const MARGIN: [number, number] = [16, 16];
 
 interface WidgetGridProps {
   instances: WidgetInstance[];
   editing: boolean;
   onRemove: (instanceId: string) => void;
-  onResize: (instanceId: string, size: WidgetSize) => void;
   onRename: (instanceId: string, title: string) => void;
-  onReorder: (activeId: string, overId: string) => void;
+  onUpdateLayout: (changes: { i: string; x: number; y: number; w: number; h: number }[]) => void;
 }
 
 export function WidgetGrid({
   instances,
   editing,
   onRemove,
-  onResize,
   onRename,
-  onReorder,
+  onUpdateLayout,
 }: WidgetGridProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-  );
-
-  function handleDragStart(event: DragStartEvent) {
-    setActiveId(String(event.active.id));
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveId(null);
-    if (!over || active.id === over.id) return;
-    onReorder(String(active.id), String(over.id));
-  }
+  // WidthProvider measures DOM, so we avoid SSR flash
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   if (instances.length === 0) {
     return (
@@ -63,71 +45,119 @@ export function WidgetGrid({
     );
   }
 
-  const activeInstance = activeId
-    ? instances.find((i) => i.instanceId === activeId)
-    : null;
-  const activeDef = activeInstance ? getWidgetDef(activeInstance.widgetId) : null;
+  const layout: Layout[] = instances.map((inst) => {
+    const def = getWidgetDef(inst.widgetId);
+    return {
+      i: inst.instanceId,
+      x: inst.x,
+      y: inst.y,
+      w: inst.w,
+      h: inst.h,
+      minW: def?.minW ?? 1,
+      minH: def?.minH ?? 2,
+      maxW: def?.maxW ?? COLS,
+      isDraggable: editing,
+      isResizable: editing,
+    };
+  });
+
+  function handleStop(newLayout: Layout[]) {
+    onUpdateLayout(
+      newLayout.map((item) => ({
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+      })),
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
+        {instances.map((inst) => {
+          const def = getWidgetDef(inst.widgetId);
+          if (!def) return null;
+          return (
+            <div
+              key={inst.instanceId}
+              className="rounded-2xl animate-pulse"
+              style={{
+                gridColumn: `span ${inst.w}`,
+                minHeight: inst.h * ROW_H,
+                background: "var(--c-neutral-bg)",
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext
-        items={instances.map((i) => i.instanceId)}
-        strategy={rectSortingStrategy}
+    <>
+      {/* Override react-grid-layout styles to match our theme */}
+      <style>{`
+        .react-grid-item.react-grid-placeholder {
+          background: var(--app-accent) !important;
+          opacity: 0.12 !important;
+          border-radius: 16px !important;
+        }
+        .react-resizable-handle {
+          opacity: 0;
+          transition: opacity 0.15s;
+        }
+        .react-grid-item:hover .react-resizable-handle,
+        .react-grid-item.resizing .react-resizable-handle {
+          opacity: 1;
+        }
+        .react-resizable-handle::after {
+          border-color: var(--app-accent) !important;
+          width: 8px !important;
+          height: 8px !important;
+          border-width: 0 2px 2px 0 !important;
+          bottom: 6px !important;
+          right: 6px !important;
+        }
+        .react-grid-item.react-draggable-dragging {
+          box-shadow: 0 20px 60px rgba(0,0,0,0.2) !important;
+          z-index: 100 !important;
+        }
+      `}</style>
+
+      <RGL
+        cols={COLS}
+        rowHeight={ROW_H}
+        margin={MARGIN}
+        layout={layout}
+        isDraggable={editing}
+        isResizable={editing}
+        draggableHandle=".widget-drag-handle"
+        compactType="vertical"
+        onDragStop={handleStop}
+        onResizeStop={handleStop}
+        useCSSTransforms
       >
-        <div
-          className="grid gap-4"
-          style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
-        >
-          {instances.map((instance) => {
-            const def = getWidgetDef(instance.widgetId);
-            if (!def) return null;
-            const Widget = def.component;
-            return (
+        {instances.map((instance) => {
+          const def = getWidgetDef(instance.widgetId);
+          if (!def) return null;
+          const Widget = def.component;
+          return (
+            <div key={instance.instanceId}>
               <WidgetCard
-                key={instance.instanceId}
                 instance={instance}
                 def={def}
                 editing={editing}
                 onRemove={() => onRemove(instance.instanceId)}
-                onResize={(size) => onResize(instance.instanceId, size)}
                 onRename={(title) => onRename(instance.instanceId, title)}
               >
                 <Widget instanceId={instance.instanceId} />
               </WidgetCard>
-            );
-          })}
-        </div>
-      </SortableContext>
-
-      {/* Ghost карточка при перетаскивании */}
-      <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
-        {activeInstance && activeDef ? (
-          <div
-            className="rounded-2xl rotate-1 shadow-2xl"
-            style={{
-              background: "var(--app-card-bg)",
-              border: "2px solid var(--app-accent)",
-              opacity: 0.92,
-              minHeight: activeInstance.size === "lg" ? 300 : 160,
-            }}
-          >
-            <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-              <span className="text-base select-none">{activeDef.emoji}</span>
-              <span
-                className="text-[13px] font-semibold"
-                style={{ color: "var(--t-primary)" }}
-              >
-                {activeInstance.title ?? activeDef.title}
-              </span>
             </div>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+          );
+        })}
+      </RGL>
+    </>
   );
 }

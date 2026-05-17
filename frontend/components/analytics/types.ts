@@ -1,7 +1,5 @@
 import type { ComponentType } from "react";
 
-export type WidgetSize = "sm" | "md" | "lg" | "xl";
-
 export interface WidgetProps {
   instanceId: string;
 }
@@ -11,8 +9,11 @@ export interface WidgetDef {
   title: string;
   description: string;
   category: "finance" | "tasks" | "habits" | "goals" | "overview";
-  defaultSize: WidgetSize;
-  allowedSizes: WidgetSize[];
+  defaultW: number;
+  defaultH: number;
+  minW: number;
+  minH: number;
+  maxW?: number;
   component: ComponentType<WidgetProps>;
   emoji: string;
 }
@@ -20,6 +21,9 @@ export interface WidgetDef {
 export interface WidgetInstance {
   instanceId: string;
   widgetId: string;
-  size: WidgetSize;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   title?: string;
 }
