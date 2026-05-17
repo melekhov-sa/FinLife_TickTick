@@ -25,7 +25,6 @@ export function TasksWeekWidget({ instanceId: _ }: WidgetProps) {
 
   const { weekly_trend, done_7d, velocity_7d } = data.tasks;
   const points = weekly_trend.slice(-8);
-  const maxVal = Math.max(...points.map((p) => p.count), 1);
   const currentWeek = points[points.length - 1];
 
   return (

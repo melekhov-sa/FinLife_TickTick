@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import GridLayout, { type Layout } from "react-grid-layout";
+import GridLayout from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
@@ -54,7 +54,7 @@ export function WidgetGrid({
     );
   }
 
-  const layout: Layout[] = instances.map((inst) => {
+  const layout = instances.map((inst) => {
     const def = getWidgetDef(inst.widgetId);
     return {
       i: inst.instanceId,
@@ -70,7 +70,7 @@ export function WidgetGrid({
     };
   });
 
-  function handleStop(newLayout: Layout[]) {
+  function handleStop(newLayout: { i: string; x: number; y: number; w: number; h: number }[]) {
     onUpdateLayout(
       newLayout.map((item) => ({
         i: item.i,

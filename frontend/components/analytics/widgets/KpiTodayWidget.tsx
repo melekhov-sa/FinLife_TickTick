@@ -89,9 +89,9 @@ export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
   const netWorth = dash.fin_state.regular_total + dash.fin_state.savings_total;
 
   return (
-    <div className="h-full grid grid-cols-3 divide-x" style={{ divideColor: "var(--app-border)" }}>
+    <div className="h-full grid grid-cols-3">
       {/* Tasks */}
-      <div className="flex flex-col justify-center gap-1.5 pr-4">
+      <div className="flex flex-col justify-center gap-1.5 pr-4 border-r" style={{ borderColor: "var(--app-border)" }}>
         <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
           Задачи
         </span>
@@ -112,7 +112,7 @@ export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
       </div>
 
       {/* Habits */}
-      <div className="flex flex-col justify-center gap-1.5 px-4">
+      <div className="flex flex-col justify-center gap-1.5 px-4 border-r" style={{ borderColor: "var(--app-border)" }}>
         <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
           Привычки
         </span>
