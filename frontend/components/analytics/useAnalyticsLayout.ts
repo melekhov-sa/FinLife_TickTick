@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import type { WidgetInstance, WidgetSize } from "./types";
 import { getWidgetDef } from "./registry";
 
@@ -61,5 +62,12 @@ export function useAnalyticsLayout() {
     );
   }
 
-  return { instances, add, remove, resize, rename };
+  function reorder(activeId: string, overId: string) {
+    const oldIdx = instances.findIndex((i) => i.instanceId === activeId);
+    const newIdx = instances.findIndex((i) => i.instanceId === overId);
+    if (oldIdx === -1 || newIdx === -1) return;
+    persist(arrayMove(instances, oldIdx, newIdx));
+  }
+
+  return { instances, add, remove, resize, rename, reorder };
 }

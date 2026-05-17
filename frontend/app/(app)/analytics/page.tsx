@@ -9,7 +9,7 @@ import { AddWidgetDrawer } from "@/components/analytics/AddWidgetDrawer";
 import { useAnalyticsLayout } from "@/components/analytics/useAnalyticsLayout";
 
 export default function AnalyticsPage() {
-  const { instances, add, remove, resize, rename } = useAnalyticsLayout();
+  const { instances, add, remove, resize, rename, reorder } = useAnalyticsLayout();
   const [editing, setEditing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -54,6 +54,7 @@ export default function AnalyticsPage() {
           onRemove={remove}
           onResize={resize}
           onRename={rename}
+          onReorder={reorder}
         />
       </main>
       <AddWidgetDrawer
