@@ -33,6 +33,19 @@ function migrate(raw: Record<string, unknown>[]): WidgetInstance[] {
   });
 }
 
+const DEFAULT_LAYOUT: WidgetInstance[] = [
+  { instanceId: "default-kpi",      widgetId: "kpi-today",           x: 0, y: 0,  w: 4, h: 2 },
+  { instanceId: "default-balance",  widgetId: "balance-overview",    x: 0, y: 2,  w: 2, h: 2 },
+  { instanceId: "default-networth", widgetId: "net-worth",           x: 2, y: 2,  w: 1, h: 2 },
+  { instanceId: "default-subs",     widgetId: "subscriptions-cost",  x: 3, y: 2,  w: 1, h: 2 },
+  { instanceId: "default-trend",    widgetId: "income-expense-trend",x: 0, y: 4,  w: 4, h: 3 },
+  { instanceId: "default-tasks",    widgetId: "tasks-today",         x: 0, y: 7,  w: 1, h: 2 },
+  { instanceId: "default-overdue",  widgetId: "tasks-overdue",       x: 1, y: 7,  w: 1, h: 2 },
+  { instanceId: "default-habits",   widgetId: "habits-completion",   x: 2, y: 7,  w: 1, h: 2 },
+  { instanceId: "default-goals",    widgetId: "goals-progress",      x: 3, y: 7,  w: 1, h: 3 },
+  { instanceId: "default-heatmap",  widgetId: "habits-heatmap",      x: 0, y: 9,  w: 3, h: 4 },
+];
+
 function load(): WidgetInstance[] {
   if (typeof window === "undefined") return [];
   try {
@@ -46,9 +59,10 @@ function load(): WidgetInstance[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
       return migrated;
     }
-    return [];
+    // First visit — return default layout
+    return DEFAULT_LAYOUT;
   } catch {
-    return [];
+    return DEFAULT_LAYOUT;
   }
 }
 

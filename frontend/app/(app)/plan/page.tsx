@@ -759,6 +759,15 @@ function formatMonthLabel(d: Date): string {
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done">("active");
   const [range, setRange] = useState(7);
+  const [hiddenGroups, setHiddenGroups] = useState<Set<EntryGroupType>>(new Set());
+
+  function toggleGroup(g: EntryGroupType) {
+    setHiddenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  }
   const [createTaskDate, setCreateTaskDate] = useState<string | null>(null);
   const [createEventDate, setCreateEventDate] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -1009,13 +1018,15 @@ export default function PlanPage() {
     return spans;
   }, [calendarData, data]);
 
-  // Filter wishes, then fill in empty days within the range
+  // Filter wishes + hidden groups, then fill in empty days within the range
   const filteredData = useMemo(() => {
     if (!data) return undefined;
 
     const populated = data.day_groups.map(g => ({
       ...g,
-      entries: g.entries.filter(e => e.kind !== "wish"),
+      entries: g.entries.filter(e =>
+        e.kind !== "wish" && !hiddenGroups.has(entryGroupType(e.kind))
+      ),
     }));
 
     // Compute vacation spans from list data so empty days get the flag too
@@ -1069,7 +1080,9 @@ export default function PlanPage() {
     return {
       ...data,
       day_groups: allDays,
-      done_today: data.done_today.filter(e => e.kind !== "wish"),
+      done_today: data.done_today.filter(e =>
+        e.kind !== "wish" && !hiddenGroups.has(entryGroupType(e.kind))
+      ),
     };
   }, [data]);
 
@@ -1127,7 +1140,8 @@ export default function PlanPage() {
         <div className="w-full">
 
           {/* ── Controls — compact ────────────────────────────────── */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="flex flex-col gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Status: Активные / Выполненные */}
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
               {TABS.map((t) => (
@@ -1227,6 +1241,34 @@ export default function PlanPage() {
                 </button>
               </Popover>
             </div>
+          </div>
+
+          </div>
+          {/* ── Focus filter chips ──────────────────────────────────── */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-wider mr-0.5" style={{ color: "var(--t-faint)" }}>Показать:</span>
+            {ENTRY_GROUP_ORDER.map((g) => {
+              const hidden = hiddenGroups.has(g);
+              return (
+                <button
+                  key={g}
+                  onClick={() => toggleGroup(g)}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all",
+                    hidden
+                      ? "opacity-40 border-transparent bg-transparent"
+                      : "border-transparent"
+                  )}
+                  style={hidden ? { color: "var(--t-faint)", background: "transparent" } : {
+                    color: "var(--app-accent)",
+                    background: "color-mix(in srgb, var(--app-accent) 12%, transparent)",
+                  }}
+                >
+                  {ENTRY_GROUP_LABELS[g]}
+                </button>
+              );
+            })}
+          </div>
           </div>
 
           {/* ── Calendar navigation ───────────────────────────────── */}

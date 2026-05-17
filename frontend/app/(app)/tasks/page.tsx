@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Plus, CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
+import { Plus, CheckCircle2, ClipboardList, AlertCircle, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
@@ -84,6 +84,7 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [draggedId, setDraggedId]     = useState<number | null>(null);
   const [orderOverride, setOrderOverride] = useState<number[] | null>(null);
+  const [search, setSearch]           = useState("");
 
   // Quick-add state
   const [quickTitle, setQuickTitle]   = useState("");
@@ -115,7 +116,13 @@ export default function TasksPage() {
     setStatus(v);
     setOrderOverride(null);
     setSelectedTask(null);
+    setSearch("");
   };
+
+  const searchTrimmed = search.trim().toLowerCase();
+  const filteredTasks = searchTrimmed
+    ? (tasks ?? []).filter((t) => t.title.toLowerCase().includes(searchTrimmed))
+    : tasks;
 
   // Quick-add submit
   const submitQuickAdd = useCallback(() => {
@@ -168,25 +175,52 @@ export default function TasksPage() {
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Controls */}
-        <div className="flex items-center justify-between mb-3 md:mb-5">
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
-            {TABS.map(({ value, label }) => (
-              <Chip
-                key={value}
-                label={label}
-                size="sm"
-                selected={status === value}
-                onClick={() => handleTabChange(value)}
-              />
-            ))}
+        <div className="flex flex-col gap-2 mb-3 md:mb-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
+              {TABS.map(({ value, label }) => (
+                <Chip
+                  key={value}
+                  label={label}
+                  size="sm"
+                  selected={status === value}
+                  onClick={() => handleTabChange(value)}
+                />
+              ))}
+            </div>
+
+            {filteredTasks && filteredTasks.length > 0 && (
+              <span className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06]"
+                style={{ color: "var(--t-faint)" }}>
+                {searchTrimmed ? `${filteredTasks.length} / ${tasks?.length ?? 0}` : filteredTasks.length}
+              </span>
+            )}
           </div>
 
-          {tasks && tasks.length > 0 && (
-            <span className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.06]"
-              style={{ color: "var(--t-faint)" }}>
-              {tasks.length}
-            </span>
-          )}
+          {/* Search */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--t-faint)" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск задач..."
+              className="w-full pl-9 pr-9 py-2 rounded-xl text-[13px] outline-none border"
+              style={{
+                background: "var(--app-card-bg)",
+                borderColor: search ? "var(--app-accent)" : "var(--app-border)",
+                color: "var(--t-primary)",
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              >
+                <X size={13} style={{ color: "var(--t-faint)" }} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Loading */}
@@ -236,12 +270,16 @@ export default function TasksPage() {
             )}
 
             {/* Empty state */}
-            {tasks && tasks.length === 0 && (
+            {filteredTasks && filteredTasks.length === 0 && (
               <EmptyState
-                icon={status === "DONE" ? <CheckCircle2 size={18} /> : <ClipboardList size={18} />}
-                title={status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"}
+                icon={searchTrimmed ? <Search size={18} /> : status === "DONE" ? <CheckCircle2 size={18} /> : <ClipboardList size={18} />}
+                title={
+                  searchTrimmed
+                    ? `По запросу «${search}» ничего не найдено`
+                    : status === "ACTIVE" ? "Активных задач нет" : status === "DONE" ? "Выполненных задач нет" : "Архив пуст"
+                }
                 size="sm"
-                actions={status === "ACTIVE" ? (
+                actions={!searchTrimmed && status === "ACTIVE" ? (
                   <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="text-indigo-400/60 hover:text-indigo-400 px-0">
                     Напишите задачу выше
                   </Button>
@@ -249,11 +287,11 @@ export default function TasksPage() {
               />
             )}
 
-            {/* Rows */}
-            {tasks && status !== "ACTIVE" && tasks.map((task, i) => (
+            {/* Rows — non-active tab or search mode: flat list */}
+            {filteredTasks && (status !== "ACTIVE" || searchTrimmed) && filteredTasks.map((task, i) => (
               <div
                 key={task.task_id}
-                className={i < tasks.length - 1 ? "border-b border-slate-100 dark:border-white/[0.04]" : ""}
+                className={i < filteredTasks.length - 1 ? "border-b border-slate-100 dark:border-white/[0.04]" : ""}
                 onDragEnter={() => onDragEnter(task.task_id)}
               >
                 <TaskRow
@@ -270,9 +308,9 @@ export default function TasksPage() {
               </div>
             ))}
 
-            {/* Grouped rows (active tab) */}
-            {tasks && status === "ACTIVE" && (() => {
-              const groups = groupTasksByDate(tasks);
+            {/* Grouped rows (active tab, no search) */}
+            {filteredTasks && status === "ACTIVE" && !searchTrimmed && (() => {
+              const groups = groupTasksByDate(filteredTasks);
               const allTasks = groups.flatMap((g) => g.tasks);
               return groups.map((group) => (
                 <div key={group.label}>
