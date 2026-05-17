@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
+import { useEffect, useRef, useState } from "react";
+import GridLayout, { type Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 import { WidgetCard } from "./WidgetCard";
 import { getWidgetDef } from "./registry";
 import type { WidgetInstance } from "./types";
-
-const RGL = WidthProvider(GridLayout);
 
 const COLS = 4;
 const ROW_H = 80;
@@ -30,13 +28,24 @@ export function WidgetGrid({
   onRename,
   onUpdateLayout,
 }: WidgetGridProps) {
-  // WidthProvider measures DOM, so we avoid SSR flash
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   if (instances.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-3">
+      <div ref={containerRef} className="flex flex-col items-center justify-center py-32 gap-3">
         <span className="text-5xl select-none">📐</span>
         <p className="text-[14px]" style={{ color: "var(--t-faint)" }}>
           Нажмите «Настроить» → «Добавить» чтобы собрать дашборд
@@ -75,7 +84,7 @@ export function WidgetGrid({
 
   if (!mounted) {
     return (
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
+      <div ref={containerRef} className="grid gap-4" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
         {instances.map((inst) => {
           const def = getWidgetDef(inst.widgetId);
           if (!def) return null;
@@ -96,7 +105,7 @@ export function WidgetGrid({
   }
 
   return (
-    <>
+    <div ref={containerRef}>
       {/* Override react-grid-layout styles to match our theme */}
       <style>{`
         .react-grid-item.react-grid-placeholder {
@@ -126,7 +135,8 @@ export function WidgetGrid({
         }
       `}</style>
 
-      <RGL
+      <GridLayout
+        width={containerWidth || 800}
         cols={COLS}
         rowHeight={ROW_H}
         margin={MARGIN}
@@ -157,7 +167,7 @@ export function WidgetGrid({
             </div>
           );
         })}
-      </RGL>
-    </>
+      </GridLayout>
+    </div>
   );
 }
