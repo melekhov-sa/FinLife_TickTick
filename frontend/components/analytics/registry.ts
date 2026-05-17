@@ -1,5 +1,9 @@
 import type { WidgetDef } from "./types";
 import { PlaceholderWidget } from "./widgets/PlaceholderWidget";
+import { NetWorthWidget } from "./widgets/NetWorthWidget";
+import { TasksTodayWidget } from "./widgets/TasksTodayWidget";
+import { HabitsCompletionWidget } from "./widgets/HabitsCompletionWidget";
+import { BalanceOverviewWidget } from "./widgets/BalanceOverviewWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -21,8 +25,8 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     description: "Доходы, расходы и остаток за месяц",
     category: "finance",
     defaultSize: "md",
-    allowedSizes: ["sm", "md", "xl"],
-    component: PlaceholderWidget,
+    allowedSizes: ["md", "xl"],
+    component: BalanceOverviewWidget,
     emoji: "💰",
   },
   {
@@ -52,7 +56,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     category: "finance",
     defaultSize: "sm",
     allowedSizes: ["sm", "md"],
-    component: PlaceholderWidget,
+    component: NetWorthWidget,
     emoji: "🏦",
   },
   {
@@ -74,7 +78,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     category: "tasks",
     defaultSize: "sm",
     allowedSizes: ["sm", "md"],
-    component: PlaceholderWidget,
+    component: TasksTodayWidget,
     emoji: "✅",
   },
   {
@@ -112,11 +116,11 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   {
     id: "habits-completion",
     title: "Выполнение привычек",
-    description: "Процент выполнения за неделю",
+    description: "Процент выполнения за сегодня",
     category: "habits",
     defaultSize: "sm",
     allowedSizes: ["sm", "md"],
-    component: PlaceholderWidget,
+    component: HabitsCompletionWidget,
     emoji: "💪",
   },
   {

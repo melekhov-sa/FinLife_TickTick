@@ -1,0 +1,79 @@
+"use client";
+
+import { useHabits } from "@/hooks/useHabits";
+import type { WidgetProps } from "../types";
+
+function Skeleton() {
+  return (
+    <div className="h-full flex flex-col justify-center gap-2 animate-pulse">
+      <div className="h-8 w-20 rounded-lg" style={{ background: "var(--c-neutral-bg)" }} />
+      <div className="h-2 w-full rounded-full" style={{ background: "var(--c-neutral-bg)" }} />
+      <div className="h-3 w-24 rounded" style={{ background: "var(--c-neutral-bg)" }} />
+    </div>
+  );
+}
+
+export function HabitsCompletionWidget({ instanceId: _ }: WidgetProps) {
+  const { data: habits, isLoading } = useHabits();
+
+  if (isLoading || !habits) return <Skeleton />;
+
+  const scheduled = habits.filter((h) => h.scheduled_today);
+  const done = habits.filter((h) => h.done_today && h.scheduled_today);
+  const total = scheduled.length;
+  const doneCount = done.length;
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const allDone = total > 0 && doneCount === total;
+  const bestStreak = habits.reduce(
+    (max, h) => Math.max(max, h.current_streak),
+    0,
+  );
+
+  return (
+    <div className="h-full flex flex-col justify-center gap-2">
+      <div className="flex items-baseline gap-1.5">
+        <span
+          className="text-[28px] font-bold tabular-nums leading-none"
+          style={{
+            color: allDone ? "var(--c-success-ink)" : "var(--t-primary)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {doneCount}
+        </span>
+        <span className="text-[15px]" style={{ color: "var(--t-faint)" }}>
+          / {total}
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div
+        className="w-full h-1.5 rounded-full overflow-hidden"
+        style={{ background: "var(--c-neutral-bg)" }}
+      >
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${pct}%`,
+            background: allDone ? "var(--c-success-ink)" : "var(--app-accent)",
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
+          {total === 0
+            ? "нет привычек сегодня"
+            : allDone
+              ? "все выполнено 🔥"
+              : `${pct}% выполнено`}
+        </span>
+        {bestStreak > 0 && (
+          <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+            🔥 {bestStreak}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
