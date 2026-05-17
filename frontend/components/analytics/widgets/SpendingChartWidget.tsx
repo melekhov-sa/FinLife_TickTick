@@ -94,8 +94,8 @@ export function SpendingChartWidget({ instanceId: _ }: WidgetProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => [
-                `${sym} ${fmt(value)}`,
+              formatter={(value: number | undefined) => [
+                value != null ? `${sym} ${fmt(value)}` : "",
                 "",
               ]}
               contentStyle={{
