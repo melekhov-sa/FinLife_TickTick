@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { CalendarDays, Pencil, Archive, RotateCcw, X, Check } from "lucide-react";
+import { CalendarDays, Pencil, Archive, RotateCcw, X, Check, Plus } from "lucide-react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
@@ -83,7 +84,17 @@ export default function EventTemplatesPage() {
 
   return (
     <>
-      <PageHeader title="Шаблоны событий" density="compact" />
+      <PageHeader
+        title="Шаблоны событий"
+        density="compact"
+        actions={
+          <Link href="/events">
+            <Button variant="primary" size="sm" leftIcon={<Plus size={13} />}>
+              Создать событие
+            </Button>
+          </Link>
+        }
+      />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs + count */}
@@ -235,7 +246,7 @@ export default function EventTemplatesPage() {
                 </div>
 
                 <Badge
-                  variant={item.is_archived ? "neutral" : item.freq ? "accent" : "success"}
+                  variant={item.is_archived ? "neutral" : item.freq ? "accent" : "neutral"}
                   size="sm"
                   className="shrink-0"
                 >
@@ -246,17 +257,6 @@ export default function EventTemplatesPage() {
           </div>
         )}
 
-        {/* Link to events page for creating */}
-        {!isLoading && !isError && templates.length > 0 && !archived && (
-          <div className="mt-4 text-center">
-            <a
-              href="/events"
-              className="text-[11px] font-medium text-indigo-400/50 hover:text-indigo-400/80 transition-colors"
-            >
-              Управление в разделе События
-            </a>
-          </div>
-        )}
       </main>
     </>
   );

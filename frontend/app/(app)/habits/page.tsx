@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Settings2, AlertCircle } from "lucide-react";
+import { Plus, Settings2, AlertCircle, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { HabitDetailPanel } from "@/components/habits/HabitDetailPanel";
 import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
@@ -10,11 +10,59 @@ import { HabitRow } from "@/components/habits/HabitRow";
 import { DoneSection } from "@/components/habits/DoneSection";
 import { MilestoneOverlay, MILESTONE_STREAKS } from "@/components/habits/MilestoneOverlay";
 import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
+import { useProductivity } from "@/components/analytics/useProductivity";
 import type { HabitItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { EmptyState } from "@/components/primitives/EmptyState";
-import { Sparkles } from "lucide-react";
+
+const WEEK_DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+function WeekStrip() {
+  const { data } = useProductivity();
+  if (!data) return null;
+
+  const chart = data.habits.daily_chart;
+  // last 7 entries
+  const days = chart.slice(-7);
+  if (days.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-3 md:px-6 py-2 border-b shrink-0"
+      style={{ borderColor: "var(--app-border)" }}>
+      <span className="text-[10px] font-semibold uppercase tracking-widest mr-1"
+        style={{ color: "var(--t-faint)" }}>7 дней</span>
+      <div className="flex items-end gap-1.5">
+        {days.map((d, i) => {
+          const pct = d.total > 0 ? d.done / d.total : -1;
+          const bg = pct < 0
+            ? "var(--c-neutral-bg)"
+            : pct === 0
+            ? "var(--c-neutral-bg)"
+            : pct < 0.5
+            ? "color-mix(in srgb, var(--app-accent) 35%, transparent)"
+            : pct < 1
+            ? "color-mix(in srgb, var(--app-accent) 65%, transparent)"
+            : "var(--app-accent)";
+          const dayIdx = (new Date().getDay() + 6 - (days.length - 1 - i)) % 7;
+          return (
+            <div key={i} className="flex flex-col items-center gap-0.5"
+              title={pct < 0 ? d.day : `${d.day}: ${d.done}/${d.total}`}>
+              <div className="w-5 h-5 rounded-full transition-colors" style={{ background: bg }} />
+              <span className="text-[8px]" style={{ color: "var(--t-faint)" }}>
+                {WEEK_DAYS[dayIdx]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <span className="ml-auto text-[11px] font-semibold tabular-nums"
+        style={{ color: "var(--app-accent)" }}>
+        {data.habits.rate_7d}%
+      </span>
+    </div>
+  );
+}
 
 // Safely fire haptic — no-op on Safari / unsupported devices
 function haptic(pattern: number | number[]) {
@@ -144,6 +192,8 @@ export default function HabitsPage() {
           />
         </div>
       )}
+
+      <WeekStrip />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {isPending && (
