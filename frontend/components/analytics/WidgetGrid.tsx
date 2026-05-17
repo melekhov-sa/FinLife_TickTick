@@ -70,7 +70,7 @@ export function WidgetGrid({
     };
   });
 
-  function handleStop(newLayout: { i: string; x: number; y: number; w: number; h: number }[]) {
+  function handleStop(newLayout: readonly { i: string; x: number; y: number; w: number; h: number }[]) {
     onUpdateLayout(
       newLayout.map((item) => ({
         i: item.i,
