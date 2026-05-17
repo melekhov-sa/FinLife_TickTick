@@ -12,6 +12,11 @@ import { IncomeTrendWidget } from "./widgets/IncomeTrendWidget";
 import { GoalsProgressWidget } from "./widgets/GoalsProgressWidget";
 import { SubscriptionsCostWidget } from "./widgets/SubscriptionsCostWidget";
 import { KpiTodayWidget } from "./widgets/KpiTodayWidget";
+import { BudgetOverviewWidget } from "./widgets/BudgetOverviewWidget";
+import { MonthComparisonWidget } from "./widgets/MonthComparisonWidget";
+import { WalletBalancesWidget } from "./widgets/WalletBalancesWidget";
+import { SpendingByWeekdayWidget } from "./widgets/SpendingByWeekdayWidget";
+import { PlannedOpsWidget } from "./widgets/PlannedOpsWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -139,6 +144,53 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
     component: GoalsProgressWidget,
     emoji: "🎯",
+  },
+
+  // ── Бюджет ────────────────────────────────────────────────────────────────
+  {
+    id: "budget-overview",
+    title: "Бюджет",
+    description: "План vs факт по доходам и расходам за месяц",
+    category: "finance",
+    defaultW: 2, defaultH: 2, minW: 2, minH: 2,
+    component: BudgetOverviewWidget,
+    emoji: "📅",
+  },
+  {
+    id: "month-comparison",
+    title: "Сравнение месяцев",
+    description: "Текущий vs прошлый месяц: финансы, задачи, привычки",
+    category: "overview",
+    defaultW: 2, defaultH: 3, minW: 2, minH: 2,
+    component: MonthComparisonWidget,
+    emoji: "📆",
+  },
+  {
+    id: "wallet-balances",
+    title: "Кошельки",
+    description: "Суммарный баланс и тренд за 6 месяцев",
+    category: "finance",
+    defaultW: 2, defaultH: 3, minW: 2, minH: 3,
+    component: WalletBalancesWidget,
+    emoji: "💳",
+  },
+  {
+    id: "spending-by-weekday",
+    title: "Траты по дням недели",
+    description: "Средние расходы по дням недели",
+    category: "finance",
+    defaultW: 2, defaultH: 3, minW: 2, minH: 2,
+    component: SpendingByWeekdayWidget,
+    emoji: "📉",
+  },
+  {
+    id: "planned-ops",
+    title: "Предстоящие платежи",
+    description: "Ближайшие запланированные операции",
+    category: "finance",
+    defaultW: 2, defaultH: 3, minW: 2, minH: 2,
+    component: PlannedOpsWidget,
+    emoji: "🗒️",
   },
 ];
 
