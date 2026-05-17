@@ -202,14 +202,14 @@ export const InlineEditField = forwardRef<HTMLDivElement, InlineEditFieldProps>(
       <div ref={ref} className={cn("relative inline-block w-full", className)}>
         {multiline ? (
           <textarea
-            ref={(el) => (inputRef.current = el)}
+            ref={(el) => { inputRef.current = el; }}
             rows={Math.min(Math.max(draft.split("\n").length, 1), maxRows)}
             placeholder={placeholder}
             {...sharedProps}
           />
         ) : (
           <input
-            ref={(el) => (inputRef.current = el)}
+            ref={(el) => { inputRef.current = el; }}
             type="text"
             placeholder={placeholder}
             {...sharedProps}
