@@ -4,6 +4,8 @@ import { NetWorthWidget } from "./widgets/NetWorthWidget";
 import { TasksTodayWidget } from "./widgets/TasksTodayWidget";
 import { HabitsCompletionWidget } from "./widgets/HabitsCompletionWidget";
 import { BalanceOverviewWidget } from "./widgets/BalanceOverviewWidget";
+import { SpendingChartWidget } from "./widgets/SpendingChartWidget";
+import { IncomeTrendWidget } from "./widgets/IncomeTrendWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -30,23 +32,24 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     emoji: "💰",
   },
   {
+  {
     id: "spending-chart",
     title: "Расходы по категориям",
-    description: "Диаграмма трат за период",
+    description: "Диаграмма трат за текущий месяц",
     category: "finance",
     defaultSize: "lg",
     allowedSizes: ["md", "lg", "xl"],
-    component: PlaceholderWidget,
+    component: SpendingChartWidget,
     emoji: "📊",
   },
   {
     id: "income-expense-trend",
     title: "Доходы и расходы",
-    description: "Линейный график за последние месяцы",
+    description: "Столбчатый график за последние 6 месяцев",
     category: "finance",
     defaultSize: "xl",
     allowedSizes: ["lg", "xl"],
-    component: PlaceholderWidget,
+    component: IncomeTrendWidget,
     emoji: "📈",
   },
   {
