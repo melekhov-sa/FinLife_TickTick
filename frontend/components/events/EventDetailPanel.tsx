@@ -13,6 +13,7 @@ import { TimeInput } from "@/components/primitives/TimeInput";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
 import { Button } from "@/components/primitives/Button";
+import { SidePanel } from "@/components/primitives/SidePanel";
 
 interface Props {
   event: EventItem;
@@ -41,7 +42,6 @@ function formatDateRange(start: string, end: string | null): string {
   return `${formatDisplayDate(start)} – ${formatDisplayDate(end)}`;
 }
 
-// Deterministic color from category_id
 const CAT_PALETTES = [
   { icon: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/30" },
   { icon: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
@@ -89,14 +89,6 @@ export function EventDetailPanel({ event, onClose }: Props) {
     })),
   ];
 
-  // Close on Escape
-  useEffect(() => {
-    function handler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  // Sync state when event prop changes
   useEffect(() => {
     setTitle(event.title);
     setDesc(event.description ?? "");
@@ -134,23 +126,13 @@ export function EventDetailPanel({ event, onClose }: Props) {
   const dateLabel = formatDateRange(startDate, endDate || null);
 
   return (
-    <>
-      {/* Mobile backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={onClose} />
-
-      {/* Panel */}
-      <div
-        className={clsx(
-          "fixed z-40 bg-[#161d2b] border-l border-white/[0.07] shadow-2xl flex flex-col",
-          "inset-x-0 bottom-0 top-[20%] rounded-t-2xl",
-          "lg:inset-x-auto lg:top-0 lg:bottom-0 lg:right-0 lg:w-[400px] lg:rounded-none",
-        )}
-        style={{ animation: "slideInPanel 0.2s ease-out" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+    <SidePanel
+      open
+      onClose={onClose}
+      ariaLabel="Детали события"
+      header={
+        <>
           <div className="flex items-center gap-2.5">
-            {/* Category color dot */}
             <div className={clsx("w-2 h-2 rounded-full", palette.bg.replace("bg-", "bg-").replace("/10", "/70"))} />
             <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               {event.category_title ?? "Событие"}
@@ -175,127 +157,10 @@ export function EventDetailPanel({ event, onClose }: Props) {
               <X size={15} />
             </button>
           </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-
-          {/* Title */}
-          <div>
-            <input
-              ref={titleRef}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onFocus={() => setTitleFocused(true)}
-              onBlur={() => { setTitleFocused(false); saveTitle(); }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); }
-                if (e.key === "Escape") { setTitle(event.title); titleRef.current?.blur(); }
-              }}
-              className={clsx(
-                "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug",
-                "border-b transition-colors pb-1",
-                titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
-              )}
-              style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
-            />
-          </div>
-
-          {/* Date range */}
-          <div className="flex items-start gap-3">
-            <Calendar size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Дата
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => { setStartDate(e.target.value); saveField("start_date", e.target.value); }}
-                  className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
-                  style={{ color: "var(--t-secondary)" }}
-                />
-                <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>–</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => { setEndDate(e.target.value); saveField("end_date", e.target.value); }}
-                  className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
-                  style={{ color: "var(--t-secondary)" }}
-                />
-              </div>
-              <p className="mt-1 text-[12px] font-medium" style={{ color: "var(--t-muted)" }}>{dateLabel}</p>
-            </div>
-          </div>
-
-          {/* Time */}
-          <div className="flex items-start gap-3">
-            <Clock size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Время
-              </p>
-              <div className="flex items-center gap-2">
-                <TimeInput
-                  value={startTime}
-                  onChange={(v) => { setStartTime(v); saveField("start_time", v); }}
-                  size="sm"
-                  className="w-[140px]"
-                />
-                {!startTime && (
-                  <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>Весь день</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Category */}
-          <div className="flex items-start gap-3">
-            <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Категория
-              </p>
-              <Select
-                value={catId}
-                onChange={(v) => {
-                  setCatId(v);
-                  update({ occurrenceId: event.occurrence_id, data: { category_id: v ? Number(v) : null } });
-                }}
-                options={catOptions}
-                placeholder="— без категории —"
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          {/* Reminders */}
-          <EventReminders
-            eventId={event.event_id}
-            startTime={event.start_time ?? null}
-          />
-
-          <div className="flex items-start gap-3">
-            <AlignLeft size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Описание
-              </p>
-              <textarea
-                value={desc}
-                onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
-                placeholder="Добавить описание..."
-                rows={3}
-                className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
-                style={{ color: "var(--t-secondary)" }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action bar */}
-        <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex items-center justify-between">
+        </>
+      }
+      footer={
+        <div className="flex items-center justify-between w-full">
           <a
             href={`/legacy/events/${event.event_id}/edit`}
             className="text-[12px] font-medium hover:text-white/90 transition-colors"
@@ -313,7 +178,6 @@ export function EventDetailPanel({ event, onClose }: Props) {
               <button
                 className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                 style={{ color: "var(--t-secondary)" }}
-                title="Удалить"
               >
                 <Trash2 size={13} />
                 Удалить
@@ -324,40 +188,131 @@ export function EventDetailPanel({ event, onClose }: Props) {
               Удалить событие?
             </p>
             <div className="flex justify-end gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setDeletePopoverOpen(false)}
-              >
+              <Button size="sm" variant="secondary" onClick={() => setDeletePopoverOpen(false)}>
                 Отмена
               </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => {
-                  handleDelete();
-                  setDeletePopoverOpen(false);
-                }}
-              >
+              <Button size="sm" variant="destructive" onClick={() => { handleDelete(); setDeletePopoverOpen(false); }}>
                 Удалить
               </Button>
             </div>
           </Popover>
         </div>
-      </div>
+      }
+    >
+      <div className="p-5 space-y-5">
+        {/* Title */}
+        <div>
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setTitleFocused(true)}
+            onBlur={() => { setTitleFocused(false); saveTitle(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); }
+              if (e.key === "Escape") { setTitle(event.title); titleRef.current?.blur(); }
+            }}
+            className={clsx(
+              "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug",
+              "border-b transition-colors pb-1",
+              titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
+            )}
+            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
+          />
+        </div>
 
-      <style>{`
-        @keyframes slideInPanel {
-          from { transform: translateX(100%); opacity: 0.8; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-        @media (max-width: 1023px) {
-          @keyframes slideInPanel {
-            from { transform: translateY(40px); opacity: 0.8; }
-            to   { transform: translateY(0);    opacity: 1; }
-          }
-        }
-      `}</style>
-    </>
+        {/* Date range */}
+        <div className="flex items-start gap-3">
+          <Calendar size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Дата
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); saveField("start_date", e.target.value); }}
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+                style={{ color: "var(--t-secondary)" }}
+              />
+              <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>–</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); saveField("end_date", e.target.value); }}
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+                style={{ color: "var(--t-secondary)" }}
+              />
+            </div>
+            <p className="mt-1 text-[12px] font-medium" style={{ color: "var(--t-muted)" }}>{dateLabel}</p>
+          </div>
+        </div>
+
+        {/* Time */}
+        <div className="flex items-start gap-3">
+          <Clock size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Время
+            </p>
+            <div className="flex items-center gap-2">
+              <TimeInput
+                value={startTime}
+                onChange={(v) => { setStartTime(v); saveField("start_time", v); }}
+                size="sm"
+                className="w-[140px]"
+              />
+              {!startTime && (
+                <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>Весь день</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Category */}
+        <div className="flex items-start gap-3">
+          <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Категория
+            </p>
+            <Select
+              value={catId}
+              onChange={(v) => {
+                setCatId(v);
+                update({ occurrenceId: event.occurrence_id, data: { category_id: v ? Number(v) : null } });
+              }}
+              options={catOptions}
+              placeholder="— без категории —"
+            />
+          </div>
+        </div>
+
+        {/* Reminders */}
+        <EventReminders
+          eventId={event.event_id}
+          startTime={event.start_time ?? null}
+        />
+
+        {/* Description */}
+        <div className="flex items-start gap-3">
+          <AlignLeft size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Описание
+            </p>
+            <textarea
+              value={desc}
+              onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
+              placeholder="Добавить описание..."
+              rows={3}
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
+              style={{ color: "var(--t-secondary)" }}
+            />
+          </div>
+        </div>
+      </div>
+    </SidePanel>
   );
 }

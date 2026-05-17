@@ -11,6 +11,7 @@ import { useUpdateHabit, useDeleteHabit } from "@/hooks/useHabits";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Popover } from "@/components/primitives/Popover";
 import { Button } from "@/components/primitives/Button";
+import { SidePanel } from "@/components/primitives/SidePanel";
 
 interface Props {
   habit: HabitItem;
@@ -54,12 +55,6 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
   ];
 
   useEffect(() => {
-    function handler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  useEffect(() => {
     setTitle(habit.title);
     setNote(habit.note ?? "");
     setLevel(habit.level);
@@ -88,19 +83,12 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
   const doneCount = (habit.recent_days ?? []).filter(Boolean).length;
 
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={onClose} />
-
-      <div
-        className={clsx(
-          "fixed z-40 bg-[#161d2b] border-l border-white/[0.07] shadow-2xl flex flex-col",
-          "inset-x-0 bottom-0 top-[15%] rounded-t-2xl",
-          "lg:inset-x-auto lg:top-0 lg:bottom-0 lg:right-0 lg:w-[400px] lg:rounded-none",
-        )}
-        style={{ animation: "slideInPanel 0.2s ease-out" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+    <SidePanel
+      open
+      onClose={onClose}
+      ariaLabel="Детали привычки"
+      header={
+        <>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-white/[0.07] flex items-center justify-center text-base">
               {habit.category_emoji ?? "🔄"}
@@ -116,212 +104,182 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
           >
             <X size={15} />
           </button>
+        </>
+      }
+      footer={
+        <Popover
+          open={archivePopoverOpen}
+          onOpenChange={setArchivePopoverOpen}
+          side="top"
+          align="end"
+          className="min-w-[240px] p-3"
+          trigger={
+            <button
+              className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+              style={{ color: "var(--t-secondary)" }}
+            >
+              <Trash2 size={13} />
+              В архив
+            </button>
+          }
+        >
+          <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+            Архивировать привычку?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setArchivePopoverOpen(false)}>
+              Отмена
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => { handleDelete(); setArchivePopoverOpen(false); }}>
+              Архивировать
+            </Button>
+          </div>
+        </Popover>
+      }
+    >
+      <div className="p-5 space-y-5">
+        {/* Title */}
+        <input
+          ref={titleRef}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onFocus={() => setTitleFocused(true)}
+          onBlur={() => { setTitleFocused(false); saveTitle(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); }
+            if (e.key === "Escape") { setTitle(habit.title); titleRef.current?.blur(); }
+          }}
+          className={clsx(
+            "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug border-b transition-colors pb-1",
+            titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
+          )}
+          style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
+        />
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { icon: <Flame size={14} />, value: habit.current_streak, label: "Серия", color: habit.current_streak >= 7 ? "text-amber-400" : "" },
+            { icon: <Trophy size={14} />, value: habit.best_streak, label: "Рекорд", color: "text-indigo-400" },
+            { value: `${habit.done_count_30d}/30`, label: "За 30 дней", color: "text-emerald-400" },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
+              {stat.icon && <div className={clsx("flex justify-center mb-1", stat.color)} style={{ color: !stat.color ? "var(--t-faint)" : undefined }}>{stat.icon}</div>}
+              <div className={clsx("text-lg font-bold tabular-nums leading-none", stat.color)} style={{ color: !stat.color ? "var(--t-primary)" : undefined, letterSpacing: "-0.03em" }}>
+                {stat.value}
+              </div>
+              <div className="text-[10px] mt-1 font-medium uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-
-          {/* Title */}
-          <input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onFocus={() => setTitleFocused(true)}
-            onBlur={() => { setTitleFocused(false); saveTitle(); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); }
-              if (e.key === "Escape") { setTitle(habit.title); titleRef.current?.blur(); }
-            }}
-            className={clsx(
-              "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug border-b transition-colors pb-1",
-              titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
-            )}
-            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
-          />
-
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: <Flame size={14} />, value: habit.current_streak, label: "Серия", color: habit.current_streak >= 7 ? "text-amber-400" : "" },
-              { icon: <Trophy size={14} />, value: habit.best_streak, label: "Рекорд", color: "text-indigo-400" },
-              { value: `${habit.done_count_30d}/30`, label: "За 30 дней", color: "text-emerald-400" },
-            ].map((stat, i) => (
-              <div key={i} className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
-                {stat.icon && <div className={clsx("flex justify-center mb-1", stat.color)} style={{ color: !stat.color ? "var(--t-faint)" : undefined }}>{stat.icon}</div>}
-                <div className={clsx("text-lg font-bold tabular-nums leading-none", stat.color)} style={{ color: !stat.color ? "var(--t-primary)" : undefined, letterSpacing: "-0.03em" }}>
-                  {stat.value}
-                </div>
-                <div className="text-[10px] mt-1 font-medium uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-                  {stat.label}
-                </div>
-              </div>
+        {/* 14-day tracker */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>
+            Последние 14 дней
+          </p>
+          <div className="flex items-center gap-1">
+            {(habit.recent_days ?? []).map((done, i) => (
+              <div
+                key={i}
+                title={done ? "Выполнено" : "Не выполнено"}
+                className={clsx(
+                  "flex-1 h-5 rounded-sm transition-colors",
+                  done ? "bg-emerald-500/60" : "bg-white/[0.07]"
+                )}
+              />
             ))}
           </div>
+          <p className="text-[11px] mt-1.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
+            {doneCount} из 14 дней
+          </p>
+        </div>
 
-          {/* 14-day tracker */}
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>
-              Последние 14 дней
-            </p>
-            <div className="flex items-center gap-1">
-              {(habit.recent_days ?? []).map((done, i) => (
-                <div
-                  key={i}
-                  title={done ? "Выполнено" : "Не выполнено"}
-                  className={clsx(
-                    "flex-1 h-5 rounded-sm transition-colors",
-                    done ? "bg-emerald-500/60" : "bg-white/[0.07]"
-                  )}
-                />
-              ))}
-            </div>
-            <p className="text-[11px] mt-1.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
-              {doneCount} из 14 дней
-            </p>
-          </div>
-
-          {/* Difficulty (level) */}
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>
-              Сложность
-            </p>
-            <div className="flex items-center gap-1.5">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.value}
-                  onClick={() => {
-                    setLevel(l.value);
-                    update({ habitId: habit.habit_id, data: { level: l.value } });
-                  }}
-                  className={clsx(
-                    "flex-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
-                    level === l.value
-                      ? "bg-indigo-600 border-indigo-600 text-[#fff]"
-                      : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.08]"
-                  )}
-                  style={{ color: level === l.value ? undefined : "var(--t-muted)" }}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category */}
-          <div className="flex items-start gap-3">
-            <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Категория
-              </p>
-              <Select
-                value={catId}
-                onChange={(v) => {
-                  setCatId(v);
-                  update({ habitId: habit.habit_id, data: { category_id: v ? Number(v) : null } });
+        {/* Difficulty */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>
+            Сложность
+          </p>
+          <div className="flex items-center gap-1.5">
+            {LEVELS.map((l) => (
+              <button
+                key={l.value}
+                onClick={() => {
+                  setLevel(l.value);
+                  update({ habitId: habit.habit_id, data: { level: l.value } });
                 }}
-                options={catOptions}
-                placeholder="— без категории —"
-              />
-            </div>
-          </div>
-
-          {/* Reminder */}
-          <div className="flex items-start gap-3">
-            <Clock size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Напоминание
-              </p>
-              <div className="flex items-center gap-2">
-                <TimeInput
-                  value={reminderTime}
-                  onChange={(v) => {
-                    setReminderTime(v);
-                    update({ habitId: habit.habit_id, data: { reminder_time: v || null } });
-                  }}
-                  size="sm"
-                  className="w-[140px]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Note */}
-          <div className="flex items-start gap-3">
-            <AlignLeft size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
-                Заметка
-              </p>
-              <textarea
-                value={note}
-                onChange={(e) => { setNote(e.target.value); debounceSave("note", e.target.value); }}
-                placeholder="Добавить заметку..."
-                rows={3}
-                className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
-                style={{ color: "var(--t-secondary)" }}
-              />
-            </div>
+                className={clsx(
+                  "flex-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
+                  level === l.value
+                    ? "bg-indigo-600 border-indigo-600 text-[#fff]"
+                    : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.08]"
+                )}
+                style={{ color: level === l.value ? undefined : "var(--t-muted)" }}
+              >
+                {l.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex justify-end">
-          <Popover
-            open={archivePopoverOpen}
-            onOpenChange={setArchivePopoverOpen}
-            side="top"
-            align="end"
-            className="min-w-[240px] p-3"
-            trigger={
-              <button
-                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-                style={{ color: "var(--t-secondary)" }}
-              >
-                <Trash2 size={13} />
-                В архив
-              </button>
-            }
-          >
-            <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
-              Архивировать привычку?
+        {/* Category */}
+        <div className="flex items-start gap-3">
+          <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Категория
             </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setArchivePopoverOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => {
-                  handleDelete();
-                  setArchivePopoverOpen(false);
-                }}
-              >
-                Архивировать
-              </Button>
-            </div>
-          </Popover>
+            <Select
+              value={catId}
+              onChange={(v) => {
+                setCatId(v);
+                update({ habitId: habit.habit_id, data: { category_id: v ? Number(v) : null } });
+              }}
+              options={catOptions}
+              placeholder="— без категории —"
+            />
+          </div>
+        </div>
+
+        {/* Reminder */}
+        <div className="flex items-start gap-3">
+          <Clock size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Напоминание
+            </p>
+            <TimeInput
+              value={reminderTime}
+              onChange={(v) => {
+                setReminderTime(v);
+                update({ habitId: habit.habit_id, data: { reminder_time: v || null } });
+              }}
+              size="sm"
+              className="w-[140px]"
+            />
+          </div>
+        </div>
+
+        {/* Note */}
+        <div className="flex items-start gap-3">
+          <AlignLeft size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Заметка
+            </p>
+            <textarea
+              value={note}
+              onChange={(e) => { setNote(e.target.value); debounceSave("note", e.target.value); }}
+              placeholder="Добавить заметку..."
+              rows={3}
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
+              style={{ color: "var(--t-secondary)" }}
+            />
+          </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes slideInPanel {
-          from { transform: translateX(100%); opacity: 0.8; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-        @media (max-width: 1023px) {
-          @keyframes slideInPanel {
-            from { transform: translateY(40px); opacity: 0.8; }
-            to   { transform: translateY(0);    opacity: 1; }
-          }
-        }
-      `}</style>
-    </>
+    </SidePanel>
   );
 }

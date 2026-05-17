@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
 import { Button } from "@/components/primitives/Button";
 import { Popover } from "@/components/primitives/Popover";
+import { SidePanel } from "@/components/primitives/SidePanel";
 
 interface Props {
   task: TaskItem;
@@ -93,13 +94,6 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
     ...(categories ?? []).map((c) => ({ value: String(c.category_id), label: c.title, emoji: c.emoji ?? undefined })),
   ];
 
-  // Close on Escape
-  useEffect(() => {
-    function handler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   // Keep local state in sync if task prop changes (tab switch etc.)
   useEffect(() => {
     setTitle(task.title);
@@ -108,7 +102,6 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
     setCatId(task.category_id ? String(task.category_id) : "");
   }, [task.task_id]);
 
-  // Debounced auto-save for note
   const debounceSave = useCallback((field: "note", value: string) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
@@ -145,26 +138,12 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
   const isOverdue  = dueDate ? new Date(dueDate + "T00:00:00") < new Date(new Date().toDateString()) && !isDone : false;
 
   return (
-    <>
-      {/* Mobile backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div
-        className={clsx(
-          "fixed z-40 bg-[#161d2b] border-l border-white/[0.07] shadow-2xl flex flex-col",
-          // Mobile: bottom sheet / full screen
-          "inset-x-0 bottom-0 top-[20%] rounded-t-2xl",
-          // Desktop: right side panel
-          "lg:inset-x-auto lg:top-0 lg:bottom-0 lg:right-0 lg:w-[400px] lg:rounded-none",
-        )}
-        style={{ animation: "slideInPanel 0.2s ease-out" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+    <SidePanel
+      open
+      onClose={onClose}
+      ariaLabel="Детали задачи"
+      header={
+        <>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               {isDone ? "Выполнено" : isArchived ? "Архив" : task.is_recurring ? "Повторяющаяся" : "Задача"}
@@ -180,151 +159,10 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
           >
             <X size={15} />
           </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Title — inline editable */}
-          <div>
-            <input
-              ref={titleRef}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onFocus={() => setTitleFocused(true)}
-              onBlur={() => { setTitleFocused(false); saveTitle(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); } if (e.key === "Escape") { setTitle(task.title); titleRef.current?.blur(); } }}
-              disabled={isDone || isArchived || task.is_recurring}
-              className={clsx(
-                "w-full text-[18px] font-semibold bg-transparent outline-none resize-none leading-snug",
-                "border-b transition-colors pb-1",
-                titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]",
-                isDone || isArchived ? "line-through opacity-50" : ""
-              )}
-              style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
-            />
-          </div>
-
-          {/* Due date */}
-          <div className="flex items-start gap-3">
-            <Calendar size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Срок</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => saveDueDate(e.target.value)}
-                  disabled={isDone || isArchived}
-                  className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark] disabled:opacity-50"
-                  style={{ color: "var(--t-secondary)" }}
-                />
-                {dateLabel && (
-                  <span className={clsx(
-                    "text-[12px] font-medium",
-                    isOverdue ? "text-red-400" : dueDate === new Date().toISOString().slice(0,10) ? "text-amber-400" : ""
-                  )} style={{ color: (!isOverdue && dueDate !== new Date().toISOString().slice(0,10)) ? "var(--t-muted)" : undefined }}>
-                    {dateLabel}
-                  </span>
-                )}
-                {dueDate && (
-                  <button
-                    onClick={() => saveDueDate("")}
-                    className="text-[11px] hover:text-red-400 transition-colors"
-                    style={{ color: "var(--t-faint)" }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Reminders */}
-          {!task.is_recurring && (
-            <TaskReminders
-              taskId={task.task_id}
-              dueDate={task.due_date}
-              dueTime={task.due_time ?? null}
-              disabled={isDone || isArchived}
-            />
-          )}
-
-          {/* Category */}
-          <div className="flex items-start gap-3">
-            <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Категория</p>
-              <Select
-                value={catId}
-                onChange={saveCategoryId}
-                options={catOptions}
-                placeholder="— без категории —"
-                disabled={isDone || isArchived}
-              />
-            </div>
-          </div>
-
-          {/* Project tags */}
-          {projectTags && projectTags.length > 0 && (
-            <div className="flex items-start gap-3">
-              <Tag size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
-              <div className="flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Теги</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {projectTags.map((tag) => {
-                    const isActive = (task.tag_ids ?? []).includes(tag.id);
-                    const colorCls = TAG_COLOR_CLASSES[tag.color ?? "gray"] ?? TAG_COLOR_CLASSES.gray;
-                    return (
-                      <button
-                        key={tag.id}
-                        onClick={() => isActive ? removeTag({ tagId: tag.id }) : addTag({ tagId: tag.id })}
-                        disabled={isDone || isArchived}
-                        className={clsx(
-                          "text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:opacity-50",
-                          isActive ? colorCls : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60"
-                        )}
-                      >
-                        {tag.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Note */}
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Заметка</p>
-            <RichNoteEditor
-              value={note}
-              onChange={(md) => { setNote(md); debounceSave("note", md); }}
-              disabled={isDone || isArchived}
-              placeholder="Добавить заметку…"
-              minHeight={120}
-            />
-          </div>
-
-          {/* Attachments — only for non-recurring tasks */}
-          {!task.is_recurring && (
-            <div className="flex items-start gap-3">
-              <Paperclip size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
-              <div className="flex-1">
-                <TaskAttachments taskId={task.task_id} disabled={isDone || isArchived} />
-              </div>
-            </div>
-          )}
-
-          {/* Metadata */}
-          {task.completed_at && (
-            <div className="text-[12px]" style={{ color: "var(--t-faint)" }}>
-              Выполнено: {new Date(task.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
-            </div>
-          )}
-        </div>
-
-        {/* Action bar */}
-        <div className="shrink-0 border-t border-white/[0.06] px-5 py-4 flex items-center gap-2">
+        </>
+      }
+      footer={
+        <div className="flex items-center gap-2 w-full">
           {!isDone && !isArchived && (
             <Button
               variant="primary"
@@ -385,41 +223,160 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
                 Удалить задачу?
               </p>
               <div className="flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setDeletePopoverOpen(false)}
-                >
+                <Button size="sm" variant="secondary" onClick={() => setDeletePopoverOpen(false)}>
                   Отмена
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => {
-                    handleDelete();
-                    setDeletePopoverOpen(false);
-                  }}
-                >
+                <Button size="sm" variant="destructive" onClick={() => { handleDelete(); setDeletePopoverOpen(false); }}>
                   Удалить
                 </Button>
               </div>
             </Popover>
           )}
         </div>
-      </div>
+      }
+    >
+      <div className="p-5 space-y-5">
+        {/* Title — inline editable */}
+        <div>
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setTitleFocused(true)}
+            onBlur={() => { setTitleFocused(false); saveTitle(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); titleRef.current?.blur(); }
+              if (e.key === "Escape") { setTitle(task.title); titleRef.current?.blur(); }
+            }}
+            disabled={isDone || isArchived || task.is_recurring}
+            className={clsx(
+              "w-full text-[18px] font-semibold bg-transparent outline-none resize-none leading-snug",
+              "border-b transition-colors pb-1",
+              titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]",
+              isDone || isArchived ? "line-through opacity-50" : ""
+            )}
+            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
+          />
+        </div>
 
-      <style>{`
-        @keyframes slideInPanel {
-          from { transform: translateX(100%); opacity: 0.8; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-        @media (max-width: 1023px) {
-          @keyframes slideInPanel {
-            from { transform: translateY(40px); opacity: 0.8; }
-            to   { transform: translateY(0);    opacity: 1; }
-          }
-        }
-      `}</style>
-    </>
+        {/* Due date */}
+        <div className="flex items-start gap-3">
+          <Calendar size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Срок</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => saveDueDate(e.target.value)}
+                disabled={isDone || isArchived}
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark] disabled:opacity-50"
+                style={{ color: "var(--t-secondary)" }}
+              />
+              {dateLabel && (
+                <span className={clsx(
+                  "text-[12px] font-medium",
+                  isOverdue ? "text-red-400" : dueDate === new Date().toISOString().slice(0,10) ? "text-amber-400" : ""
+                )} style={{ color: (!isOverdue && dueDate !== new Date().toISOString().slice(0,10)) ? "var(--t-muted)" : undefined }}>
+                  {dateLabel}
+                </span>
+              )}
+              {dueDate && (
+                <button
+                  onClick={() => saveDueDate("")}
+                  className="text-[11px] hover:text-red-400 transition-colors"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reminders */}
+        {!task.is_recurring && (
+          <TaskReminders
+            taskId={task.task_id}
+            dueDate={task.due_date}
+            dueTime={task.due_time ?? null}
+            disabled={isDone || isArchived}
+          />
+        )}
+
+        {/* Category */}
+        <div className="flex items-start gap-3">
+          <Tag size={15} className="mt-2.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Категория</p>
+            <Select
+              value={catId}
+              onChange={saveCategoryId}
+              options={catOptions}
+              placeholder="— без категории —"
+              disabled={isDone || isArchived}
+            />
+          </div>
+        </div>
+
+        {/* Project tags */}
+        {projectTags && projectTags.length > 0 && (
+          <div className="flex items-start gap-3">
+            <Tag size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
+            <div className="flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Теги</p>
+              <div className="flex flex-wrap gap-1.5">
+                {projectTags.map((tag) => {
+                  const isActive = (task.tag_ids ?? []).includes(tag.id);
+                  const colorCls = TAG_COLOR_CLASSES[tag.color ?? "gray"] ?? TAG_COLOR_CLASSES.gray;
+                  return (
+                    <button
+                      key={tag.id}
+                      onClick={() => isActive ? removeTag({ tagId: tag.id }) : addTag({ tagId: tag.id })}
+                      disabled={isDone || isArchived}
+                      className={clsx(
+                        "text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:opacity-50",
+                        isActive ? colorCls : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/60"
+                      )}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Note */}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>Заметка</p>
+          <RichNoteEditor
+            value={note}
+            onChange={(md) => { setNote(md); debounceSave("note", md); }}
+            disabled={isDone || isArchived}
+            placeholder="Добавить заметку…"
+            minHeight={120}
+          />
+        </div>
+
+        {/* Attachments */}
+        {!task.is_recurring && (
+          <div className="flex items-start gap-3">
+            <Paperclip size={15} className="mt-1 shrink-0" style={{ color: "var(--t-faint)" }} />
+            <div className="flex-1">
+              <TaskAttachments taskId={task.task_id} disabled={isDone || isArchived} />
+            </div>
+          </div>
+        )}
+
+        {/* Metadata */}
+        {task.completed_at && (
+          <div className="text-[12px]" style={{ color: "var(--t-faint)" }}>
+            Выполнено: {new Date(task.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        )}
+      </div>
+    </SidePanel>
   );
 }
