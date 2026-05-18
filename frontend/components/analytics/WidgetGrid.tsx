@@ -8,6 +8,7 @@ import "react-resizable/css/styles.css";
 import { WidgetCard } from "./WidgetCard";
 import { getWidgetDef } from "./registry";
 import type { WidgetInstance } from "./types";
+import { ScaleContext } from "@/components/primitives/ScaleContext";
 
 // ESM default export has mismatched TS types — cast to any to bypass
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,6 +17,11 @@ const GridLayout = GridLayoutLib as any;
 const COLS = 4;
 const ROW_H = 80;
 const MARGIN: [number, number] = [16, 16];
+
+function widgetScale(w: number, h: number, defaultW: number, defaultH: number): number {
+  const raw = Math.sqrt((w * h) / (defaultW * defaultH));
+  return Math.max(0.65, Math.min(2.5, raw));
+}
 
 interface WidgetGridProps {
   instances: WidgetInstance[];
@@ -175,17 +181,20 @@ export function WidgetGrid({
           const def = getWidgetDef(instance.widgetId);
           if (!def) return null;
           const Widget = def.component;
+          const scale = widgetScale(instance.w, instance.h, def.defaultW ?? 2, def.defaultH ?? 2);
           return (
             <div key={instance.instanceId}>
-              <WidgetCard
-                instance={instance}
-                def={def}
-                editing={editing}
-                onRemove={() => onRemove(instance.instanceId)}
-                onRename={(title) => onRename(instance.instanceId, title)}
-              >
-                <Widget instanceId={instance.instanceId} />
-              </WidgetCard>
+              <ScaleContext.Provider value={scale}>
+                <WidgetCard
+                  instance={instance}
+                  def={def}
+                  editing={editing}
+                  onRemove={() => onRemove(instance.instanceId)}
+                  onRename={(title) => onRename(instance.instanceId, title)}
+                >
+                  <Widget instanceId={instance.instanceId} />
+                </WidgetCard>
+              </ScaleContext.Provider>
             </div>
           );
         })}

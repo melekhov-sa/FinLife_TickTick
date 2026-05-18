@@ -17,7 +17,7 @@ interface GoalsResponse {
 }
 
 const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
+  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
 };
 
 function fmt(n: number) {

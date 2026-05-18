@@ -2,8 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { usePrimaryCurrency } from "../usePrimaryCurrency";
 import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
+
+const CURRENCY_SYM: Record<string, string> = {
+  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
+};
 
 interface SubsResponse {
   total_monthly: number;
@@ -33,6 +38,8 @@ export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
     queryFn: () => api.get<SubsResponse>("/api/v2/analytics/subscriptions-analytics"),
     staleTime: 10 * 60 * 1000,
   });
+  const currency = usePrimaryCurrency();
+  const sym = CURRENCY_SYM[currency] ?? currency;
 
   if (isLoading || !data) return <Skeleton />;
 
@@ -42,7 +49,7 @@ export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
     <div className="h-full flex flex-col justify-center gap-2">
       <StatBlock
         size="hero"
-        value={`₴ ${total_monthly.toLocaleString("uk-UA")}`}
+        value={`${sym} ${total_monthly.toLocaleString("ru-RU")}`}
         sub={`${count} ${pluralize(count)} · в месяц`}
       />
       {expiring.length > 0 && (

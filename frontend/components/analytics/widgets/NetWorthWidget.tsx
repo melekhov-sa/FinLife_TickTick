@@ -1,11 +1,16 @@
 "use client";
 
 import { useDashboard } from "@/hooks/useDashboard";
+import { usePrimaryCurrency } from "../usePrimaryCurrency";
 import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
 
+const CURRENCY_SYM: Record<string, string> = {
+  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
+};
+
 function fmt(n: number) {
-  return Math.abs(n).toLocaleString("uk-UA", { maximumFractionDigits: 0 });
+  return Math.abs(n).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 }
 
 function Skeleton() {
@@ -19,6 +24,8 @@ function Skeleton() {
 
 export function NetWorthWidget({ instanceId: _ }: WidgetProps) {
   const { data, isLoading } = useDashboard();
+  const currency = usePrimaryCurrency();
+  const sym = CURRENCY_SYM[currency] ?? currency;
 
   if (isLoading || !data) return <Skeleton />;
 
@@ -27,7 +34,7 @@ export function NetWorthWidget({ instanceId: _ }: WidgetProps) {
   const isNeg = total < 0;
 
   const deltaLabel = capital_delta_30 != null && capital_delta_30 !== 0
-    ? `${capital_delta_30 >= 0 ? "+" : "−"}₴ ${fmt(capital_delta_30)}`
+    ? `${capital_delta_30 >= 0 ? "+" : "−"}${sym} ${fmt(capital_delta_30)}`
     : null;
 
   return (
@@ -35,7 +42,7 @@ export function NetWorthWidget({ instanceId: _ }: WidgetProps) {
       <StatBlock
         size="hero"
         tone={isNeg ? "danger" : "neutral"}
-        value={`${isNeg ? "−" : ""}₴ ${fmt(total)}`}
+        value={`${isNeg ? "−" : ""}${sym} ${fmt(total)}`}
         sub="регулярные + накопления"
         delta={deltaLabel ? { label: deltaLabel, hint: "за 30 дней" } : undefined}
       />
@@ -44,7 +51,7 @@ export function NetWorthWidget({ instanceId: _ }: WidgetProps) {
           className="text-[11px] tabular-nums"
           style={{ color: credit_total < 0 ? "var(--c-danger-ink)" : "var(--t-muted)" }}
         >
-          кредит: {credit_total < 0 ? "−" : "+"}₴&nbsp;{fmt(credit_total)}
+          {"кредит:"} {credit_total < 0 ? "−" : "+"}{sym}&nbsp;{fmt(credit_total)}
         </span>
       )}
     </div>

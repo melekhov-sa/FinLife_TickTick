@@ -3,6 +3,7 @@
 import { forwardRef, type ReactNode, type CSSProperties } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWidgetScale } from "./ScaleContext";
 
 export type StatBlockSize = "hero" | "regular" | "compact";
 export type StatBlockTone = "neutral" | "success" | "danger" | "muted";
@@ -63,7 +64,16 @@ export const StatBlock = forwardRef<HTMLDivElement, StatBlockProps>(function Sta
   },
   ref,
 ) {
-  const tok = SIZE[size];
+  const scale = useWidgetScale();
+  const base = SIZE[size];
+  const tok = {
+    labelFz:  base.labelFz  * scale,
+    valueFz:  base.valueFz  * scale,
+    subFz:    base.subFz    * scale,
+    deltaFz:  base.deltaFz  * scale,
+    gap:      base.gap      * scale,
+    valueGap: base.valueGap * scale,
+  };
   const valueColor = TONE_COLOR[tone];
 
   const trend = delta

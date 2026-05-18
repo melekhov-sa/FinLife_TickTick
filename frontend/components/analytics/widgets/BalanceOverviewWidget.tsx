@@ -5,11 +5,11 @@ import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
+  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
 };
 
 function fmt(n: number) {
-  return Math.abs(n).toLocaleString("uk-UA", { maximumFractionDigits: 0 });
+  return Math.abs(n).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
 }
 
 function Skeleton() {

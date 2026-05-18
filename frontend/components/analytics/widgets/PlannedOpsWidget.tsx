@@ -10,7 +10,7 @@ interface PlannedOp {
   is_overdue: boolean; wallet_id: number | null; category_id: number | null;
 }
 
-const CURRENCY_SYM: Record<string, string> = { UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
+const CURRENCY_SYM: Record<string, string> = { UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;

@@ -9,7 +9,7 @@ import type { WidgetProps } from "../types";
 interface WeekdayItem { day: string; avg: number; total: number; count: number; }
 interface WeekdayResponse { weekdays: WeekdayItem[]; }
 
-const CURRENCY_SYM: Record<string, string> = { UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
+const CURRENCY_SYM: Record<string, string> = { UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
 
 function fmt(n: number) {
   if (n >= 1_000) return `${Math.round(n / 1_000)}к`;
