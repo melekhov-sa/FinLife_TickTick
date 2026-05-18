@@ -87,22 +87,39 @@ export function WidgetGrid({
     );
   }
 
-  if (!mounted) {
+  // Mobile: single-column stack, full width, height from registry defaultH
+  const isMobile = mounted && containerWidth > 0 && containerWidth < 768;
+
+  if (!mounted || isMobile) {
     return (
-      <div ref={containerRef} className="grid gap-4" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
+      <div ref={containerRef} className="flex flex-col gap-4">
         {instances.map((inst) => {
           const def = getWidgetDef(inst.widgetId);
           if (!def) return null;
+          const h = def.defaultH ?? inst.h;
+          const cardHeight = h * ROW_H + (h - 1) * MARGIN[1];
+          if (!mounted) {
+            return (
+              <div
+                key={inst.instanceId}
+                className="rounded-2xl animate-pulse"
+                style={{ height: cardHeight, background: "var(--c-neutral-bg)" }}
+              />
+            );
+          }
+          const Widget = def.component;
           return (
-            <div
-              key={inst.instanceId}
-              className="rounded-2xl animate-pulse"
-              style={{
-                gridColumn: `span ${inst.w}`,
-                minHeight: inst.h * ROW_H,
-                background: "var(--c-neutral-bg)",
-              }}
-            />
+            <div key={inst.instanceId} style={{ height: cardHeight }}>
+              <WidgetCard
+                instance={inst}
+                def={def}
+                editing={editing}
+                onRemove={() => onRemove(inst.instanceId)}
+                onRename={(title) => onRename(inst.instanceId, title)}
+              >
+                <Widget instanceId={inst.instanceId} />
+              </WidgetCard>
+            </div>
           );
         })}
       </div>

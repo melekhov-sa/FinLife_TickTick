@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
           </div>
         }
       />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6">
         <WidgetGrid
           instances={instances}
           editing={editing}
