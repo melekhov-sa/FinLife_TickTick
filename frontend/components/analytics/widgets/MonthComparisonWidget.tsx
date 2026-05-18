@@ -95,13 +95,18 @@ export function MonthComparisonWidget({ instanceId: _ }: WidgetProps) {
   const currency = usePrimaryCurrency();
   const sym = CURRENCY_SYM[currency] ?? currency;
 
-  const { data, isLoading } = useQuery<MonthComparisonResponse>({
+  const { data, isLoading, isError } = useQuery<MonthComparisonResponse>({
     queryKey: ["analytics-month-comparison"],
     queryFn: () => api.get<MonthComparisonResponse>("/api/v2/analytics/month-comparison"),
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { current, previous } = data;
 

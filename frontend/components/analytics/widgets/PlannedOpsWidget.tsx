@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { usePrimaryCurrencySym } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface PlannedOp {
@@ -45,13 +46,19 @@ function Skeleton() {
 }
 
 export function PlannedOpsWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useQuery<PlannedOp[]>({
+  const sym = usePrimaryCurrencySym();
+  const { data, isLoading, isError } = useQuery<PlannedOp[]>({
     queryKey: ["planned-ops-upcoming"],
     queryFn: () => api.get<PlannedOp[]>("/api/v2/planned-ops/upcoming"),
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   if (data.length === 0) {
     return (
@@ -70,7 +77,7 @@ export function PlannedOpsWidget({ instanceId: _ }: WidgetProps) {
         {data.slice(0, 6).map((op) => {
           const amount = parseFloat(op.amount);
           const isExpense = op.kind === "EXPENSE";
-          const sym = "₴";
+
           return (
             <div key={op.id} className="flex items-center gap-2 min-w-0">
               <div

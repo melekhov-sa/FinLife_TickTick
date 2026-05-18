@@ -83,11 +83,16 @@ function ProgressColumn({ label, done, total, pct, subText, subColor, scale, bor
 }
 
 export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
-  const { data: dash, isLoading: loadDash } = useDashboard();
-  const { data: habits, isLoading: loadHabits } = useHabits();
+  const { data: dash, isLoading: loadDash, isError: errDash } = useDashboard();
+  const { data: habits, isLoading: loadHabits, isError: errHabits } = useHabits();
   const scale = useWidgetScale();
 
-  if (loadDash || loadHabits || !dash || !habits) return <Skeleton />;
+  if (loadDash || loadHabits) return <Skeleton />;
+  if (errDash || errHabits || !dash || !habits) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { total, done, left } = dash.today.progress;
   const overdue = dash.today.overdue.length;

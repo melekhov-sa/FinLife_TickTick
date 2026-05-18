@@ -14,9 +14,14 @@ function Skeleton() {
 }
 
 export function TasksTodayWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useDashboard();
+  const { data, isLoading, isError } = useDashboard();
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { total, done, left } = data.today.progress;
   const overdue = data.today.overdue.length;

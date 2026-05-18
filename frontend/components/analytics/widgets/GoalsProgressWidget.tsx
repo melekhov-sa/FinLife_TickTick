@@ -41,13 +41,18 @@ function Skeleton() {
 }
 
 export function GoalsProgressWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useQuery<GoalsResponse>({
+  const { data, isLoading, isError } = useQuery<GoalsResponse>({
     queryKey: ["analytics-goals-progress"],
     queryFn: () => api.get<GoalsResponse>("/api/v2/analytics/goals-progress"),
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const goals = data.goals;
 

@@ -19,11 +19,16 @@ function Skeleton() {
 }
 
 export function NetWorthWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useDashboard();
+  const { data, isLoading, isError } = useDashboard();
   const currency = usePrimaryCurrency();
   const sym = CURRENCY_SYM[currency] ?? currency;
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { regular_total, savings_total, credit_total, capital_delta_30 } = data.fin_state;
   const total = regular_total + savings_total;

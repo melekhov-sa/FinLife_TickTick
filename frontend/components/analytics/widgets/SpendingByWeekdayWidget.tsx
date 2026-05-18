@@ -31,13 +31,18 @@ export function SpendingByWeekdayWidget({ instanceId: _ }: WidgetProps) {
   const currency = usePrimaryCurrency();
   const sym = CURRENCY_SYM[currency] ?? currency;
 
-  const { data, isLoading } = useQuery<WeekdayResponse>({
+  const { data, isLoading, isError } = useQuery<WeekdayResponse>({
     queryKey: ["analytics-spending-weekday", currency],
     queryFn: () => api.get<WeekdayResponse>(`/api/v2/analytics/spending-by-weekday?currency=${currency}`),
     staleTime: 10 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { weekdays } = data;
   if (!weekdays.length) {

@@ -29,7 +29,7 @@ function pluralize(n: number) {
 }
 
 export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useQuery<SubsResponse>({
+  const { data, isLoading, isError } = useQuery<SubsResponse>({
     queryKey: ["analytics-subscriptions"],
     queryFn: () => api.get<SubsResponse>("/api/v2/analytics/subscriptions-analytics"),
     staleTime: 10 * 60 * 1000,
@@ -37,7 +37,12 @@ export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
   const currency = usePrimaryCurrency();
   const sym = CURRENCY_SYM[currency] ?? currency;
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { total_monthly, count, expiring } = data;
 

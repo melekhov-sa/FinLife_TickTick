@@ -71,13 +71,18 @@ export function BudgetOverviewWidget({ instanceId: _ }: WidgetProps) {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const { data, isLoading } = useQuery<BudgetResponse>({
+  const { data, isLoading, isError } = useQuery<BudgetResponse>({
     queryKey: ["analytics-budget", year, month],
     queryFn: () => api.get<BudgetResponse>(`/api/v2/budget?year=${year}&month=${month}`),
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { period_label, income_total, expense_total } = data;
   const net = income_total.fact - expense_total.fact;

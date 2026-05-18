@@ -44,13 +44,18 @@ export function WalletBalancesWidget({ instanceId: _ }: WidgetProps) {
   const currency = usePrimaryCurrency();
   const sym = CURRENCY_SYM[currency] ?? currency;
 
-  const { data, isLoading } = useQuery<WalletBalancesResponse>({
+  const { data, isLoading, isError } = useQuery<WalletBalancesResponse>({
     queryKey: ["analytics-wallet-balances", currency],
     queryFn: () => api.get<WalletBalancesResponse>(`/api/v2/analytics/wallet-balances?currency=${currency}`),
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { wallets, total, balance_trend } = data;
   const points = balance_trend.slice(-6).map((p) => ({

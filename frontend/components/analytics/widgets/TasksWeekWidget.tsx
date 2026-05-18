@@ -27,9 +27,14 @@ function Skeleton() {
 }
 
 export function TasksWeekWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useProductivity();
+  const { data, isLoading, isError } = useProductivity();
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { weekly_trend, done_7d, velocity_7d } = data.tasks;
   const points = weekly_trend.slice(-8);

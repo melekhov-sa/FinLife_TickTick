@@ -14,9 +14,14 @@ function Skeleton() {
 }
 
 export function TasksOverdueWidget({ instanceId: _ }: WidgetProps) {
-  const { data, isLoading } = useProductivity();
+  const { data, isLoading, isError } = useProductivity();
 
-  if (isLoading || !data) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !data) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const { overdue, active, done_30d } = data.tasks;
   const allGood = overdue === 0;

@@ -14,9 +14,14 @@ function Skeleton() {
 }
 
 export function HabitsCompletionWidget({ instanceId: _ }: WidgetProps) {
-  const { data: habits, isLoading } = useHabits();
+  const { data: habits, isLoading, isError } = useHabits();
 
-  if (isLoading || !habits) return <Skeleton />;
+  if (isLoading) return <Skeleton />;
+  if (isError || !habits) return (
+    <div className="h-full flex items-center justify-center">
+      <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Не удалось загрузить данные</p>
+    </div>
+  );
 
   const scheduled = habits.filter((h) => h.scheduled_today);
   const done = habits.filter((h) => h.done_today && h.scheduled_today);
