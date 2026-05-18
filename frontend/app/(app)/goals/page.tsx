@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
 import { Card } from "@/components/primitives/Card";
 import { Skeleton } from "@/components/primitives/Skeleton";
-import { ProgressBar } from "@/components/primitives/ProgressBar";
+import { ProgressRing } from "@/components/primitives/ProgressRing";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
@@ -109,117 +109,137 @@ function GoalCard({
   onUnarchive: (goalId: number) => void;
 }) {
   const pct = Math.min(goal.percent ?? 0, 100);
+  const isComplete = pct >= 100;
+  const sym = currencySymbol(goal.currency);
   const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
 
   return (
     <div className={goal.is_archived ? "opacity-60" : undefined}>
-    <Card padding="lg" className="space-y-3 group/card">
-      {/* Title row */}
-      <div className="flex items-start justify-between gap-2">
-        <h3
-          className="text-[15px] font-semibold leading-snug"
-          style={{ color: goal.is_archived ? "var(--t-faint)" : "var(--t-primary)", letterSpacing: "-0.01em" }}
-        >
-          {goal.title}
-        </h3>
-        <div className="flex items-center gap-1 shrink-0">
-          {goal.is_system && <Badge variant="warning" size="sm">Системная</Badge>}
-          {goal.is_archived && <Badge variant="neutral" size="sm">Архив</Badge>}
+      <Card padding="lg" className="group/card">
+        <div className="flex items-start gap-4">
+          {/* Leading: ProgressRing or accent plate */}
+          <div className="shrink-0">
+            {goal.target_amount ? (
+              <ProgressRing
+                value={pct}
+                max={100}
+                size={64}
+                color={isComplete ? "success" : "accent"}
+                ariaLabel={`Прогресс ${pct}%`}
+                center={
+                  <span style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: isComplete ? "var(--c-success-ink)" : "var(--t-primary)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}>
+                    {pct}%
+                  </span>
+                }
+              />
+            ) : (
+              <div
+                className="flex items-center justify-center"
+                style={{ width: 64, height: 64, borderRadius: 16, background: "var(--app-accent-weak)", fontSize: 28 }}
+              >
+                🎯
+              </div>
+            )}
+          </div>
 
-          {/* Action buttons — shown on hover for non-system goals */}
-          {!goal.is_system && (
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
-              {goal.is_archived ? (
-                <button
-                  onClick={() => onUnarchive(goal.goal_id)}
-                  title="Восстановить"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-emerald-500/15"
-                  style={{ color: "var(--t-faint)" }}
-                >
-                  <ArchiveRestore size={13} />
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => onEdit(goal)}
-                    title="Редактировать"
-                    className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.07]"
-                    style={{ color: "var(--t-faint)" }}
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <Popover
-                    open={archivePopoverOpen}
-                    onOpenChange={setArchivePopoverOpen}
-                    side="bottom"
-                    align="end"
-                    className="min-w-[220px] p-3"
-                    trigger={
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Title row */}
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <h3
+                className="text-[15px] font-semibold leading-snug truncate"
+                style={{ color: goal.is_archived ? "var(--t-faint)" : "var(--t-primary)", letterSpacing: "-0.01em" }}
+              >
+                {goal.title}
+              </h3>
+              <div className="flex items-center gap-1 shrink-0">
+                {goal.is_system && <Badge variant="warning" size="sm">Системная</Badge>}
+                {goal.is_archived && <Badge variant="neutral" size="sm">Архив</Badge>}
+
+                {!goal.is_system && (
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    {goal.is_archived ? (
                       <button
-                        title="В архив"
-                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10"
+                        onClick={() => onUnarchive(goal.goal_id)}
+                        title="Восстановить"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-emerald-500/15"
                         style={{ color: "var(--t-faint)" }}
                       >
-                        <Archive size={12} />
+                        <ArchiveRestore size={13} />
                       </button>
-                    }
-                  >
-                    <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
-                      Архивировать «{goal.title}»?
-                    </p>
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setArchivePopoverOpen(false)}>
-                        Отмена
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          onArchive(goal.goal_id);
-                          setArchivePopoverOpen(false);
-                        }}
-                      >
-                        Архивировать
-                      </Button>
-                    </div>
-                  </Popover>
-                </>
-              )}
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => onEdit(goal)}
+                          title="Редактировать"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.07]"
+                          style={{ color: "var(--t-faint)" }}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <Popover
+                          open={archivePopoverOpen}
+                          onOpenChange={setArchivePopoverOpen}
+                          side="bottom"
+                          align="end"
+                          className="min-w-[220px] p-3"
+                          trigger={
+                            <button
+                              title="В архив"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-red-500/10"
+                              style={{ color: "var(--t-faint)" }}
+                            >
+                              <Archive size={12} />
+                            </button>
+                          }
+                        >
+                          <p className="text-[13px] font-medium mb-3" style={{ color: "var(--t-primary)" }}>
+                            Архивировать «{goal.title}»?
+                          </p>
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => setArchivePopoverOpen(false)}>
+                              Отмена
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                onArchive(goal.goal_id);
+                                setArchivePopoverOpen(false);
+                              }}
+                            >
+                              Архивировать
+                            </Button>
+                          </div>
+                        </Popover>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Progress bar (only when target is set) */}
-      {goal.target_amount ? (
-        <div className="space-y-1.5">
-          <ProgressBar value={pct} max={100} variant="primary" size="md" />
-          <div className="flex items-center justify-between text-[12px]">
-            <span style={{ color: "var(--t-muted)" }}>
-              {formatAmount(goal.current_balance)} / {formatAmount(goal.target_amount)}{" "}
-              {currencySymbol(goal.currency)}
-            </span>
-            <span className="font-semibold" style={{ color: "var(--t-secondary)" }}>
-              {goal.percent ?? 0}%
-            </span>
+            {/* Amounts */}
+            <p className="text-[12px] tabular-nums" style={{ color: "var(--t-muted)", fontVariantNumeric: "tabular-nums" }}>
+              {goal.target_amount ? (
+                <>{formatAmount(goal.current_balance)} / {formatAmount(goal.target_amount)} {sym}</>
+              ) : (
+                <>{formatAmount(goal.current_balance)} {sym}</>
+              )}
+            </p>
+
+            {/* Footer */}
+            <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+              {goal.wallet_count}{" "}
+              {goal.wallet_count === 1 ? "кошелёк" : goal.wallet_count >= 2 && goal.wallet_count <= 4 ? "кошелька" : "кошельков"}
+            </p>
           </div>
         </div>
-      ) : (
-        <p className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--t-secondary)" }}>
-          {formatAmount(goal.current_balance)} {currencySymbol(goal.currency)}
-        </p>
-      )}
-
-      {/* Footer */}
-      <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
-        {goal.wallet_count}{" "}
-        {goal.wallet_count === 1
-          ? "кошелёк"
-          : goal.wallet_count >= 2 && goal.wallet_count <= 4
-          ? "кошелька"
-          : "кошельков"}
-      </p>
-    </Card>
+      </Card>
     </div>
   );
 }

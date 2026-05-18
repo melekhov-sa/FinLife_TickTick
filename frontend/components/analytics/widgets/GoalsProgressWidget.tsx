@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { GoalCard } from "@/components/primitives/GoalCard";
 import { CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
@@ -17,7 +18,7 @@ interface GoalsResponse {
   goals: GoalItem[];
 }
 
-function fmt(n: number) {
+function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}к`;
   return String(Math.round(n));
@@ -25,14 +26,14 @@ function fmt(n: number) {
 
 function Skeleton() {
   return (
-    <div className="h-full flex flex-col justify-center gap-3 animate-pulse">
+    <div className="h-full flex flex-col gap-3 animate-pulse">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex flex-col gap-1.5">
-          <div className="flex justify-between">
-            <div className="h-3 w-24 rounded" style={{ background: "var(--c-neutral-bg)" }} />
-            <div className="h-3 w-10 rounded" style={{ background: "var(--c-neutral-bg)" }} />
+        <div key={i} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: "var(--c-neutral-bg)" }}>
+          <div className="w-14 h-14 rounded-full shrink-0" style={{ background: "var(--app-border)" }} />
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="h-3 w-28 rounded" style={{ background: "var(--app-border)" }} />
+            <div className="h-2.5 w-20 rounded" style={{ background: "var(--app-border)" }} />
           </div>
-          <div className="h-1.5 w-full rounded-full" style={{ background: "var(--c-neutral-bg)" }} />
         </div>
       ))}
     </div>
@@ -59,35 +60,21 @@ export function GoalsProgressWidget({ instanceId: _ }: WidgetProps) {
   }
 
   return (
-    <div className="h-full flex flex-col gap-2.5 overflow-hidden">
+    <div className="h-full flex flex-col gap-2 overflow-y-auto">
       {goals.map((goal, i) => {
         const sym = CURRENCY_SYM[goal.currency] ?? goal.currency;
-        const pct = Math.min(goal.percent, 100);
-        const done = pct >= 100;
+        const done = goal.current >= goal.target && goal.target > 0;
         return (
-          <div key={i} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] font-medium truncate" style={{ color: "var(--t-primary)" }}>
-                {done && <span className="mr-1">✅</span>}{goal.title}
-              </span>
-              <span className="text-[11px] tabular-nums shrink-0 font-semibold"
-                style={{ color: done ? "var(--c-success-ink)" : "var(--app-accent)" }}>
-                {pct}%
-              </span>
-            </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
-              <div className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, background: done ? "var(--c-success-ink)" : "var(--app-accent)" }} />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-                {sym}&nbsp;{fmt(goal.current)}
-              </span>
-              <span className="text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
-                {sym}&nbsp;{fmt(goal.target)}
-              </span>
-            </div>
-          </div>
+          <GoalCard
+            key={i}
+            title={goal.title}
+            current={goal.current}
+            target={goal.target}
+            ringSize={52}
+            ringTone={done ? "success" : "accent"}
+            currentNode={<>{sym}{fmt(goal.current)}</>}
+            targetNode={<>{sym}{fmt(goal.target)}</>}
+          />
         );
       })}
     </div>
