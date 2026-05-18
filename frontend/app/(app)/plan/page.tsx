@@ -1053,10 +1053,14 @@ export default function PlanPage() {
       const d = new Date(today + "T00:00:00");
       d.setDate(d.getDate() + i);
       const iso = d.toISOString().slice(0, 10);
+
+      // For "done" tab: stop at future days and skip empty days
+      if (tab === "done" && iso > today) break;
+
       const existing = populatedByDate.get(iso);
       if (existing && existing.entries.length > 0) {
         allDays.push(existing);
-      } else {
+      } else if (tab !== "done") {
         const staticHoliday = getHolidayRU(iso);
         allDays.push({
           date: iso,
@@ -1071,9 +1075,9 @@ export default function PlanPage() {
       }
     }
 
-    // Prepend overdue group if it exists
+    // Prepend overdue group only for active tab
     const overdueGroup = populated.find(g => g.is_overdue_group);
-    if (overdueGroup && overdueGroup.entries.length > 0) {
+    if (tab !== "done" && overdueGroup && overdueGroup.entries.length > 0) {
       allDays.unshift(overdueGroup);
     }
 
@@ -1084,7 +1088,7 @@ export default function PlanPage() {
         e.kind !== "wish" && !hiddenGroups.has(entryGroupType(e.kind))
       ),
     };
-  }, [data]);
+  }, [data, tab]);
 
   const executeInitialValues: CreateOperationInitialValues | undefined = executeEntry
     ? {
@@ -1245,30 +1249,32 @@ export default function PlanPage() {
 
           </div>
           {/* ── Focus filter chips ──────────────────────────────────── */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-wider mr-0.5" style={{ color: "var(--t-faint)" }}>Показать:</span>
-            {ENTRY_GROUP_ORDER.map((g) => {
-              const hidden = hiddenGroups.has(g);
-              return (
-                <button
-                  key={g}
-                  onClick={() => toggleGroup(g)}
-                  className={clsx(
-                    "px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all",
-                    hidden
-                      ? "opacity-40 border-transparent bg-transparent"
-                      : "border-transparent"
-                  )}
-                  style={hidden ? { color: "var(--t-faint)", background: "transparent" } : {
-                    color: "var(--app-accent)",
-                    background: "color-mix(in srgb, var(--app-accent) 12%, transparent)",
-                  }}
-                >
-                  {ENTRY_GROUP_LABELS[g]}
-                </button>
-              );
-            })}
-          </div>
+          {tab === "active" && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-semibold uppercase tracking-wider mr-0.5" style={{ color: "var(--t-faint)" }}>Показать:</span>
+              {ENTRY_GROUP_ORDER.map((g) => {
+                const hidden = hiddenGroups.has(g);
+                return (
+                  <button
+                    key={g}
+                    onClick={() => toggleGroup(g)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all",
+                      hidden
+                        ? "opacity-40 border-transparent bg-transparent"
+                        : "border-transparent"
+                    )}
+                    style={hidden ? { color: "var(--t-faint)", background: "transparent" } : {
+                      color: "var(--app-accent)",
+                      background: "color-mix(in srgb, var(--app-accent) 12%, transparent)",
+                    }}
+                  >
+                    {ENTRY_GROUP_LABELS[g]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── Calendar navigation ───────────────────────────────── */}
           {viewMode === "calendar" && (

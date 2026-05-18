@@ -1,14 +1,11 @@
 "use client";
 
 import { useDashboard } from "@/hooks/useDashboard";
+import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  UAH: "₴",
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  PLN: "zł",
+  UAH: "₴", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
 };
 
 function fmt(n: number) {
@@ -63,48 +60,14 @@ export function BalanceOverviewWidget({ instanceId: _ }: WidgetProps) {
               </p>
             )}
             <div className="grid grid-cols-3 gap-3">
-              {/* Доходы */}
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px]" style={{ color: "var(--t-muted)" }}>
-                  Доходы
-                </span>
-                <span
-                  className="text-[15px] font-semibold tabular-nums"
-                  style={{ color: "var(--c-success-ink)" }}
-                >
-                  +{sym}&nbsp;{fmt(block.income)}
-                </span>
-              </div>
-
-              {/* Расходы */}
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px]" style={{ color: "var(--t-muted)" }}>
-                  Расходы
-                </span>
-                <span
-                  className="text-[15px] font-semibold tabular-nums"
-                  style={{ color: "var(--c-danger-ink)" }}
-                >
-                  -{sym}&nbsp;{fmt(block.expense)}
-                </span>
-              </div>
-
-              {/* Разница */}
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px]" style={{ color: "var(--t-muted)" }}>
-                  Итого
-                </span>
-                <span
-                  className="text-[15px] font-semibold tabular-nums"
-                  style={{
-                    color: isPositive
-                      ? "var(--c-success-ink)"
-                      : "var(--c-danger-ink)",
-                  }}
-                >
-                  {isPositive ? "+" : "-"}{sym}&nbsp;{fmt(block.difference)}
-                </span>
-              </div>
+              <StatBlock size="compact" label="Доходы" tone="success" value={`+${sym} ${fmt(block.income)}`} />
+              <StatBlock size="compact" label="Расходы" tone="danger"  value={`−${sym} ${fmt(block.expense)}`} />
+              <StatBlock
+                size="compact"
+                label="Итого"
+                tone={isPositive ? "success" : "danger"}
+                value={`${isPositive ? "+" : "−"}${sym} ${fmt(block.difference)}`}
+              />
             </div>
           </div>
         );

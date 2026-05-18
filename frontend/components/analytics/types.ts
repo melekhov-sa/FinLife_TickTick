@@ -16,6 +16,8 @@ export interface WidgetDef {
   maxW?: number;
   component: ComponentType<WidgetProps>;
   emoji: string;
+  /** false — убирает padding у body (для графиков край-в-край). По умолчанию true. */
+  bodyPadded?: boolean;
 }
 
 export interface WidgetInstance {

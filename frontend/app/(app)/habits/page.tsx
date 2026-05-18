@@ -47,7 +47,7 @@ function WeekStrip() {
           const dayIdx = (new Date().getDay() + 6 - (days.length - 1 - i)) % 7;
           return (
             <div key={i} className="flex flex-col items-center gap-0.5"
-              title={pct < 0 ? d.day : `${d.day}: ${d.done}/${d.total}`}>
+              title={pct < 0 ? d.date : `${d.date}: ${d.done}/${d.total}`}>
               <div className="w-5 h-5 rounded-full transition-colors" style={{ background: bg }} />
               <span className="text-[8px]" style={{ color: "var(--t-faint)" }}>
                 {WEEK_DAYS[dayIdx]}

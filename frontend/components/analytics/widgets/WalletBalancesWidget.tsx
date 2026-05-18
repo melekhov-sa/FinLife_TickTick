@@ -3,6 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { api } from "@/lib/api";
+import { StatBlock } from "@/components/primitives/StatBlock";
+import {
+  CHART_AXIS,
+  CHART_TOOLTIP_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_PAIR,
+} from "@/components/primitives/charts";
 import { usePrimaryCurrency } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
@@ -50,30 +57,26 @@ export function WalletBalancesWidget({ instanceId: _ }: WidgetProps) {
   const { wallets, total, balance_trend } = data;
   const points = balance_trend.slice(-6).map((p) => ({
     ...p,
-    label: p.month.slice(5), // "MM" from "YYYY-MM"
+    label: p.month.slice(5),
   }));
 
   const first = points[0]?.balance ?? 0;
   const last = points[points.length - 1]?.balance ?? total;
   const delta = last - first;
+  const deltaLabel = points.length >= 2
+    ? `${delta >= 0 ? "+" : ""}${sym}${fmt(delta)}`
+    : null;
 
   return (
-    <div className="h-full flex flex-col gap-2">
+    <div className="h-full flex flex-col gap-2 p-4">
       {/* Total */}
       <div className="shrink-0">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[26px] font-bold tabular-nums leading-none"
-            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
-            {sym}{fmt(total)}
-          </span>
-          {points.length >= 2 && (
-            <span className="text-[11px] font-semibold"
-              style={{ color: delta >= 0 ? "var(--c-success-ink)" : "var(--c-danger-ink)" }}>
-              {delta >= 0 ? "+" : ""}{sym}{fmt(delta)}
-            </span>
-          )}
-        </div>
-        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>суммарный баланс · 6 мес.</span>
+        <StatBlock
+          size="hero"
+          value={`${sym}${fmt(total)}`}
+          sub="суммарный баланс · 6 мес."
+          delta={deltaLabel ? { label: deltaLabel } : undefined}
+        />
       </div>
 
       {/* Trend chart */}
@@ -81,19 +84,18 @@ export function WalletBalancesWidget({ instanceId: _ }: WidgetProps) {
         <div className="flex-1 min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={points} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-              <XAxis dataKey="label" tick={{ fontSize: 9, fill: "var(--t-faint)" }}
+              <XAxis dataKey="label" tick={{ ...CHART_AXIS, fontSize: 9 }}
                 axisLine={false} tickLine={false} />
               <Tooltip
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(v: any) => [typeof v === "number" ? `${sym}${fmt(v)}` : "", "Баланс"]}
-                contentStyle={{
-                  background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
-                  borderRadius: 10, fontSize: 12, color: "var(--t-primary)",
-                }}
+                contentStyle={CHART_TOOLTIP_STYLE}
+                itemStyle={CHART_TOOLTIP_ITEM_STYLE}
               />
               <Line
-                type="monotone" dataKey="balance" stroke="var(--app-accent)"
-                strokeWidth={2} dot={false} activeDot={{ r: 4 }}
+                type="monotone" dataKey="balance" stroke={CHART_PAIR.accent}
+                strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: CHART_PAIR.accent }}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.application.plan import build_plan_view
+from app.application.occurrence_generator import OccurrenceGenerator
 from app.config import get_settings
 
 router = APIRouter()
@@ -73,6 +74,8 @@ def get_plan(
     user_id = get_user_id(request, db)
     today = datetime.now(ZoneInfo(get_settings().TIMEZONE)).date()
     range_days = max(1, min(range, 90))
+
+    OccurrenceGenerator(db).generate_event_occurrences(user_id)
 
     # Calendar mode: explicit start_date (may be before today)
     view_from = today

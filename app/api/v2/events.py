@@ -159,6 +159,10 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
                 detail="Дата окончания не может быть раньше даты начала",
             )
 
+    # Validate recurrence-specific fields
+    if body.freq == "weekly" and not body.rec_weekdays:
+        raise HTTPException(status_code=422, detail="Для еженедельного события выберите хотя бы один день недели")
+
     try:
         recurrence_type = body.freq  # daily, weekly, monthly, yearly, interval
         if not recurrence_type:

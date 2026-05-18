@@ -239,8 +239,8 @@ def analytics_productivity(
             .scalar() or 0
         )
 
-    # Daily habit completion (last 14 days)
-    d14 = today - timedelta(days=13)
+    # Daily habit completion (last 91 days = 13 weeks, covers heatmap)
+    d91 = today - timedelta(days=90)
     daily_habits_raw = (
         db.query(
             HabitOccurrence.scheduled_date,
@@ -249,7 +249,7 @@ def analytics_productivity(
         )
         .filter(
             HabitOccurrence.account_id == user_id,
-            HabitOccurrence.scheduled_date >= d14,
+            HabitOccurrence.scheduled_date >= d91,
             HabitOccurrence.scheduled_date <= today,
         )
         .group_by(HabitOccurrence.scheduled_date)
@@ -257,7 +257,7 @@ def analytics_productivity(
         .all()
     )
     daily_habits = [
-        {"day": r.scheduled_date.strftime("%d.%m"), "done": int(r.done), "total": int(r.total)}
+        {"date": r.scheduled_date.isoformat(), "done": int(r.done), "total": int(r.total)}
         for r in daily_habits_raw
     ]
 

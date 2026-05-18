@@ -44,6 +44,14 @@ const WEEKDAYS = [
   { value: "SU", label: "Вс" },
 ];
 
+const JS_DAY_TO_WEEKDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+function dateToWeekdayCode(iso: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  return JS_DAY_TO_WEEKDAY[d.getDay()] ?? null;
+}
+
 
 const REMINDER_OPTIONS = [
   { value: "", label: "Нет" },
@@ -185,6 +193,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
     if (hasTime && !startTime) custom.start_time = "Укажите время или отключите переключатель";
     if (hasEndDate && !endDate) custom.end_date = "Укажите дату окончания или отключите переключатель";
     if (hasEndDate && endDate && startDate && endDate < startDate) custom.end_date = "Дата окончания не может быть раньше даты начала";
+    if (repeat === "weekly" && recWeekdays.length === 0) custom.rec_weekdays = "Выберите хотя бы один день недели";
 
     const merged = mergeErrors(zodErrs, custom);
     setFieldErrors(merged);
@@ -364,7 +373,14 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
         <label className={labelCls}>Дата *</label>
         <DateInput
           value={startDate}
-          onChange={(v) => { setStartDate(v); clearFieldError("start_date"); }}
+          onChange={(v) => {
+            setStartDate(v);
+            clearFieldError("start_date");
+            if (repeat === "weekly" && recWeekdays.length <= 1) {
+              const code = dateToWeekdayCode(v);
+              if (code) { setRecWeekdays([code]); clearFieldError("rec_weekdays"); }
+            }
+          }}
         />
         {fieldErrors.start_date && <p className={errTextCls}>{fieldErrors.start_date}</p>}
       </div>
@@ -449,7 +465,13 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
               <label className={labelCls}>Повторение</label>
               <Select
                 value={repeat}
-                onChange={(v) => setRepeat(v)}
+                onChange={(v) => {
+                  setRepeat(v);
+                  if (v === "weekly" && recWeekdays.length === 0) {
+                    const code = dateToWeekdayCode(startDate);
+                    if (code) setRecWeekdays([code]);
+                  }
+                }}
                 placeholder="Не повторяется"
                 options={REPEAT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
               />
@@ -458,7 +480,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
             {/* Повторение: дни недели (weekly) */}
             {repeat === "weekly" && (
               <div>
-                <label className={labelCls}>Дни недели</label>
+                <label className={labelCls}>Дни недели *</label>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {WEEKDAYS.map((d) => {
                     const active = recWeekdays.includes(d.value);
@@ -466,16 +488,18 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                       <button
                         key={d.value}
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
                           setRecWeekdays((prev) =>
                             active ? prev.filter((x) => x !== d.value) : [...prev, d.value],
-                          )
-                        }
+                          );
+                          clearFieldError("rec_weekdays");
+                        }}
                         className={clsx(
                           "px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors",
                           active
                             ? "bg-indigo-600 border-indigo-500 text-[#fff]"
                             : "bg-white/[0.05] border-white/[0.08] text-white/50 hover:bg-white/[0.08]",
+                          fieldErrors.rec_weekdays && !active && "border-red-500/50",
                         )}
                       >
                         {d.label}
@@ -483,6 +507,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                     );
                   })}
                 </div>
+                {fieldErrors.rec_weekdays && <p className={errTextCls}>{fieldErrors.rec_weekdays}</p>}
               </div>
             )}
 

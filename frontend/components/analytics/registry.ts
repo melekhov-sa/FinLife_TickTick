@@ -57,6 +57,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 4, minW: 2, minH: 3,
     component: SpendingChartWidget,
     emoji: "📊",
+    bodyPadded: false,
   },
   {
     id: "income-expense-trend",
@@ -66,6 +67,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 4, defaultH: 3, minW: 2, minH: 3,
     component: IncomeTrendWidget,
     emoji: "📈",
+    bodyPadded: false,
   },
   {
     id: "subscriptions-cost",
@@ -95,6 +97,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
     component: TasksWeekWidget,
     emoji: "📋",
+    bodyPadded: false,
   },
   {
     id: "tasks-overdue",
@@ -173,6 +176,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 3,
     component: WalletBalancesWidget,
     emoji: "💳",
+    bodyPadded: false,
   },
   {
     id: "spending-by-weekday",
@@ -182,6 +186,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
     component: SpendingByWeekdayWidget,
     emoji: "📉",
+    bodyPadded: false,
   },
   {
     id: "planned-ops",

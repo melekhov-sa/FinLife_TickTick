@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { api } from "@/lib/api";
+import { BarChart } from "@/components/primitives/charts";
 import { usePrimaryCurrency } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
@@ -50,51 +50,23 @@ export function SpendingByWeekdayWidget({ instanceId: _ }: WidgetProps) {
     );
   }
 
-  const maxAvg = Math.max(...weekdays.map((d) => d.avg), 1);
-  const peakIdx = weekdays.findIndex((d) => d.avg === maxAvg);
+  const barData = weekdays.map((d) => ({ label: d.day, value: d.avg }));
 
   return (
-    <div className="h-full flex flex-col gap-1.5">
-      <div className="flex items-center justify-between shrink-0">
-        <span className="text-[11px] font-semibold" style={{ color: "var(--t-secondary)" }}>Траты по дням недели</span>
-        <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>среднее</span>
-      </div>
-
-      <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={weekdays} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barCategoryGap="20%">
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--t-faint)" }}
-              axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: "var(--t-faint)" }}
-              axisLine={false} tickLine={false} allowDecimals={false}
-              tickFormatter={(v) => fmt(v)} />
-            <Tooltip
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={(v: any) => [typeof v === "number" ? `${sym}${fmt(v)}` : "", "Среднее"]}
-              contentStyle={{
-                background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
-                borderRadius: 10, fontSize: 12, color: "var(--t-primary)",
-              }}
-              cursor={{ fill: "var(--c-neutral-bg)", radius: 4 }}
-            />
-            <Bar dataKey="avg" radius={[4, 4, 0, 0]} maxBarSize={36}>
-              {weekdays.map((_, i) => (
-                <Cell
-                  key={i}
-                  fill={i === peakIdx ? "var(--c-danger-ink)" : "var(--app-accent)"}
-                  fillOpacity={i === peakIdx ? 0.9 : 0.5}
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="shrink-0 text-center">
-        <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>
-          Пик: <strong style={{ color: "var(--c-danger-ink)" }}>{weekdays[peakIdx]?.day}</strong> · {sym}{fmt(maxAvg)}
+    <div className="h-full flex flex-col gap-1 p-4">
+      <div className="flex items-center justify-between shrink-0 mb-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
+          среднее
         </span>
       </div>
+      <BarChart
+        data={barData}
+        height={160}
+        highlightPeak
+        formatValue={(v) => `${sym}${fmt(v)}`}
+        peakCaption={(d) => `Пик: ${d.label} · ${sym}${fmt(d.value)}`}
+        showYAxis
+      />
     </div>
   );
 }

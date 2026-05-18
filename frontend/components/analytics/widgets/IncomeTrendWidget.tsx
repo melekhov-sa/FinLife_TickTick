@@ -1,17 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-} from "recharts";
 import { api } from "@/lib/api";
+import { DualBarChart, CHART_PAIR } from "@/components/primitives/charts";
 import { usePrimaryCurrency } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
@@ -36,11 +27,8 @@ function Skeleton() {
   return (
     <div className="h-full flex items-end gap-1 pb-2 animate-pulse">
       {[60, 80, 45, 90, 70, 55].map((h, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-t"
-          style={{ height: `${h}%`, background: "var(--c-neutral-bg)" }}
-        />
+        <div key={i} className="flex-1 rounded-t"
+          style={{ height: `${h}%`, background: "var(--c-neutral-bg)" }} />
       ))}
     </div>
   );
@@ -53,21 +41,19 @@ export function IncomeTrendWidget({ instanceId: _ }: WidgetProps) {
   const { data, isLoading } = useQuery<MonthPoint[]>({
     queryKey: ["analytics-monthly-trend", currency],
     queryFn: () =>
-      api.get<MonthPoint[]>(
-        `/api/v2/analytics/monthly-trend?months=6&currency=${currency}`,
-      ),
+      api.get<MonthPoint[]>(`/api/v2/analytics/monthly-trend?months=6&currency=${currency}`),
     staleTime: 5 * 60 * 1000,
   });
 
   if (isLoading) return <Skeleton />;
 
   const points = (data ?? []).map((p) => ({
-    ...p,
     label: MONTH_SHORT[p.month.slice(5, 7)] ?? p.month.slice(5, 7),
+    a: p.income,
+    b: p.expense,
   }));
 
-  const hasData = points.some((p) => p.income > 0 || p.expense > 0);
-
+  const hasData = points.some((p) => p.a > 0 || p.b > 0);
   if (!hasData) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -79,60 +65,31 @@ export function IncomeTrendWidget({ instanceId: _ }: WidgetProps) {
   }
 
   const fmt = (n: number) =>
-    n >= 1000
-      ? `${sym}${(n / 1000).toFixed(1)}к`
-      : `${sym}${Math.round(n)}`;
+    n >= 1000 ? `${sym}${(n / 1000).toFixed(1)}к` : `${sym}${Math.round(n)}`;
 
   return (
-    <div className="h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
+    <div className="h-full flex flex-col gap-2 p-4">
+      {/* Legend */}
+      <div className="flex items-center gap-4 shrink-0">
+        <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--t-secondary)" }}>
+          <span className="w-2 h-2 rounded-full" style={{ background: CHART_PAIR.income }} />
+          Доходы
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--t-secondary)" }}>
+          <span className="w-2 h-2 rounded-full" style={{ background: CHART_PAIR.expense }} />
+          Расходы
+        </span>
+      </div>
+
+      <div className="flex-1 min-h-0">
+        <DualBarChart
           data={points}
-          margin={{ top: 4, right: 4, left: -16, bottom: 0 }}
-          barGap={2}
-          barCategoryGap="28%"
-        >
-          <CartesianGrid
-            vertical={false}
-            stroke="var(--app-border)"
-            strokeDasharray="3 3"
-          />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: "var(--t-muted)" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 10, fill: "var(--t-faint)" }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={fmt}
-            width={48}
-          />
-          <Tooltip
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: any, name: any) => [
-              typeof value === "number" ? `${sym} ${value.toLocaleString("uk-UA", { maximumFractionDigits: 0 })}` : "",
-              name === "income" ? "Доходы" : "Расходы",
-            ]}
-            contentStyle={{
-              background: "var(--app-card-bg)",
-              border: "1px solid var(--app-border)",
-              borderRadius: 10,
-              fontSize: 12,
-              color: "var(--t-primary)",
-            }}
-            cursor={{ fill: "var(--c-neutral-bg)", radius: 4 }}
-          />
-          <Legend
-            formatter={(value) => (value === "income" ? "Доходы" : "Расходы")}
-            wrapperStyle={{ fontSize: 11, color: "var(--t-muted)" }}
-          />
-          <Bar dataKey="income" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-          <Bar dataKey="expense" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
-        </BarChart>
-      </ResponsiveContainer>
+          height={200}
+          labelA="Доходы"
+          labelB="Расходы"
+          formatValue={fmt}
+        />
+      </div>
     </div>
   );
 }

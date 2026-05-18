@@ -4,9 +4,12 @@ Occurrence Generator - lazily generates occurrences for habits, task templates, 
 Called when loading pages. Uses recurrence engine to compute dates,
 then inserts missing occurrences into the DB (idempotent - checks before insert).
 """
+import logging
 from datetime import date, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.domain.recurrence import rule_spec_from_db, generate_occurrence_dates
 from app.infrastructure.db.models import (
@@ -238,7 +241,8 @@ class OccurrenceGenerator:
             spec = rule_spec_from_db(rule)
             try:
                 dates = generate_occurrence_dates(spec, window_start, window_end)
-            except ValueError:
+            except ValueError as e:
+                logger.warning("Skipping event %s: invalid recurrence rule: %s", ev.event_id, e)
                 continue
 
             # Get existing dates for this event with source='rule'

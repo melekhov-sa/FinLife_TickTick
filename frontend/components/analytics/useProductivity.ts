@@ -19,7 +19,7 @@ export interface ProductivityData {
     rate_7d: number;
     rate_30d: number;
     best_streak: number;
-    daily_chart: { day: string; done: number; total: number }[];
+    daily_chart: { date: string; done: number; total: number }[];
     top_habits: {
       title: string;
       current_streak: number;

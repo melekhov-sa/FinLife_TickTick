@@ -5,6 +5,14 @@ import {
   ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
 import { useProductivity } from "../useProductivity";
+import { StatBlock } from "@/components/primitives/StatBlock";
+import {
+  CHART_AXIS,
+  CHART_GRID,
+  CHART_TOOLTIP_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_PAIR,
+} from "@/components/primitives/charts";
 import type { WidgetProps } from "../types";
 
 function Skeleton() {
@@ -28,50 +36,34 @@ export function TasksWeekWidget({ instanceId: _ }: WidgetProps) {
   const currentWeek = points[points.length - 1];
 
   return (
-    <div className="h-full flex flex-col gap-2">
+    <div className="h-full flex flex-col gap-2 p-4">
       {/* Stats row */}
       <div className="flex items-center gap-4 shrink-0">
-        <div>
-          <span className="text-[22px] font-bold tabular-nums leading-none"
-            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
-            {done_7d}
-          </span>
-          <span className="text-[11px] ml-1" style={{ color: "var(--t-muted)" }}>за 7 дней</span>
-        </div>
+        <StatBlock size="compact" label="за 7 дней" value={String(done_7d)} />
         <div className="h-6 w-px" style={{ background: "var(--app-border)" }} />
-        <div>
-          <span className="text-[22px] font-bold tabular-nums leading-none"
-            style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
-            {velocity_7d}
-          </span>
-          <span className="text-[11px] ml-1" style={{ color: "var(--t-muted)" }}>задач/день</span>
-        </div>
+        <StatBlock size="compact" label="задач/день" value={String(velocity_7d)} />
       </div>
 
       {/* Chart */}
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={points} margin={{ top: 4, right: 4, left: -24, bottom: 0 }} barCategoryGap="30%">
-            <CartesianGrid vertical={false} stroke="var(--app-border)" strokeDasharray="3 3" />
-            <XAxis dataKey="week" tick={{ fontSize: 10, fill: "var(--t-faint)" }}
-              axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "var(--t-faint)" }}
-              axisLine={false} tickLine={false} allowDecimals={false} />
+            <CartesianGrid {...CHART_GRID} vertical={false} />
+            <XAxis dataKey="week" tick={{ ...CHART_AXIS, fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ ...CHART_AXIS, fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(v: any) => [typeof v === "number" ? `${v} задач` : "", ""]}
-              contentStyle={{
-                background: "var(--app-card-bg)", border: "1px solid var(--app-border)",
-                borderRadius: 10, fontSize: 12, color: "var(--t-primary)",
-              }}
-              cursor={{ fill: "var(--c-neutral-bg)", radius: 4 }}
+              contentStyle={CHART_TOOLTIP_STYLE}
+              itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+              cursor={{ fill: "rgba(99,102,241,.06)" }}
             />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
+            <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={false}>
               {points.map((entry, i) => (
                 <Cell
                   key={i}
-                  fill={entry === currentWeek ? "var(--app-accent)" : "#6366F1"}
-                  fillOpacity={entry === currentWeek ? 1 : 0.45}
+                  fill={CHART_PAIR.accent}
+                  fillOpacity={entry === currentWeek ? 1 : 0.55}
                 />
               ))}
             </Bar>

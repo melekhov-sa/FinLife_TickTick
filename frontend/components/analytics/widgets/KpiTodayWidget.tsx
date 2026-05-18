@@ -2,6 +2,7 @@
 
 import { useDashboard } from "@/hooks/useDashboard";
 import { useHabits } from "@/hooks/useHabits";
+import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
 
 const CURRENCY_SYM: Record<string, string> = {
@@ -26,46 +27,6 @@ function Skeleton() {
   );
 }
 
-function StatCol({
-  label,
-  value,
-  sub,
-  pct,
-  color,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  pct?: number;
-  color?: string;
-}) {
-  return (
-    <div className="flex flex-col justify-center gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-        {label}
-      </span>
-      <span
-        className="text-[22px] font-bold tabular-nums leading-none"
-        style={{ color: color ?? "var(--t-primary)", letterSpacing: "-0.02em" }}
-      >
-        {value}
-      </span>
-      {pct !== undefined && (
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: color ?? "var(--app-accent)" }}
-          />
-        </div>
-      )}
-      {sub && (
-        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
-          {sub}
-        </span>
-      )}
-    </div>
-  );
-}
 
 export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
   const { data: dash, isLoading: loadDash } = useDashboard();
@@ -133,27 +94,13 @@ export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
       </div>
 
       {/* Finance */}
-      <div className="flex flex-col justify-center gap-1.5 pl-4">
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-          Финансы
-        </span>
-        <span className="text-[22px] font-bold tabular-nums leading-none"
-          style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
-          {sym}&nbsp;{fmt(netWorth)}
-        </span>
-        {finBlock && (
-          <div className="flex gap-3 mt-0.5">
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--c-success-ink)" }}>
-              +{sym}&nbsp;{fmt(finBlock.income)}
-            </span>
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--c-danger-ink)" }}>
-              -{sym}&nbsp;{fmt(finBlock.expense)}
-            </span>
-          </div>
-        )}
-        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
-          капитал · доходы/расходы
-        </span>
+      <div className="flex flex-col justify-center pl-4">
+        <StatBlock
+          size="compact"
+          label="Финансы"
+          value={`${sym} ${fmt(netWorth)}`}
+          sub={finBlock ? `+${sym} ${fmt(finBlock.income)} / −${sym} ${fmt(finBlock.expense)}` : "капитал"}
+        />
       </div>
     </div>
   );

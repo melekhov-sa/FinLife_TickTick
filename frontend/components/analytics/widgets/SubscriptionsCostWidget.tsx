@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
 
 interface SubsResponse {
@@ -20,6 +21,12 @@ function Skeleton() {
   );
 }
 
+function pluralize(n: number) {
+  if (n === 1) return "подписка";
+  if (n < 5) return "подписки";
+  return "подписок";
+}
+
 export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
   const { data, isLoading } = useQuery<SubsResponse>({
     queryKey: ["analytics-subscriptions"],
@@ -32,21 +39,14 @@ export function SubscriptionsCostWidget({ instanceId: _ }: WidgetProps) {
   const { total_monthly, count, expiring } = data;
 
   return (
-    <div className="h-full flex flex-col justify-center gap-1.5">
-      <span
-        className="text-[26px] font-bold tabular-nums leading-none"
-        style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
-      >
-        ₴&nbsp;{total_monthly.toLocaleString("uk-UA")}
-      </span>
-      <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
-        {count} {count === 1 ? "подписка" : count < 5 ? "подписки" : "подписок"} · в месяц
-      </span>
+    <div className="h-full flex flex-col justify-center gap-2">
+      <StatBlock
+        size="hero"
+        value={`₴ ${total_monthly.toLocaleString("uk-UA")}`}
+        sub={`${count} ${pluralize(count)} · в месяц`}
+      />
       {expiring.length > 0 && (
-        <span
-          className="mt-1 text-[11px] font-medium"
-          style={{ color: "var(--c-warning-ink, #D97706)" }}
-        >
+        <span className="text-[11px] font-medium" style={{ color: "var(--c-warning-ink, #D97706)" }}>
           ⚠ {expiring[0].name} — через {expiring[0].days_left}д
         </span>
       )}
