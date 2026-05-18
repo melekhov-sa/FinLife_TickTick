@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DonutChart, seriesColor } from "@/components/primitives/charts";
 import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
+import { useWidgetScale } from "@/components/primitives/ScaleContext";
 import type { WidgetProps } from "../types";
 
 interface CategoryItem {
@@ -22,6 +23,7 @@ function Skeleton() {
 }
 
 export function SpendingChartWidget({ instanceId: _ }: WidgetProps) {
+  const scale = useWidgetScale();
   const currency = usePrimaryCurrency();
   const period = new Date().toISOString().slice(0, 7);
   const sym = CURRENCY_SYM[currency] ?? currency;
@@ -61,7 +63,8 @@ export function SpendingChartWidget({ instanceId: _ }: WidgetProps) {
         caption="Итого"
         total={`${sym} ${fmt(total)}`}
         formatValue={(v) => `${sym} ${fmt(v)}`}
-        height={160}
+        height={Math.round(140 * scale)}
+        scale={scale}
       />
 
       <div className="flex flex-col gap-1 shrink-0">

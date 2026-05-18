@@ -52,6 +52,8 @@ export interface DonutChartProps {
   height?: number;
   /** Сортировать ли по value. По умолчанию true. */
   sort?: boolean;
+  /** Масштабный коэффициент для шрифтов центральной надписи. */
+  scale?: number;
 }
 
 export function DonutChart({
@@ -64,6 +66,7 @@ export function DonutChart({
   innerRadius = "70%",
   height = 240,
   sort = true,
+  scale = 1,
 }: DonutChartProps) {
   const sortedData = useMemo(() => {
     if (!sort) return data;
@@ -118,7 +121,7 @@ export function DonutChart({
           {caption != null && (
             <div
               style={{
-                fontSize: 11,
+                fontSize: Math.round(11 * scale),
                 fontWeight: 600,
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
@@ -133,7 +136,7 @@ export function DonutChart({
             className="tabular"
             style={{
               fontVariantNumeric: "tabular-nums",
-              fontSize: 22,
+              fontSize: Math.round(22 * scale),
               fontWeight: 700,
               letterSpacing: "-0.02em",
               color: "var(--t-primary)",
