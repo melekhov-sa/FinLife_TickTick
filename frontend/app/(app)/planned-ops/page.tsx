@@ -1,15 +1,14 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { clsx } from "clsx";
-import { CalendarClock, LayoutList, Play, Pencil, Check, X, Archive, RotateCcw } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { CalendarClock, LayoutList, Play, Pencil, Archive, RotateCcw } from "lucide-react";
 import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { PlannedOpEditModal } from "@/components/modals/PlannedOpEditModal";
 import { Button } from "@/components/primitives/Button";
-import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
@@ -23,7 +22,13 @@ interface PlannedOpItem {
   title: string;
   kind: string;
   amount: string;
+  wallet_id: number | null;
   wallet_title: string | null;
+  destination_wallet_id: number | null;
+  destination_wallet_title: string | null;
+  category_id: number | null;
+  from_goal_id: number | null;
+  to_goal_id: number | null;
   freq: string | null;
   active_from: string;
   active_until: string | null;
@@ -42,6 +47,8 @@ interface UpcomingOccurrence {
   wallet_id: number | null;
   destination_wallet_id: number | null;
   category_id: number | null;
+  from_goal_id: number | null;
+  to_goal_id: number | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -128,18 +135,10 @@ function KindBadge({ kind }: { kind: string }) {
 
 function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; archived: boolean }) {
   const s = kindStyle(item.kind);
-  const amountSign = item.kind === "INCOME" ? "+" : item.kind === "EXPENSE" ? "\u2212" : "\u2194";
+  const amountSign = item.kind === "INCOME" ? "+" : item.kind === "EXPENSE" ? "−" : "↔";
   const qc = useQueryClient();
-
   const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(item.title);
-  const [editAmount, setEditAmount] = useState(item.amount);
-  const [editUntil, setEditUntil] = useState(item.active_until ?? "");
 
-  const { mutate: update, isPending } = useMutation({
-    mutationFn: (body: Record<string, unknown>) => api.patch(`/api/v2/planned-ops/${item.template_id}`, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["planned-ops"] }); setEditing(false); },
-  });
   const { mutate: archiveOp } = useMutation({
     mutationFn: () => api.post(`/api/v2/planned-ops/${item.template_id}/archive`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["planned-ops"] }),
@@ -149,62 +148,43 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
     onSuccess: () => qc.invalidateQueries({ queryKey: ["planned-ops"] }),
   });
 
-  function startEdit() {
-    setEditTitle(item.title);
-    setEditAmount(item.amount);
-    setEditUntil(item.active_until ?? "");
-    setEditing(true);
-  }
-
-  function save() {
-    if (!editTitle.trim()) return;
-    update({ title: editTitle.trim(), amount: editAmount, active_until: editUntil || null });
-  }
-
-  if (editing) {
-    return (
-      <div className="px-2 py-3 border-b border-white/[0.06] last:border-0 space-y-2">
-        <div className="flex gap-2">
-          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Название" size="sm" className="flex-1" autoFocus />
-          <Button onClick={save} disabled={isPending || !editTitle.trim()} variant="primary" size="sm" iconOnly className="shrink-0"><Check size={12} strokeWidth={2.5} /></Button>
-          <Button onClick={() => setEditing(false)} variant="ghost" size="sm" iconOnly className="shrink-0"><X size={12} /></Button>
-        </div>
-        <div className="flex gap-2">
-          <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="Сумма" size="sm" className="w-32" />
-          <Input type="date" value={editUntil} onChange={(e) => setEditUntil(e.target.value)} size="sm" className="flex-1" />
-        </div>
-      </div>
-    );
-  }
+  const walletLabel = item.kind === "TRANSFER"
+    ? [item.wallet_title, item.destination_wallet_title].filter(Boolean).join(" → ")
+    : item.wallet_title;
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/row">
-      <div className={clsx("w-1 self-stretch rounded-full shrink-0", s.bg, s.text.replace("text-", "bg-").replace("/400", "/60"))} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>{item.title}</span>
-          <KindBadge kind={item.kind} />
-          {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
+    <>
+      {editing && (
+        <PlannedOpEditModal template={item} onClose={() => setEditing(false)} />
+      )}
+      <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/row">
+        <div className={clsx("w-1 self-stretch rounded-full shrink-0", s.bg, s.text.replace("text-", "bg-").replace("/400", "/60"))} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>{item.title}</span>
+            <KindBadge kind={item.kind} />
+            {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
+          </div>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {walletLabel && <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>{walletLabel}</span>}
+            <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>с {formatDate(item.active_from)}{item.active_until && ` по ${formatDate(item.active_until)}`}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {item.wallet_title && <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>{item.wallet_title}</span>}
-          <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>с {formatDate(item.active_from)}{item.active_until && ` по ${formatDate(item.active_until)}`}</span>
-        </div>
-      </div>
-      <span className={clsx("text-[15px] font-semibold tabular-nums shrink-0", s.text)}>{amountSign}{formatAmount(item.amount)} ₽</span>
-      <div className="flex items-center gap-1 shrink-0">
-        {!isArchived && (
-          <Tooltip content="Редактировать">
-            <button onClick={startEdit} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}><Pencil size={11} /></button>
+        <span className={clsx("text-[15px] font-semibold tabular-nums shrink-0", s.text)}>{amountSign}{formatAmount(item.amount)} ₽</span>
+        <div className="flex items-center gap-1 shrink-0">
+          {!isArchived && (
+            <Tooltip content="Редактировать">
+              <button onClick={() => setEditing(true)} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}><Pencil size={11} /></button>
+            </Tooltip>
+          )}
+          <Tooltip content={isArchived ? "Восстановить" : "В архив"}>
+            <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
+              {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
+            </button>
           </Tooltip>
-        )}
-        <Tooltip content={isArchived ? "Восстановить" : "В архив"}>
-          <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
-            {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
-          </button>
-        </Tooltip>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -219,7 +199,7 @@ function OccurrenceRow({
 }) {
   const today = isToday(occ.scheduled_date);
   const s = kindStyle(occ.kind);
-  const amountSign = occ.kind === "INCOME" ? "+" : occ.kind === "EXPENSE" ? "\u2212" : "\u2194";
+  const amountSign = occ.kind === "INCOME" ? "+" : occ.kind === "EXPENSE" ? "−" : "↔";
 
   const dateCls = occ.is_overdue
     ? "text-red-400 bg-red-500/[0.10] border-red-500/20"
@@ -368,6 +348,8 @@ function UpcomingTab() {
         fromWalletId: executeOcc.wallet_id ?? undefined,
         toWalletId: executeOcc.destination_wallet_id ?? undefined,
         categoryId: executeOcc.category_id ?? undefined,
+        fromGoalId: executeOcc.from_goal_id ?? undefined,
+        toGoalId: executeOcc.to_goal_id ?? undefined,
       }
     : undefined;
 

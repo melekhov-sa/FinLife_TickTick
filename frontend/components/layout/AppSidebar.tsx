@@ -18,19 +18,41 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type NavSubItem = {
+  id: string;
+  label: string;
+  href: string;
+};
+
 export type NavItem = {
   id: string;
   label: string;
   href: string;
   icon: LucideIcon;
+  children?: NavSubItem[];
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Дашборд",  href: "/dashboard", icon: LayoutDashboard },
-  { id: "plan",      label: "План",     href: "/plan",      icon: ClipboardList  },
-  { id: "events",    label: "События",  href: "/events",    icon: CalendarDays   },
+  {
+    id: "plan", label: "План", href: "/plan", icon: ClipboardList,
+    children: [
+      { id: "recurring-tasks", label: "Повторяющиеся", href: "/recurring-tasks" },
+    ],
+  },
+  {
+    id: "events", label: "События", href: "/events", icon: CalendarDays,
+    children: [
+      { id: "event-templates", label: "Шаблоны", href: "/event-templates" },
+    ],
+  },
   { id: "money",     label: "Деньги",   href: "/money",     icon: Wallet         },
-  { id: "budget",    label: "Бюджет",   href: "/budget",    icon: PieChart       },
+  {
+    id: "budget", label: "Бюджет", href: "/budget", icon: PieChart,
+    children: [
+      { id: "planned-ops", label: "Плановые операции", href: "/planned-ops" },
+    ],
+  },
   { id: "habits",    label: "Привычки", href: "/habits",    icon: Heart          },
   { id: "lists",     label: "Списки",   href: "/lists",     icon: ListChecks     },
   { id: "digest",    label: "Итоги",      href: "/digest",    icon: Sparkles   },
@@ -121,34 +143,56 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
           collapsed ? "px-2" : "px-3"
         )}
       >
-        {NAV_ITEMS.map(({ id, label, href, icon: Icon }) => {
+        {NAV_ITEMS.map(({ id, label, href, icon: Icon, children }) => {
           const active = isActive(href, pathname);
 
           return (
-            <Link
-              key={id}
-              href={href}
-              title={collapsed ? label : undefined}
-              className={cn(
-                "group w-full flex items-center gap-3 rounded-lg transition-colors text-[13.5px] font-medium",
-                collapsed && "justify-center",
-                active ? "nav-active" : "nav-hover"
-              )}
-              style={{
-                height: 38,
-                padding: collapsed ? 0 : "0 10px",
-                color: active
-                  ? "var(--app-accent-ink)"
-                  : "var(--t-secondary)",
-              }}
-            >
-              <Icon
-                size={18}
-                strokeWidth={active ? 2.1 : 1.75}
-                className="shrink-0"
-              />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </Link>
+            <div key={id}>
+              <Link
+                href={href}
+                title={collapsed ? label : undefined}
+                className={cn(
+                  "group w-full flex items-center gap-3 rounded-lg transition-colors text-[13.5px] font-medium",
+                  collapsed && "justify-center",
+                  active ? "nav-active" : "nav-hover"
+                )}
+                style={{
+                  height: 38,
+                  padding: collapsed ? 0 : "0 10px",
+                  color: active
+                    ? "var(--app-accent-ink)"
+                    : "var(--t-secondary)",
+                }}
+              >
+                <Icon
+                  size={18}
+                  strokeWidth={active ? 2.1 : 1.75}
+                  className="shrink-0"
+                />
+                {!collapsed && <span className="truncate">{label}</span>}
+              </Link>
+              {!collapsed && children && children.map((child) => {
+                const childActive = pathname === child.href || pathname?.startsWith(child.href + "/");
+                return (
+                  <Link
+                    key={child.id}
+                    href={child.href}
+                    className={cn(
+                      "w-full flex items-center rounded-lg transition-colors text-[12.5px] font-medium",
+                      childActive ? "nav-active" : "nav-hover"
+                    )}
+                    style={{
+                      height: 32,
+                      paddingLeft: 38,
+                      paddingRight: 10,
+                      color: childActive ? "var(--app-accent-ink)" : "var(--t-faint)",
+                    }}
+                  >
+                    <span className="truncate">{child.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           );
         })}
       </nav>

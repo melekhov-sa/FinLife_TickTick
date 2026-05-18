@@ -1084,7 +1084,7 @@ export default function PlanPage() {
   const executeInitialValues: CreateOperationInitialValues | undefined = executeEntry
     ? {
         opType: executeEntry.meta.op_kind as "INCOME" | "EXPENSE" | "TRANSFER" | undefined,
-        amount: executeEntry.meta.amount as string | undefined,
+        amount: executeEntry.meta.amount != null ? String(executeEntry.meta.amount) : undefined,
         walletId: executeEntry.meta.wallet_id as number | undefined,
         fromWalletId: executeEntry.meta.wallet_id as number | undefined,
         toWalletId: executeEntry.meta.destination_wallet_id as number | undefined,

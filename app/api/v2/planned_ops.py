@@ -19,7 +19,13 @@ class PlannedOpItem(BaseModel):
     title: str
     kind: str
     amount: str
+    wallet_id: int | None
     wallet_title: str | None
+    destination_wallet_id: int | None
+    destination_wallet_title: str | None
+    category_id: int | None
+    from_goal_id: int | None
+    to_goal_id: int | None
     freq: str | None
     active_from: str
     active_until: str | None
@@ -38,12 +44,19 @@ class UpcomingOccurrence(BaseModel):
     wallet_id: int | None = None
     destination_wallet_id: int | None = None
     category_id: int | None = None
+    from_goal_id: int | None = None
+    to_goal_id: int | None = None
 
 
 class PlannedOpUpdate(BaseModel):
     title: str | None = None
     amount: str | None = None
     active_until: str | None = None
+    wallet_id: int | None = None
+    destination_wallet_id: int | None = None
+    category_id: int | None = None
+    from_goal_id: int | None = None
+    to_goal_id: int | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -83,10 +96,16 @@ def list_planned_ops(
     )
     templates = q.order_by(OperationTemplateModel.template_id.desc()).all()
 
-    wallet_ids = {t.wallet_id for t in templates if t.wallet_id}
+    all_wallet_ids = set()
+    for t in templates:
+        if t.wallet_id:
+            all_wallet_ids.add(t.wallet_id)
+        if t.destination_wallet_id:
+            all_wallet_ids.add(t.destination_wallet_id)
+
     wallet_map = {}
-    if wallet_ids:
-        wallets = db.query(WalletBalance).filter(WalletBalance.wallet_id.in_(wallet_ids)).all()
+    if all_wallet_ids:
+        wallets = db.query(WalletBalance).filter(WalletBalance.wallet_id.in_(all_wallet_ids)).all()
         wallet_map = {w.wallet_id: w.title for w in wallets}
 
     rule_ids = [t.rule_id for t in templates if t.rule_id]
@@ -101,7 +120,13 @@ def list_planned_ops(
             title=t.title,
             kind=t.kind,
             amount=str(t.amount),
-            wallet_title=wallet_map.get(t.wallet_id),
+            wallet_id=t.wallet_id,
+            wallet_title=wallet_map.get(t.wallet_id) if t.wallet_id else None,
+            destination_wallet_id=t.destination_wallet_id,
+            destination_wallet_title=wallet_map.get(t.destination_wallet_id) if t.destination_wallet_id else None,
+            category_id=t.category_id,
+            from_goal_id=t.from_goal_id,
+            to_goal_id=t.to_goal_id,
             freq=rule_map[t.rule_id].freq if t.rule_id and t.rule_id in rule_map else None,
             active_from=t.active_from.isoformat(),
             active_until=t.active_until.isoformat() if t.active_until else None,
@@ -144,6 +169,8 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
             wallet_id=tmpl.wallet_id,
             destination_wallet_id=tmpl.destination_wallet_id,
             category_id=tmpl.category_id,
+            from_goal_id=tmpl.from_goal_id,
+            to_goal_id=tmpl.to_goal_id,
         )
         for occ, tmpl in rows
     ]
@@ -168,8 +195,6 @@ def update_planned_op_occurrence(
         new_date = date.fromisoformat(body.scheduled_date)
     except ValueError:
         raise HTTPException(status_code=400, detail="Некорректная дата")
-    # display_date overrides the shown date without touching scheduled_date,
-    # so the generator's idempotency check stays intact.
     occ.display_date = new_date
     db.commit()
     return {"ok": True}
@@ -198,12 +223,23 @@ def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Dep
 def update_planned_op(template_id: int, body: PlannedOpUpdate, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
     t = _get_template_or_404(template_id, user_id, db)
-    if body.title is not None:
+    fields = body.model_fields_set
+    if "title" in fields and body.title is not None:
         t.title = body.title
-    if body.amount is not None:
+    if "amount" in fields and body.amount is not None:
         t.amount = Decimal(body.amount)
-    if body.active_until is not None:
+    if "active_until" in fields:
         t.active_until = date.fromisoformat(body.active_until) if body.active_until else None
+    if "wallet_id" in fields:
+        t.wallet_id = body.wallet_id
+    if "destination_wallet_id" in fields:
+        t.destination_wallet_id = body.destination_wallet_id
+    if "category_id" in fields:
+        t.category_id = body.category_id
+    if "from_goal_id" in fields:
+        t.from_goal_id = body.from_goal_id
+    if "to_goal_id" in fields:
+        t.to_goal_id = body.to_goal_id
     db.commit()
     return {"ok": True}
 

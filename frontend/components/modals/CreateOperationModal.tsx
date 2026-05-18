@@ -21,10 +21,16 @@ import { useToast } from "@/components/primitives/Toast";
 
 type OpType = "INCOME" | "EXPENSE" | "TRANSFER";
 
+interface GoalWalletItem {
+  wallet_id: number;
+  amount: string;
+}
+
 interface GoalItem {
   goal_id: number;
   title: string;
   currency: string;
+  wallets: GoalWalletItem[];
 }
 
 export interface CreateOperationInitialValues {
@@ -34,6 +40,8 @@ export interface CreateOperationInitialValues {
   fromWalletId?: number;
   toWalletId?: number;
   categoryId?: number;
+  fromGoalId?: number;
+  toGoalId?: number;
 }
 
 interface Props {
@@ -72,7 +80,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const formRef = useRef<HTMLFormElement | null>(null);
 
   const [opType, setOpType] = useState<OpType | null>(initialValues?.opType ?? "EXPENSE");
-  const [amount, setAmount] = useState(initialValues?.amount ?? "");
+  const [amount, setAmount] = useState(initialValues?.amount != null ? String(initialValues.amount) : "");
   const [walletId, setWalletId] = useState<number | "">(initialValues?.walletId ?? "");
   const [fromWalletId, setFromWalletId] = useState<number | "">(initialValues?.fromWalletId ?? "");
   const [toWalletId, setToWalletId] = useState<number | "">(initialValues?.toWalletId ?? "");
@@ -82,8 +90,8 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const [occurredAt, setOccurredAt] = useState("");
 
   // Transfer goal selectors
-  const [fromGoalId, setFromGoalId] = useState<number | "">("");
-  const [toGoalId, setToGoalId] = useState<number | "">("");
+  const [fromGoalId, setFromGoalId] = useState<number | "">(initialValues?.fromGoalId ?? "");
+  const [toGoalId, setToGoalId] = useState<number | "">(initialValues?.toGoalId ?? "");
 
   // Subscription coverage
   const [subOpen, setSubOpen] = useState(false);
@@ -145,6 +153,24 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const selectedToWallet = (wallets ?? []).find((w) => w.wallet_id === toWalletId);
   const showFromGoal = selectedFromWallet?.wallet_type === "SAVINGS";
   const showToGoal = selectedToWallet?.wallet_type === "SAVINGS";
+
+  const fromGoalBalance = useMemo(() => {
+    if (!fromGoalId || !fromWalletId || !goals) return null;
+    const goal = goals.find((g) => g.goal_id === Number(fromGoalId));
+    const entry = goal?.wallets.find((w) => w.wallet_id === Number(fromWalletId));
+    if (!entry) return null;
+    const n = parseFloat(entry.amount);
+    return isNaN(n) ? null : { amount: n, currency: goal!.currency };
+  }, [fromGoalId, fromWalletId, goals]);
+
+  const toGoalBalance = useMemo(() => {
+    if (!toGoalId || !toWalletId || !goals) return null;
+    const goal = goals.find((g) => g.goal_id === Number(toGoalId));
+    const entry = goal?.wallets.find((w) => w.wallet_id === Number(toWalletId));
+    if (!entry) return null;
+    const n = parseFloat(entry.amount);
+    return isNaN(n) ? null : { amount: n, currency: goal!.currency };
+  }, [toGoalId, toWalletId, goals]);
 
   const walletOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— выберите кошелёк —" }];
@@ -469,6 +495,14 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   options={goalOptions}
                   placeholder="— без цели —"
                 />
+                {fromGoalBalance && (
+                  <p className="mt-1.5 text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+                    По этой цели на кошельке:&nbsp;
+                    <span style={{ color: "var(--t-secondary)" }}>
+                      {new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(fromGoalBalance.amount)} {fromGoalBalance.currency}
+                    </span>
+                  </p>
+                )}
               </FormRow>
             )}
             {opType === "TRANSFER" && showToGoal && (
@@ -479,6 +513,14 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   options={goalOptions}
                   placeholder="— без цели —"
                 />
+                {toGoalBalance && (
+                  <p className="mt-1.5 text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+                    По этой цели на кошельке:&nbsp;
+                    <span style={{ color: "var(--t-secondary)" }}>
+                      {new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(toGoalBalance.amount)} {toGoalBalance.currency}
+                    </span>
+                  </p>
+                )}
               </FormRow>
             )}
 

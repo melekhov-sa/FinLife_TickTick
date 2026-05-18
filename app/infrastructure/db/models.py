@@ -562,6 +562,8 @@ class OperationTemplateModel(Base):
     destination_wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for TRANSFER only
     category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> categories (financial)
     work_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> work_categories
+    from_goal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # TRANSFER: goal for source SAVINGS wallet
+    to_goal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)    # TRANSFER: goal for dest SAVINGS wallet
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
