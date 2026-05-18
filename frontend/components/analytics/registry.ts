@@ -10,6 +10,7 @@ import { BalanceOverviewWidget } from "./widgets/BalanceOverviewWidget";
 import { SpendingChartWidget } from "./widgets/SpendingChartWidget";
 import { IncomeTrendWidget } from "./widgets/IncomeTrendWidget";
 import { GoalsProgressWidget } from "./widgets/GoalsProgressWidget";
+import { GoalsSummaryWidget } from "./widgets/GoalsSummaryWidget";
 import { SubscriptionsCostWidget } from "./widgets/SubscriptionsCostWidget";
 import { KpiTodayWidget } from "./widgets/KpiTodayWidget";
 import { BudgetOverviewWidget } from "./widgets/BudgetOverviewWidget";
@@ -17,6 +18,9 @@ import { MonthComparisonWidget } from "./widgets/MonthComparisonWidget";
 import { WalletBalancesWidget } from "./widgets/WalletBalancesWidget";
 import { SpendingByWeekdayWidget } from "./widgets/SpendingByWeekdayWidget";
 import { PlannedOpsWidget } from "./widgets/PlannedOpsWidget";
+import { WeeklyScoreWidget } from "./widgets/WeeklyScoreWidget";
+import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
+import { BudgetRingsWidget } from "./widgets/BudgetRingsWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -148,6 +152,15 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     component: GoalsProgressWidget,
     emoji: "🎯",
   },
+  {
+    id: "goals-summary",
+    title: "Сводка целей",
+    description: "Средний прогресс и количество выполненных целей",
+    category: "goals",
+    defaultW: 1, defaultH: 2, minW: 1, minH: 2,
+    component: GoalsSummaryWidget,
+    emoji: "🏆",
+  },
 
   // ── Бюджет ────────────────────────────────────────────────────────────────
   {
@@ -196,6 +209,35 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
     component: PlannedOpsWidget,
     emoji: "🗒️",
+  },
+
+  // ── Новые виджеты ─────────────────────────────────────────────────────────
+  {
+    id: "weekly-score",
+    title: "Эффективность недели",
+    description: "Выполнение привычек и задач за 7 дней",
+    category: "overview",
+    defaultW: 1, defaultH: 3, minW: 1, minH: 2,
+    component: WeeklyScoreWidget,
+    emoji: "⚡",
+  },
+  {
+    id: "activity-feed",
+    title: "Лента активности",
+    description: "Последние транзакции, задачи и привычки",
+    category: "overview",
+    defaultW: 2, defaultH: 4, minW: 2, minH: 3,
+    component: ActivityFeedWidget,
+    emoji: "📰",
+  },
+  {
+    id: "budget-rings",
+    title: "Топ расходов",
+    description: "5 крупнейших категорий трат за месяц",
+    category: "finance",
+    defaultW: 2, defaultH: 3, minW: 2, minH: 2,
+    component: BudgetRingsWidget,
+    emoji: "💹",
   },
 ];
 

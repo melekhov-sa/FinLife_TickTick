@@ -70,7 +70,7 @@ export const Widget = forwardRef<HTMLElement, WidgetShellProps>(function Widget(
         borderRadius: 16,
         boxShadow: isDragging
           ? "0 16px 32px -12px rgba(0,0,0,.18), 0 4px 12px -4px rgba(0,0,0,.10)"
-          : "0 1px 2px rgba(16,24,40,.04)",
+          : "var(--shadow-widget)",
         opacity: isDragging ? 0.7 : 1,
         ...style,
       }}

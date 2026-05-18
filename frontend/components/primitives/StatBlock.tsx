@@ -128,9 +128,10 @@ export const StatBlock = forwardRef<HTMLDivElement, StatBlockProps>(function Sta
           className="tabular truncate"
           style={{
             fontVariantNumeric: "tabular-nums",
+            fontFamily: size === "hero" ? "var(--font-fraunces, serif)" : undefined,
             fontSize: tok.valueFz,
             fontWeight: 700,
-            letterSpacing: "-0.02em",
+            letterSpacing: size === "hero" ? "-0.03em" : "-0.02em",
             color: valueColor,
             lineHeight: 1.1,
           }}

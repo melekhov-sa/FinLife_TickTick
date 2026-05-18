@@ -167,6 +167,7 @@
   --shadow-topbar: 0 1px 0 rgba(99, 102, 241, .25), 0 8px 24px -16px rgba(99, 102, 241, .40);
   --shadow-fab:    0 1px 2px rgba(16, 24, 40, .12), 0 12px 32px -8px rgba(99, 102, 241, .55);
   --shadow-mobile: 0 1px 0 rgba(16, 24, 40, .04), 0 -4px 24px -8px rgba(16, 24, 40, .14);
+  --shadow-widget: 0 1px 2px rgba(16, 24, 40, .04);
 
   /* Finance */
   --color-income:  #22C55E;
@@ -253,6 +254,7 @@
   --shadow-topbar: 0 1px 0 rgba(255, 255, 255, .04);
   --shadow-fab:    0 1px 2px rgba(0, 0, 0, .5), 0 12px 32px -8px rgba(124, 58, 237, .55);
   --shadow-mobile: 0 1px 0 rgba(255, 255, 255, .04), 0 -4px 24px -8px rgba(0, 0, 0, .6);
+  --shadow-widget: 0 1px 0 rgba(0, 0, 0, .35);
 
   /* Budget matrix table */
   --bgt-cell-border:        rgba(255,255,255,0.06);
@@ -291,6 +293,28 @@
   --c-neutral-bg:   rgba(148,163,184,.12);
   --c-neutral-fg:   #CBD5E1;
   --c-neutral-ink:  #94A3B8;
+}
+
+/* ── Analytics premium design scope ─────────────────────────────────────── */
+[data-analytics] {
+  --analytics-page-bg: #F5F4EF;
+  --app-card-bg:       #FDFCF8;
+  --app-border:        #DDD8CE;
+  --app-card-border:   #DDD8CE;
+  --shadow-widget:
+    0 1px 0   rgba(16, 24, 40, .03),
+    0 2px 6px rgba(16, 24, 40, .05),
+    0 12px 32px -16px rgba(16, 24, 40, .10);
+}
+
+.dark [data-analytics] {
+  --analytics-page-bg: transparent;
+  --app-card-bg:       rgba(255, 255, 255, .03);
+  --app-border:        rgba(255, 255, 255, .07);
+  --app-card-border:   rgba(255, 255, 255, .06);
+  --shadow-widget:
+    0 1px 0   rgba(0, 0, 0, .40),
+    0 8px 24px -12px rgba(0, 0, 0, .30);
 }
 
 /* ── Light mode: white-opacity text → explicit grays ────────────────────── */

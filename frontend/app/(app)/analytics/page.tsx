@@ -47,7 +47,11 @@ export default function AnalyticsPage() {
           </div>
         }
       />
-      <main className="flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6">
+      <main
+        data-analytics
+        className="flex-1 overflow-auto px-4 py-4 md:px-6 md:py-6"
+        style={{ background: "var(--analytics-page-bg, var(--app-bg))" }}
+      >
         <WidgetGrid
           instances={instances}
           editing={editing}

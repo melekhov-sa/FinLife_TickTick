@@ -24,7 +24,7 @@ from app.infrastructure.db.models import (
     TaskModel, HabitModel, HabitOccurrence,
     WalletBalance, TransactionFeed, GoalInfo, GoalWalletBalance,
     SubscriptionModel, SubscriptionMemberModel,
-    UserActivityDaily,
+    UserActivityDaily, CategoryInfo,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -525,3 +525,86 @@ def month_comparison(request: Request, currency: str = Query(default="RUB"), db:
     prev = _stats(prev_start, cur_start)
     prev["label"] = f"{MONTHS[prev_start.month]} {prev_start.year}"
     return {"current": cur, "previous": prev}
+
+
+# ── Activity feed ─────────────────────────────────────────────────────────────
+
+@router.get("/activity-feed")
+def activity_feed(
+    request: Request,
+    days: int = Query(default=7, le=30),
+    limit: int = Query(default=15, le=30),
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    since_dt = datetime.now(timezone.utc) - timedelta(days=days)
+    since_date = since_dt.date()
+    items = []
+
+    # Recent income/expense transactions with category name
+    txns = (
+        db.query(TransactionFeed, CategoryInfo)
+        .outerjoin(CategoryInfo, and_(
+            CategoryInfo.category_id == TransactionFeed.category_id,
+            CategoryInfo.account_id == user_id,
+        ))
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.occurred_at >= since_dt,
+            TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
+        )
+        .order_by(TransactionFeed.occurred_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for txn, cat in txns:
+        items.append({
+            "type": "transaction",
+            "title": cat.title if cat else ("Доход" if txn.operation_type == "INCOME" else "Расход"),
+            "amount": float(txn.amount),
+            "op_type": txn.operation_type,
+            "currency": txn.currency,
+            "ts": txn.occurred_at.isoformat(),
+        })
+
+    # Completed tasks
+    tasks = (
+        db.query(TaskModel)
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= since_dt,
+        )
+        .order_by(TaskModel.completed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    for t in tasks:
+        items.append({
+            "type": "task",
+            "title": t.title,
+            "ts": t.completed_at.isoformat(),
+        })
+
+    # Completed habits
+    habit_occs = (
+        db.query(HabitOccurrence, HabitModel)
+        .join(HabitModel, HabitOccurrence.habit_id == HabitModel.id)
+        .filter(
+            HabitOccurrence.account_id == user_id,
+            HabitOccurrence.status == "DONE",
+            HabitOccurrence.scheduled_date >= since_date,
+        )
+        .order_by(HabitOccurrence.scheduled_date.desc())
+        .limit(limit)
+        .all()
+    )
+    for occ, habit in habit_occs:
+        items.append({
+            "type": "habit",
+            "title": habit.title,
+            "ts": occ.scheduled_date.isoformat(),
+        })
+
+    items.sort(key=lambda x: x["ts"], reverse=True)
+    return {"items": items[:limit]}

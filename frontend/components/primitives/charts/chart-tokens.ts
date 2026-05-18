@@ -23,11 +23,11 @@ export const CHART_PALETTE = [
 ] as const;
 
 export const CHART_PAIR = {
-  income:  "#10B981",
-  expense: "#EF4444",
+  income:  "#0F8B5A",
+  expense: "#C0392B",
   neutral: "#94A3B8",
-  accent:  "#6366F1",
-  warning: "#F59E0B",
+  accent:  "#5B5EF5",
+  warning: "#D4872A",
 } as const;
 
 /** Цвет для серии по индексу (с циклом). */
