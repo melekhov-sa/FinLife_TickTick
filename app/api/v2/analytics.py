@@ -8,9 +8,12 @@ GET /api/v2/analytics/daily-spending    — daily bar chart for a month
 GET /api/v2/analytics/category-trend    — top categories over months
 GET /api/v2/analytics/productivity      — tasks + habits stats
 """
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, case, and_, extract
 from sqlalchemy.orm import Session
 
@@ -102,6 +105,14 @@ def analytics_productivity(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    try:
+        return _analytics_productivity_impl(request, db)
+    except Exception as exc:
+        logger.exception("analytics/productivity failed: %s", exc)
+        raise
+
+
+def _analytics_productivity_impl(request: Request, db: Session):
     user_id = get_user_id(request, db)
     today = date.today()
     d30 = today - timedelta(days=30)

@@ -180,14 +180,18 @@ export const GoalCard = forwardRef<HTMLElement, GoalCardProps>(function GoalCard
           <span style={{ color: isComplete ? "var(--c-success-ink)" : "var(--t-primary)", fontWeight: 600 }}>
             {currentNode ?? fmt(current)}
           </span>
-          <span style={{ color: "var(--t-faint)" }}>/</span>
-          <span>{targetNode ?? fmt(target)}</span>
-          <span
-            className="ml-auto"
-            style={{ color: "var(--t-muted)", fontSize: 11 }}
-          >
-            осталось {fmt(Math.max(0, target - current))}
-          </span>
+          {target > 0 && (
+            <>
+              <span style={{ color: "var(--t-faint)" }}>/</span>
+              <span>{targetNode ?? fmt(target)}</span>
+              <span
+                className="ml-auto"
+                style={{ color: "var(--t-muted)", fontSize: 11 }}
+              >
+                осталось {fmt(Math.max(0, target - current))}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </Tag>

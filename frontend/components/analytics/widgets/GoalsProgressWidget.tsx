@@ -68,17 +68,19 @@ export function GoalsProgressWidget({ instanceId: _ }: WidgetProps) {
     <div className="h-full flex flex-col gap-2 overflow-y-auto">
       {goals.map((goal, i) => {
         const sym = CURRENCY_SYM[goal.currency] ?? goal.currency;
-        const done = goal.current >= goal.target && goal.target > 0;
+        const hasTarget = goal.target > 0;
+        const done = goal.current >= goal.target && hasTarget;
         return (
           <GoalCard
             key={i}
             title={goal.title}
             current={goal.current}
             target={goal.target}
+            ring={hasTarget}
             ringSize={52}
             ringTone={done ? "success" : "accent"}
             currentNode={<>{sym}{fmt(goal.current)}</>}
-            targetNode={<>{sym}{fmt(goal.target)}</>}
+            targetNode={hasTarget ? <>{sym}{fmt(goal.target)}</> : undefined}
           />
         );
       })}
