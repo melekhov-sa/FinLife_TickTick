@@ -1,12 +1,9 @@
 "use client";
 
 import { useDashboard } from "@/hooks/useDashboard";
+import { CURRENCY_SYM } from "../usePrimaryCurrency";
 import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
-};
 
 function fmt(n: number) {
   return Math.abs(n).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
@@ -46,7 +43,7 @@ export function BalanceOverviewWidget({ instanceId: _ }: WidgetProps) {
   return (
     <div className="h-full flex flex-col justify-center gap-4">
       {entries.map(([currency, block]) => {
-        const sym = CURRENCY_SYMBOLS[currency] ?? currency;
+        const sym = CURRENCY_SYM[currency] ?? currency;
         const isPositive = block.difference >= 0;
 
         return (

@@ -9,6 +9,7 @@ import { WidgetCard } from "./WidgetCard";
 import { getWidgetDef } from "./registry";
 import type { WidgetInstance } from "./types";
 import { ScaleContext } from "@/components/primitives/ScaleContext";
+import { WidgetErrorBoundary } from "./WidgetErrorBoundary";
 
 // ESM default export has mismatched TS types — cast to any to bypass
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +41,7 @@ export function WidgetGrid({
 }: WidgetGridProps) {
   const [mounted, setMounted] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [liveSize, setLiveSize] = useState<{ i: string; w: number; h: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,7 +83,13 @@ export function WidgetGrid({
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function handleResize(_layout: any[], _old: any, newItem: any) {
+    setLiveSize({ i: newItem.i, w: newItem.w, h: newItem.h });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleStop(newLayout: any[]) {
+    setLiveSize(null);
     onUpdateLayout(
       newLayout.map((item) => ({
         i: item.i,
@@ -116,15 +124,17 @@ export function WidgetGrid({
           const Widget = def.component;
           return (
             <div key={inst.instanceId} style={{ height: cardHeight }}>
-              <WidgetCard
-                instance={inst}
-                def={def}
-                editing={editing}
-                onRemove={() => onRemove(inst.instanceId)}
-                onRename={(title) => onRename(inst.instanceId, title)}
-              >
-                <Widget instanceId={inst.instanceId} />
-              </WidgetCard>
+              <WidgetErrorBoundary title={def.title}>
+                <WidgetCard
+                  instance={inst}
+                  def={def}
+                  editing={editing}
+                  onRemove={() => onRemove(inst.instanceId)}
+                  onRename={(title) => onRename(inst.instanceId, title)}
+                >
+                  <Widget instanceId={inst.instanceId} />
+                </WidgetCard>
+              </WidgetErrorBoundary>
             </div>
           );
         })}
@@ -174,6 +184,7 @@ export function WidgetGrid({
         draggableHandle=".widget-drag-handle"
         compactType="vertical"
         onDragStop={handleStop}
+        onResize={handleResize}
         onResizeStop={handleStop}
         useCSSTransforms
       >
@@ -181,19 +192,22 @@ export function WidgetGrid({
           const def = getWidgetDef(instance.widgetId);
           if (!def) return null;
           const Widget = def.component;
-          const scale = widgetScale(instance.w, instance.h, def.defaultW ?? 2, def.defaultH ?? 2);
+          const live = liveSize?.i === instance.instanceId ? liveSize : null;
+          const scale = widgetScale(live?.w ?? instance.w, live?.h ?? instance.h, def.defaultW ?? 2, def.defaultH ?? 2);
           return (
             <div key={instance.instanceId}>
               <ScaleContext.Provider value={scale}>
-                <WidgetCard
-                  instance={instance}
-                  def={def}
-                  editing={editing}
-                  onRemove={() => onRemove(instance.instanceId)}
-                  onRename={(title) => onRename(instance.instanceId, title)}
-                >
-                  <Widget instanceId={instance.instanceId} />
-                </WidgetCard>
+                <WidgetErrorBoundary title={def.title}>
+                  <WidgetCard
+                    instance={instance}
+                    def={def}
+                    editing={editing}
+                    onRemove={() => onRemove(instance.instanceId)}
+                    onRename={(title) => onRename(instance.instanceId, title)}
+                  >
+                    <Widget instanceId={instance.instanceId} />
+                  </WidgetCard>
+                </WidgetErrorBoundary>
               </ScaleContext.Provider>
             </div>
           );

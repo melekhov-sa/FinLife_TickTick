@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DualBarChart, CHART_PAIR } from "@/components/primitives/charts";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface MonthPoint {
@@ -17,10 +17,6 @@ const MONTH_SHORT: Record<string, string> = {
   "01": "Янв", "02": "Фев", "03": "Мар", "04": "Апр",
   "05": "Май", "06": "Июн", "07": "Июл", "08": "Авг",
   "09": "Сен", "10": "Окт", "11": "Ноя", "12": "Дек",
-};
-
-const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
 };
 
 function Skeleton() {

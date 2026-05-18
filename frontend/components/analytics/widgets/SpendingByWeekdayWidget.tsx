@@ -3,13 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { BarChart } from "@/components/primitives/charts";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface WeekdayItem { day: string; avg: number; total: number; count: number; }
 interface WeekdayResponse { weekdays: WeekdayItem[]; }
-
-const CURRENCY_SYM: Record<string, string> = { UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
 
 function fmt(n: number) {
   if (n >= 1_000) return `${Math.round(n / 1_000)}к`;

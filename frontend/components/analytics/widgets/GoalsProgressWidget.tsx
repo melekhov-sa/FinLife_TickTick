@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface GoalItem {
@@ -15,10 +16,6 @@ interface GoalItem {
 interface GoalsResponse {
   goals: GoalItem[];
 }
-
-const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
-};
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;

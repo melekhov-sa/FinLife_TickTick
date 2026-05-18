@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface BudgetRow { category_id: number | null; title: string; depth: number; plan: number; fact: number; }
@@ -14,8 +14,6 @@ interface BudgetResponse {
   income_rows: BudgetRow[];
   expense_rows: BudgetRow[];
 }
-
-const CURRENCY_SYM: Record<string, string> = { UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;

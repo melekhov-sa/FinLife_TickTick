@@ -2,13 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import { StatBlock } from "@/components/primitives/StatBlock";
 import type { WidgetProps } from "../types";
-
-const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
-};
 
 interface SubsResponse {
   total_monthly: number;

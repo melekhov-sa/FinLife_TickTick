@@ -3,11 +3,9 @@
 import { useDashboard } from "@/hooks/useDashboard";
 import { useHabits } from "@/hooks/useHabits";
 import { StatBlock } from "@/components/primitives/StatBlock";
+import { useWidgetScale } from "@/components/primitives/ScaleContext";
+import { CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
-
-const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
-};
 
 function fmt(n: number) {
   return Math.abs(n).toLocaleString("ru-RU", { maximumFractionDigits: 0 });
@@ -27,10 +25,67 @@ function Skeleton() {
   );
 }
 
+interface ProgressColumnProps {
+  label: string;
+  done: number;
+  total: number;
+  pct: number;
+  subText: string;
+  subColor: string;
+  scale: number;
+  bordered?: "right" | "both";
+}
+
+function ProgressColumn({ label, done, total, pct, subText, subColor, scale, bordered }: ProgressColumnProps) {
+  const px = (base: number) => base * scale;
+  const padClass = bordered === "right" ? "pr-4 border-r" : bordered === "both" ? "px-4 border-r" : "pl-4";
+  return (
+    <div
+      className={`flex flex-col justify-center ${padClass}`}
+      style={{ gap: px(6), borderColor: "var(--app-border)" }}
+    >
+      <span
+        style={{
+          fontSize: px(10),
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--t-faint)",
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </span>
+      <div className="flex items-baseline" style={{ gap: px(6) }}>
+        <span
+          style={{
+            fontSize: px(28),
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+            color: pct === 100 ? "var(--c-success-ink)" : "var(--t-primary)",
+          }}
+        >
+          {done}
+        </span>
+        <span style={{ fontSize: px(14), color: "var(--t-faint)" }}>/ {total}</span>
+      </div>
+      <div className="w-full rounded-full overflow-hidden" style={{ height: Math.max(3, px(6)), background: "var(--c-neutral-bg)" }}>
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, background: pct === 100 ? "var(--c-success-ink)" : "var(--app-accent)" }}
+        />
+      </div>
+      <span style={{ fontSize: px(11), color: subColor }}>{subText}</span>
+    </div>
+  );
+}
 
 export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
   const { data: dash, isLoading: loadDash } = useDashboard();
   const { data: habits, isLoading: loadHabits } = useHabits();
+  const scale = useWidgetScale();
 
   if (loadDash || loadHabits || !dash || !habits) return <Skeleton />;
 
@@ -49,51 +104,40 @@ export function KpiTodayWidget({ instanceId: _ }: WidgetProps) {
 
   const netWorth = dash.fin_state.regular_total + dash.fin_state.savings_total;
 
+  const taskSub = overdue > 0
+    ? `+${overdue} просрочено`
+    : left === 0 && total > 0
+      ? "всё готово 🎉"
+      : `осталось ${left}`;
+
+  const habitSub = habitTotal === 0
+    ? "нет привычек"
+    : habitPct === 100
+      ? "все выполнено 🔥"
+      : `${habitPct}% выполнено`;
+
   return (
     <div className="h-full grid grid-cols-3">
-      {/* Tasks */}
-      <div className="flex flex-col justify-center gap-1.5 pr-4 border-r" style={{ borderColor: "var(--app-border)" }}>
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-          Задачи
-        </span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[28px] font-bold tabular-nums leading-none"
-            style={{ color: taskPct === 100 ? "var(--c-success-ink)" : "var(--t-primary)", letterSpacing: "-0.02em" }}>
-            {done}
-          </span>
-          <span className="text-[14px]" style={{ color: "var(--t-faint)" }}>/ {total}</span>
-        </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${taskPct}%`, background: taskPct === 100 ? "var(--c-success-ink)" : "var(--app-accent)" }} />
-        </div>
-        <span className="text-[11px]" style={{ color: overdue > 0 ? "var(--c-danger-ink)" : "var(--t-muted)" }}>
-          {overdue > 0 ? `+${overdue} просрочено` : left === 0 && total > 0 ? "всё готово 🎉" : `осталось ${left}`}
-        </span>
-      </div>
-
-      {/* Habits */}
-      <div className="flex flex-col justify-center gap-1.5 px-4 border-r" style={{ borderColor: "var(--app-border)" }}>
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
-          Привычки
-        </span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[28px] font-bold tabular-nums leading-none"
-            style={{ color: habitPct === 100 ? "var(--c-success-ink)" : "var(--t-primary)", letterSpacing: "-0.02em" }}>
-            {habitDone}
-          </span>
-          <span className="text-[14px]" style={{ color: "var(--t-faint)" }}>/ {habitTotal}</span>
-        </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-neutral-bg)" }}>
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${habitPct}%`, background: habitPct === 100 ? "var(--c-success-ink)" : "var(--app-accent)" }} />
-        </div>
-        <span className="text-[11px]" style={{ color: "var(--t-muted)" }}>
-          {habitTotal === 0 ? "нет привычек" : habitPct === 100 ? "все выполнено 🔥" : `${habitPct}% выполнено`}
-        </span>
-      </div>
-
-      {/* Finance */}
+      <ProgressColumn
+        label="Задачи"
+        done={done}
+        total={total}
+        pct={taskPct}
+        subText={taskSub}
+        subColor={overdue > 0 ? "var(--c-danger-ink)" : "var(--t-muted)"}
+        scale={scale}
+        bordered="right"
+      />
+      <ProgressColumn
+        label="Привычки"
+        done={habitDone}
+        total={habitTotal}
+        pct={habitPct}
+        subText={habitSub}
+        subColor="var(--t-muted)"
+        scale={scale}
+        bordered="both"
+      />
       <div className="flex flex-col justify-center pl-4">
         <StatBlock
           size="compact"

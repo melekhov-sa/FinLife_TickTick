@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface MonthBlock {
@@ -10,8 +10,6 @@ interface MonthBlock {
   ops: number; tasks_done: number; habits_rate: number; label: string;
 }
 interface MonthComparisonResponse { current: MonthBlock; previous: MonthBlock; }
-
-const CURRENCY_SYM: Record<string, string> = { UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł" };
 
 function fmt(n: number) {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}М`;

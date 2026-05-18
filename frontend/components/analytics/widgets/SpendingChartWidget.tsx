@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { DonutChart, seriesColor } from "@/components/primitives/charts";
-import { usePrimaryCurrency } from "../usePrimaryCurrency";
+import { usePrimaryCurrency, CURRENCY_SYM } from "../usePrimaryCurrency";
 import type { WidgetProps } from "../types";
 
 interface CategoryItem {
@@ -12,10 +12,6 @@ interface CategoryItem {
   amount: number;
   percent: number;
 }
-
-const CURRENCY_SYM: Record<string, string> = {
-  UAH: "₴", RUB: "₽", USD: "$", EUR: "€", GBP: "£", PLN: "zł",
-};
 
 function Skeleton() {
   return (
