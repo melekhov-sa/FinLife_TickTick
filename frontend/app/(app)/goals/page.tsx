@@ -19,6 +19,12 @@ import { GoalFormModal } from "@/components/modals/GoalFormModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+interface GoalWalletItem {
+  wallet_id: number;
+  title: string;
+  amount: string;
+}
+
 interface GoalItem {
   goal_id: number;
   title: string;
@@ -27,6 +33,7 @@ interface GoalItem {
   current_balance: string;
   percent: number | null;
   wallet_count: number;
+  wallets: GoalWalletItem[];
   is_system: boolean;
   is_archived: boolean;
 }
@@ -232,11 +239,31 @@ function GoalCard({
               )}
             </p>
 
-            {/* Footer */}
-            <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
-              {goal.wallet_count}{" "}
-              {goal.wallet_count === 1 ? "кошелёк" : goal.wallet_count >= 2 && goal.wallet_count <= 4 ? "кошелька" : "кошельков"}
-            </p>
+            {/* Wallet breakdown */}
+            {goal.wallets.length > 0 ? (
+              <div className="mt-1.5 flex flex-col gap-0.5">
+                {goal.wallets.map((w) => (
+                  <div key={w.wallet_id} className="flex items-center justify-between gap-2">
+                    <span
+                      className="text-[11px] truncate"
+                      style={{ color: "var(--t-faint)" }}
+                    >
+                      {w.title}
+                    </span>
+                    <span
+                      className="text-[11px] tabular-nums shrink-0 font-medium"
+                      style={{ color: "var(--t-muted)", fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {formatAmount(w.amount)} {sym}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+                нет средств в кошельках
+              </p>
+            )}
           </div>
         </div>
       </Card>

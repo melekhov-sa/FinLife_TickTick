@@ -13,13 +13,19 @@ from app.application.goals import (
     UnarchiveGoalUseCase,
     GoalValidationError,
 )
-from app.infrastructure.db.models import GoalInfo, GoalWalletBalance
+from app.infrastructure.db.models import GoalInfo, GoalWalletBalance, WalletBalance
 from app.infrastructure.db.session import get_db
 
 router = APIRouter()
 
 
 # ── Response schema ────────────────────────────────────────────────────────────
+
+class GoalWalletItem(BaseModel):
+    wallet_id: int
+    title: str
+    amount: str
+
 
 class GoalItem(BaseModel):
     goal_id: int
@@ -29,6 +35,7 @@ class GoalItem(BaseModel):
     current_balance: str
     percent: float | None
     wallet_count: int
+    wallets: list[GoalWalletItem]
     is_system: bool
     is_archived: bool
 
@@ -71,6 +78,25 @@ def _build_goal_items(db: Session, user_id: int, include_archived: bool) -> list
     )
     bal_map = {r.goal_id: (r.total or Decimal(0), r.cnt) for r in balance_rows}
 
+    # Per-wallet breakdown for each goal (only wallets with amount > 0)
+    wallet_rows = (
+        db.query(
+            GoalWalletBalance.goal_id,
+            GoalWalletBalance.wallet_id,
+            GoalWalletBalance.amount,
+            WalletBalance.title,
+        )
+        .join(WalletBalance, WalletBalance.wallet_id == GoalWalletBalance.wallet_id)
+        .filter(GoalWalletBalance.account_id == user_id, GoalWalletBalance.amount > 0)
+        .order_by(GoalWalletBalance.goal_id, GoalWalletBalance.amount.desc())
+        .all()
+    )
+    wallets_map: dict[int, list[GoalWalletItem]] = {}
+    for row in wallet_rows:
+        wallets_map.setdefault(row.goal_id, []).append(
+            GoalWalletItem(wallet_id=row.wallet_id, title=row.title, amount=str(row.amount))
+        )
+
     items = []
     for g in goals:
         total, cnt = bal_map.get(g.goal_id, (Decimal(0), 0))
@@ -85,6 +111,7 @@ def _build_goal_items(db: Session, user_id: int, include_archived: bool) -> list
             current_balance=str(total),
             percent=pct,
             wallet_count=cnt,
+            wallets=wallets_map.get(g.goal_id, []),
             is_system=g.is_system,
             is_archived=g.is_archived,
         ))
