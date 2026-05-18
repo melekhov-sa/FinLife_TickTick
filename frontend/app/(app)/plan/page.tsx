@@ -1130,7 +1130,19 @@ export default function PlanPage() {
         />
       )}
 
-      <PageHeader title="План" density="compact" />
+      <PageHeader
+        title="План"
+        density="compact"
+        actions={
+          <a
+            href="/recurring-tasks"
+            className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+            style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
+          >
+            Повторяющиеся
+          </a>
+        }
+      />
       <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
         <div className="w-full">
 

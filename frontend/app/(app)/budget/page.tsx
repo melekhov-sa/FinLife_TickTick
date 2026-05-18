@@ -193,7 +193,19 @@ export default function BudgetPage() {
   return (
     <>
 
-      <PageHeader title="Бюджет" density="compact" />
+      <PageHeader
+        title="Бюджет"
+        density="compact"
+        actions={
+          <a
+            href="/planned-ops"
+            className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+            style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
+          >
+            Плановые операции
+          </a>
+        }
+      />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
 

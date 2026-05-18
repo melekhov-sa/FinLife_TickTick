@@ -50,6 +50,9 @@ function isActive(href: string, pathname: string | null): boolean {
       pathname.startsWith("/goals")
     );
   }
+  if (href === "/plan") {
+    return pathname.startsWith("/plan") || pathname.startsWith("/recurring-tasks");
+  }
   if (href === "/budget") {
     return pathname.startsWith("/budget") || pathname.startsWith("/planned-ops");
   }
