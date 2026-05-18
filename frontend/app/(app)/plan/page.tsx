@@ -380,7 +380,11 @@ function EntryRow({
             <span className="text-[8px] text-[#fff] font-bold">✓</span>
           </div>
         ) : isOp ? (
-          <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0" />
+          <button
+            onClick={() => onExecuteOp(entry)}
+            className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0 transition-all hover:bg-amber-50 dark:hover:bg-amber-400/10 hover:border-amber-400 hover:scale-110"
+            title="Выполнить операцию"
+          />
         ) : entry.kind === "event" ? (
           <div className="w-[16px] h-[16px] shrink-0" aria-hidden="true" />
         ) : (
@@ -388,7 +392,7 @@ function EntryRow({
         )}
       </div>
 
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEntryClick?.(entry)}>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => isOp ? onExecuteOp(entry) : onEntryClick?.(entry)}>
         <div className="flex items-center gap-1.5">
           <span className={clsx(
             "task-title-text text-[14px] font-medium leading-snug truncate",
