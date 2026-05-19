@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { CalendarDays, Pencil, Archive, RotateCcw, X, Check, Plus } from "lucide-react";
-import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
@@ -11,6 +10,7 @@ import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { CreateEventModal } from "@/components/modals/CreateEventModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,7 @@ export default function EventTemplatesPage() {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
 
   async function handleArchive(id: number) {
     await api.post(`/api/v2/events/${id}/archive`);
@@ -84,15 +85,14 @@ export default function EventTemplatesPage() {
 
   return (
     <>
+      {showCreate && <CreateEventModal onClose={() => setShowCreate(false)} />}
       <PageHeader
         title="Шаблоны событий"
         density="compact"
         actions={
-          <Link href="/events">
-            <Button variant="primary" size="sm" leftIcon={<Plus size={13} />}>
-              Создать событие
-            </Button>
-          </Link>
+          <Button variant="primary" size="sm" leftIcon={<Plus size={13} />} onClick={() => setShowCreate(true)}>
+            Создать событие
+          </Button>
         }
       />
 

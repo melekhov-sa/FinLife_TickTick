@@ -225,6 +225,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["event-templates"] });
       toast({ title: "Событие создано", variant: "success" });
       onClose();
     } catch (err: unknown) {
