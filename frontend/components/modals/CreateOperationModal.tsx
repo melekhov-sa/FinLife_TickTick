@@ -290,7 +290,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     if (opType === "TRANSFER") {
       if (!fromWalletId) custom.from_wallet_id = "Выберите кошелёк-источник";
       if (!toWalletId) custom.to_wallet_id = "Выберите кошелёк-получатель";
-      if (fromWalletId && toWalletId && fromWalletId === toWalletId) custom.to_wallet_id = "Кошельки должны отличаться";
+      if (fromWalletId && toWalletId && fromWalletId === toWalletId) {
+        const fromW = (wallets ?? []).find((x) => x.wallet_id === fromWalletId);
+        if (fromW?.wallet_type !== "SAVINGS") custom.to_wallet_id = "Кошельки должны отличаться";
+      }
     }
     // Balance check: REGULAR wallets cannot go negative
     if (!isNaN(amountVal) && amountVal > 0) {

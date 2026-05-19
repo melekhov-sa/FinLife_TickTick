@@ -457,10 +457,12 @@ const MAIN_TABS: { value: MainTab; label: string }[] = [
 export default function PlannedOpsPage() {
   const [tab, setTab] = useState<MainTab>("upcoming");
   const [showCreateOp, setShowCreateOp] = useState(false);
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
 
   return (
     <>
       {showCreateOp && <CreateOperationModal onClose={() => setShowCreateOp(false)} />}
+      {showCreateTemplate && <PlannedOpEditModal template={null} onClose={() => setShowCreateTemplate(false)} />}
       <PageHeader title="Плановые операции" density="compact" />
       <main className="flex-1 overflow-auto p-3 md:p-6">
         <div className="w-full">
@@ -471,10 +473,16 @@ export default function PlannedOpsPage() {
               title="Регулярные финансовые операции"
               size="sm"
               actions={
-                <Button onClick={() => setShowCreateOp(true)} variant="primary" size="md">
-                  <span className="text-[16px] leading-none">+</span>
-                  Операция
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setShowCreateTemplate(true)} variant="secondary" size="md">
+                    <span className="text-[16px] leading-none">+</span>
+                    Шаблон
+                  </Button>
+                  <Button onClick={() => setShowCreateOp(true)} variant="primary" size="md">
+                    <span className="text-[16px] leading-none">+</span>
+                    Операция
+                  </Button>
+                </div>
               }
             />
           </div>

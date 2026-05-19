@@ -192,6 +192,14 @@ function Item({
 
 
 
+const SENTINEL_ID = "__dnd-end-sentinel__";
+
+/** Invisible zero-height droppable zone at the very end of the sortable list. */
+function SentinelDropZone() {
+  const { setNodeRef } = useSortable({ id: SENTINEL_ID });
+  return <div ref={setNodeRef} style={{ height: 0 }} />;
+}
+
 /** Drag-and-drop wrapper for a single task row (kind === "task" only). */
 function SortableTaskItem({
   item,
@@ -499,10 +507,19 @@ export function TodayBlock({ today, plannedOps }: Props) {
     if (!over || dragActive.id === over.id) return;
 
     const oldIndex = localTaskOrder.findIndex((t) => t.id === dragActive.id);
-    const newIndex = localTaskOrder.findIndex((t) => t.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
+    if (oldIndex === -1) return;
 
-    const newOrder = arrayMove(localTaskOrder, oldIndex, newIndex);
+    let newOrder: DashboardItem[];
+    if (over.id === SENTINEL_ID) {
+      // Dropped on the end sentinel — move the item to the very end
+      const item = localTaskOrder[oldIndex];
+      newOrder = [...localTaskOrder.filter((t) => t.id !== dragActive.id), item];
+    } else {
+      const newIndex = localTaskOrder.findIndex((t) => t.id === over.id);
+      if (newIndex === -1) return;
+      newOrder = arrayMove(localTaskOrder, oldIndex, newIndex);
+    }
+
     setLocalTaskOrder(newOrder);
 
     // Send only kind === "task" IDs to backend; task_occ have their own ordering
@@ -512,10 +529,11 @@ export function TodayBlock({ today, plannedOps }: Props) {
     }
   }
 
-  // IDs used by SortableContext -- only draggable (non-done, kind === "task") items
-  const sortableIds = localTaskOrder
-    .filter((t) => t.kind === "task" && !t.is_done)
-    .map((t) => t.id);
+  // IDs used by SortableContext -- non-done task items + end sentinel
+  const sortableIds = [
+    ...localTaskOrder.filter((t) => t.kind === "task" && !t.is_done).map((t) => t.id),
+    SENTINEL_ID,
+  ];
 
   return (
     <>
@@ -734,6 +752,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                         </div>
                       )
                     )}
+                    <SentinelDropZone />
                   </SortableContext>
                 </DndContext>
               ),

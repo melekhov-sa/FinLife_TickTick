@@ -59,6 +59,20 @@ class PlannedOpUpdate(BaseModel):
     to_goal_id: int | None = None
 
 
+class PlannedOpCreate(BaseModel):
+    kind: str
+    title: str
+    amount: str
+    freq: str = "MONTHLY"
+    wallet_id: int | None = None
+    destination_wallet_id: int | None = None
+    category_id: int | None = None
+    from_goal_id: int | None = None
+    to_goal_id: int | None = None
+    active_from: str | None = None
+    active_until: str | None = None
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_template_or_404(template_id: int, user_id: int, db: Session) -> OperationTemplateModel:
@@ -217,6 +231,52 @@ def mark_occurrence_done(occurrence_id: int, request: Request, db: Session = Dep
     occ.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/planned-ops", status_code=201)
+def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Depends(get_db)):
+    from app.application.occurrence_generator import OccurrenceGenerator
+    user_id = get_user_id(request, db)
+
+    try:
+        amount = Decimal(body.amount)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Некорректная сумма")
+
+    active_from = date.fromisoformat(body.active_from) if body.active_from else date.today()
+    active_until = date.fromisoformat(body.active_until) if body.active_until else None
+
+    rule = RecurrenceRuleModel(
+        account_id=user_id,
+        freq=body.freq,
+        interval=1,
+        start_date=active_from,
+        until_date=active_until,
+    )
+    db.add(rule)
+    db.flush()
+
+    template = OperationTemplateModel(
+        account_id=user_id,
+        title=body.title,
+        kind=body.kind,
+        amount=amount,
+        wallet_id=body.wallet_id,
+        destination_wallet_id=body.destination_wallet_id,
+        category_id=body.category_id,
+        from_goal_id=body.from_goal_id,
+        to_goal_id=body.to_goal_id,
+        active_from=active_from,
+        active_until=active_until,
+        rule_id=rule.rule_id,
+        is_archived=False,
+    )
+    db.add(template)
+    db.commit()
+
+    OccurrenceGenerator(db).generate_operation_occurrences(user_id)
+
+    return {"template_id": template.template_id}
 
 
 @router.patch("/planned-ops/{template_id}")

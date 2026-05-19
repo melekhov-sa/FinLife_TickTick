@@ -30,9 +30,25 @@ export interface PlannedOpTemplate {
 }
 
 interface Props {
-  template: PlannedOpTemplate;
+  /** null = create mode */
+  template: PlannedOpTemplate | null;
   onClose: () => void;
 }
+
+type KindType = "INCOME" | "EXPENSE" | "TRANSFER";
+
+const KIND_OPTIONS: SelectOption[] = [
+  { value: "INCOME",   label: "Доход" },
+  { value: "EXPENSE",  label: "Расход" },
+  { value: "TRANSFER", label: "Перемещение" },
+];
+
+const FREQ_OPTIONS: SelectOption[] = [
+  { value: "DAILY",   label: "Ежедневно" },
+  { value: "WEEKLY",  label: "Еженедельно" },
+  { value: "MONTHLY", label: "Ежемесячно" },
+  { value: "YEARLY",  label: "Ежегодно" },
+];
 
 function fmtBalance(balance: string, currency: string): string {
   const n = parseFloat(balance);
@@ -42,17 +58,21 @@ function fmtBalance(balance: string, currency: string): string {
 
 export function PlannedOpEditModal({ template, onClose }: Props) {
   const qc = useQueryClient();
+  const isCreate = template === null;
 
-  const [title, setTitle] = useState(template.title);
-  const [amount, setAmount] = useState(template.amount);
-  const [walletId, setWalletId] = useState<number | "">(template.wallet_id ?? "");
-  const [destWalletId, setDestWalletId] = useState<number | "">(template.destination_wallet_id ?? "");
-  const [categoryId, setCategoryId] = useState<number | "">(template.category_id ?? "");
-  const [fromGoalId, setFromGoalId] = useState<number | "">(template.from_goal_id ?? "");
-  const [toGoalId, setToGoalId] = useState<number | "">(template.to_goal_id ?? "");
-  const [activeUntil, setActiveUntil] = useState(template.active_until ?? "");
+  const [kind, setKind] = useState<KindType>((template?.kind as KindType) ?? "EXPENSE");
+  const [title, setTitle] = useState(template?.title ?? "");
+  const [amount, setAmount] = useState(template?.amount ?? "");
+  const [freq, setFreq] = useState("MONTHLY");
+  const [activeFrom, setActiveFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [walletId, setWalletId] = useState<number | "">(template?.wallet_id ?? "");
+  const [destWalletId, setDestWalletId] = useState<number | "">(template?.destination_wallet_id ?? "");
+  const [categoryId, setCategoryId] = useState<number | "">(template?.category_id ?? "");
+  const [fromGoalId, setFromGoalId] = useState<number | "">(template?.from_goal_id ?? "");
+  const [toGoalId, setToGoalId] = useState<number | "">(template?.to_goal_id ?? "");
+  const [activeUntil, setActiveUntil] = useState(template?.active_until ?? "");
 
-  const isTransfer = template.kind === "TRANSFER";
+  const isTransfer = kind === "TRANSFER";
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
@@ -94,20 +114,20 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
 
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];
-    const forType = (finCats ?? []).filter((c) => c.category_type === template.kind);
+    const forType = (finCats ?? []).filter((c) => c.category_type === kind);
     forType.sort((a, b) => a.title.localeCompare(b.title, "ru"));
     forType.forEach((c) => opts.push({ value: String(c.category_id), label: c.title }));
     return opts;
-  }, [finCats, template.kind]);
+  }, [finCats, kind]);
 
   const goalOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— без цели —" },
     ...(goals ?? []).map((g) => ({ value: String(g.goal_id), label: g.title })),
   ], [goals]);
 
-  const { mutate: save, isPending } = useMutation({
+  const { mutate: saveEdit, isPending: pendingEdit } = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      api.patch(`/api/v2/planned-ops/${template.template_id}`, body),
+      api.patch(`/api/v2/planned-ops/${template?.template_id}`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["planned-ops"] });
       qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
@@ -115,29 +135,63 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
     },
   });
 
+  const { mutate: saveCreate, isPending: pendingCreate } = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      api.post("/api/v2/planned-ops", body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["planned-ops"] });
+      qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
+      onClose();
+    },
+  });
+
+  const isPending = pendingEdit || pendingCreate;
+
   function handleSave() {
     if (!title.trim() || !amount) return;
-    const body: Record<string, unknown> = {
-      title: title.trim(),
-      amount,
-      active_until: activeUntil || null,
-      category_id: categoryId || null,
-    };
-    if (isTransfer) {
-      body.wallet_id = walletId || null;
-      body.destination_wallet_id = destWalletId || null;
-      body.from_goal_id = fromGoalId || null;
-      body.to_goal_id = toGoalId || null;
+
+    if (isCreate) {
+      const body: Record<string, unknown> = {
+        kind,
+        title: title.trim(),
+        amount,
+        freq,
+        active_from: activeFrom || undefined,
+        active_until: activeUntil || null,
+        category_id: categoryId || null,
+      };
+      if (isTransfer) {
+        body.wallet_id = walletId || null;
+        body.destination_wallet_id = destWalletId || null;
+        body.from_goal_id = fromGoalId || null;
+        body.to_goal_id = toGoalId || null;
+      } else {
+        body.wallet_id = walletId || null;
+      }
+      saveCreate(body);
     } else {
-      body.wallet_id = walletId || null;
+      const body: Record<string, unknown> = {
+        title: title.trim(),
+        amount,
+        active_until: activeUntil || null,
+        category_id: categoryId || null,
+      };
+      if (isTransfer) {
+        body.wallet_id = walletId || null;
+        body.destination_wallet_id = destWalletId || null;
+        body.from_goal_id = fromGoalId || null;
+        body.to_goal_id = toGoalId || null;
+      } else {
+        body.wallet_id = walletId || null;
+      }
+      saveEdit(body);
     }
-    save(body);
   }
 
   const footer = (
     <div className="flex gap-2.5">
       <Button variant="primary" size="md" fullWidth loading={isPending} onClick={handleSave}>
-        Сохранить
+        {isCreate ? "Создать" : "Сохранить"}
       </Button>
       <Button variant="secondary" size="md" onClick={onClose} className="hidden md:inline-flex">
         Отмена
@@ -146,15 +200,38 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
   );
 
   return (
-    <BottomSheet open onClose={onClose} title="Редактировать шаблон" footer={footer}>
+    <BottomSheet
+      open
+      onClose={onClose}
+      title={isCreate ? "Новый шаблон" : "Редактировать шаблон"}
+      footer={footer}
+    >
       <div className="space-y-3 md:space-y-4">
+
+        {/* Kind — create mode only */}
+        {isCreate && (
+          <FormRow label="Тип" required>
+            <Select
+              value={kind}
+              onChange={(v) => {
+                setKind(v as KindType);
+                setWalletId("");
+                setDestWalletId("");
+                setCategoryId("");
+                setFromGoalId("");
+                setToGoalId("");
+              }}
+              options={KIND_OPTIONS}
+            />
+          </FormRow>
+        )}
 
         <FormRow label="Название" required>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Название операции"
-            autoFocus
+            autoFocus={isCreate}
           />
         </FormRow>
 
@@ -169,6 +246,17 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
             tabular
           />
         </FormRow>
+
+        {/* Freq — create mode only */}
+        {isCreate && (
+          <FormRow label="Периодичность" required>
+            <Select
+              value={freq}
+              onChange={(v) => setFreq(v as string)}
+              options={FREQ_OPTIONS}
+            />
+          </FormRow>
+        )}
 
         {isTransfer ? (
           <>
@@ -215,7 +303,7 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
               <Select
                 value={walletId}
                 onChange={(v) => setWalletId(v ? Number(v) : "")}
-                options={template.kind === "EXPENSE" ? expenseWalletOptions : allWalletOptions}
+                options={kind === "EXPENSE" ? expenseWalletOptions : allWalletOptions}
                 placeholder="— кошелёк —"
               />
             </FormRow>
@@ -229,6 +317,17 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
               />
             </FormRow>
           </>
+        )}
+
+        {/* Active from — create mode only */}
+        {isCreate && (
+          <FormRow label="Начало">
+            <Input
+              type="date"
+              value={activeFrom}
+              onChange={(e) => setActiveFrom(e.target.value)}
+            />
+          </FormRow>
         )}
 
         <FormRow label="Действует до">

@@ -11,7 +11,6 @@ import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
-import { Chip } from "@/components/primitives/Chip";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
 import { TimeInput } from "@/components/primitives/TimeInput";
@@ -231,22 +230,22 @@ export function EntryDetailModal({ entry, onClose }: Props) {
           </FormRow>
         ) : null}
 
-        {/* Category — tasks only (toggle, no default selection) */}
+        {/* Category — tasks only */}
         {editable && (
-          <FormRow label="Категория" hint={categoryId === null ? "Без категории" : undefined}>
-            <div className="flex flex-wrap gap-1">
-              {activeCategories.map((c) => (
-                <Chip
-                  key={c.category_id}
-                  label={c.title}
-                  emoji={c.emoji ?? undefined}
-                  selected={categoryId === c.category_id}
-                  variant="accent"
-                  size="sm"
-                  onClick={() => setCategoryId(categoryId === c.category_id ? null : c.category_id)}
-                />
-              ))}
-            </div>
+          <FormRow label="Категория">
+            <Select
+              value={categoryId !== null ? String(categoryId) : ""}
+              onChange={(v) => setCategoryId(v ? Number(v) : null)}
+              options={[
+                { value: "", label: "— без категории —" },
+                ...activeCategories.map((c) => ({
+                  value: String(c.category_id),
+                  label: c.title,
+                  emoji: c.emoji ?? undefined,
+                })),
+              ]}
+              placeholder="— без категории —"
+            />
           </FormRow>
         )}
 
