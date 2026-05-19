@@ -254,12 +254,15 @@ def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Dep
     active_from = date.fromisoformat(body.active_from) if body.active_from else date.today()
     active_until = date.fromisoformat(body.active_until) if body.active_until else None
 
+    _WEEKDAY_NAMES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
     rule = RecurrenceRuleModel(
         account_id=user_id,
         freq=body.freq,
         interval=1,
         start_date=active_from,
         until_date=active_until,
+        by_monthday=active_from.day if body.freq == "MONTHLY" else None,
+        by_weekday=_WEEKDAY_NAMES[active_from.weekday()] if body.freq == "WEEKLY" else None,
     )
     db.add(rule)
     db.flush()
