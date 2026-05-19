@@ -22,7 +22,7 @@ from app.infrastructure.db.models import (
     CalendarEventModel, EventOccurrenceModel, EventDefaultReminderModel,
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
-    EventLog, CategoryInfo, ProjectModel,
+    EventLog, CategoryInfo, ProjectModel, GoalInfo,
 )
 from app.utils.money import format_money
 
@@ -817,9 +817,10 @@ class DashboardService:
             if habit_ids else {}
         )
 
-        # Batch-load wallet/category titles for transaction subtitles
+        # Batch-load wallet/category/goal titles for transaction subtitles
         wallet_ids: set[int] = set()
         cat_ids: set[int] = set()
+        goal_ids: set[int] = set()
         for tx in tx_rows:
             if tx.wallet_id:
                 wallet_ids.add(tx.wallet_id)
@@ -829,6 +830,10 @@ class DashboardService:
                 wallet_ids.add(tx.to_wallet_id)
             if tx.category_id:
                 cat_ids.add(tx.category_id)
+            if tx.from_goal_id:
+                goal_ids.add(tx.from_goal_id)
+            if tx.to_goal_id:
+                goal_ids.add(tx.to_goal_id)
 
         wallet_titles = (
             {w.wallet_id: w.title for w in self.db.query(WalletBalance)
@@ -839,6 +844,11 @@ class DashboardService:
             {c.category_id: c.title for c in self.db.query(CategoryInfo)
              .filter(CategoryInfo.category_id.in_(cat_ids)).all()}
             if cat_ids else {}
+        )
+        goal_titles = (
+            {g.goal_id: g.title for g in self.db.query(GoalInfo)
+             .filter(GoalInfo.goal_id.in_(goal_ids)).all()}
+            if goal_ids else {}
         )
 
         # Build unified item list
@@ -884,9 +894,20 @@ class DashboardService:
 
             # Subtitle: wallet · category (or from → to for transfers)
             if tx.operation_type == "TRANSFER":
-                from_name = wallet_titles.get(tx.from_wallet_id, "")
-                to_name = wallet_titles.get(tx.to_wallet_id, "")
-                subtitle = f"{from_name} → {to_name}" if from_name and to_name else "Перевод"
+                same_wallet = tx.from_wallet_id and tx.from_wallet_id == tx.to_wallet_id
+                if same_wallet and (tx.from_goal_id or tx.to_goal_id):
+                    # Same-wallet goal transfer — show goal names
+                    from_name = goal_titles.get(tx.from_goal_id, "") if tx.from_goal_id else ""
+                    to_name = goal_titles.get(tx.to_goal_id, "") if tx.to_goal_id else ""
+                    wallet_name = wallet_titles.get(tx.from_wallet_id, "")
+                    if from_name and to_name:
+                        subtitle = f"{wallet_name}: {from_name} → {to_name}" if wallet_name else f"{from_name} → {to_name}"
+                    else:
+                        subtitle = "Перевод между целями"
+                else:
+                    from_name = wallet_titles.get(tx.from_wallet_id, "")
+                    to_name = wallet_titles.get(tx.to_wallet_id, "")
+                    subtitle = f"{from_name} → {to_name}" if from_name and to_name else "Перевод"
             else:
                 w_name = wallet_titles.get(tx.wallet_id, "")
                 c_name = cat_titles.get(tx.category_id, "")

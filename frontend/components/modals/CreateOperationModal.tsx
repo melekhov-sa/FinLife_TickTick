@@ -335,6 +335,8 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["goals"] });
       if (listId) {
         qc.invalidateQueries({ queryKey: ["list-transactions", Number(listId)] });
         qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
