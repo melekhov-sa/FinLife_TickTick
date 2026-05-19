@@ -152,7 +152,13 @@ def list_planned_ops(
 
 @router.get("/planned-ops/upcoming", response_model=list[UpcomingOccurrence])
 def list_upcoming(request: Request, db: Session = Depends(get_db)):
+    from app.application.occurrence_generator import OccurrenceGenerator
     user_id = get_user_id(request, db)
+    # Lazy generation: create missing occurrences for all active templates.
+    # Ensures templates created while the id sequence was broken still get
+    # their occurrences on the next page load.
+    OccurrenceGenerator(db).generate_operation_occurrences(user_id)
+
     today = date.today()
     horizon = today + timedelta(days=90)
 

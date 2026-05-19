@@ -456,7 +456,7 @@ const MAIN_TABS: { value: MainTab; label: string }[] = [
 ];
 
 export default function PlannedOpsPage() {
-  const [tab, setTab] = useState<MainTab>("upcoming");
+  const [tab, setTab] = useState<MainTab>("templates");
   const [showCreateOp, setShowCreateOp] = useState(false);
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
 
