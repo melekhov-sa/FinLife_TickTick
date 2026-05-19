@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
   closestCenter,
   PointerSensor,
   KeyboardSensor,
@@ -489,54 +491,70 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   // Local order for optimistic DnD -- mirrors activeTasks, updated on drag
   const [localTaskOrder, setLocalTaskOrder] = useState<DashboardItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Sync localTaskOrder whenever server data refreshes
+  // Sync from server only when not actively dragging (prevents mid-drag resets)
   useEffect(() => {
-    setLocalTaskOrder(activeTasks);
-  }, [activeTasks]);
+    if (!isDragging) setLocalTaskOrder(activeTasks);
+  }, [activeTasks, isDragging]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        // 5px movement threshold -- distinguishes drag from tap/click
-        distance: 5,
-      },
+      activationConstraint: { distance: 5 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active: dragActive, over } = event;
-    if (!over || dragActive.id === over.id) return;
-
-    const oldIndex = localTaskOrder.findIndex((t) => t.id === dragActive.id);
-    if (oldIndex === -1) return;
-
-    let newOrder: DashboardItem[];
-    if (over.id === SENTINEL_ID) {
-      // Dropped on the end sentinel — move the item to the very end
-      const item = localTaskOrder[oldIndex];
-      newOrder = [...localTaskOrder.filter((t) => t.id !== dragActive.id), item];
-    } else {
-      const newIndex = localTaskOrder.findIndex((t) => t.id === over.id);
-      if (newIndex === -1) return;
-      newOrder = arrayMove(localTaskOrder, oldIndex, newIndex);
-    }
-
-    setLocalTaskOrder(newOrder);
-
-    // Send only kind === "task" IDs to backend; task_occ have their own ordering
-    const taskIds = newOrder.filter((t) => t.kind === "task").map((t) => t.id);
-    if (!isReordering && taskIds.length > 0) {
-      reorderTasks(taskIds);
-    }
+  function handleDragStart(_event: DragStartEvent) {
+    setIsDragging(true);
   }
 
-  // IDs used by SortableContext — only real draggable task items.
-  // SENTINEL_ID is registered separately via useDroppable (not sortable) so the
-  // verticalListSortingStrategy is not confused by a phantom zero-height item.
+  // Update order live during drag — this is what makes every drop position work reliably.
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setLocalTaskOrder((prev) => {
+      const oldIndex = prev.findIndex((t) => t.id === active.id);
+      if (oldIndex === -1) return prev;
+
+      let newIndex: number;
+      if (over.id === SENTINEL_ID) {
+        // Pointer is past the last item — move dragged item to the very end
+        newIndex = prev.length - 1;
+      } else {
+        newIndex = prev.findIndex((t) => t.id === over.id);
+        if (newIndex === -1) return prev;
+      }
+
+      if (oldIndex === newIndex) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }
+
+  // On drop — order is already correct from handleDragOver, just commit to server.
+  function handleDragEnd(event: DragEndEvent) {
+    setIsDragging(false);
+    const { over } = event;
+
+    if (!over) {
+      // Drag cancelled — reset to server state
+      setLocalTaskOrder(activeTasks);
+      return;
+    }
+
+    setLocalTaskOrder((current) => {
+      const taskIds = current.filter((t) => t.kind === "task").map((t) => t.id);
+      if (!isReordering && taskIds.length > 0) reorderTasks(taskIds);
+      return current;
+    });
+  }
+
+  // IDs for SortableContext — only real draggable task items.
+  // SENTINEL_ID is a plain useDroppable, not in this array, so verticalListSortingStrategy
+  // isn't confused by it.
   const sortableIds = localTaskOrder
     .filter((t) => t.kind === "task" && !t.is_done)
     .map((t) => t.id);
@@ -740,6 +758,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
