@@ -59,6 +59,7 @@ function fmtBalance(balance: string, currency: string): string {
 export function PlannedOpEditModal({ template, onClose }: Props) {
   const qc = useQueryClient();
   const isCreate = template === null;
+  const [error, setError] = useState<string | null>(null);
 
   const [kind, setKind] = useState<KindType>((template?.kind as KindType) ?? "EXPENSE");
   const [title, setTitle] = useState(template?.title ?? "");
@@ -125,6 +126,15 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
     ...(goals ?? []).map((g) => ({ value: String(g.goal_id), label: g.title })),
   ], [goals]);
 
+  function extractErrorMessage(err: unknown): string {
+    const msg = err instanceof Error ? err.message : "";
+    const match = msg.match(/API error \d+: ([\s\S]*)/);
+    if (match) {
+      try { return JSON.parse(match[1])?.detail ?? match[1]; } catch { return match[1]; }
+    }
+    return msg || "Не удалось сохранить шаблон";
+  }
+
   const { mutate: saveEdit, isPending: pendingEdit } = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       api.patch(`/api/v2/planned-ops/${template?.template_id}`, body),
@@ -133,6 +143,7 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
       onClose();
     },
+    onError: (err) => setError(extractErrorMessage(err)),
   });
 
   const { mutate: saveCreate, isPending: pendingCreate } = useMutation({
@@ -143,6 +154,7 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
       qc.invalidateQueries({ queryKey: ["planned-ops-upcoming"] });
       onClose();
     },
+    onError: (err) => setError(extractErrorMessage(err)),
   });
 
   const isPending = pendingEdit || pendingCreate;
@@ -207,6 +219,11 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
       footer={footer}
     >
       <div className="space-y-3 md:space-y-4">
+        {error && (
+          <p className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-3 py-2.5">
+            {error}
+          </p>
+        )}
 
         {/* Kind — create mode only */}
         {isCreate && (
@@ -235,14 +252,14 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
           />
         </FormRow>
 
-        <FormRow label="Сумма" required>
+        <FormRow label="Сумма" hint="Необязательно — можно указать позже">
           <Input
             type="number"
             step="0.01"
-            min="0.01"
+            min="0"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
+            onChange={(e) => { setAmount(e.target.value); setError(null); }}
+            placeholder="не указана"
             tabular
           />
         </FormRow>
