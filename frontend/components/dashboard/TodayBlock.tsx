@@ -12,6 +12,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -194,10 +195,14 @@ function Item({
 
 const SENTINEL_ID = "__dnd-end-sentinel__";
 
-/** Invisible zero-height droppable zone at the very end of the sortable list. */
+/**
+ * Drop zone at the very end of the list — registered as a plain droppable (NOT sortable)
+ * so verticalListSortingStrategy isn't confused by it.
+ * Non-zero height is needed so closestCenter can detect it.
+ */
 function SentinelDropZone() {
-  const { setNodeRef } = useSortable({ id: SENTINEL_ID });
-  return <div ref={setNodeRef} style={{ height: 0 }} />;
+  const { setNodeRef } = useDroppable({ id: SENTINEL_ID });
+  return <div ref={setNodeRef} style={{ height: 12 }} aria-hidden />;
 }
 
 /** Drag-and-drop wrapper for a single task row (kind === "task" only). */
@@ -529,11 +534,12 @@ export function TodayBlock({ today, plannedOps }: Props) {
     }
   }
 
-  // IDs used by SortableContext -- non-done task items + end sentinel
-  const sortableIds = [
-    ...localTaskOrder.filter((t) => t.kind === "task" && !t.is_done).map((t) => t.id),
-    SENTINEL_ID,
-  ];
+  // IDs used by SortableContext — only real draggable task items.
+  // SENTINEL_ID is registered separately via useDroppable (not sortable) so the
+  // verticalListSortingStrategy is not confused by a phantom zero-height item.
+  const sortableIds = localTaskOrder
+    .filter((t) => t.kind === "task" && !t.is_done)
+    .map((t) => t.id);
 
   return (
     <>
