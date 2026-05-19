@@ -555,7 +555,7 @@ class OperationTemplateModel(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     kind: Mapped[str] = mapped_column(String(32), nullable=False)  # INCOME/EXPENSE/TRANSFER
-    amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
     note: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # for INCOME/EXPENSE/TRANSFER (source)

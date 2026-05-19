@@ -21,7 +21,7 @@ interface PlannedOpItem {
   template_id: number;
   title: string;
   kind: string;
-  amount: string;
+  amount: string | null;
   wallet_id: number | null;
   wallet_title: string | null;
   destination_wallet_id: number | null;
@@ -40,7 +40,7 @@ interface UpcomingOccurrence {
   template_id: number;
   title: string;
   kind: string;
-  amount: string;
+  amount: string | null;
   scheduled_date: string;
   status: string;
   is_overdue: boolean;
@@ -70,7 +70,8 @@ const FREQ_LABELS: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatAmount(amount: string): string {
+function formatAmount(amount: string | null): string {
+  if (!amount) return "—";
   const n = parseFloat(amount);
   return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -343,7 +344,7 @@ function UpcomingTab() {
   const initialValues: CreateOperationInitialValues | undefined = executeOcc
     ? {
         opType: executeOcc.kind as "INCOME" | "EXPENSE" | "TRANSFER",
-        amount: executeOcc.amount,
+        amount: executeOcc.amount ?? undefined,
         walletId: executeOcc.wallet_id ?? undefined,
         fromWalletId: executeOcc.wallet_id ?? undefined,
         toWalletId: executeOcc.destination_wallet_id ?? undefined,

@@ -20,7 +20,7 @@ export interface PlannedOpTemplate {
   template_id: number;
   title: string;
   kind: string;
-  amount: string;
+  amount: string | null;
   wallet_id: number | null;
   destination_wallet_id: number | null;
   category_id: number | null;
@@ -148,13 +148,13 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
   const isPending = pendingEdit || pendingCreate;
 
   function handleSave() {
-    if (!title.trim() || !amount) return;
+    if (!title.trim()) return;
 
     if (isCreate) {
       const body: Record<string, unknown> = {
         kind,
         title: title.trim(),
-        amount,
+        amount: amount || null,
         freq,
         active_from: activeFrom || undefined,
         active_until: activeUntil || null,
@@ -172,7 +172,7 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
     } else {
       const body: Record<string, unknown> = {
         title: title.trim(),
-        amount,
+        amount: amount || null,
         active_until: activeUntil || null,
         category_id: categoryId || null,
       };

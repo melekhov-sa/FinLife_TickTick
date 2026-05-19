@@ -18,7 +18,7 @@ class PlannedOpItem(BaseModel):
     template_id: int
     title: str
     kind: str
-    amount: str
+    amount: str | None
     wallet_id: int | None
     wallet_title: str | None
     destination_wallet_id: int | None
@@ -37,7 +37,7 @@ class UpcomingOccurrence(BaseModel):
     template_id: int
     title: str
     kind: str
-    amount: str
+    amount: str | None
     scheduled_date: str
     status: str
     is_overdue: bool
@@ -62,7 +62,7 @@ class PlannedOpUpdate(BaseModel):
 class PlannedOpCreate(BaseModel):
     kind: str
     title: str
-    amount: str
+    amount: str | None = None
     freq: str = "MONTHLY"
     wallet_id: int | None = None
     destination_wallet_id: int | None = None
@@ -133,7 +133,7 @@ def list_planned_ops(
             template_id=t.template_id,
             title=t.title,
             kind=t.kind,
-            amount=str(t.amount),
+            amount=str(t.amount) if t.amount is not None else None,
             wallet_id=t.wallet_id,
             wallet_title=wallet_map.get(t.wallet_id) if t.wallet_id else None,
             destination_wallet_id=t.destination_wallet_id,
@@ -176,7 +176,7 @@ def list_upcoming(request: Request, db: Session = Depends(get_db)):
             template_id=tmpl.template_id,
             title=tmpl.title,
             kind=tmpl.kind,
-            amount=str(tmpl.amount),
+            amount=str(tmpl.amount) if tmpl.amount is not None else None,
             scheduled_date=occ.scheduled_date.isoformat(),
             status=occ.status,
             is_overdue=occ.scheduled_date < today,
@@ -238,10 +238,12 @@ def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Dep
     from app.application.occurrence_generator import OccurrenceGenerator
     user_id = get_user_id(request, db)
 
-    try:
-        amount = Decimal(body.amount)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Некорректная сумма")
+    amount: Decimal | None = None
+    if body.amount is not None and body.amount != "":
+        try:
+            amount = Decimal(body.amount)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Некорректная сумма")
 
     active_from = date.fromisoformat(body.active_from) if body.active_from else date.today()
     active_until = date.fromisoformat(body.active_until) if body.active_until else None
@@ -286,8 +288,8 @@ def update_planned_op(template_id: int, body: PlannedOpUpdate, request: Request,
     fields = body.model_fields_set
     if "title" in fields and body.title is not None:
         t.title = body.title
-    if "amount" in fields and body.amount is not None:
-        t.amount = Decimal(body.amount)
+    if "amount" in fields:
+        t.amount = Decimal(body.amount) if body.amount not in (None, "") else None
     if "active_until" in fields:
         t.active_until = date.fromisoformat(body.active_until) if body.active_until else None
     if "wallet_id" in fields:

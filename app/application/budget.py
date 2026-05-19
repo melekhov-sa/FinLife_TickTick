@@ -1116,6 +1116,7 @@ class BudgetViewService:
                 OperationTemplateModel.account_id == account_id,
                 OperationTemplateModel.kind.in_(["INCOME", "EXPENSE"]),
                 OperationTemplateModel.category_id.isnot(None),
+                OperationTemplateModel.amount.isnot(None),
                 OperationOccurrence.scheduled_date >= range_start,
                 OperationOccurrence.scheduled_date < range_end,
                 OperationOccurrence.status != "SKIPPED",
