@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { RefreshCw, Pencil, Check, X, Archive, RotateCcw, AlertCircle } from "lucide-react";
+import { RefreshCw, Pencil, Check, X, Archive, RotateCcw, AlertCircle, Plus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
@@ -15,6 +15,7 @@ import { Select, type SelectOption } from "@/components/primitives/Select";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { EmptyState } from "@/components/primitives/EmptyState";
+import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -291,12 +292,22 @@ function TemplateRow({
 
 export default function RecurringTasksPage() {
   const [archived, setArchived] = useState<TabArchived>(false);
+  const [showCreate, setShowCreate] = useState(false);
   const { data: templates, isLoading, isError } = useTaskTemplates(archived);
   const { data: categories = [] } = useWorkCategories();
 
   return (
     <>
-      <PageHeader title="Повторяющиеся задачи" density="compact" />
+      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} defaultMode="recurring" />}
+      <PageHeader
+        title="Повторяющиеся задачи"
+        density="compact"
+        actions={
+          <Button variant="primary" size="sm" leftIcon={<Plus size={13} />} onClick={() => setShowCreate(true)}>
+            Создать шаблон
+          </Button>
+        }
+      />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
         {/* Tabs + count */}

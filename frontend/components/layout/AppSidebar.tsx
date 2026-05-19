@@ -34,25 +34,10 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Дашборд",  href: "/dashboard", icon: LayoutDashboard },
-  {
-    id: "plan", label: "План", href: "/plan", icon: ClipboardList,
-    children: [
-      { id: "recurring-tasks", label: "Повторяющиеся", href: "/recurring-tasks" },
-    ],
-  },
-  {
-    id: "events", label: "События", href: "/events", icon: CalendarDays,
-    children: [
-      { id: "event-templates", label: "Шаблоны", href: "/event-templates" },
-    ],
-  },
-  { id: "money",     label: "Деньги",   href: "/money",     icon: Wallet         },
-  {
-    id: "budget", label: "Бюджет", href: "/budget", icon: PieChart,
-    children: [
-      { id: "planned-ops", label: "Плановые операции", href: "/planned-ops" },
-    ],
-  },
+  { id: "plan",   label: "План",     href: "/plan",   icon: ClipboardList },
+  { id: "events", label: "События", href: "/events", icon: CalendarDays  },
+  { id: "money",  label: "Деньги",  href: "/money",  icon: Wallet        },
+  { id: "budget", label: "Бюджет",  href: "/budget", icon: PieChart      },
   { id: "habits",    label: "Привычки", href: "/habits",    icon: Heart          },
   { id: "lists",     label: "Списки",   href: "/lists",     icon: ListChecks     },
   { id: "digest",    label: "Итоги",      href: "/digest",    icon: Sparkles   },

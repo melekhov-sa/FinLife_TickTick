@@ -27,6 +27,7 @@ interface Props {
   initialDate?: string; // ISO date YYYY-MM-DD
   /** Pre-fill list_id (e.g., when opening from a trip dashboard). */
   initialListId?: number | null;
+  defaultMode?: "once" | "recurring";
 }
 
 interface TaskPreset {
@@ -101,13 +102,13 @@ function todayISO(): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) {
+export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMode }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // Mode
-  const [mode, setMode] = useState<"once" | "recurring">("once");
+  const [mode, setMode] = useState<"once" | "recurring">(defaultMode ?? "once");
 
   // Common fields
   const [title, setTitle] = useState("");
@@ -358,6 +359,9 @@ export function CreateTaskModal({ onClose, initialDate, initialListId }: Props) 
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      if (mode === "recurring") {
+        qc.invalidateQueries({ queryKey: ["task-templates"] });
+      }
       if (listId) {
         qc.invalidateQueries({ queryKey: ["list-tasks", Number(listId)] });
         qc.invalidateQueries({ queryKey: ["list-summary", Number(listId)] });
