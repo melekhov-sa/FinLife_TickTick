@@ -491,12 +491,15 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   // Local order for optimistic DnD -- mirrors activeTasks, updated on drag
   const [localTaskOrder, setLocalTaskOrder] = useState<DashboardItem[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  // Ref instead of state: changing it does NOT trigger re-renders or the useEffect
+  const isDraggingRef = useRef(false);
 
-  // Sync from server only when not actively dragging (prevents mid-drag resets)
+  // Sync from server only when activeTasks changes and we're not mid-drag.
+  // Using a ref guard (not state) so that drag-end doesn't immediately reset
+  // the local order before the server responds to the reorder mutation.
   useEffect(() => {
-    if (!isDragging) setLocalTaskOrder(activeTasks);
-  }, [activeTasks, isDragging]);
+    if (!isDraggingRef.current) setLocalTaskOrder(activeTasks);
+  }, [activeTasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -508,7 +511,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
   );
 
   function handleDragStart(_event: DragStartEvent) {
-    setIsDragging(true);
+    isDraggingRef.current = true;
   }
 
   // Update order live during drag — this is what makes every drop position work reliably.
@@ -534,13 +537,14 @@ export function TodayBlock({ today, plannedOps }: Props) {
     });
   }
 
-  // On drop — order is already correct from handleDragOver, just commit to server.
+  // On drop — order is already correct from handleDragOver, commit to server.
+  // Reset the ref so next activeTasks change (server response) will sync local order.
   function handleDragEnd(event: DragEndEvent) {
-    setIsDragging(false);
+    isDraggingRef.current = false;
     const { over } = event;
 
     if (!over) {
-      // Drag cancelled — reset to server state
+      // Drag cancelled — reset to server state immediately
       setLocalTaskOrder(activeTasks);
       return;
     }
