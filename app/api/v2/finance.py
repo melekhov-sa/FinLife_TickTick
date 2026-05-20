@@ -424,6 +424,15 @@ def list_transactions(
         q = q.filter(TransactionFeed.description.ilike(f"%{search.strip()}%"))
 
     total = q.count()
+
+    # Aggregate totals per type across all filtered rows (before pagination)
+    type_totals = (
+        q.with_entities(TransactionFeed.operation_type, func.sum(TransactionFeed.amount))
+        .group_by(TransactionFeed.operation_type)
+        .all()
+    )
+    totals_map = {row[0]: float(row[1] or 0) for row in type_totals}
+
     transactions = (
         q.order_by(TransactionFeed.occurred_at.desc())
         .offset((page - 1) * per_page)
@@ -460,6 +469,7 @@ def list_transactions(
         "page": page,
         "per_page": per_page,
         "pages": (total + per_page - 1) // per_page,
+        "totals": totals_map,
         "items": [i.model_dump() for i in items],
     }
 

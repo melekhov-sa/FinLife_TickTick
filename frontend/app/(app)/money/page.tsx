@@ -41,6 +41,7 @@ interface TransactionsResponse {
   page: number;
   per_page: number;
   pages: number;
+  totals: Record<string, number>;
   items: TransactionItem[];
 }
 
@@ -370,9 +371,28 @@ export default function MoneyPage() {
 
         {/* Stats */}
         {data && (
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 md:mb-4">
-            {data.total} операций
-          </p>
+          <div className="flex items-center justify-between mb-2 md:mb-4">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+              {data.total} операций
+            </p>
+            <div className="flex items-center gap-3">
+              {data.totals["INCOME"] != null && data.totals["INCOME"] > 0 && (
+                <span className="text-[12px] font-semibold tabular-nums text-emerald-500">
+                  +{data.totals["INCOME"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
+                </span>
+              )}
+              {data.totals["EXPENSE"] != null && data.totals["EXPENSE"] > 0 && (
+                <span className="text-[12px] font-semibold tabular-nums text-red-400">
+                  −{data.totals["EXPENSE"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
+                </span>
+              )}
+              {data.totals["TRANSFER"] != null && data.totals["TRANSFER"] > 0 && (
+                <span className="text-[12px] font-semibold tabular-nums text-blue-400">
+                  ↔{data.totals["TRANSFER"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         {isLoading && (
