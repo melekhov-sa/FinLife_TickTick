@@ -33,6 +33,8 @@ def format_money(amount, currency: str = "RUB", decimals: int = 0) -> str:
     Returns:
         "15 000 руб." / "1 200 USD"
     """
+    if amount is None:
+        return "—"
     if isinstance(amount, str):
         amount = Decimal(amount)
     fmt = f"{{:,.{decimals}f}}"
