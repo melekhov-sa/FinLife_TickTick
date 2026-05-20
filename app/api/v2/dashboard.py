@@ -68,8 +68,8 @@ class UpcomingPayment(BaseModel):
         return v.isoformat()
 
     @field_serializer("amount")
-    def serialize_amount(self, v: Decimal) -> float:
-        return float(v)
+    def serialize_amount(self, v: Decimal | None) -> float | None:
+        return float(v) if v is not None else None
 
 
 class HeatmapCell(BaseModel):
