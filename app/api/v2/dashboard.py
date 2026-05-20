@@ -56,7 +56,7 @@ class UpcomingPayment(BaseModel):
     scheduled_date: date
     kind: str
     kind_label: str
-    amount: Decimal
+    amount: Decimal | None = None
     amount_formatted: str
     days_until: int
     wallet_id: int | None = None
