@@ -78,6 +78,9 @@ export const CreateHabitRequestSchema = z.object({
   category_id: z.number().int().nullish(),
   note: z.string().nullish(),
   reminder_time: z.string().nullish(),
+  habit_type: z.string().default("binary"),
+  target_count: z.number().int().nullish(),
+  unit_label: z.string().nullish(),
 });
 
 export type CreateHabitRequest = z.infer<typeof CreateHabitRequestSchema>;

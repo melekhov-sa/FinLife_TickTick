@@ -550,6 +550,10 @@ def _habit_occ_to_item(occ: HabitOccurrence, habit: HabitModel, wc_map: dict) ->
             "habit_id": occ.habit_id,
             "level": habit.level,
             "current_streak": habit.current_streak,
+            "habit_type": habit.habit_type or "binary",
+            "target_count": habit.target_count,
+            "unit_label": habit.unit_label,
+            "completion_count": occ.completion_count,
         },
     }
 

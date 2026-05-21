@@ -479,6 +479,10 @@ class HabitModel(Base):
     reminder_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
     deadline_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
 
+    habit_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="binary")  # binary | counter
+    target_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -494,6 +498,7 @@ class HabitOccurrence(Base):
 
     scheduled_date: Mapped[date_type] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="ACTIVE")  # ACTIVE/DONE/SKIPPED
+    completion_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     __table_args__ = (

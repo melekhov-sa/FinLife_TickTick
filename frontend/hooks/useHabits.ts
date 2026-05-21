@@ -76,3 +76,25 @@ export function useDeleteHabit() {
     },
   });
 }
+
+export function useIncrementHabitToday() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (habitId: number) => api.post(`/api/v2/habits/${habitId}/increment-today`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useDecrementHabitToday() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (habitId: number) => api.post(`/api/v2/habits/${habitId}/decrement-today`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["habits"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}

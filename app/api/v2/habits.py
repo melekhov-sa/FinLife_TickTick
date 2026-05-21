@@ -40,6 +40,10 @@ class HabitItem(BaseModel):
     scheduled_today: bool
     recent_days: list[bool]   # last 14 days, oldest first
     is_archived: bool
+    habit_type: str            # 'binary' | 'counter'
+    target_count: int | None
+    unit_label: str | None
+    today_count: int           # completion_count for today's occurrence (counter habits)
 
 
 @router.get("/habits", response_model=list[HabitItem])
@@ -65,7 +69,7 @@ def get_habits(
 
     # Load occurrences for last 14 days (all habits at once)
     habit_ids = [h.habit_id for h in habits]
-    occ_by_habit: dict[int, dict[date, str]] = defaultdict(dict)
+    occ_by_habit: dict[int, dict[date, HabitOccurrence]] = defaultdict(dict)
     if habit_ids:
         occs = (
             db.query(HabitOccurrence)
@@ -78,24 +82,24 @@ def get_habits(
             .all()
         )
         for occ in occs:
-            occ_by_habit[occ.habit_id][occ.scheduled_date] = occ.status
+            occ_by_habit[occ.habit_id][occ.scheduled_date] = occ
 
     result = []
     for h in habits:
         cat = cats.get(h.category_id) if h.category_id else None
         reminder_str = h.reminder_time.strftime("%H:%M") if h.reminder_time else None
 
-        # done_today: today's occurrence is DONE
-        # scheduled_today: any occurrence exists for today (regardless of status)
-        today_status = occ_by_habit[h.habit_id].get(today)
-        done_today = today_status == "DONE"
-        scheduled_today = today in occ_by_habit[h.habit_id]
+        today_occ = occ_by_habit[h.habit_id].get(today)
+        done_today = today_occ is not None and today_occ.status == "DONE"
+        scheduled_today = today_occ is not None
+        today_count = today_occ.completion_count if today_occ else 0
 
         # recent_days: last 14 days, oldest first
         recent_days = []
         for i in range(HISTORY_DAYS - 1, -1, -1):
             d = today - timedelta(days=i)
-            recent_days.append(occ_by_habit[h.habit_id].get(d) == "DONE")
+            occ = occ_by_habit[h.habit_id].get(d)
+            recent_days.append(occ is not None and occ.status == "DONE")
 
         result.append(HabitItem(
             habit_id=h.habit_id,
@@ -114,6 +118,10 @@ def get_habits(
             scheduled_today=scheduled_today,
             recent_days=recent_days,
             is_archived=h.is_archived,
+            habit_type=h.habit_type or "binary",
+            target_count=h.target_count,
+            unit_label=h.unit_label,
+            today_count=today_count,
         ))
     return result
 
@@ -245,6 +253,9 @@ class CreateHabitRequest(BaseModel):
     category_id: int | None = None
     note: str | None = None
     reminder_time: str | None = None  # HH:MM
+    habit_type: str = "binary"         # 'binary' | 'counter'
+    target_count: int | None = None
+    unit_label: str | None = None
 
 
 @router.post("/habits", status_code=201)
@@ -266,11 +277,36 @@ def create_habit(body: CreateHabitRequest, request: Request, db: Session = Depen
             category_id=body.category_id,
             note=body.note,
             reminder_time=body.reminder_time,
+            habit_type=body.habit_type,
+            target_count=body.target_count,
+            unit_label=body.unit_label,
             actor_user_id=user_id,
         )
     except HabitValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": habit_id}
+
+
+@router.post("/habits/{habit_id}/increment-today")
+def increment_habit_today(habit_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.habits import IncrementHabitCountUseCase, HabitValidationError
+    user_id = get_user_id(request, db)
+    try:
+        result = IncrementHabitCountUseCase(db).execute(habit_id, user_id, actor_user_id=user_id)
+    except HabitValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@router.post("/habits/{habit_id}/decrement-today")
+def decrement_habit_today(habit_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.habits import DecrementHabitCountUseCase, HabitValidationError
+    user_id = get_user_id(request, db)
+    try:
+        result = DecrementHabitCountUseCase(db).execute(habit_id, user_id, actor_user_id=user_id)
+    except HabitValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
 
 
 @router.post("/habits/occurrences/{occurrence_id}/complete")

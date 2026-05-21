@@ -16,6 +16,9 @@ class Habit:
         category_id: int | None = None,
         level: int = 1,
         reminder_time: str | None = None,
+        habit_type: str = "binary",
+        target_count: int | None = None,
+        unit_label: str | None = None,
     ) -> Dict[str, Any]:
         return {
             "habit_id": habit_id,
@@ -28,6 +31,9 @@ class Habit:
             "active_from": active_from,
             "active_until": active_until,
             "reminder_time": reminder_time,
+            "habit_type": habit_type,
+            "target_count": target_count,
+            "unit_label": unit_label,
             "created_at": datetime.utcnow().isoformat()
         }
 

@@ -9,7 +9,7 @@ import { CreateHabitModal } from "@/components/modals/CreateHabitModal";
 import { HabitRow } from "@/components/habits/HabitRow";
 import { DoneSection } from "@/components/habits/DoneSection";
 import { MilestoneOverlay, MILESTONE_STREAKS } from "@/components/habits/MilestoneOverlay";
-import { useHabits, useCompleteHabitToday } from "@/hooks/useHabits";
+import { useHabits, useCompleteHabitToday, useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import { useProductivity } from "@/components/analytics/useProductivity";
 import type { HabitItem } from "@/types/api";
 import { Button } from "@/components/primitives/Button";
@@ -99,6 +99,8 @@ export default function HabitsPage() {
 
   const { data, isPending, isError } = useHabits(true);
   const { mutate: complete } = useCompleteHabitToday();
+  const { mutate: increment } = useIncrementHabitToday();
+  const { mutate: decrement } = useDecrementHabitToday();
 
   const allHabits = data ?? [];
   const activeHabits = allHabits.filter((h) => !h.is_archived);
@@ -260,6 +262,8 @@ export default function HabitsPage() {
                     key={h.habit_id}
                     habit={h}
                     onComplete={() => handleComplete(h)}
+                    onIncrement={() => increment(h.habit_id)}
+                    onDecrement={() => decrement(h.habit_id)}
                     onOpen={() => setSelectedHabit(h)}
                     animateBump={bumpHabitId === h.habit_id}
                     animateGlow={glowHabitId === h.habit_id}

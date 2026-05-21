@@ -50,6 +50,9 @@ export function CreateHabitModal({ onClose }: Props) {
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
+  const [habitType, setHabitType] = useState<"binary" | "counter">("binary");
+  const [targetCount, setTargetCount] = useState("1");
+  const [unitLabel, setUnitLabel] = useState("");
   const [freq, setFreq] = useState("DAILY");
   const [weekdays, setWeekdays] = useState<string[]>([]);
   const [byMonthday, setByMonthday] = useState("");
@@ -82,6 +85,9 @@ export function CreateHabitModal({ onClose }: Props) {
   function buildPayload() {
     return {
       title: title.trim(),
+      habit_type: habitType,
+      target_count: habitType === "counter" ? (parseInt(targetCount, 10) || 1) : null,
+      unit_label: habitType === "counter" ? (unitLabel.trim() || null) : null,
       freq,
       interval,
       by_weekday: freq === "WEEKLY" ? weekdays.join(",") : null,
@@ -188,6 +194,57 @@ export function CreateHabitModal({ onClose }: Props) {
         />
         {fieldErrors.title && <p className={errTextCls}>{fieldErrors.title}</p>}
       </div>
+
+      {/* Habit type */}
+      <div>
+        <label className={labelCls}>Тип</label>
+        <div className="flex gap-1.5">
+          {[
+            { value: "binary", label: "✅ Выполнено / нет" },
+            { value: "counter", label: "🔢 Счётчик (N раз)" },
+          ].map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setHabitType(t.value as "binary" | "counter")}
+              className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
+                habitType === t.value
+                  ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                  : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Counter fields */}
+      {habitType === "counter" && (
+        <div className="flex gap-2.5">
+          <div className="w-28">
+            <label className={labelCls}>Цель *</label>
+            <input
+              type="number"
+              min="1"
+              value={targetCount}
+              onChange={(e) => setTargetCount(e.target.value)}
+              className={inputCls}
+              placeholder="8"
+            />
+          </div>
+          <div className="flex-1">
+            <label className={labelCls}>Единица (необязательно)</label>
+            <input
+              type="text"
+              value={unitLabel}
+              onChange={(e) => setUnitLabel(e.target.value)}
+              placeholder="бутылок воды, км, страниц…"
+              className={inputCls}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Category */}
       {categories && categories.length > 0 && (

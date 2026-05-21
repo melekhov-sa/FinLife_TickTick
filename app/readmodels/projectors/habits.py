@@ -25,6 +25,8 @@ class HabitsProjector(BaseProjector):
             self._handle_unarchived(event)
         elif event.event_type in ("habit_occurrence_completed", "habit_occurrence_skipped", "habit_occurrence_reset"):
             self._handle_occurrence_status(event)
+        elif event.event_type == "habit_occurrence_count_changed":
+            self._handle_count_changed(event)
 
     def _handle_created(self, event: EventLog) -> None:
         payload = event.payload_json
@@ -50,6 +52,9 @@ class HabitsProjector(BaseProjector):
             best_streak=0,
             done_count_30d=0,
             reminder_time=time.fromisoformat(rt) if rt else None,
+            habit_type=payload.get("habit_type", "binary"),
+            target_count=payload.get("target_count"),
+            unit_label=payload.get("unit_label"),
         )
         self.db.add(habit)
         self.db.flush()
@@ -124,6 +129,34 @@ class HabitsProjector(BaseProjector):
             habit.done_count_30d = d30
 
             # Emit milestone events if streak crossed thresholds
+            from app.application.habits import check_and_emit_milestones
+            check_and_emit_milestones(self.db, habit.account_id, habit_id, cs)
+
+    def _handle_count_changed(self, event: EventLog) -> None:
+        payload = event.payload_json
+        occurrence_id = payload["occurrence_id"]
+        new_count = payload["completion_count"]
+        new_status = payload["status"]
+
+        occ = self.db.query(HabitOccurrence).filter(HabitOccurrence.id == occurrence_id).first()
+        if occ:
+            occ.completion_count = new_count
+            occ.status = new_status
+            if new_status == "DONE":
+                completed_at_str = payload.get("completed_at")
+                occ.completed_at = datetime.fromisoformat(completed_at_str) if completed_at_str else datetime.utcnow()
+            elif new_status == "ACTIVE":
+                occ.completed_at = None
+
+        habit_id = payload["habit_id"]
+        habit = self.db.query(HabitModel).filter(HabitModel.habit_id == habit_id).first()
+        if habit:
+            today = date.today()
+            cs, bs, d30 = self._compute_streaks(habit.account_id, habit_id, habit.rule_id, today)
+            habit.current_streak = cs
+            habit.best_streak = bs
+            habit.done_count_30d = d30
+
             from app.application.habits import check_and_emit_milestones
             check_and_emit_milestones(self.db, habit.account_id, habit_id, cs)
 

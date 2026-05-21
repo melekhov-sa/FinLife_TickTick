@@ -41,6 +41,9 @@ class CreateHabitUseCase:
         by_monthday: int | None = None,
         level: int = 1,
         reminder_time: str | None = None,
+        habit_type: str = "binary",
+        target_count: int | None = None,
+        unit_label: str | None = None,
         actor_user_id: int | None = None,
     ) -> int:
         title = title.strip()
@@ -68,6 +71,9 @@ class CreateHabitUseCase:
             actor_user_id=actor_user_id,
         )
 
+        if habit_type == "counter" and (not target_count or target_count < 1):
+            raise HabitValidationError("Для привычки-счётчика укажите целевое количество (≥ 1)")
+
         habit_id = self._generate_id()
         payload = Habit.create(
             account_id=account_id,
@@ -80,6 +86,9 @@ class CreateHabitUseCase:
             category_id=category_id,
             level=level,
             reminder_time=reminder_time,
+            habit_type=habit_type,
+            target_count=target_count,
+            unit_label=unit_label,
         )
 
         self.event_repo.append_event(
@@ -223,6 +232,101 @@ class CompleteHabitOccurrenceUseCase:
         HabitsProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
         XpProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
         ActivityProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+
+
+def _get_or_create_today_occ(db: Session, habit_id: int, account_id: int) -> HabitOccurrence:
+    """Get or create today's occurrence for a habit (shared by count use cases)."""
+    today = date.today()
+    occ = db.query(HabitOccurrence).filter(
+        HabitOccurrence.habit_id == habit_id,
+        HabitOccurrence.account_id == account_id,
+        HabitOccurrence.scheduled_date == today,
+    ).first()
+    if not occ:
+        occ = HabitOccurrence(
+            account_id=account_id,
+            habit_id=habit_id,
+            scheduled_date=today,
+            status="ACTIVE",
+            completion_count=0,
+        )
+        db.add(occ)
+        db.flush()
+    return occ
+
+
+class IncrementHabitCountUseCase:
+    """Increment completion_count for today's counter habit occurrence."""
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, habit_id: int, account_id: int, actor_user_id: int | None = None) -> dict:
+        habit = self.db.query(HabitModel).filter(
+            HabitModel.habit_id == habit_id,
+            HabitModel.account_id == account_id,
+        ).first()
+        if not habit:
+            raise HabitValidationError(f"Привычка #{habit_id} не найдена")
+        if (habit.habit_type or "binary") != "counter":
+            raise HabitValidationError("Привычка не является счётчиком")
+        target = habit.target_count or 1
+
+        occ = _get_or_create_today_occ(self.db, habit_id, account_id)
+        new_count = (occ.completion_count or 0) + 1
+
+        payload = HabitOccurrenceEvent.count_changed(
+            habit_id, occ.id, occ.scheduled_date.isoformat(), new_count, target
+        )
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="habit_occurrence_count_changed",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        HabitsProjector(self.db).run(account_id, event_types=["habit_occurrence_count_changed"])
+        if payload["status"] == "DONE":
+            XpProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+            ActivityProjector(self.db).run(account_id, event_types=["habit_occurrence_completed"])
+        return {"count": new_count, "target": target, "done": payload["status"] == "DONE"}
+
+
+class DecrementHabitCountUseCase:
+    """Decrement completion_count for today's counter habit occurrence (undo)."""
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, habit_id: int, account_id: int, actor_user_id: int | None = None) -> dict:
+        habit = self.db.query(HabitModel).filter(
+            HabitModel.habit_id == habit_id,
+            HabitModel.account_id == account_id,
+        ).first()
+        if not habit:
+            raise HabitValidationError(f"Привычка #{habit_id} не найдена")
+        if (habit.habit_type or "binary") != "counter":
+            raise HabitValidationError("Привычка не является счётчиком")
+        target = habit.target_count or 1
+
+        occ = _get_or_create_today_occ(self.db, habit_id, account_id)
+        current = occ.completion_count or 0
+        if current <= 0:
+            return {"count": 0, "target": target, "done": False}
+
+        new_count = current - 1
+        payload = HabitOccurrenceEvent.count_changed(
+            habit_id, occ.id, occ.scheduled_date.isoformat(), new_count, target
+        )
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="habit_occurrence_count_changed",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        HabitsProjector(self.db).run(account_id, event_types=["habit_occurrence_count_changed"])
+        return {"count": new_count, "target": target, "done": payload["status"] == "DONE"}
 
 
 class SkipHabitOccurrenceUseCase:

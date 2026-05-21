@@ -243,6 +243,10 @@ export interface HabitItem {
   scheduled_today: boolean;
   recent_days: boolean[];
   is_archived: boolean;
+  habit_type: string;
+  target_count: number | null;
+  unit_label: string | null;
+  today_count: number;
 }
 
 // ── /api/v2/efficiency ────────────────────────────────────────────────────────

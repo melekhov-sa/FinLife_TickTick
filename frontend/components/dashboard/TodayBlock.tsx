@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, Play, Plus, Bell } from "lucide-react";
+import { CheckCircle2, SkipForward, Play, Plus, Bell, Minus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import {
   DndContext,
   DragEndEvent,
@@ -514,6 +515,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
   }, [overdue, active, done, events, plannedOps]);
 
   const qc = useQueryClient();
+  const { mutate: incrementHabit } = useIncrementHabitToday();
+  const { mutate: decrementHabit } = useDecrementHabitToday();
+
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
       api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
@@ -835,6 +839,63 @@ export function TodayBlock({ today, plannedOps }: Props) {
               label: "Привычки",
               content: allHabits.map((item) => {
                 const streakAtRisk = isEvening && !item.is_done && ((item.meta?.current_streak as number) ?? 0) > 0;
+                const isCounter = item.meta?.habit_type === "counter";
+                const habitId = item.meta?.habit_id as number | undefined;
+                const count = (item.meta?.completion_count as number) ?? 0;
+                const target = (item.meta?.target_count as number) ?? 1;
+                const unitLabel = item.meta?.unit_label as string | null | undefined;
+
+                if (isCounter && habitId) {
+                  return (
+                    <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
+                      <div className="flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1 group/ch">
+                        {/* +1 button or done check */}
+                        <div className="shrink-0">
+                          {item.is_done ? (
+                            <div className="w-5 h-5 flex items-center justify-center">
+                              <span className="w-[16px] h-[16px] rounded-[5px] bg-emerald-500 border-emerald-500 border-[1.5px] flex items-center justify-center">
+                                <span className="text-[#fff] text-[7px] font-bold">✓</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => incrementHabit(habitId)}
+                              className="w-5 h-5 flex items-center justify-center touch-manipulation rounded-[5px] border-[1.5px] border-violet-400 hover:bg-violet-500/15 transition-colors text-violet-400 text-[10px] font-bold"
+                              aria-label="+1"
+                            >
+                              +
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[14px] md:text-[15px] font-medium leading-snug" style={{ color: item.is_done ? "var(--t-muted)" : "var(--t-primary)" }}>
+                            {item.title}
+                          </span>
+                          <span className={clsx(
+                            "text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded border",
+                            item.is_done
+                              ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                              : "text-violet-400 bg-violet-500/10 border-violet-500/20"
+                          )}>
+                            {count}/{target}{unitLabel ? ` ${unitLabel}` : ""}
+                          </span>
+                        </div>
+                        {/* Decrement button */}
+                        {count > 0 && (
+                          <button
+                            onClick={() => decrementHabit(habitId)}
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover/ch:opacity-100 transition-all hover:bg-white/[0.08]"
+                            style={{ color: "var(--t-faint)" }}
+                            aria-label="Отменить +1"
+                          >
+                            <Minus size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
                     <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
