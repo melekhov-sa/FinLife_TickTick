@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
 import { CheckCircle2, SkipForward, Play, Plus, Bell } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   DragEndEvent,
@@ -455,6 +455,30 @@ export function TodayBlock({ today, plannedOps }: Props) {
     };
   }, [createMenuOpen]);
 
+  const showTomorrow = useMemo(() => {
+    const hasActiveTasks =
+      (overdue ?? []).some((i) => i.kind === "task" || i.kind === "task_occ") ||
+      (active ?? []).some((i) => i.kind === "task" || i.kind === "task_occ");
+    const hasActivePlannedOps = (plannedOps ?? []).length > 0;
+    return !hasActiveTasks && !hasActivePlannedOps;
+  }, [overdue, active, plannedOps]);
+
+  function getTomorrowISO(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  }
+
+  const { data: tomorrowPlan } = useQuery({
+    queryKey: ["plan", "tomorrow", getTomorrowISO()],
+    queryFn: () => api.get<{ day_groups: { date_label: string; entries: { id: number; kind: string; title: string; time: string | null; is_done: boolean; is_overdue: boolean; category_emoji: string | null; category_title: string | null; meta: Record<string, unknown> }[] }[] }>(`/api/v2/plan?start_date=${getTomorrowISO()}&range=1`),
+    enabled: showTomorrow,
+    staleTime: 60_000,
+  });
+
+  const tomorrowGroup = tomorrowPlan?.day_groups?.[0];
+  const tomorrowEntries = tomorrowGroup?.entries ?? [];
+
   const { activeTasks, doneTasks, activeHabits, doneHabits, doneOps, isEmpty } = useMemo(() => {
     const _activeTasks = [
       ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
@@ -860,6 +884,55 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 </button>
               )}
             </>
+          );
+        })()}
+
+        {/* Tomorrow section — shown when all tasks and planned ops for today are done */}
+        {showTomorrow && tomorrowEntries.length > 0 && (() => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const dateLabel = tomorrow.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+          const byKind: Record<string, typeof tomorrowEntries> = {};
+          for (const e of tomorrowEntries) {
+            (byKind[e.kind] ??= []).push(e);
+          }
+          const sectionLabels: Record<string, string> = { task: "Задачи", task_occ: "Задачи", event: "События", planned_op: "Финансы", habit: "Привычки" };
+          const kindOrder = ["task", "task_occ", "event", "planned_op", "habit"];
+          const sections = kindOrder.filter((k) => byKind[k]?.length);
+
+          return (
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(99,102,241,0.15)" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: "var(--t-faint)" }}>
+                Ожидает завтра · {dateLabel}
+              </p>
+              <div className="opacity-60 space-y-0">
+                {sections.map((kind, idx) => (
+                  <div key={kind}>
+                    {idx > 0 && <div className="h-px bg-slate-200/70 dark:bg-white/[0.06] my-2" />}
+                    <GroupHeader label={sectionLabels[kind]} />
+                    {byKind[kind].map((e) => (
+                      <Item
+                        key={`tomorrow-${kind}-${e.id}`}
+                        item={{
+                          id: e.id,
+                          kind: e.kind,
+                          title: e.title,
+                          date: null as unknown as string,
+                          time: e.time,
+                          is_done: false,
+                          is_overdue: false,
+                          status: "ACTIVE",
+                          category_emoji: e.category_emoji,
+                          category_name: e.category_title,
+                          meta: e.meta ?? {},
+                        }}
+                        onComplete={() => {}}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           );
         })()}
 
