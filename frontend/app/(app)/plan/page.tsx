@@ -19,6 +19,7 @@ import {
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { getHolidayRU } from "@/lib/holidays";
+import { pluralizeYears } from "@/lib/utils";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
@@ -410,6 +411,15 @@ function EntryRow({
               opKind === "INCOME" ? "money-income" : "money-expense"
             )}>
               {opKind === "INCOME" ? "+" : "\u2212"}{amountFormatted} ₽
+            </span>
+          )}
+
+          {entry.kind === "event" && entry.meta.person_age != null && (
+            <span className={clsx(
+              "text-[11px] font-semibold shrink-0",
+              entry.meta.is_jubilee ? "text-amber-400" : "text-pink-400",
+            )}>
+              {entry.meta.is_jubilee ? "🎉 " : ""}{String(entry.meta.person_age)} {pluralizeYears(entry.meta.person_age as number)}
             </span>
           )}
 

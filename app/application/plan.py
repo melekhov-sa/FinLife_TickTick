@@ -361,24 +361,38 @@ def _query_event_occurrences(
     return items
 
 
+_JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
+
+
 def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map: dict) -> dict:
+    person_age: int | None = None
+    is_jubilee = False
+    if ev.birth_year and occ.start_date:
+        person_age = occ.start_date.year - ev.birth_year
+        is_jubilee = person_age in _JUBILEE_AGES
+
+    wc = wc_map.get(ev.category_id) if ev.category_id else None
+
     return {
         "kind": "event",
         "id": occ.id,
         "title": ev.title,
         "date": occ.start_date,
         "time": occ.start_time,
-        "is_done": False,  # events don't have an explicit "done" state
-        "is_overdue": False,  # events are NEVER overdue
+        "is_done": False,
+        "is_overdue": False,
         "status": "CANCELLED" if occ.is_cancelled else "ACTIVE",
-        "category_emoji": _wc_emoji(wc_map, ev.category_id),
-        "category_title": _wc_title(wc_map, ev.category_id),
+        "category_emoji": wc.emoji if wc else None,
+        "category_title": wc.title if wc else None,
         "meta": {
             "occurrence_id": occ.id,
             "event_id": occ.event_id,
             "start_time": occ.start_time,
             "end_date": occ.end_date,
             "end_time": occ.end_time,
+            "person_age": person_age,
+            "is_jubilee": is_jubilee,
+            "category_slug": wc.slug if wc else None,
         },
     }
 
