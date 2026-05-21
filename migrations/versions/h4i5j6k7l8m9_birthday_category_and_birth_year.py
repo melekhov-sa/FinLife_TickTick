@@ -30,15 +30,29 @@ def upgrade():
         WHERE lower(title) = 'день рождения' AND slug IS NULL
     """)
 
-    # For users who have no birthday category at all — create one
+    # For users who have no birthday category at all — create one (manual ID, no sequence)
     op.execute("""
-        INSERT INTO work_categories (account_id, title, emoji, slug, is_system, is_archived, created_at)
-        SELECT DISTINCT u.id, 'День рождения', '🎂', 'birthday', true, false, now()
-        FROM users u
-        WHERE NOT EXISTS (
-            SELECT 1 FROM work_categories wc
-            WHERE wc.account_id = u.id AND wc.slug = 'birthday'
-        )
+        DO $$
+        DECLARE
+            current_max_id INTEGER;
+            user_record RECORD;
+        BEGIN
+            SELECT COALESCE(MAX(category_id), 0) INTO current_max_id FROM work_categories;
+
+            FOR user_record IN
+                SELECT id FROM users
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM work_categories wc
+                    WHERE wc.account_id = users.id AND wc.slug = 'birthday'
+                )
+            LOOP
+                current_max_id := current_max_id + 1;
+                INSERT INTO work_categories
+                    (category_id, account_id, title, emoji, slug, is_system, is_archived, created_at)
+                VALUES
+                    (current_max_id, user_record.id, 'День рождения', '🎂', 'birthday', true, false, NOW());
+            END LOOP;
+        END $$;
     """)
 
 
