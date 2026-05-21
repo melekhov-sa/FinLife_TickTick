@@ -8,6 +8,7 @@ import type { EventItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
+import { pluralizeYears } from "@/lib/utils";
 import { EventReminders } from "./EventReminders";
 import { EventTaskTemplates } from "./EventTaskTemplates";
 import { TimeInput } from "@/components/primitives/TimeInput";
@@ -322,7 +323,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 const age = new Date(event.start_date).getFullYear() - y;
                 return age > 0 ? (
                   <p className="mt-1 text-[12px]" style={{ color: "var(--t-faint)" }}>
-                    {age} лет в этот день
+                    {age} {pluralizeYears(age)} в этот день
                   </p>
                 ) : null;
               })()}

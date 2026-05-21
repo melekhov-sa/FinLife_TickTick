@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo } from "react";
 import { getHolidayRU } from "@/lib/holidays";
+import { pluralizeYears } from "@/lib/utils";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { EventDetailPanel } from "@/components/events/EventDetailPanel";
 import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
@@ -136,7 +137,7 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
   const dateRange = formatDateRange(event.start_date, event.end_date);
   const isJubilee = event.is_jubilee;
   const ageLabel  = event.person_age != null
-    ? (isJubilee ? `🎉 Юбилей · ${event.person_age} лет` : `${event.person_age} лет`)
+    ? (isJubilee ? `🎉 Юбилей · ${event.person_age} ${pluralizeYears(event.person_age)}` : `${event.person_age} ${pluralizeYears(event.person_age)}`)
     : null;
 
   return (
