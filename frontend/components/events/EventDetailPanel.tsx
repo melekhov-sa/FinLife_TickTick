@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Calendar, Tag, Clock, AlignLeft, Trash2, Copy } from "lucide-react";
+import { X, Calendar, Tag, Clock, AlignLeft, Trash2, Copy, ListChecks } from "lucide-react";
 import { clsx } from "clsx";
 import type { EventItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
 import { EventReminders } from "./EventReminders";
+import { EventTaskTemplates } from "./EventTaskTemplates";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
@@ -294,6 +295,17 @@ export function EventDetailPanel({ event, onClose }: Props) {
           eventId={event.event_id}
           startTime={event.start_time ?? null}
         />
+
+        {/* Task templates */}
+        <div className="flex items-start gap-3">
+          <ListChecks size={15} className="mt-0.5 shrink-0" style={{ color: "var(--t-faint)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Задачи к событию
+            </p>
+            <EventTaskTemplates eventId={event.event_id} />
+          </div>
+        </div>
 
         {/* Description */}
         <div className="flex items-start gap-3">

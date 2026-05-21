@@ -149,6 +149,20 @@ def _run_habit_streak_reminders():
         db.close()
 
 
+def _run_event_task_templates():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.event_task_templates_service import dispatch_event_task_templates
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        dispatch_event_task_templates(db)
+    except Exception:
+        logger.exception("Event task templates job failed")
+    finally:
+        db.close()
+
+
 def _run_calendar_refresh():
     """Refresh the production-calendar DB cache for current + next year."""
     from datetime import date
@@ -234,6 +248,16 @@ def start_scheduler():
         _run_habit_streak_reminders,
         CronTrigger(hour="15,16,17,18,19,20", minute=0, timezone="UTC"),
         id="habit_streak_reminders",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Event task templates — daily 07:00 MSK (04:00 UTC)
+    scheduler.add_job(
+        _run_event_task_templates,
+        CronTrigger(hour=4, minute=0, timezone="UTC"),
+        id="event_task_templates",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

@@ -324,6 +324,17 @@ export interface EventItem {
   is_jubilee: boolean;
 }
 
+// ── /api/v2/events/{id}/task-templates ────────────────────────────────────────
+
+export interface EventTaskTemplateItem {
+  id: number;
+  event_id: number;
+  title: string;
+  days_before: number;
+  reminder_offset_minutes: number | null;
+  is_archived: boolean;
+}
+
 // ── /api/v2/knowledge ─────────────────────────────────────────────────────────
 
 export interface ArticleTag {

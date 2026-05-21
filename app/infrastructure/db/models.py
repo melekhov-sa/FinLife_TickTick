@@ -706,6 +706,42 @@ class EventFilterPresetModel(Base):
 
 
 # ============================================================================
+# Event Task Templates
+# ============================================================================
+
+class EventTaskTemplate(Base):
+    """Templates for tasks that are auto-created relative to event occurrences."""
+    __tablename__ = "event_task_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> events
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> users
+
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    days_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    reminder_offset_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class EventOccurrenceTask(Base):
+    """Tracks which tasks were auto-created from a template for a specific occurrence date."""
+    __tablename__ = "event_occurrence_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    template_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)  # -> event_task_templates
+    occurrence_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    task_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('template_id', 'occurrence_date', name='uq_event_occ_task'),
+    )
+
+
+# ============================================================================
 # Budget Read Models
 # ============================================================================
 

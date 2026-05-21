@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { ChevronDown, Plus, Check, X as XIcon } from "lucide-react";
+import { ChevronDown, Plus, Check, X as XIcon, Bell } from "lucide-react";
 import { clsx } from "clsx";
 import type { WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
@@ -101,6 +101,14 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [recWeekdays, setRecWeekdays] = useState<string[]>([]);
   const [recInterval, setRecInterval] = useState("1");
   const [untilDate, setUntilDate] = useState("");
+
+  // ── Task templates (staged before event is created) ──────────
+  interface StagedTemplate { title: string; days_before: number; reminder_offset_minutes: number | null }
+  const [stagedTemplates, setStagedTemplates] = useState<StagedTemplate[]>([]);
+  const [showTemplateAdd, setShowTemplateAdd] = useState(false);
+  const [tplTitle, setTplTitle] = useState("");
+  const [tplDays, setTplDays] = useState("7");
+  const [tplReminder, setTplReminder] = useState<number | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
@@ -218,8 +226,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
     setSaving(true);
     try {
       const res = await api.post<{ id?: number }>("/api/v2/events", buildPayload());
-      // Create staged reminders (backend already handles single reminder_offset;
-      // we use the new v2 CRUD for the multi-reminder picker)
+      // Create staged reminders
       if (res?.id && stagedReminders.length > 0) {
         for (const r of stagedReminders) {
           try {
@@ -228,6 +235,14 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                 ? { mode: "offset", offset_minutes: r.offset_minutes }
                 : { mode: "fixed_time", fixed_time: r.fixed_time }
             );
+          } catch { /* best-effort */ }
+        }
+      }
+      // Create staged task templates
+      if (res?.id && stagedTemplates.length > 0) {
+        for (const tpl of stagedTemplates) {
+          try {
+            await api.post(`/api/v2/events/${res.id}/task-templates`, tpl);
           } catch { /* best-effort */ }
         }
       }
@@ -661,6 +676,115 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
                 className="w-full px-3 py-2.5 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
                 style={{ minHeight: 56, maxHeight: 160 }}
               />
+            </div>
+
+            {/* Задачи к событию */}
+            <div>
+              <label className={labelCls}>Задачи к событию</label>
+              <div className="space-y-1.5">
+                {stagedTemplates.map((tpl, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate" style={{ color: "var(--t-secondary)" }}>{tpl.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                          {tpl.days_before === 0 ? "в день события" : `за ${tpl.days_before} дн.`}
+                        </span>
+                        {tpl.reminder_offset_minutes !== null && (
+                          <span className="inline-flex items-center gap-0.5 text-[11px] text-amber-400/80">
+                            <Bell size={9} />
+                            {tpl.reminder_offset_minutes >= 1440
+                              ? `за ${tpl.reminder_offset_minutes / 1440} дн.`
+                              : `за ${tpl.reminder_offset_minutes} мин`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStagedTemplates((prev) => prev.filter((_, i) => i !== idx))}
+                      className="text-white/30 hover:text-red-400 transition-colors"
+                    >
+                      <XIcon size={13} />
+                    </button>
+                  </div>
+                ))}
+
+                {showTemplateAdd ? (
+                  <div className="p-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.05] space-y-2">
+                    <input
+                      autoFocus
+                      value={tplTitle}
+                      onChange={(e) => setTplTitle(e.target.value)}
+                      placeholder="Название задачи"
+                      className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60"
+                      onKeyDown={(e) => { if (e.key === "Escape") setShowTemplateAdd(false); }}
+                    />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>за</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={365}
+                        value={tplDays}
+                        onChange={(e) => setTplDays(e.target.value)}
+                        className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-indigo-500/60"
+                      />
+                      <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>дней до события</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([null, 60, 180, 1440, 2880] as (number | null)[]).map((v) => (
+                        <button
+                          key={String(v)}
+                          type="button"
+                          onClick={() => setTplReminder(v)}
+                          className={clsx(
+                            "px-2 py-1 rounded-lg text-[11px] font-medium border transition-colors",
+                            tplReminder === v
+                              ? "bg-indigo-600 border-indigo-500 text-white"
+                              : "bg-white/[0.04] border-white/[0.08] text-white/55 hover:bg-white/[0.07]"
+                          )}
+                        >
+                          {v === null ? "Без уведомления" : v >= 1440 ? `За ${v / 1440} дн.` : `За ${v} мин`}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const t = tplTitle.trim();
+                          const d = parseInt(tplDays, 10);
+                          if (!t || isNaN(d) || d < 0) return;
+                          setStagedTemplates((prev) => [...prev, { title: t, days_before: d, reminder_offset_minutes: tplReminder }]);
+                          setTplTitle(""); setTplDays("7"); setTplReminder(null); setShowTemplateAdd(false);
+                        }}
+                        disabled={!tplTitle.trim()}
+                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                      >
+                        Добавить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowTemplateAdd(false); setTplTitle(""); setTplDays("7"); setTplReminder(null); }}
+                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/55 hover:bg-white/[0.08] transition-colors"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateAdd(true)}
+                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-indigo-500/30 hover:bg-indigo-500/[0.04] transition-colors"
+                    style={{ color: "var(--t-faint)" }}
+                  >
+                    <Plus size={12} />
+                    Добавить задачу к событию
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
