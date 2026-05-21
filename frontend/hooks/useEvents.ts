@@ -37,6 +37,7 @@ export function useUpdateEvent() {
         start_time: string | null;
         end_date: string | null;
         category_id: number | null;
+        birth_year: number | null;
       }>;
     }) => api.patch(`/api/v2/events/occurrences/${occurrenceId}`, data),
     onSuccess: () => {

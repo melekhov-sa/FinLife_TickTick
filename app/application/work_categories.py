@@ -45,10 +45,11 @@ class CreateWorkCategoryUseCase:
         return category_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
+        max_from_events = self.db.query(
             func.max(func.cast(EventLog.payload_json['category_id'], WorkCategory.category_id.type))
         ).filter(EventLog.event_type == 'work_category_created').scalar() or 0
-        return max_id + 1
+        max_from_table = self.db.query(func.max(WorkCategory.category_id)).scalar() or 0
+        return max(max_from_events, max_from_table) + 1
 
 
 class UpdateWorkCategoryUseCase:

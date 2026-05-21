@@ -22,7 +22,8 @@ class WorkCategoriesProjector(BaseProjector):
         payload = event.payload_json
         self.db.flush()
         existing = self.db.query(WorkCategory).filter(
-            WorkCategory.category_id == payload["category_id"]
+            WorkCategory.category_id == payload["category_id"],
+            WorkCategory.account_id == payload["account_id"],
         ).first()
         if existing:
             return
