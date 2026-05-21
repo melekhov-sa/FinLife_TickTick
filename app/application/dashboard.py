@@ -23,6 +23,7 @@ from app.infrastructure.db.models import (
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
     EventLog, CategoryInfo, ProjectModel, GoalInfo,
+    TaskDueChangeLog,
 )
 from app.utils.money import format_money
 
@@ -176,6 +177,7 @@ class DashboardService:
         # Batch-load reminders for all tasks in one query (avoid N+1)
         all_task_ids = [t.task_id for t in (*overdue_rows, *active_rows, *done_rows)]
         rems_by_task: dict[int, list[TaskReminderModel]] = {}
+        reschedule_count_map: dict[int, int] = {}
         if all_task_ids:
             rems = self.db.query(TaskReminderModel).filter(
                 TaskReminderModel.task_id.in_(all_task_ids)
@@ -183,15 +185,23 @@ class DashboardService:
             for r in rems:
                 rems_by_task.setdefault(r.task_id, []).append(r)
 
+            rc_rows = (
+                self.db.query(TaskDueChangeLog.task_id, func.count().label("cnt"))
+                .filter(TaskDueChangeLog.task_id.in_(all_task_ids))
+                .group_by(TaskDueChangeLog.task_id)
+                .all()
+            )
+            reschedule_count_map = {row.task_id: row.cnt for row in rc_rows}
+
         for t in overdue_rows:
-            overdue.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=True))
+            overdue.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), reschedule_count_map.get(t.task_id, 0), is_overdue=True))
         for t in active_rows:
-            active.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=False))
+            active.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), reschedule_count_map.get(t.task_id, 0), is_overdue=False))
         for t in done_rows:
-            done.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), is_overdue=False, is_done=True))
+            done.append(self._task_item(t, today, wc_map, rems_by_task.get(t.task_id, []), reschedule_count_map.get(t.task_id, 0), is_overdue=False, is_done=True))
 
     def _task_item(self, t: TaskModel, today: date, wc_map: dict,
-                   reminders: list,
+                   reminders: list, reschedule_count: int = 0,
                    is_overdue: bool = False, is_done: bool = False) -> dict:
         # Build time string (HH:MM, no seconds)
         task_time = None
@@ -227,7 +237,7 @@ class DashboardService:
             "category_emoji": self._wc_emoji(wc_map, t.category_id),
             "category_name": self._wc_name(wc_map, t.category_id),
             "manual_order": t.manual_order,
-            "meta": {"task_id": t.task_id, "reminders": reminder_times, "category_id": t.category_id},
+            "meta": {"task_id": t.task_id, "reminders": reminder_times, "category_id": t.category_id, "reschedule_count": reschedule_count},
         }
 
     # --- Task occurrences ---

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, Play, Plus, Bell, RefreshCw, Trash2 } from "lucide-react";
+import { CheckCircle2, SkipForward, Play, Plus, Bell } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -296,33 +296,6 @@ function getDaysOverdue(item: DashboardItem): number {
   return Math.floor((today.getTime() - due.getTime()) / 86_400_000);
 }
 
-function ZombieActions({ item, onDelete, onMakeRecurring }: {
-  item: DashboardItem;
-  onDelete: () => void;
-  onMakeRecurring: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 pl-7 pb-1 mt-0.5">
-      <span className="text-[10px] font-medium mr-0.5" style={{ color: "var(--t-faint)" }}>
-        Висит {getDaysOverdue(item)} дн.:
-      </span>
-      <button
-        onClick={(e) => { e.stopPropagation(); onMakeRecurring(); }}
-        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
-      >
-        <RefreshCw size={10} />
-        Повторяющаяся
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20"
-      >
-        <Trash2 size={10} />
-        Удалить
-      </button>
-    </div>
-  );
-}
 
 function GroupHeader({ label }: { label: string }) {
   return (
@@ -539,16 +512,6 @@ export function TodayBlock({ today, plannedOps }: Props) {
   }, [overdue, active, done, events, plannedOps]);
 
   const qc = useQueryClient();
-  const [zombieRecurring, setZombieRecurring] = useState<{ title: string } | null>(null);
-
-  const { mutate: deleteTask } = useMutation({
-    mutationFn: (taskId: number) => api.delete(`/api/v2/tasks/${taskId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-      qc.invalidateQueries({ queryKey: ["plan"] });
-    },
-  });
-
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
       api.post(`/api/v2/planned-ops/occurrences/${occurrenceId}/skip`, {}),
@@ -677,13 +640,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
         />
       )}
       {showTaskModal && <CreateTaskModal onClose={() => setShowTaskModal(false)} />}
-      {zombieRecurring && (
-        <CreateTaskModal
-          defaultMode="recurring"
-          onClose={() => setZombieRecurring(null)}
-        />
-      )}
-      {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
+{showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
       <div
         className="rounded-xl md:rounded-2xl border p-3.5 md:p-5 relative"
@@ -846,7 +803,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 >
                   <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
                     {allTasks.map((item) => {
-                      const isZombie = item.kind === "task" && !item.is_done && getDaysOverdue(item) >= ZOMBIE_DAYS;
+                      const rescheduleCount = (item.meta?.reschedule_count as number) ?? 0;
+                      const isZombie = item.kind === "task" && !item.is_done && (getDaysOverdue(item) >= ZOMBIE_DAYS || rescheduleCount >= ZOMBIE_DAYS);
                       return item.kind === "task" && !item.is_done ? (
                         <div key={`${item.kind}-${item.id}`} className={isZombie ? "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5" : undefined}>
                           <SortableTaskItem
@@ -855,13 +813,6 @@ export function TodayBlock({ today, plannedOps }: Props) {
                             isCompleting={completingKey === (item.kind + "-" + item.id)}
                             onItemClick={setDetailItem}
                           />
-                          {isZombie && (
-                            <ZombieActions
-                              item={item}
-                              onDelete={() => deleteTask(item.id)}
-                              onMakeRecurring={() => setZombieRecurring({ title: item.title })}
-                            />
-                          )}
                         </div>
                       ) : (
                         <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
