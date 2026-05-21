@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { WalletItem, FinCategoryItem, SubscriptionItem } from "@/types/api";
+import type { WalletItem, FinCategoryItem, SubscriptionItem, BudgetRow } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -142,6 +142,15 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     staleTime: 60_000,
   });
 
+  const budgetNow = new Date();
+  const { data: budgetData } = useQuery<{ expense_rows: BudgetRow[] }>({
+    queryKey: ["budget", budgetNow.getFullYear(), budgetNow.getMonth() + 1],
+    queryFn: () =>
+      api.get(`/api/v2/budget?year=${budgetNow.getFullYear()}&month=${budgetNow.getMonth() + 1}`),
+    staleTime: 60_000,
+    enabled: opType === "EXPENSE",
+  });
+
   const freqCats = finCats?.filter((c) => c.category_type === opType && c.is_frequent) ?? [];
 
   const visibleWallets = (wallets ?? [])
@@ -171,6 +180,21 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     const n = parseFloat(entry.amount);
     return isNaN(n) ? null : { amount: n, currency: goal!.currency };
   }, [toGoalId, toWalletId, goals]);
+
+  const limitWarning = useMemo(() => {
+    if (opType !== "EXPENSE" || !categoryId || !budgetData?.expense_rows) return null;
+    const row = budgetData.expense_rows.find((r) => r.category_id === Number(categoryId));
+    if (!row || !row.total.plan) return null;
+    const amountVal = parseFloat(amount);
+    if (isNaN(amountVal) || amountVal <= 0) return null;
+    const projectedFact = row.total.fact + amountVal;
+    if (projectedFact <= row.total.plan) return null;
+    return {
+      plan: row.total.plan,
+      fact: row.total.fact,
+      overBy: projectedFact - row.total.plan,
+    };
+  }, [opType, categoryId, amount, budgetData]);
 
   const walletOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— выберите кошелёк —" }];
@@ -540,6 +564,20 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   searchable
                 />
               </FormRow>
+            )}
+
+            {/* Budget limit warning */}
+            {limitWarning && (
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 text-[12px] leading-snug">
+                <span className="text-amber-400 text-[15px] shrink-0 mt-px">⚠️</span>
+                <span style={{ color: "var(--t-secondary)" }}>
+                  С этой операцией вы выйдете за месячный лимит по категории на{" "}
+                  <span className="font-semibold text-amber-400">
+                    {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(limitWarning.overBy)}
+                  </span>.{" "}
+                  Сохранить всё равно можно — просто имейте в виду.
+                </span>
+              </div>
             )}
 
             {/* Trip list link */}
