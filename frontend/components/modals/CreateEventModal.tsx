@@ -103,8 +103,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [untilDate, setUntilDate] = useState("");
 
   // ── Task templates (staged before event is created) ──────────
-  interface StagedTemplate { title: string; days_before: number; reminder_offset_minutes: number | null }
-  const [stagedTemplates, setStagedTemplates] = useState<StagedTemplate[]>([]);
+  const [stagedTemplates, setStagedTemplates] = useState<{ title: string; days_before: number; reminder_offset_minutes: number | null }[]>([]);
   const [showTemplateAdd, setShowTemplateAdd] = useState(false);
   const [tplTitle, setTplTitle] = useState("");
   const [tplDays, setTplDays] = useState("7");
