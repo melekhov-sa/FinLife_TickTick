@@ -594,3 +594,20 @@ export interface DigestDetail {
   ai_comment: string | null;
   payload: DigestPayload;
 }
+
+// ── /api/v2/counters ──────────────────────────────────────────────────────────
+
+export interface CounterItem {
+  id: number;
+  title: string;
+  emoji: string | null;
+  mode: "manual" | "auto_event" | "auto_task";
+  source_category_id: number | null;
+  period_type: "year" | "month";
+  sort_order: number;
+  current_count: number;
+  previous_count: number;
+  current_label: string;
+  previous_label: string;
+}
+

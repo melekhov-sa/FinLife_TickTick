@@ -21,6 +21,7 @@ import { PlannedOpsWidget } from "./widgets/PlannedOpsWidget";
 import { WeeklyScoreWidget } from "./widgets/WeeklyScoreWidget";
 import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
 import { BudgetRingsWidget } from "./widgets/BudgetRingsWidget";
+import { CounterWidget } from "./widgets/CounterWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -238,6 +239,17 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 2, defaultH: 3, minW: 2, minH: 2,
     component: BudgetRingsWidget,
     emoji: "💹",
+  },
+
+  // ── Счётчики ──────────────────────────────────────────────────────────────
+  {
+    id: "counter",
+    title: "Счётчик",
+    description: "Произвольный счётчик: ручной или автоматический по категории событий/задач",
+    category: "overview",
+    defaultW: 1, defaultH: 3, minW: 1, minH: 3,
+    component: CounterWidget,
+    emoji: "🔢",
   },
 ];
 

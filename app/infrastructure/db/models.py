@@ -1821,3 +1821,35 @@ class ProductionCalendarCache(Base):
     fetched_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+# ============================================================================
+# Counters
+# ============================================================================
+
+class CounterModel(Base):
+    """Arbitrary counters — manual or auto-linked to event/task category."""
+    __tablename__ = "counters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    emoji: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    mode: Mapped[str] = mapped_column(String(32), nullable=False, server_default="manual")  # manual | auto_event | auto_task
+    source_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    period_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="year")  # year | month
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class CounterEntryModel(Base):
+    """Manual increment/decrement entries for CounterModel."""
+    __tablename__ = "counter_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    counter_id: Mapped[int] = mapped_column(Integer, ForeignKey("counters.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    recorded_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    delta: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
