@@ -20,6 +20,9 @@ from app.infrastructure.db.session import get_db
 router = APIRouter()
 
 
+JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
+
+
 class EventItem(BaseModel):
     occurrence_id: int
     event_id: int
@@ -32,13 +35,24 @@ class EventItem(BaseModel):
     category_id: int | None
     category_emoji: str | None
     category_title: str | None
+    category_slug: str | None = None
     is_today: bool
     is_past: bool
+    birth_year: int | None = None
+    person_age: int | None = None
+    is_jubilee: bool = False
 
 
 def _build_item(occ: EventOccurrenceModel, evt: CalendarEventModel, cat: WorkCategory | None, today: date) -> EventItem:
     time_str = occ.start_time.strftime("%H:%M") if occ.start_time else None
     end_str = str(occ.end_date) if occ.end_date else None
+
+    person_age: int | None = None
+    is_jubilee = False
+    if evt.birth_year and occ.start_date:
+        person_age = occ.start_date.year - evt.birth_year
+        is_jubilee = person_age in JUBILEE_AGES
+
     return EventItem(
         occurrence_id=occ.id,
         event_id=occ.event_id,
@@ -51,8 +65,12 @@ def _build_item(occ: EventOccurrenceModel, evt: CalendarEventModel, cat: WorkCat
         category_id=evt.category_id,
         category_emoji=cat.emoji if cat else None,
         category_title=cat.title if cat else None,
+        category_slug=cat.slug if cat else None,
         is_today=occ.start_date == today,
         is_past=occ.start_date < today,
+        birth_year=evt.birth_year,
+        person_age=person_age,
+        is_jubilee=is_jubilee,
     )
 
 
@@ -120,6 +138,7 @@ class CreateEventRequest(BaseModel):
     end_time: str | None = None
     description: str | None = None
     category_id: int | None = None
+    birth_year: int | None = None
     # Recurrence
     freq: str | None = None              # daily, weekly, monthly, yearly, interval
     start_date_rule: str | None = None   # recurrence rule start (used for interval)
@@ -230,6 +249,13 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
     except EventValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    # Save birth_year if provided
+    if body.birth_year:
+        evt = db.query(CalendarEventModel).filter(CalendarEventModel.event_id == event_id).first()
+        if evt:
+            evt.birth_year = body.birth_year
+            db.commit()
+
     # Create default reminder if requested
     if body.reminder_offset and body.reminder_offset > 0:
         try:
@@ -254,6 +280,7 @@ class UpdateOccurrenceRequest(BaseModel):
     start_time: str | None = None
     end_date: str | None = None
     category_id: int | None = None
+    birth_year: int | None = None
 
 
 @router.patch("/events/occurrences/{occurrence_id}")
@@ -289,6 +316,8 @@ def update_occurrence(
         occ.start_time = t_time.fromisoformat(body.start_time) if body.start_time else None
     if "end_date" in fields:
         occ.end_date = date.fromisoformat(body.end_date) if body.end_date else None
+    if "birth_year" in fields:
+        evt.birth_year = body.birth_year
 
     db.commit()
     return {"ok": True}

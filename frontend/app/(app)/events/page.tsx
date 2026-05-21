@@ -134,6 +134,10 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
   const isPast    = event.is_past;
   const timeLabel = event.is_all_day ? "Весь день" : (event.start_time ?? "");
   const dateRange = formatDateRange(event.start_date, event.end_date);
+  const isJubilee = event.is_jubilee;
+  const ageLabel  = event.person_age != null
+    ? (isJubilee ? `🎉 Юбилей · ${event.person_age} лет` : `${event.person_age} лет`)
+    : null;
 
   return (
     <div
@@ -142,10 +146,15 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
         "group flex items-center gap-3 py-3 px-3.5 border-l-2 cursor-pointer transition-colors",
         isPast
           ? "border-l-white/[0.10] opacity-50 hover:opacity-65 hover:bg-white/[0.02]"
+          : isJubilee
+          ? "border-l-amber-400 hover:bg-amber-500/[0.04]"
           : clsx(palette.border, "hover:bg-white/[0.04]")
       )}
     >
-      <div className={clsx("w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0", isPast ? "bg-white/[0.05]" : palette.bg)}>
+      <div className={clsx(
+        "w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0",
+        isPast ? "bg-white/[0.05]" : isJubilee ? "bg-amber-500/15" : palette.bg,
+      )}>
         {event.category_emoji ?? "📅"}
       </div>
       <div className="flex-1 min-w-0">
@@ -157,8 +166,17 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {event.category_title && (
-            <span className={clsx("text-[11px]", isPast ? "" : palette.icon)} style={{ color: isPast ? "var(--t-faint)" : undefined }}>
+            <span className={clsx("text-[11px]", isPast ? "" : isJubilee ? "text-amber-400" : palette.icon)}
+              style={{ color: isPast ? "var(--t-faint)" : undefined }}>
               {event.category_title}
+            </span>
+          )}
+          {ageLabel && (
+            <span className={clsx(
+              "text-[11px] font-semibold",
+              isJubilee ? "text-amber-400" : "text-pink-400",
+            )}>
+              {ageLabel}
             </span>
           )}
           {dateRange && (

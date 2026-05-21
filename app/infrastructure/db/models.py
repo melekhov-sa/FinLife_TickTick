@@ -249,6 +249,8 @@ class WorkCategory(Base):
 
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     emoji: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    slug: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     created_at: Mapped[DateTime] = mapped_column(
@@ -604,6 +606,7 @@ class CalendarEventModel(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category_id: Mapped[int] = mapped_column(Integer, nullable=False)  # -> work_categories
+    birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     repeat_rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> recurrence_rules
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 

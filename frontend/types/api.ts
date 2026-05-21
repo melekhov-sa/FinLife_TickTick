@@ -316,8 +316,12 @@ export interface EventItem {
   category_id: number | null;
   category_emoji: string | null;
   category_title: string | null;
+  category_slug: string | null;
   is_today: boolean;
   is_past: boolean;
+  birth_year: number | null;
+  person_age: number | null;
+  is_jubilee: boolean;
 }
 
 // ── /api/v2/knowledge ─────────────────────────────────────────────────────────
@@ -385,6 +389,9 @@ export interface WorkCategoryItem {
   category_id: number;
   title: string;
   emoji: string | null;
+  slug?: string | null;
+  is_system?: boolean;
+  is_archived?: boolean;
 }
 
 // ── /api/v2/wallets ───────────────────────────────────────────────────────────

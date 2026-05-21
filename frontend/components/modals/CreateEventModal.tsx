@@ -90,6 +90,7 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
   const [endDate, setEndDate] = useState("");
 
   // ── Extra (collapsible) ──────────────────────────────────────
+  const [birthYear, setBirthYear] = useState("");
   const [showExtra, setShowExtra] = useState(false);
   const [repeat, setRepeat] = useState("");
   const [reminder, setReminder] = useState("");
@@ -137,6 +138,10 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
     staleTime: 5 * 60_000,
   });
 
+  const isBirthdayCategory =
+    categoryId !== "" &&
+    categories?.find((c) => c.category_id === Number(categoryId))?.slug === "birthday";
+
   // ── Auto-resize textarea ─────────────────────────────────────
   useEffect(() => {
     const el = descRef.current;
@@ -159,6 +164,10 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
       category_id: categoryId || null,
     };
     body.end_time = hasEndDate && endTime ? endTime : null;
+    const selectedCat = categories?.find((c) => c.category_id === Number(categoryId));
+    if (selectedCat?.slug === "birthday") {
+      body.birth_year = birthYear ? Number(birthYear) : null;
+    }
     if (repeat) {
       body.freq = repeat;
       body.start_date_rule = startDate;
@@ -368,6 +377,25 @@ export function CreateEventModal({ onClose, initialDate }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Год рождения (только для категории День рождения) ── */}
+      {isBirthdayCategory && (
+        <div>
+          <label className={labelCls}>Год рождения</label>
+          <input
+            type="number"
+            min={1900}
+            max={new Date().getFullYear()}
+            value={birthYear}
+            onChange={(e) => setBirthYear(e.target.value)}
+            placeholder="Например, 1990"
+            className={inputCls}
+          />
+          <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+            Если указан — будет показываться возраст и юбилеи
+          </p>
+        </div>
+      )}
 
       {/* ── Дата * ── */}
       <div>

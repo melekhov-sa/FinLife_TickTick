@@ -180,23 +180,35 @@ class WorkCategoryFullItem(BaseModel):
     title: str
     emoji: str | None
     is_archived: bool
+    slug: str | None = None
+    is_system: bool = False
 
 
 def _seed_system_work_categories(db: Session, user_id: int) -> None:
     """Ensure predefined system categories exist for the user."""
-    from sqlalchemy import func as sa_func
-    system = [("Отпуск", "🏖️")]
-    for title, emoji in system:
+    # slug-based system categories (idempotent)
+    system_slugs = [
+        ("Отпуск", "🏖️", "vacation"),
+        ("День рождения", "🎂", "birthday"),
+    ]
+    for title, emoji, slug in system_slugs:
         exists = db.query(WorkCategory).filter(
             WorkCategory.account_id == user_id,
-            sa_func.lower(WorkCategory.title) == title.lower(),
+            WorkCategory.slug == slug,
         ).first()
         if not exists:
-            from app.application.work_categories import CreateWorkCategoryUseCase
             try:
-                CreateWorkCategoryUseCase(db).execute(user_id, title, emoji)
+                cat = WorkCategory(
+                    account_id=user_id,
+                    title=title,
+                    emoji=emoji,
+                    slug=slug,
+                    is_system=True,
+                )
+                db.add(cat)
+                db.commit()
             except Exception:
-                pass  # already exists or concurrent insert
+                db.rollback()  # concurrent insert
 
 
 @router.get("/work-categories")
@@ -209,7 +221,8 @@ def list_work_categories(request: Request, db: Session = Depends(get_db), includ
     cats = q.order_by(WorkCategory.title).all()
     return [
         WorkCategoryFullItem(
-            category_id=c.category_id, title=c.title, emoji=c.emoji, is_archived=c.is_archived
+            category_id=c.category_id, title=c.title, emoji=c.emoji,
+            is_archived=c.is_archived, slug=c.slug, is_system=c.is_system,
         )
         for c in cats
     ]
@@ -268,6 +281,12 @@ def update_work_category(
 def archive_work_category(category_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.work_categories import ArchiveWorkCategoryUseCase, WorkCategoryValidationError
     user_id = get_user_id(request, db)
+    cat = db.query(WorkCategory).filter(
+        WorkCategory.category_id == category_id,
+        WorkCategory.account_id == user_id,
+    ).first()
+    if cat and cat.is_system:
+        raise HTTPException(status_code=400, detail="Системную категорию нельзя архивировать")
     try:
         ArchiveWorkCategoryUseCase(db).execute(category_id, user_id, actor_user_id=user_id)
     except WorkCategoryValidationError as e:
