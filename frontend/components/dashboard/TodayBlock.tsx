@@ -490,6 +490,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const tomorrowGroup = tomorrowPlan?.day_groups?.[0];
   const tomorrowEntries = tomorrowGroup?.entries ?? [];
 
+  const isEvening = useMemo(() => new Date().getHours() >= 18, []);
+
   const { activeTasks, doneTasks, activeHabits, doneHabits, doneOps, isEmpty } = useMemo(() => {
     const _activeTasks = [
       ...(overdue ?? []).filter((i) => i.kind === "task" || i.kind === "task_occ"),
@@ -831,11 +833,14 @@ export function TodayBlock({ today, plannedOps }: Props) {
             groups.push({
               key: "habits",
               label: "Привычки",
-              content: allHabits.map((item) => (
-                <div key={`${item.kind}-${item.id}`} className={item.is_done ? "opacity-70" : undefined}>
-                  <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
-                </div>
-              )),
+              content: allHabits.map((item) => {
+                const streakAtRisk = isEvening && !item.is_done && ((item.meta?.current_streak as number) ?? 0) > 0;
+                return (
+                  <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
+                    <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
+                  </div>
+                );
+              }),
             });
           }
 

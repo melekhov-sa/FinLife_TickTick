@@ -135,6 +135,20 @@ def _run_weekly_digest_job():
         db.close()
 
 
+def _run_habit_streak_reminders():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.habit_reminders import dispatch_habit_streak_reminders
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        dispatch_habit_streak_reminders(db)
+    except Exception:
+        logger.exception("Habit streak reminder job failed")
+    finally:
+        db.close()
+
+
 def _run_calendar_refresh():
     """Refresh the production-calendar DB cache for current + next year."""
     from datetime import date
@@ -215,6 +229,16 @@ def start_scheduler():
         coalesce=True,
     )
 
+    # Habit streak reminders — hourly 18:00–23:00 MSK (15:00–20:00 UTC)
+    scheduler.add_job(
+        _run_habit_streak_reminders,
+        CronTrigger(hour="15,16,17,18,19,20", minute=0, timezone="UTC"),
+        id="habit_streak_reminders",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
     # Production calendar refresh — Monday 03:00 UTC
     # Refreshes xmlcalendar.ru data for current + next year so request path
     # stays instant and survives if xmlcalendar.ru goes down later in the week.
@@ -231,7 +255,8 @@ def start_scheduler():
     logger.info(
         "Scheduler started: morning_digest (05:00 UTC), evening_digest (18:00 UTC), "
         "reminders (every 2 min), sub_notifications (06:00 UTC), notification_engine (06:30 UTC), "
-        "weekly_digest (Sun 15:00 UTC), calendar_refresh (Mon 03:00 UTC)"
+        "weekly_digest (Sun 15:00 UTC), calendar_refresh (Mon 03:00 UTC), "
+        "habit_streak_reminders (15-20 UTC hourly)"
     )
 
 
