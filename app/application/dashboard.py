@@ -28,6 +28,7 @@ from app.infrastructure.db.models import (
 from app.utils.money import format_money
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
+_JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
 
 _MONTH_GENITIVE_RU = {
     1: "января", 2: "февраля", 3: "марта", 4: "апреля",
@@ -424,6 +425,11 @@ class DashboardService:
             ev = ev_cache[occ.event_id]
             if ev and ev.is_active:
                 event_time = occ.start_time.strftime("%H:%M") if occ.start_time else None
+                person_age: int | None = None
+                is_jubilee = False
+                if ev.birth_year and occ.start_date:
+                    person_age = occ.start_date.year - ev.birth_year
+                    is_jubilee = person_age in _JUBILEE_AGES
                 active.append({
                     "kind": "event",
                     "id": occ.id,
@@ -439,6 +445,8 @@ class DashboardService:
                         "event_id": occ.event_id,
                         "reminders": reminders_by_event.get(occ.event_id, []),
                         "end_date": occ.end_date,
+                        "person_age": person_age,
+                        "is_jubilee": is_jubilee,
                     },
                 })
 

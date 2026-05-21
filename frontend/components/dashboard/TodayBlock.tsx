@@ -28,6 +28,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api";
 import { useCreateTask, useReorderTasks } from "@/hooks/useTasks";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
+import { pluralizeYears } from "@/lib/utils";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
@@ -162,6 +163,14 @@ function Item({
           {title}
         </span>
         {categoryName && <CategoryChip name={categoryName} emoji={item.category_emoji} />}
+        {kind === "event" && item.meta?.person_age != null && (
+          <span className={clsx(
+            "text-[11px] font-semibold shrink-0",
+            item.meta.is_jubilee ? "text-amber-400" : "text-pink-400",
+          )}>
+            {item.meta.is_jubilee ? "🎉 " : ""}{String(item.meta.person_age)} {pluralizeYears(item.meta.person_age as number)}
+          </span>
+        )}
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
           isDone ? (

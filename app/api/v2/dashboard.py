@@ -15,6 +15,7 @@ from app.config import get_settings
 
 router = APIRouter()
 
+_JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
 
 # ── Pydantic response models ──────────────────────────────────────────────────
 
@@ -149,6 +150,8 @@ class WeekEvent(BaseModel):
     start_time: str | None
     category_emoji: str | None
     is_today: bool
+    person_age: int | None = None
+    is_jubilee: bool = False
 
     @field_serializer("start_date")
     def serialize_date(self, v: date) -> str:
@@ -265,6 +268,11 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                     ev_cache[occ.event_id] = ev
             ev = ev_cache.get(occ.event_id)
             if ev and ev.is_active:
+                person_age: int | None = None
+                is_jubilee = False
+                if ev.birth_year and occ.start_date:
+                    person_age = occ.start_date.year - ev.birth_year
+                    is_jubilee = person_age in _JUBILEE_AGES
                 week_events.append(WeekEvent(
                     event_id=occ.event_id,
                     occurrence_id=occ.id,
@@ -273,6 +281,8 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                     start_time=str(occ.start_time) if occ.start_time else None,
                     category_emoji=wc_emoji_map.get(ev.category_id) if ev.category_id else None,
                     is_today=(occ.start_date == today),
+                    person_age=person_age,
+                    is_jubilee=is_jubilee,
                 ))
     except Exception:
         week_events = []

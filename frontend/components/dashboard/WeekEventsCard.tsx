@@ -2,6 +2,7 @@
 
 import { clsx } from "clsx";
 import type { WeekEvent } from "@/types/api";
+import { pluralizeYears } from "@/lib/utils";
 
 interface Props {
   events: WeekEvent[];
@@ -48,12 +49,22 @@ export function WeekEventsCard({ events }: Props) {
                   {ev.category_emoji && <span className="mr-1">{ev.category_emoji}</span>}
                   {ev.title}
                 </p>
-                <p className="t-secondary mt-0.5" style={{ color: "var(--t-muted)" }}>
-                  {formatEventDate(ev.start_date, ev.is_today)}
-                  {ev.start_time && (
-                    <span className="ml-1.5 tabular-nums">{ev.start_time.slice(0, 5)}</span>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="t-secondary" style={{ color: "var(--t-muted)" }}>
+                    {formatEventDate(ev.start_date, ev.is_today)}
+                    {ev.start_time && (
+                      <span className="ml-1.5 tabular-nums">{ev.start_time.slice(0, 5)}</span>
+                    )}
+                  </span>
+                  {ev.person_age != null && (
+                    <span className={clsx(
+                      "text-[11px] font-semibold",
+                      ev.is_jubilee ? "text-amber-400" : "text-pink-400",
+                    )}>
+                      {ev.is_jubilee ? "🎉 " : ""}{ev.person_age} {pluralizeYears(ev.person_age)}
+                    </span>
                   )}
-                </p>
+                </div>
               </div>
             </div>
           ))}

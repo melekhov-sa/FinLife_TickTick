@@ -127,6 +127,8 @@ export interface WeekEvent {
   start_time: string | null;
   category_emoji: string | null;
   is_today: boolean;
+  person_age: number | null;
+  is_jubilee: boolean;
 }
 
 export interface ExpiringSub {
