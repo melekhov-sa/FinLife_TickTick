@@ -64,8 +64,11 @@ export function EventDetailPanel({ event, onClose }: Props) {
   const [endDate, setEndDate]     = useState(event.end_date ?? "");
   const [startTime, setStartTime] = useState(event.start_time ?? "");
   const [catId, setCatId]         = useState<string>(event.category_id ? String(event.category_id) : "");
+  const [birthYear, setBirthYear] = useState(event.birth_year ? String(event.birth_year) : "");
   const [titleFocused, setTitleFocused] = useState(false);
   const [deletePopoverOpen, setDeletePopoverOpen] = useState(false);
+
+  const isBirthday = event.category_slug === "birthday";
 
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,6 +100,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
     setEndDate(event.end_date ?? "");
     setStartTime(event.start_time ?? "");
     setCatId(event.category_id ? String(event.category_id) : "");
+    setBirthYear(event.birth_year ? String(event.birth_year) : "");
   }, [event.occurrence_id]);
 
   const debounceSave = useCallback((field: "description", value: string) => {
@@ -289,6 +293,42 @@ export function EventDetailPanel({ event, onClose }: Props) {
             />
           </div>
         </div>
+
+        {/* Birth year — only for birthday events */}
+        {isBirthday && (
+          <div className="flex items-start gap-3">
+            <span className="mt-2.5 shrink-0 text-base">🎂</span>
+            <div className="flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+                Год рождения
+              </p>
+              <input
+                type="number"
+                min={1900}
+                max={new Date().getFullYear()}
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                onBlur={() => {
+                  const y = parseInt(birthYear, 10);
+                  const valid = y >= 1900 && y <= new Date().getFullYear();
+                  update({ occurrenceId: event.occurrence_id, data: { birth_year: valid ? y : null } });
+                }}
+                placeholder="напр. 1985"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors w-32"
+                style={{ color: "var(--t-secondary)" }}
+              />
+              {birthYear && (() => {
+                const y = parseInt(birthYear, 10);
+                const age = new Date(event.start_date).getFullYear() - y;
+                return age > 0 ? (
+                  <p className="mt-1 text-[12px]" style={{ color: "var(--t-faint)" }}>
+                    {age} лет в этот день
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Reminders */}
         <EventReminders
