@@ -71,7 +71,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Main column */}
         <main
-          className="flex-1 flex flex-col min-w-0"
+          className="flex-1 flex flex-col min-w-0 min-h-0"
           style={{ background: "var(--app-bg)" }}
         >
           <AppTopbar />
@@ -79,16 +79,15 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             state={onlineStatus}
             onRetry={() => window.location.reload()}
           />
-          <div className="flex-1 flex flex-col overflow-auto scroll-slim pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <div className="flex-1 flex flex-col overflow-auto scroll-slim">
             {children}
           </div>
+          {/* Bottom nav — mobile only, in-flow so it never drifts */}
+          <MobileNav
+            onCreateTask={() => setShowTaskModal(true)}
+            onCreateOperation={() => setShowOpModal(true)}
+          />
         </main>
-
-        {/* Bottom nav — mobile only */}
-        <MobileNav
-          onCreateTask={() => setShowTaskModal(true)}
-          onCreateOperation={() => setShowOpModal(true)}
-        />
       </div>
 
       {/* Modals and overlays */}

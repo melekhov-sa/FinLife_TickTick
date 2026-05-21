@@ -45,13 +45,12 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden fixed left-0 right-0 bottom-0 flex items-end justify-between px-2 pt-2"
+        className="md:hidden flex items-end justify-between px-2 pt-2 shrink-0"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
           paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
-          zIndex: 20,
         }}
       >
         <BottomItem
