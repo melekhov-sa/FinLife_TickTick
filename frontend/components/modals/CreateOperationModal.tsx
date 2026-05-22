@@ -184,7 +184,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const limitWarning = useMemo(() => {
     if (opType !== "EXPENSE" || !categoryId || !budgetData?.expense_rows) return null;
     const row = budgetData.expense_rows.find((r) => r.category_id === Number(categoryId));
-    if (!row || !row.total.plan) return null;
+    if (!row || !row.total?.plan) return null;
     const amountVal = parseFloat(amount);
     if (isNaN(amountVal) || amountVal <= 0) return null;
     const projectedFact = row.total.fact + amountVal;
