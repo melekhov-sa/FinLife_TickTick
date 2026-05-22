@@ -793,3 +793,17 @@ def update_transaction(
         db.commit()
 
     return {"ok": True}
+
+
+@router.delete("/transactions/{transaction_id}", status_code=204)
+def cancel_transaction(transaction_id: int, request: Request, db: Session = Depends(get_db)):
+    from app.application.transactions import CancelTransactionUseCase, TransactionValidationError
+    user_id = get_user_id(request, db)
+    try:
+        CancelTransactionUseCase(db).execute(
+            transaction_id=transaction_id,
+            account_id=user_id,
+            actor_user_id=user_id,
+        )
+    except TransactionValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))

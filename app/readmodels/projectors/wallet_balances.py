@@ -36,6 +36,8 @@ class WalletBalancesProjector(BaseProjector):
             self._handle_transaction_created(event)
         elif event.event_type == "transaction_updated":
             self._handle_transaction_updated(event)
+        elif event.event_type == "transaction_cancelled":
+            self._handle_transaction_cancelled(event)
 
     def _handle_wallet_created(self, event: EventLog) -> None:
         """Создать новый кошелёк с начальным балансом"""
@@ -182,6 +184,28 @@ class WalletBalancesProjector(BaseProjector):
                 fw.balance -= new_amount
             if tw:
                 tw.balance += new_amount
+
+    def _handle_transaction_cancelled(self, event: EventLog) -> None:
+        """Разворачивает влияние отменённой операции на балансы."""
+        p = event.payload_json
+        op = p["operation_type"]
+        amount = Decimal(p["amount"])
+
+        if op == "INCOME":
+            w = self._get_wallet(p.get("wallet_id"))
+            if w:
+                w.balance -= amount
+        elif op == "EXPENSE":
+            w = self._get_wallet(p.get("wallet_id"))
+            if w:
+                w.balance += amount
+        elif op == "TRANSFER":
+            fw = self._get_wallet(p.get("from_wallet_id"))
+            tw = self._get_wallet(p.get("to_wallet_id"))
+            if fw:
+                fw.balance += amount
+            if tw:
+                tw.balance -= amount
 
     def _get_wallet(self, wallet_id):
         if wallet_id is None:

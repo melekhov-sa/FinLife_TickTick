@@ -24,6 +24,15 @@ class TransactionsFeedProjector(BaseProjector):
             self._handle_transaction_created(event)
         elif event.event_type == "transaction_updated":
             self._handle_transaction_updated(event)
+        elif event.event_type == "transaction_cancelled":
+            self._handle_transaction_cancelled(event)
+
+    def _handle_transaction_cancelled(self, event: EventLog) -> None:
+        """Удалить транзакцию из ленты."""
+        tx_id = event.payload_json["transaction_id"]
+        self.db.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == tx_id
+        ).delete(synchronize_session=False)
 
     def _handle_transaction_updated(self, event: EventLog) -> None:
         """Обновить транзакцию в ленте"""

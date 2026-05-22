@@ -535,3 +535,48 @@ class UpdateTransactionUseCase:
         GoalWalletBalancesProjector(self.db).run(
             account_id, event_types=_TX_EVENTS + ["wallet_created"],
         )
+
+
+class CancelTransactionUseCase:
+    """Use case: Отменить операцию (разворачивает баланс, удаляет из ленты)."""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, transaction_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        tx = self.db.query(TransactionFeed).filter(
+            TransactionFeed.transaction_id == transaction_id,
+            TransactionFeed.account_id == account_id,
+        ).first()
+        if not tx:
+            raise TransactionValidationError("Операция не найдена")
+
+        payload = {
+            "transaction_id": tx.transaction_id,
+            "account_id": tx.account_id,
+            "operation_type": tx.operation_type,
+            "amount": str(tx.amount),
+            "currency": tx.currency,
+            "wallet_id": tx.wallet_id,
+            "from_wallet_id": tx.from_wallet_id,
+            "to_wallet_id": tx.to_wallet_id,
+        }
+
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="transaction_cancelled",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+
+        self.db.commit()
+        self._run_projectors(account_id)
+
+    def _run_projectors(self, account_id: int):
+        _TX_EVENTS = ["transaction_created", "transaction_updated", "transaction_cancelled"]
+        WalletBalancesProjector(self.db).run(account_id, event_types=_TX_EVENTS)
+        TransactionsFeedProjector(self.db).run(account_id, event_types=_TX_EVENTS)
+        GoalWalletBalancesProjector(self.db).run(
+            account_id, event_types=_TX_EVENTS + ["wallet_created"],
+        )

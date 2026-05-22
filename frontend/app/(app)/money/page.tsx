@@ -9,7 +9,7 @@ import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
-import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
@@ -83,6 +83,8 @@ function EditTransactionModal({
   const [categoryId, setCategoryId] = useState<string>(String(tx.category_id ?? ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const isTransfer = tx.operation_type === "TRANSFER";
 
@@ -117,6 +119,19 @@ function EditTransactionModal({
       setError(err instanceof Error ? err.message.replace(/^API error \d+: /, "") : "Ошибка сохранения");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCancelConfirm() {
+    setCancelling(true);
+    try {
+      await api.delete(`/api/v2/transactions/${tx.transaction_id}`);
+      onSaved();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message.replace(/^API error \d+: /, "") : "Ошибка отмены");
+      setConfirmCancel(false);
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -159,6 +174,41 @@ function EditTransactionModal({
         )}
 
         {error && <p className="text-red-500 text-xs">{error}</p>}
+
+        {/* Cancel / archive operation */}
+        {!confirmCancel ? (
+          <button
+            type="button"
+            onClick={() => setConfirmCancel(true)}
+            className="flex items-center gap-1.5 text-[12px] mt-1 transition-colors"
+            style={{ color: "var(--t-faint)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgb(248,113,113)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--t-faint)"; }}
+          >
+            <Trash2 size={13} />
+            Отменить операцию
+          </button>
+        ) : (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-3.5 py-3 flex flex-col gap-2.5">
+            <p className="text-[12px] leading-snug" style={{ color: "var(--t-secondary)" }}>
+              Операция будет отменена, баланс кошелька скорректируется. Это действие нельзя отменить.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setConfirmCancel(false)} fullWidth>
+                Назад
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                loading={cancelling}
+                onClick={handleCancelConfirm}
+                fullWidth
+              >
+                Да, отменить
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </BottomSheet>
   );
