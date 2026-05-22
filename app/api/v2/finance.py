@@ -361,6 +361,7 @@ def list_transactions(
     operation_type: str | None = Query(None),
     wallet_id: int | None = Query(None),
     category_id: int | None = Query(None),
+    exclude_category_ids: str | None = Query(None),
     list_id: int | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
@@ -384,15 +385,25 @@ def list_transactions(
         ))
     if list_id is not None:
         q = q.filter(TransactionFeed.list_id == list_id)
-    if category_id:
+    if exclude_category_ids:
+        # "Прочие" with explicit exclusion list — transactions NOT in these category IDs
+        try:
+            excl_ids = [int(x) for x in exclude_category_ids.split(",") if x.strip()]
+        except ValueError:
+            excl_ids = []
+        from sqlalchemy import or_
+        if excl_ids:
+            q = q.filter(or_(
+                TransactionFeed.category_id == None,
+                ~TransactionFeed.category_id.in_(excl_ids),
+            ))
+    elif category_id:
         if category_id == -1:
-            # "Прочие" — uncategorized transactions (no category or category not in active budget rows)
-            # Get all visible (non-hidden, non-archived) category IDs for this user
+            # Legacy fallback: uncategorized = not in any non-archived category
             visible_cat_ids = [c.category_id for c in db.query(CategoryInfo.category_id).filter(
                 CategoryInfo.account_id == user_id,
                 CategoryInfo.is_archived == False,
             ).all()]
-            # Прочие = transactions whose category_id is NOT in the visible list
             from sqlalchemy import or_
             q = q.filter(or_(
                 TransactionFeed.category_id == None,

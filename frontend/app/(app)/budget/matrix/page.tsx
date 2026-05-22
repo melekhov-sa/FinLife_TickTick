@@ -255,6 +255,7 @@ interface FactDetailTarget {
   dateFrom: string;
   dateTo: string;
   factAmount: number;
+  excludeCategoryIds?: number[];
 }
 
 interface TransactionRow {
@@ -268,9 +269,14 @@ interface TransactionRow {
 function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClose: () => void }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const { data, isPending } = useQuery<{ items: TransactionRow[]; total: number }>({
-    queryKey: ["budget-fact-detail", target.categoryId, target.dateFrom, target.dateTo, target.kind],
-    queryFn: () =>
-      api.get(`/api/v2/transactions?category_id=${target.categoryId}&operation_type=${target.kind}&date_from=${target.dateFrom}&date_to=${target.dateTo}&per_page=100`),
+    queryKey: ["budget-fact-detail", target.categoryId, target.dateFrom, target.dateTo, target.kind, target.excludeCategoryIds?.join(",")],
+    queryFn: () => {
+      const excl = target.excludeCategoryIds;
+      const filterParam = excl && excl.length > 0
+        ? `exclude_category_ids=${excl.join(",")}`
+        : `category_id=${target.categoryId}`;
+      return api.get(`/api/v2/transactions?${filterParam}&operation_type=${target.kind}&date_from=${target.dateFrom}&date_to=${target.dateTo}&per_page=100`);
+    },
     staleTime: 30_000,
   });
 
@@ -1142,6 +1148,7 @@ function OtherRow({
   periods,
   rangeCount,
   onFactClick,
+  shownCategoryIds,
 }: {
   label: string;
   kind: "INCOME" | "EXPENSE";
@@ -1150,6 +1157,7 @@ function OtherRow({
   periods: BudgetPeriod[];
   rangeCount: number;
   onFactClick: (target: FactDetailTarget) => void;
+  shownCategoryIds?: number[];
 }) {
   const factColor = kind === "EXPENSE" ? "rgb(220 38 38)" : "var(--t-secondary)";
   const displayCells = (cells ?? periods.map(() => ({ plan: 0, fact: 0, deviation: 0 } as BudgetCell))).slice(0, rangeCount);
@@ -1167,7 +1175,7 @@ function OtherRow({
         const p = periods[i];
         const pBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
         const factEl = cell.fact
-          ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact })} className="cursor-pointer hover:underline hover:text-indigo-600" style={{ color: factColor }}>{fmt(cell.fact)}</span>
+          ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact, excludeCategoryIds: shownCategoryIds })} className="cursor-pointer hover:underline hover:text-indigo-600" style={{ color: factColor }}>{fmt(cell.fact)}</span>
           : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
 
         if (pk === "past") return (
@@ -1449,13 +1457,14 @@ function MobileTotRow({ label, totals, kind }: {
   );
 }
 
-function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick }: {
+function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick, shownCategoryIds }: {
   label: string;
   kind: "INCOME" | "EXPENSE";
   cells?: BudgetCell[];
   focusPeriod: BudgetPeriod | undefined;
   focusIdx: number;
   onFactClick: (target: FactDetailTarget) => void;
+  shownCategoryIds?: number[];
 }) {
   const cell = cells?.[focusIdx] ?? { plan: 0, fact: 0, deviation: 0 };
   const factColor = kind === "EXPENSE" ? "rgb(220 38 38)" : "var(--t-secondary)";
@@ -1479,6 +1488,7 @@ function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick
           dateFrom: focusPeriod.range_start,
           dateTo: focusPeriod.range_end,
           factAmount: cell.fact,
+          excludeCategoryIds: shownCategoryIds,
         }) : undefined}
       >
         {hasFact ? fmt(cell.fact) : "—"}
@@ -1994,6 +2004,7 @@ export default function BudgetMatrixPage() {
                   focusPeriod={focusPeriod}
                   focusIdx={focusIdx}
                   onFactClick={setFactDetailTarget}
+                  shownCategoryIds={data.income_rows.map((r) => r.category_id).filter((id): id is number => id != null)}
                 />
               </>}
               <MobileTotRow label="Итого доходы" totals={data.income_totals} kind="income" />
@@ -2035,6 +2046,7 @@ export default function BudgetMatrixPage() {
                   focusPeriod={focusPeriod}
                   focusIdx={focusIdx}
                   onFactClick={setFactDetailTarget}
+                  shownCategoryIds={data.expense_rows.map((r) => r.category_id).filter((id): id is number => id != null)}
                 />
               </>}
               <MobileTotRow label="Итого расходы" totals={data.expense_totals} kind="expense" />
@@ -2150,6 +2162,7 @@ export default function BudgetMatrixPage() {
                       periods={periods}
                       rangeCount={rangeCount}
                       onFactClick={setFactDetailTarget}
+                      shownCategoryIds={data.income_rows.map((r) => r.category_id).filter((id): id is number => id != null)}
                     />
                   )}
                   <TotalsRow
@@ -2220,6 +2233,7 @@ export default function BudgetMatrixPage() {
                       periods={periods}
                       rangeCount={rangeCount}
                       onFactClick={setFactDetailTarget}
+                      shownCategoryIds={data.expense_rows.map((r) => r.category_id).filter((id): id is number => id != null)}
                     />
                   )}
                   <TotalsRow
