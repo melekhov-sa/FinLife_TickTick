@@ -22,6 +22,7 @@ import { WeeklyScoreWidget } from "./widgets/WeeklyScoreWidget";
 import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
 import { BudgetRingsWidget } from "./widgets/BudgetRingsWidget";
 import { CounterWidget } from "./widgets/CounterWidget";
+import { AggregateWidget } from "./widgets/AggregateWidget";
 
 export const WIDGET_REGISTRY: WidgetDef[] = [
   // ── Обзор ────────────────────────────────────────────────────────────────
@@ -250,6 +251,17 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
     defaultW: 1, defaultH: 3, minW: 1, minH: 3,
     component: CounterWidget,
     emoji: "🔢",
+  },
+
+  // ── Агрегат ───────────────────────────────────────────────────────────────
+  {
+    id: "aggregate",
+    title: "Сумма по фильтру",
+    description: "Итог доходов или расходов за период — по категориям и кошельку",
+    category: "finance",
+    defaultW: 1, defaultH: 3, minW: 1, minH: 3,
+    component: AggregateWidget,
+    emoji: "🧮",
   },
 ];
 

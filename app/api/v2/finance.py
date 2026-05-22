@@ -474,6 +474,119 @@ def list_transactions(
     }
 
 
+# ── Aggregate ─────────────────────────────────────────────────────────────
+
+from calendar import monthrange as _monthrange
+
+
+class AggregateRequest(BaseModel):
+    operation_type: str           # INCOME | EXPENSE
+    period: str                   # year | quarter | month
+    category_ids: list[int] = []
+    wallet_id: int | None = None
+
+
+class AggregateResponse(BaseModel):
+    total: str
+    currency: str
+    period_label: str
+    prev_total: str
+    prev_period_label: str
+    tx_count: int
+
+
+@router.post("/transactions/aggregate", response_model=AggregateResponse)
+def aggregate_transactions(
+    body: AggregateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from datetime import date as _date
+    user_id = get_user_id(request, db)
+    today = _date.today()
+    _MONTHS_RU = ["янв", "фев", "мар", "апр", "май", "июн",
+                  "июл", "авг", "сен", "окт", "ноя", "дек"]
+
+    def period_bounds(offset: int) -> tuple:
+        """(datetime_from, datetime_to, label) for current (0) or previous (1) period."""
+        if body.period == "year":
+            y = today.year - offset
+            return (
+                datetime(y, 1, 1),
+                datetime(y + 1, 1, 1),
+                str(y),
+            )
+        elif body.period == "month":
+            m = today.month - offset
+            y = today.year
+            while m <= 0:
+                m += 12
+                y -= 1
+            _, last_day = _monthrange(y, m)
+            return (
+                datetime(y, m, 1),
+                datetime(y, m, last_day, 23, 59, 59, 999999) + timedelta(microseconds=1),
+                f"{_MONTHS_RU[m - 1]} {y}",
+            )
+        elif body.period == "quarter":
+            q = (today.month - 1) // 3 - offset
+            y = today.year
+            while q < 0:
+                q += 4
+                y -= 1
+            sm = q * 3 + 1
+            em = sm + 3
+            ey = y
+            if em > 12:
+                em -= 12
+                ey += 1
+            return (
+                datetime(y, sm, 1),
+                datetime(ey, em, 1),
+                f"Q{q + 1} {y}",
+            )
+        raise ValueError(f"Unknown period: {body.period}")
+
+    def query_sum(dt_from: datetime, dt_to: datetime):
+        q = (
+            db.query(
+                TransactionFeed.currency,
+                func.sum(TransactionFeed.amount).label("total"),
+                func.count().label("cnt"),
+            )
+            .filter(
+                TransactionFeed.account_id == user_id,
+                TransactionFeed.operation_type == body.operation_type,
+                TransactionFeed.occurred_at >= dt_from,
+                TransactionFeed.occurred_at < dt_to,
+            )
+        )
+        if body.category_ids:
+            q = q.filter(TransactionFeed.category_id.in_(body.category_ids))
+        if body.wallet_id:
+            q = q.filter(TransactionFeed.wallet_id == body.wallet_id)
+        rows = q.group_by(TransactionFeed.currency).all()
+        if not rows:
+            return Decimal("0"), "RUB", 0
+        best = max(rows, key=lambda r: r.total or 0)
+        return best.total or Decimal("0"), best.currency, int(best.cnt)
+
+    curr_from, curr_to, curr_label = period_bounds(0)
+    prev_from, prev_to, prev_label = period_bounds(1)
+
+    curr_total, currency, curr_count = query_sum(curr_from, curr_to)
+    prev_total, _, _ = query_sum(prev_from, prev_to)
+
+    return AggregateResponse(
+        total=str(curr_total),
+        currency=currency,
+        period_label=curr_label,
+        prev_total=str(prev_total),
+        prev_period_label=prev_label,
+        tx_count=curr_count,
+    )
+
+
 # ── Category suggestion ────────────────────────────────────────────────────
 
 from collections import defaultdict as _defaultdict

@@ -449,6 +449,7 @@ export interface FinCategoryItem {
   category_type: string; // INCOME | EXPENSE
   parent_id: number | null;
   is_frequent: boolean;
+  is_archived?: boolean;
 }
 
 // ── Budget Matrix ──────────────────────────────────────────────────────────
