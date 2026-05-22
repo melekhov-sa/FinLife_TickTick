@@ -474,6 +474,115 @@ def list_transactions(
     }
 
 
+# ── Category suggestion ────────────────────────────────────────────────────
+
+from collections import defaultdict as _defaultdict
+
+
+def _amount_bucket(amount) -> int:
+    a = float(amount)
+    if a < 100: return 0
+    if a < 500: return 1
+    if a < 2000: return 2
+    if a < 10000: return 3
+    return 4
+
+
+def _time_bucket(hour: int) -> int:
+    if 6 <= hour < 12: return 0
+    if 12 <= hour < 18: return 1
+    if 18 <= hour < 22: return 2
+    return 3
+
+
+class SuggestCategoryRequest(BaseModel):
+    amount: str
+    wallet_id: int | None = None
+    operation_type: str
+    hour: int | None = None
+
+
+class SuggestCategoryResult(BaseModel):
+    category_id: int
+    confidence: float
+
+
+@router.post("/transactions/suggest-category", response_model=list[SuggestCategoryResult])
+def suggest_category(
+    body: SuggestCategoryRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    since = datetime.utcnow() - timedelta(days=90)
+
+    rows = (
+        db.query(
+            TransactionFeed.category_id,
+            TransactionFeed.amount,
+            TransactionFeed.wallet_id,
+            TransactionFeed.occurred_at,
+        )
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.operation_type == body.operation_type,
+            TransactionFeed.category_id.isnot(None),
+            TransactionFeed.occurred_at >= since,
+        )
+        .all()
+    )
+
+    if len(rows) < 5:
+        return []
+
+    try:
+        amount = float(body.amount)
+        if amount <= 0:
+            return []
+    except (ValueError, TypeError):
+        return []
+
+    total = len(rows)
+    amount_bkt = _amount_bucket(amount)
+    time_bkt = _time_bucket(body.hour) if body.hour is not None else None
+
+    cat_counts: dict = _defaultdict(int)
+    cat_amount_match: dict = _defaultdict(int)
+    cat_time_match: dict = _defaultdict(int)
+    cat_wallet_match: dict = _defaultdict(int)
+
+    for row in rows:
+        cid = row.category_id
+        cat_counts[cid] += 1
+        if _amount_bucket(row.amount) == amount_bkt:
+            cat_amount_match[cid] += 1
+        if time_bkt is not None and row.occurred_at:
+            if _time_bucket(row.occurred_at.hour) == time_bkt:
+                cat_time_match[cid] += 1
+        if body.wallet_id is not None and row.wallet_id == body.wallet_id:
+            cat_wallet_match[cid] += 1
+
+    results = []
+    for cid, cnt in cat_counts.items():
+        freq_score = cnt / total
+        amount_score = cat_amount_match[cid] / cnt
+        time_score = cat_time_match[cid] / cnt if time_bkt is not None else 0.5
+        wallet_score = cat_wallet_match[cid] / cnt if body.wallet_id is not None else 0.5
+
+        confidence = (
+            0.30 * freq_score
+            + 0.40 * amount_score
+            + 0.15 * time_score
+            + 0.15 * wallet_score
+        )
+
+        if confidence >= 0.50:
+            results.append(SuggestCategoryResult(category_id=cid, confidence=round(confidence, 4)))
+
+    results.sort(key=lambda r: r.confidence, reverse=True)
+    return results[:3]
+
+
 # ── Create transaction ─────────────────────────────────────────────────────
 
 class CreateTransactionRequest(BaseModel):

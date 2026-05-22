@@ -104,6 +104,9 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
+  const [suggestion, setSuggestion] = useState<{ category_id: number; confidence: number } | null>(null);
+  const categoryIdRef = useRef(categoryId);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
@@ -266,6 +269,42 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   useEffect(() => {
     if (subPayerType === "SELF") setSubMemberId("");
   }, [subPayerType]);
+
+  // Keep ref in sync with state for use inside async callbacks
+  useEffect(() => { categoryIdRef.current = categoryId; }, [categoryId]);
+
+  // Debounced category suggestion
+  useEffect(() => {
+    if (opType !== "INCOME" && opType !== "EXPENSE") {
+      setSuggestion(null);
+      return;
+    }
+    const amountVal = parseFloat(amount);
+    if (!amount || isNaN(amountVal) || amountVal <= 0 || !walletId) {
+      setSuggestion(null);
+      return;
+    }
+    if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+    suggestTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await api.post<{ category_id: number; confidence: number }[]>(
+          "/api/v2/transactions/suggest-category",
+          { amount, wallet_id: walletId, operation_type: opType, hour: new Date().getHours() },
+        );
+        if (results.length > 0) {
+          setSuggestion(results[0]);
+          if (results[0].confidence >= 0.85 && !categoryIdRef.current) {
+            setCategoryId(results[0].category_id);
+          }
+        } else {
+          setSuggestion(null);
+        }
+      } catch {
+        setSuggestion(null);
+      }
+    }, 600);
+    return () => { if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current); };
+  }, [amount, walletId, opType]);
 
   function clearFieldError(field: string) {
     if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });
@@ -563,6 +602,26 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   placeholder="— без категории —"
                   searchable
                 />
+                {(() => {
+                  if (!suggestion) return null;
+                  const sugCat = (finCats ?? []).find((c) => c.category_id === suggestion.category_id);
+                  if (!sugCat || suggestion.category_id === Number(categoryId || 0)) return null;
+                  return (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Вероятно:</span>
+                      <button
+                        type="button"
+                        onClick={() => setCategoryId(suggestion.category_id)}
+                        className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
+                        style={{ background: "rgba(99,102,241,0.12)", color: "rgb(129,140,248)" }}
+                        onMouseEnter={(e) => { (e.currentTarget.style.background = "rgba(99,102,241,0.22)"); }}
+                        onMouseLeave={(e) => { (e.currentTarget.style.background = "rgba(99,102,241,0.12)"); }}
+                      >
+                        {sugCat.title}
+                      </button>
+                    </div>
+                  );
+                })()}
               </FormRow>
             )}
 
