@@ -727,6 +727,13 @@ class EventTaskTemplate(Base):
     reminder_offset_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
+    # After-event tasks: create task N days AFTER the event (days_before reused as magnitude)
+    is_after_event: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # For same-day after tasks: minutes after event end_time to set as task due time
+    minutes_after_end: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Auto-complete the pre-event task: null | 'end_of_day' | 'at_event_end'
+    auto_complete_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

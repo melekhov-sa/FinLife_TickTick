@@ -1,12 +1,12 @@
 """
 API v2 — Event task templates
-CRUD for per-event task templates that auto-generate tasks before occurrences.
+CRUD for per-event task templates that auto-generate tasks before/after occurrences.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.v2.deps import get_user_id
@@ -20,6 +20,8 @@ from app.infrastructure.db.session import get_db
 
 router = APIRouter()
 
+AUTO_COMPLETE_VALUES = {None, "end_of_day", "at_event_end"}
+
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +32,9 @@ class EventTaskTemplateOut(BaseModel):
     days_before: int
     reminder_offset_minutes: Optional[int]
     is_archived: bool
+    is_after_event: bool
+    minutes_after_end: Optional[int]
+    auto_complete_mode: Optional[str]
 
     class Config:
         from_attributes = True
@@ -39,12 +44,39 @@ class CreateTemplateRequest(BaseModel):
     title: str
     days_before: int
     reminder_offset_minutes: Optional[int] = None
+    is_after_event: bool = False
+    minutes_after_end: Optional[int] = None
+    auto_complete_mode: Optional[str] = None
+
+    @field_validator("days_before")
+    @classmethod
+    def validate_days_before(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("days_before must be >= 0")
+        return v
+
+    @field_validator("auto_complete_mode")
+    @classmethod
+    def validate_auto_complete_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v not in AUTO_COMPLETE_VALUES:
+            raise ValueError(f"auto_complete_mode must be one of: {AUTO_COMPLETE_VALUES}")
+        return v
+
+    @field_validator("minutes_after_end")
+    @classmethod
+    def validate_minutes_after_end(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("minutes_after_end must be >= 0")
+        return v
 
 
 class UpdateTemplateRequest(BaseModel):
     title: Optional[str] = None
     days_before: Optional[int] = None
     reminder_offset_minutes: Optional[int] = None
+    is_after_event: Optional[bool] = None
+    minutes_after_end: Optional[int] = None
+    auto_complete_mode: Optional[str] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -88,7 +120,7 @@ def list_templates(
             EventTaskTemplate.account_id == user_id,
             EventTaskTemplate.is_archived == False,
         )
-        .order_by(EventTaskTemplate.days_before.desc())
+        .order_by(EventTaskTemplate.is_after_event.asc(), EventTaskTemplate.days_before.desc())
         .all()
     )
 
@@ -104,8 +136,11 @@ def create_template(
     title = body.title.strip()
     if not title:
         raise HTTPException(400, "title is required")
-    if body.days_before < 0:
-        raise HTTPException(400, "days_before must be >= 0")
+
+    # auto_complete_mode only meaningful for before-event templates
+    auto_complete_mode = body.auto_complete_mode if not body.is_after_event else None
+    # minutes_after_end only meaningful for after-event templates
+    minutes_after_end = body.minutes_after_end if body.is_after_event else None
 
     tpl = EventTaskTemplate(
         event_id=event_id,
@@ -113,6 +148,9 @@ def create_template(
         title=title,
         days_before=body.days_before,
         reminder_offset_minutes=body.reminder_offset_minutes,
+        is_after_event=body.is_after_event,
+        minutes_after_end=minutes_after_end,
+        auto_complete_mode=auto_complete_mode,
     )
     db.add(tpl)
     db.commit()
@@ -135,6 +173,14 @@ def update_template(
         tpl.days_before = body.days_before
     if "reminder_offset_minutes" in body.model_fields_set:
         tpl.reminder_offset_minutes = body.reminder_offset_minutes
+    if body.is_after_event is not None:
+        tpl.is_after_event = body.is_after_event
+    if "minutes_after_end" in body.model_fields_set:
+        tpl.minutes_after_end = body.minutes_after_end
+    if "auto_complete_mode" in body.model_fields_set:
+        if body.auto_complete_mode not in AUTO_COMPLETE_VALUES:
+            raise HTTPException(400, "Invalid auto_complete_mode")
+        tpl.auto_complete_mode = body.auto_complete_mode
     db.commit()
     db.refresh(tpl)
     return tpl

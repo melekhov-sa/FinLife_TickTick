@@ -339,6 +339,9 @@ export interface EventTaskTemplateItem {
   days_before: number;
   reminder_offset_minutes: number | null;
   is_archived: boolean;
+  is_after_event: boolean;
+  minutes_after_end: number | null;
+  auto_complete_mode: "end_of_day" | "at_event_end" | null;
 }
 
 // ── /api/v2/knowledge ─────────────────────────────────────────────────────────
