@@ -11,6 +11,7 @@ import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
+import type { CompletionMode } from "@/types/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,16 @@ interface EventTemplate {
   is_archived: boolean;
   next_date: string | null;
   created_at: string;
+  completion_mode: CompletionMode;
 }
+
+const COMPLETION_MODE_LABELS: Record<CompletionMode, string> = {
+  end_of_day: "Конец дня",
+  at_event_end: "После события",
+  manual: "Вручную",
+};
+
+const COMPLETION_MODE_CYCLE: CompletionMode[] = ["end_of_day", "at_event_end", "manual"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +89,14 @@ export default function EventTemplatesPage() {
     await api.patch(`/api/v2/events/${id}`, { title: editTitle.trim() });
     qc.invalidateQueries({ queryKey: ["event-templates"] });
     setEditingId(null);
+  }
+
+  async function handleCycleCompletionMode(item: EventTemplate) {
+    const current = item.completion_mode ?? "end_of_day";
+    const idx = COMPLETION_MODE_CYCLE.indexOf(current);
+    const next = COMPLETION_MODE_CYCLE[(idx + 1) % COMPLETION_MODE_CYCLE.length];
+    await api.patch(`/api/v2/events/${item.event_id}`, { completion_mode: next });
+    qc.invalidateQueries({ queryKey: ["event-templates"] });
   }
 
   const templates = (all ?? []).filter((ev) => ev.is_archived === archived);
@@ -214,6 +232,17 @@ export default function EventTemplatesPage() {
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
+                  {!item.is_archived && editingId !== item.event_id && (
+                    <Tooltip content={`Авто-завершение: ${COMPLETION_MODE_LABELS[item.completion_mode ?? "end_of_day"]} (нажмите для смены)`}>
+                      <button
+                        onClick={() => handleCycleCompletionMode(item)}
+                        className="px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors hover:bg-white/[0.06]"
+                        style={{ color: "var(--t-faint)", borderColor: "var(--app-border)" }}
+                      >
+                        {COMPLETION_MODE_LABELS[item.completion_mode ?? "end_of_day"]}
+                      </button>
+                    </Tooltip>
+                  )}
                   {!item.is_archived && editingId !== item.event_id && (
                     <Tooltip content="Редактировать">
                       <button

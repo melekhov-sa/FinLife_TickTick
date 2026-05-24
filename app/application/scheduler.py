@@ -154,6 +154,7 @@ def _run_event_task_templates():
     from app.application.event_task_templates_service import (
         dispatch_event_task_templates,
         auto_complete_event_tasks,
+        auto_complete_occurrences,
     )
 
     Session = get_session_factory()
@@ -161,6 +162,7 @@ def _run_event_task_templates():
     try:
         dispatch_event_task_templates(db)
         auto_complete_event_tasks(db)
+        auto_complete_occurrences(db)
     except Exception:
         logger.exception("Event task templates job failed")
     finally:

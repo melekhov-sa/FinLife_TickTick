@@ -5,12 +5,12 @@ import { getHolidayRU } from "@/lib/holidays";
 import { pluralizeYears } from "@/lib/utils";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { EventDetailPanel } from "@/components/events/EventDetailPanel";
-import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
+import { useEvents, useCreateEventQuick, useDeleteEvent, useDuplicateEvent, useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import type { EventItem } from "@/types/api";
 import {
   CalendarDays, Plus, ChevronLeft, ChevronRight,
-  MoreHorizontal, X as XIcon,
+  MoreHorizontal, X as XIcon, CheckCircle2, Circle,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
@@ -125,18 +125,22 @@ function QuickMenu({ onOpen, onDuplicate, onDelete }: {
 
 // ── EventRow ──────────────────────────────────────────────────────────────────
 
-function EventRow({ event, onOpen, onDuplicate, onDelete }: {
+function EventRow({ event, onOpen, onDuplicate, onDelete, onComplete, onUncomplete }: {
   event: EventItem;
   onOpen: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onComplete: () => void;
+  onUncomplete: () => void;
 }) {
-  const palette   = catPalette(event.category_id);
-  const isPast    = event.is_past;
-  const timeLabel = event.is_all_day ? "Весь день" : (event.start_time ?? "");
-  const dateRange = formatDateRange(event.start_date, event.end_date);
-  const isJubilee = event.is_jubilee;
-  const ageLabel  = event.person_age != null
+  const palette      = catPalette(event.category_id);
+  const isPast       = event.is_past;
+  const isCompleted  = event.is_completed;
+  const timeLabel    = event.is_all_day ? "Весь день" : (event.start_time ?? "");
+  const dateRange    = formatDateRange(event.start_date, event.end_date);
+  const isJubilee    = event.is_jubilee;
+  const showComplete = event.is_today || isPast;
+  const ageLabel     = event.person_age != null
     ? (isJubilee ? `🎉 Юбилей · ${event.person_age} ${pluralizeYears(event.person_age)}` : `${event.person_age} ${pluralizeYears(event.person_age)}`)
     : null;
 
@@ -145,30 +149,46 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
       onClick={onOpen}
       className={clsx(
         "group flex items-center gap-3 py-3 px-3.5 border-l-2 cursor-pointer transition-colors",
-        isPast
+        isCompleted
+          ? "border-l-emerald-500/40 opacity-60 hover:opacity-80 hover:bg-emerald-500/[0.03]"
+          : isPast
           ? "border-l-white/[0.10] opacity-50 hover:opacity-65 hover:bg-white/[0.02]"
           : isJubilee
           ? "border-l-amber-400 hover:bg-amber-500/[0.04]"
           : clsx(palette.border, "hover:bg-white/[0.04]")
       )}
     >
+      {/* Completion toggle — visible for today/past events */}
+      {showComplete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); isCompleted ? onUncomplete() : onComplete(); }}
+          className="shrink-0 transition-colors hover:scale-110"
+          title={isCompleted ? "Отметить невыполненным" : "Отметить выполненным"}
+        >
+          {isCompleted
+            ? <CheckCircle2 size={16} className="text-emerald-400" />
+            : <Circle size={16} className="text-white/20 group-hover:text-white/40" />
+          }
+        </button>
+      )}
+
       <div className={clsx(
         "w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0",
-        isPast ? "bg-white/[0.05]" : isJubilee ? "bg-amber-500/15" : palette.bg,
+        isCompleted ? "bg-emerald-500/10" : isPast ? "bg-white/[0.05]" : isJubilee ? "bg-amber-500/15" : palette.bg,
       )}>
         {event.category_emoji ?? "📅"}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium truncate leading-snug" style={{
-          color: isPast ? "var(--t-muted)" : "var(--t-primary)",
+        <p className={clsx("text-[14px] font-medium truncate leading-snug", isCompleted && "line-through")} style={{
+          color: isCompleted ? "var(--t-faint)" : isPast ? "var(--t-muted)" : "var(--t-primary)",
           letterSpacing: "-0.01em",
         }}>
           {event.title}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {event.category_title && (
-            <span className={clsx("text-[11px]", isPast ? "" : isJubilee ? "text-amber-400" : palette.icon)}
-              style={{ color: isPast ? "var(--t-faint)" : undefined }}>
+            <span className={clsx("text-[11px]", isPast || isCompleted ? "" : isJubilee ? "text-amber-400" : palette.icon)}
+              style={{ color: isPast || isCompleted ? "var(--t-faint)" : undefined }}>
               {event.category_title}
             </span>
           )}
@@ -182,6 +202,9 @@ function EventRow({ event, onOpen, onDuplicate, onDelete }: {
           )}
           {dateRange && (
             <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>{dateRange}</span>
+          )}
+          {isCompleted && (
+            <span className="text-[10px] text-emerald-400/70 font-medium">выполнено</span>
           )}
         </div>
       </div>
@@ -361,6 +384,8 @@ export default function EventsPage() {
   const { data, isLoading, isError } = useEvents(effectiveDays);
   const { mutate: deleteEvent }      = useDeleteEvent();
   const { mutate: duplicateEvent }   = useDuplicateEvent();
+  const { mutate: completeEvent }    = useCompleteEvent();
+  const { mutate: uncompleteEvent }  = useUncompleteEvent();
 
   // Vacation spans: multi-day events categorised as "Отпуск"
   const vacationSpans = useMemo(() => {
@@ -620,6 +645,8 @@ export default function EventsPage() {
                             onOpen={() => setSelectedEvent(e)}
                             onDuplicate={() => duplicateEvent(e.occurrence_id)}
                             onDelete={() => deleteEvent(e.occurrence_id)}
+                            onComplete={() => completeEvent(e.occurrence_id)}
+                            onUncomplete={() => uncompleteEvent(e.occurrence_id)}
                           />
                         ))}
                         <QuickAddRow date={g.date} />

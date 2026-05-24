@@ -70,3 +70,38 @@ export function useDuplicateEvent() {
     },
   });
 }
+
+export function useCompleteEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.post(`/api/v2/events/occurrences/${occurrenceId}/complete`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUncompleteEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (occurrenceId: number) =>
+      api.post(`/api/v2/events/occurrences/${occurrenceId}/uncomplete`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUpdateEventSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, data }: { eventId: number; data: { completion_mode?: string } }) =>
+      api.patch(`/api/v2/events/${eventId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event-templates"] });
+    },
+  });
+}

@@ -21,6 +21,8 @@ from app.infrastructure.db.models import (
 )
 from app.application.tasks_usecases import CreateTaskUseCase, CompleteTaskUseCase
 
+AUTO_COMPLETE_OCCURRENCE_MODES = {"end_of_day", "at_event_end"}
+
 logger = logging.getLogger(__name__)
 
 HORIZON_DAYS = 60
@@ -156,6 +158,51 @@ def auto_complete_event_tasks(db: Session) -> None:
             _auto_complete_template(db, tpl, yesterday)
         except Exception:
             logger.exception("Failed to auto-complete tasks for template_id=%s", tpl.id)
+
+
+# ── Auto-complete event occurrences ───────────────────────────────────────────
+
+def auto_complete_occurrences(db: Session) -> None:
+    """
+    Runs daily (morning after event day).
+    For each event with completion_mode != 'manual', marks yesterday's
+    non-cancelled occurrences as completed.
+    """
+    yesterday = date.today() - timedelta(days=1)
+
+    events = (
+        db.query(CalendarEventModel)
+        .filter(
+            CalendarEventModel.is_active == True,
+            CalendarEventModel.completion_mode.in_(AUTO_COMPLETE_OCCURRENCE_MODES),
+        )
+        .all()
+    )
+
+    event_ids = [ev.event_id for ev in events]
+    if not event_ids:
+        return
+
+    occs = (
+        db.query(EventOccurrenceModel)
+        .filter(
+            EventOccurrenceModel.event_id.in_(event_ids),
+            EventOccurrenceModel.start_date == yesterday,
+            EventOccurrenceModel.is_cancelled == False,
+            EventOccurrenceModel.is_completed == False,
+        )
+        .all()
+    )
+
+    for occ in occs:
+        occ.is_completed = True
+        logger.info(
+            "Auto-completed occurrence id=%s for event_id=%s on %s",
+            occ.id, occ.event_id, yesterday,
+        )
+
+    if occs:
+        db.commit()
 
 
 def _auto_complete_template(

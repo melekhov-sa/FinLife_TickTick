@@ -31,6 +31,7 @@ class EventItem(BaseModel):
     start_date: str
     start_time: str | None
     end_date: str | None
+    end_time: str | None = None
     is_all_day: bool
     category_id: int | None
     category_emoji: str | None
@@ -41,11 +42,14 @@ class EventItem(BaseModel):
     birth_year: int | None = None
     person_age: int | None = None
     is_jubilee: bool = False
+    is_completed: bool = False
+    completion_mode: str = "end_of_day"
 
 
 def _build_item(occ: EventOccurrenceModel, evt: CalendarEventModel, cat: WorkCategory | None, today: date) -> EventItem:
     time_str = occ.start_time.strftime("%H:%M") if occ.start_time else None
     end_str = str(occ.end_date) if occ.end_date else None
+    end_time_str = occ.end_time.strftime("%H:%M") if occ.end_time else None
 
     person_age: int | None = None
     is_jubilee = False
@@ -61,6 +65,7 @@ def _build_item(occ: EventOccurrenceModel, evt: CalendarEventModel, cat: WorkCat
         start_date=str(occ.start_date),
         start_time=time_str,
         end_date=end_str,
+        end_time=end_time_str,
         is_all_day=occ.start_time is None,
         category_id=evt.category_id,
         category_emoji=cat.emoji if cat else None,
@@ -71,6 +76,8 @@ def _build_item(occ: EventOccurrenceModel, evt: CalendarEventModel, cat: WorkCat
         birth_year=evt.birth_year,
         person_age=person_age,
         is_jubilee=is_jubilee,
+        is_completed=occ.is_completed,
+        completion_mode=evt.completion_mode,
     )
 
 
@@ -482,15 +489,20 @@ def list_event_templates(request: Request, db: Session = Depends(get_db)):
             "is_archived": not ev.is_active,
             "next_date": str(next_occ.start_date) if next_occ else None,
             "created_at": str(ev.created_at),
+            "completion_mode": ev.completion_mode,
         })
 
     return result
+
+
+COMPLETION_MODES = {"end_of_day", "at_event_end", "manual"}
 
 
 class UpdateEventRequest(BaseModel):
     title: str | None = None
     description: str | None = None
     category_id: int | None = None
+    completion_mode: str | None = None
 
 
 @router.patch("/events/{event_id}")
@@ -505,6 +517,42 @@ def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: 
         event.description = body.description
     if body.category_id is not None:
         event.category_id = body.category_id
+    if body.completion_mode is not None:
+        if body.completion_mode not in COMPLETION_MODES:
+            raise HTTPException(400, f"completion_mode must be one of: {COMPLETION_MODES}")
+        event.completion_mode = body.completion_mode
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/events/occurrences/{occurrence_id}/complete", status_code=200)
+def complete_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    """Manually mark an event occurrence as completed."""
+    user_id = get_user_id(request, db)
+    occ = db.query(EventOccurrenceModel).filter(
+        EventOccurrenceModel.id == occurrence_id,
+        EventOccurrenceModel.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    if occ.is_cancelled:
+        raise HTTPException(status_code=400, detail="Нельзя выполнить отменённое событие")
+    occ.is_completed = True
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/events/occurrences/{occurrence_id}/uncomplete", status_code=200)
+def uncomplete_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    """Mark a completed occurrence as not completed."""
+    user_id = get_user_id(request, db)
+    occ = db.query(EventOccurrenceModel).filter(
+        EventOccurrenceModel.id == occurrence_id,
+        EventOccurrenceModel.account_id == user_id,
+    ).first()
+    if not occ:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    occ.is_completed = False
     db.commit()
     return {"ok": True}
 

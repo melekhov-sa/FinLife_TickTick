@@ -614,6 +614,8 @@ class CalendarEventModel(Base):
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     repeat_rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> recurrence_rules
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # end_of_day | at_event_end | manual
+    completion_mode: Mapped[str] = mapped_column(String(20), nullable=False, server_default="end_of_day")
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
@@ -637,6 +639,7 @@ class EventOccurrenceModel(Base):
     end_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
 
     is_cancelled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="'manual'")  # 'manual' | 'rule'
 
     created_at: Mapped[DateTime] = mapped_column(

@@ -310,6 +310,8 @@ export interface SubscriptionItem {
 
 // ── /api/v2/events ────────────────────────────────────────────────────────────
 
+export type CompletionMode = "end_of_day" | "at_event_end" | "manual";
+
 export interface EventItem {
   occurrence_id: number;
   event_id: number;
@@ -318,6 +320,7 @@ export interface EventItem {
   start_date: string;
   start_time: string | null;
   end_date: string | null;
+  end_time: string | null;
   is_all_day: boolean;
   category_id: number | null;
   category_emoji: string | null;
@@ -328,6 +331,8 @@ export interface EventItem {
   birth_year: number | null;
   person_age: number | null;
   is_jubilee: boolean;
+  is_completed: boolean;
+  completion_mode: CompletionMode;
 }
 
 // ── /api/v2/events/{id}/task-templates ────────────────────────────────────────
