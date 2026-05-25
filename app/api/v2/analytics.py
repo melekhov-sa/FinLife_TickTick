@@ -24,7 +24,7 @@ from app.infrastructure.db.models import (
     TaskModel, HabitModel, HabitOccurrence,
     WalletBalance, TransactionFeed, GoalInfo, GoalWalletBalance,
     SubscriptionModel, SubscriptionMemberModel,
-    UserActivityDaily, CategoryInfo,
+    UserActivityDaily, CategoryInfo, WorkCategory,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -608,3 +608,198 @@ def activity_feed(
 
     items.sort(key=lambda x: x["ts"], reverse=True)
     return {"items": items[:limit]}
+
+
+# ── Tasks overview (progress page) ───────────────────────────────────────────
+
+@router.get("/tasks-overview")
+def tasks_overview(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    today = date.today()
+
+    # ── Period boundaries ────────────────────────────────────────────────────
+    cur_start = today.replace(day=1)
+    prev_start = (cur_start - timedelta(days=1)).replace(day=1)
+    d30 = today - timedelta(days=29)
+    d91 = today - timedelta(days=90)
+    d90 = today - timedelta(days=90)
+
+    task_q = db.query(TaskModel).filter(TaskModel.account_id == user_id)
+
+    # ── KPI: current month ───────────────────────────────────────────────────
+    done_cur = task_q.filter(
+        TaskModel.status == "DONE",
+        TaskModel.completed_at >= cur_start,
+    ).count()
+    done_prev = task_q.filter(
+        TaskModel.status == "DONE",
+        TaskModel.completed_at >= prev_start,
+        TaskModel.completed_at < cur_start,
+    ).count()
+
+    days_elapsed = max((today - cur_start).days + 1, 1)
+    avg_per_day = round(done_cur / days_elapsed, 1)
+
+    # On-time rate: tasks with due_date completed on or before due_date
+    with_due = task_q.filter(
+        TaskModel.status == "DONE",
+        TaskModel.completed_at >= d30,
+        TaskModel.due_date != None,
+    ).all()
+    on_time = sum(
+        1 for t in with_due
+        if t.completed_at and t.due_date
+        and t.completed_at.date() <= t.due_date
+    )
+    on_time_rate = round(on_time / len(with_due) * 100) if with_due else None
+
+    # Completion rate: done / (done + active-with-due this month)
+    active_with_due_cur = task_q.filter(
+        TaskModel.status == "ACTIVE",
+        TaskModel.due_date >= cur_start,
+        TaskModel.due_date <= today,
+    ).count()
+    completion_rate = (
+        round(done_cur / (done_cur + active_with_due_cur) * 100)
+        if (done_cur + active_with_due_cur) > 0 else None
+    )
+
+    # ── Heatmap: 91 days daily task completion ───────────────────────────────
+    heatmap_raw = (
+        db.query(
+            func.date(TaskModel.completed_at).label("day"),
+            func.count().label("cnt"),
+        )
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= d91,
+        )
+        .group_by("day")
+        .all()
+    )
+    heatmap_map = {str(r.day): r.cnt for r in heatmap_raw}
+    heatmap = []
+    for i in range(91):
+        d = d91 + timedelta(days=i)
+        cnt = heatmap_map.get(d.isoformat(), 0)
+        heatmap.append({"date": d.isoformat(), "count": cnt})
+
+    # ── Category breakdown: last 30 days ────────────────────────────────────
+    cat_raw = (
+        db.query(
+            TaskModel.category_id,
+            func.count().label("cnt"),
+        )
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= d30,
+        )
+        .group_by(TaskModel.category_id)
+        .order_by(func.count().desc())
+        .all()
+    )
+    cat_ids = [r.category_id for r in cat_raw if r.category_id]
+    cats_map: dict = {}
+    if cat_ids:
+        cats = db.query(WorkCategory).filter(WorkCategory.category_id.in_(cat_ids)).all()
+        cats_map = {c.category_id: c for c in cats}
+    total_cat = sum(r.cnt for r in cat_raw)
+    categories = []
+    for r in cat_raw:
+        cat = cats_map.get(r.category_id) if r.category_id else None
+        categories.append({
+            "category_id": r.category_id,
+            "title": cat.title if cat else "Без категории",
+            "emoji": cat.emoji if cat else None,
+            "count": r.cnt,
+            "pct": round(r.cnt / total_cat * 100) if total_cat else 0,
+        })
+
+    # ── Weekday rhythm: last 90 days ─────────────────────────────────────────
+    wd_raw = (
+        db.query(
+            extract("dow", TaskModel.completed_at).label("dow"),
+            func.count().label("cnt"),
+        )
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= d90,
+        )
+        .group_by("dow")
+        .all()
+    )
+    WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+    wd_map = {int(r.dow): r.cnt for r in wd_raw}
+    # Count of each weekday in the 90-day window to get average
+    weekday_counts = [0] * 7
+    for i in range(90):
+        d = d90 + timedelta(days=i)
+        weekday_counts[d.weekday() + 1 if d.weekday() < 6 else 0] += 1
+    weekday_counts[0] = weekday_counts[0] or 1  # avoid div-by-zero for Sunday
+    weekdays_result = []
+    for i in range(7):
+        dow_i = i  # 0=Sun in postgres extract
+        total_in_window = weekday_counts[dow_i] or 1
+        avg = round(wd_map.get(dow_i, 0) / total_in_window, 1)
+        weekdays_result.append({"day": WEEKDAYS[dow_i], "avg": avg, "total": wd_map.get(dow_i, 0)})
+    # Reorder Mon→Sun
+    weekdays_result = weekdays_result[1:] + weekdays_result[:1]
+
+    # ── Habits per-habit stats ───────────────────────────────────────────────
+    habits = (
+        db.query(HabitModel)
+        .filter(HabitModel.account_id == user_id, HabitModel.is_archived == False)
+        .order_by(HabitModel.current_streak.desc())
+        .all()
+    )
+    habit_ids = [h.habit_id for h in habits]
+
+    # Weekly completion rates for each habit over last 4 weeks
+    habits_out = []
+    for h in habits:
+        # Per-week done/total for last 4 weeks
+        weekly = []
+        for w in range(4):
+            wend = today - timedelta(weeks=w)
+            wstart = wend - timedelta(days=6)
+            total_w = db.query(func.count()).select_from(HabitOccurrence).filter(
+                HabitOccurrence.habit_id == h.habit_id,
+                HabitOccurrence.scheduled_date >= wstart,
+                HabitOccurrence.scheduled_date <= wend,
+            ).scalar() or 0
+            done_w = db.query(func.count()).select_from(HabitOccurrence).filter(
+                HabitOccurrence.habit_id == h.habit_id,
+                HabitOccurrence.scheduled_date >= wstart,
+                HabitOccurrence.scheduled_date <= wend,
+                HabitOccurrence.status == "DONE",
+            ).scalar() or 0
+            weekly.append(round(done_w / total_w * 100) if total_w else 0)
+        weekly.reverse()  # oldest first
+
+        habits_out.append({
+            "habit_id": h.habit_id,
+            "title": h.title,
+            "emoji": h.category_emoji if hasattr(h, "category_emoji") else None,
+            "current_streak": h.current_streak or 0,
+            "best_streak": h.best_streak or 0,
+            "done_30d": h.done_count_30d or 0,
+            "rate_30d": round(h.done_count_30d / 30 * 100) if h.done_count_30d else 0,
+            "weekly_rates": weekly,  # [w-3, w-2, w-1, current_week] completion %
+        })
+
+    return {
+        "kpi": {
+            "done_cur": done_cur,
+            "done_prev": done_prev,
+            "avg_per_day": avg_per_day,
+            "on_time_rate": on_time_rate,
+            "completion_rate": completion_rate,
+        },
+        "heatmap": heatmap,
+        "categories": categories,
+        "weekdays": weekdays_result,
+        "habits": habits_out,
+    }

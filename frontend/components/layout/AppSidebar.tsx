@@ -12,6 +12,7 @@ import {
   Sparkles,
   CalendarDays,
   BarChart3,
+  TrendingUp,
   ChevronsLeft,
   ChevronsRight,
   type LucideIcon,
@@ -40,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "budget", label: "Бюджет",  href: "/budget", icon: PieChart      },
   { id: "habits",    label: "Привычки", href: "/habits",    icon: Heart          },
   { id: "lists",     label: "Списки",   href: "/lists",     icon: ListChecks     },
+  { id: "progress",   label: "Прогресс",   href: "/progress",  icon: TrendingUp },
   { id: "digest",    label: "Итоги",      href: "/digest",    icon: Sparkles   },
   { id: "analytics", label: "Аналитика", href: "/analytics", icon: BarChart3  },
 ];
