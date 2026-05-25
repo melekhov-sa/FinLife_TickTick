@@ -11,7 +11,9 @@ export function DigestCard() {
 
   if (isPending || !digest) return null;
 
-  const pct = Math.round(digest.habits_completion_rate * 100);
+  const pct = digest.habits_completion_rate != null
+    ? Math.round(digest.habits_completion_rate * 100)
+    : null;
   const href = `/digest/${digest.period_type}/${digest.period_key}`;
 
   return (
@@ -33,7 +35,7 @@ export function DigestCard() {
       </div>
       <div className="flex gap-4 text-[12px]" style={{ color: "var(--t-secondary)" }}>
         <span>{digest.tasks_completed} задач</span>
-        <span>{pct}% привычек</span>
+        {pct != null && <span>{pct}% привычек</span>}
         <span>+{digest.xp_gained} XP</span>
       </div>
     </Link>

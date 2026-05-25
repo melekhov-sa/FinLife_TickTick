@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
 
@@ -15,33 +13,19 @@ interface Props {
 }
 
 export function FinanceBlock({ finState, financialSummary }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
-
   const result = finState.financial_result;
   const resultPositive = result >= 0;
   const delta = finState.capital_delta_30;
   const rub = financialSummary?.["RUB"];
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-3.5 md:p-5">
-      {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-2 md:mb-3">
-        <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
-          Финансы
-        </h2>
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.06] transition-colors"
-          style={{ color: "var(--t-faint)" }}
-        >
-          <ChevronDown size={14} className={clsx("transition-transform duration-200", collapsed && "rotate-180")} />
-        </button>
-      </div>
+    <div className="bg-white dark:bg-white/[0.05] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-3.5 md:p-5">
+      <h2 className="text-[13px] md:text-[14px] font-semibold mb-2 md:mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        Финансы
+      </h2>
 
-      {!collapsed && (
-        <>
-          {/* Wallet rows */}
-          <div className="space-y-1.5 md:space-y-2">
+      {/* Wallet rows */}
+      <div className="space-y-1.5 md:space-y-2">
             {/* Regular */}
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Обычные кошельки</span>
@@ -117,9 +101,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             <a href="/budget" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
               Бюджет →
             </a>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }

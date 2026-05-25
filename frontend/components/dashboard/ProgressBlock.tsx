@@ -2,26 +2,11 @@
 
 import { clsx } from "clsx";
 import type { LevelBlock, EfficiencyBlock, HeatmapCell } from "@/types/api";
+import { Heatmap } from "@/components/primitives/Heatmap";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("ru-RU").format(n);
 }
-
-const LEVEL_CLASS = [
-  "bg-white/[0.05]",
-  "bg-indigo-500/[0.22]",
-  "bg-indigo-500/[0.38]",
-  "bg-indigo-500/[0.58]",
-  "bg-indigo-500/[0.82]",
-];
-
-const LEVEL_GLOW = [
-  "none",
-  "none",
-  "0 0 4px rgba(99,102,241,0.3)",
-  "0 0 6px rgba(99,102,241,0.45)",
-  "0 0 8px rgba(99,102,241,0.6)",
-];
 
 const SCORE_BARS = 10;
 
@@ -56,7 +41,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
   const levelPct = level ? Math.min(100, Math.round(level.percent_progress)) : 0;
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-xl md:rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-3.5 md:p-5 space-y-3 md:space-y-4">
+    <div className="bg-white dark:bg-white/[0.05] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-3.5 md:p-5 space-y-3 md:space-y-4">
       <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Продуктивность
       </h2>
@@ -133,18 +118,23 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
       {/* ── Habit heatmap ─────────────────────────────────── */}
       {cells.length > 0 && (
         <div className={(level || efficiency) ? "border-t border-white/[0.05] pt-3 md:pt-4" : ""}>
-          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-1.5 md:mb-2" style={{ color: "var(--t-faint)" }}>
+          <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-widest mb-2 md:mb-3" style={{ color: "var(--t-faint)" }}>
             Привычки
           </p>
-          <div className="flex gap-[2px] md:gap-[3px]">
-            {cells.map((cell) => (
-              <div
-                key={cell.date}
-                title={`${cell.date}: ${cell.done_count}/${cell.due_count}`}
-                className={clsx("flex-1 h-4 md:h-5 rounded transition-all cursor-default", LEVEL_CLASS[cell.level])}
-                style={{ boxShadow: LEVEL_GLOW[cell.level] }}
-              />
-            ))}
+          <div className="overflow-x-auto">
+            <Heatmap
+              cells={cells.map((c) => ({
+                date: c.date,
+                value: c.level,
+                label: `${c.done_count}/${c.due_count}`,
+              }))}
+              weeks={13}
+              cellSize={10}
+              gap={2}
+              showMonths={true}
+              showWeekdays={true}
+              showLegend={false}
+            />
           </div>
         </div>
       )}

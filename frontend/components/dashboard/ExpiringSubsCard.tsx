@@ -13,7 +13,7 @@ function formatDate(iso: string) {
 
 export function ExpiringSubsCard({ subs }: Props) {
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-4">
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
       <p className="block-title" style={{ color: "var(--t-muted)" }}>
         Скоро заканчивается
       </p>

@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import type { UpcomingPayment } from "@/types/api";
 
@@ -56,8 +54,6 @@ function PaymentRow({ p }: { p: UpcomingPayment }) {
 }
 
 export function UpcomingPayments({ payments }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
-
   // Group by kind label
   const groups: Record<string, UpcomingPayment[]> = {};
   for (const p of payments) {
@@ -68,51 +64,35 @@ export function UpcomingPayments({ payments }: Props) {
   const groupEntries = Object.entries(groups);
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-[14px] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-4">
-      {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
-          Ближайшие платежи
-        </h2>
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.06] transition-colors"
-          style={{ color: "var(--t-faint)" }}
-        >
-          <ChevronDown size={14} className={clsx("transition-transform duration-200", collapsed && "rotate-180")} />
-        </button>
-      </div>
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
+      <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        Ближайшие платежи
+      </h2>
 
-      {!collapsed && (
-        <>
-          {payments.length === 0 ? (
-            <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
-          ) : groupEntries.length === 1 ? (
-            // Single group — no header
-            <div>
-              {payments.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
+      {payments.length === 0 ? (
+        <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
+      ) : groupEntries.length === 1 ? (
+        <div>
+          {payments.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groupEntries.map(([label, items]) => (
+            <div key={label}>
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>
+                {label}
+              </p>
+              {items.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
             </div>
-          ) : (
-            // Multiple groups — show category headers
-            <div className="space-y-3">
-              {groupEntries.map(([label, items]) => (
-                <div key={label}>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>
-                    {label}
-                  </p>
-                  {items.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-            <a href="/planned-ops" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
-              Все плановые →
-            </a>
-          </div>
-        </>
+          ))}
+        </div>
       )}
+
+      <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
+        <a href="/planned-ops" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+          Все плановые →
+        </a>
+      </div>
     </div>
   );
 }

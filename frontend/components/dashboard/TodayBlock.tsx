@@ -34,7 +34,6 @@ import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
-import { DigestCtaBanner } from "./DigestCtaBanner";
 import { Button } from "@/components/primitives/Button";
 import { Tooltip } from "@/components/primitives/Tooltip";
 
@@ -787,9 +786,6 @@ export function TodayBlock({ today, plannedOps }: Props) {
             </div>
           );
         })()}
-
-        {/* CTA banner — visible when there is an unviewed weekly digest */}
-        <DigestCtaBanner />
 
         {/* ── Grouped sections ── */}
         {(() => {
