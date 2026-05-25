@@ -687,6 +687,65 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
         cnt = heatmap_map.get(d.isoformat(), 0)
         heatmap.append({"date": d.isoformat(), "count": cnt})
 
+    # ── Heatmap: 52 weeks ────────────────────────────────────────────────────
+    w52_anchor = today - timedelta(weeks=51)
+    w52_monday = w52_anchor - timedelta(days=w52_anchor.weekday())
+    w52_start_dt = datetime(w52_monday.year, w52_monday.month, w52_monday.day)
+    _week_expr = func.date_trunc("week", TaskModel.completed_at)
+    weekly_raw = (
+        db.query(_week_expr.label("week"), func.count().label("cnt"))
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= w52_start_dt,
+        )
+        .group_by(_week_expr)
+        .all()
+    )
+    weekly_map: dict = {}
+    for r in weekly_raw:
+        if r.week:
+            wdate = r.week.date() if hasattr(r.week, "date") else r.week
+            weekly_map[wdate.isoformat()] = r.cnt
+    heatmap_weekly = []
+    cur_w = w52_monday
+    for _ in range(52):
+        heatmap_weekly.append({"date": cur_w.isoformat(), "count": weekly_map.get(cur_w.isoformat(), 0)})
+        cur_w += timedelta(weeks=1)
+
+    # ── Heatmap: 24 months ───────────────────────────────────────────────────
+    m24_month = today.month - 23
+    m24_year = today.year
+    while m24_month <= 0:
+        m24_month += 12
+        m24_year -= 1
+    m24_start_dt = datetime(m24_year, m24_month, 1)
+    _month_expr = func.date_trunc("month", TaskModel.completed_at)
+    monthly_raw = (
+        db.query(_month_expr.label("month"), func.count().label("cnt"))
+        .filter(
+            TaskModel.account_id == user_id,
+            TaskModel.status == "DONE",
+            TaskModel.completed_at >= m24_start_dt,
+        )
+        .group_by(_month_expr)
+        .all()
+    )
+    monthly_map: dict = {}
+    for r in monthly_raw:
+        if r.month:
+            mdate = r.month.date() if hasattr(r.month, "date") else r.month
+            monthly_map[mdate.isoformat()] = r.cnt
+    heatmap_monthly = []
+    my, mm = m24_year, m24_month
+    for _ in range(24):
+        key = date(my, mm, 1).isoformat()
+        heatmap_monthly.append({"date": key, "count": monthly_map.get(key, 0)})
+        mm += 1
+        if mm > 12:
+            mm = 1
+            my += 1
+
     # ── Category breakdown: last 30 days ────────────────────────────────────
     cat_raw = (
         db.query(
@@ -802,6 +861,8 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
             "completion_rate": completion_rate,
         },
         "heatmap": heatmap,
+        "heatmap_weekly": heatmap_weekly,
+        "heatmap_monthly": heatmap_monthly,
         "categories": categories,
         "weekdays": weekdays_result,
         "habits": habits_out,
