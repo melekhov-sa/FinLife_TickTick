@@ -220,6 +220,10 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
       setDueStartTime("");
       setDueEndTime("");
     }
+    // OFFSET reminders only work with DATETIME/WINDOW — clear them on kind change
+    if (kind !== "DATETIME" && kind !== "WINDOW") {
+      setReminders([]);
+    }
     clearFieldError("due_date");
     clearFieldError("due_time");
     clearFieldError("due_start_time");
