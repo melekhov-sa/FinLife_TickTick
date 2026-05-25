@@ -1,5 +1,14 @@
 centricore.ru, www.centricore.ru {
   encode gzip
+
+  # CalDAV — proxy directly to FastAPI backend (WebDAV methods: PROPFIND, REPORT, etc.)
+  handle /.well-known/caldav* {
+    reverse_proxy centricore_app:8000
+  }
+  handle /caldav* {
+    reverse_proxy centricore_app:8000
+  }
+
   reverse_proxy centricore_frontend:3000
 }
 
