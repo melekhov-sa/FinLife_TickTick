@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Request, Query
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import func, case, and_, extract
+from sqlalchemy import func, case, and_, or_, extract
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -25,6 +25,7 @@ from app.infrastructure.db.models import (
     WalletBalance, TransactionFeed, GoalInfo, GoalWalletBalance,
     SubscriptionModel, SubscriptionMemberModel,
     UserActivityDaily, CategoryInfo, WorkCategory,
+    BudgetLine, BudgetMonth,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -802,4 +803,206 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
         "categories": categories,
         "weekdays": weekdays_result,
         "habits": habits_out,
+    }
+
+
+# ── Budget stats (budget/stats page + category panel) ────────────────────────
+
+_SHORT_MONTHS = {
+    1: "Янв", 2: "Фев", 3: "Мар", 4: "Апр", 5: "Май", 6: "Июн",
+    7: "Июл", 8: "Авг", 9: "Сен", 10: "Окт", 11: "Ноя", 12: "Дек",
+}
+
+
+def _months_back(today: date, n: int) -> list[tuple[int, int]]:
+    """Return list of (year, month) for last n months, oldest first, including today's month."""
+    result = []
+    for i in range(n - 1, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        result.append((y, m))
+    return result
+
+
+@router.get("/budget-stats")
+def budget_stats(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    today = date.today()
+
+    months_12 = _months_back(today, 12)
+    months_6 = months_12[-6:]
+    months_3 = months_12[-3:]
+    cur_month = months_12[-1]
+
+    # Date range for fact query
+    d_start = datetime(months_12[0][0], months_12[0][1], 1)
+    next_m = cur_month[1] % 12 + 1
+    next_y = cur_month[0] + (1 if cur_month[1] == 12 else 0)
+    d_end = datetime(next_y, next_m, 1)
+
+    # ── Fact per month per category (all INCOME/EXPENSE, 12 months) ──────────
+    fact_rows = (
+        db.query(
+            extract("year", TransactionFeed.occurred_at).label("yr"),
+            extract("month", TransactionFeed.occurred_at).label("mo"),
+            TransactionFeed.category_id,
+            TransactionFeed.operation_type,
+            func.sum(TransactionFeed.amount).label("total"),
+        )
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
+            TransactionFeed.occurred_at >= d_start,
+            TransactionFeed.occurred_at < d_end,
+        )
+        .group_by("yr", "mo", TransactionFeed.category_id, TransactionFeed.operation_type)
+        .all()
+    )
+
+    fact_map: dict = {}      # (year, month, category_id, op_type) -> float
+    monthly_totals: dict = {}  # (year, month, op_type) -> float
+    for r in fact_rows:
+        y, m = int(r.yr), int(r.mo)
+        val = float(r.total)
+        fact_map[(y, m, r.category_id, r.operation_type)] = (
+            fact_map.get((y, m, r.category_id, r.operation_type), 0.0) + val
+        )
+        key = (y, m, r.operation_type)
+        monthly_totals[key] = monthly_totals.get(key, 0.0) + val
+
+    # ── Plan per month per category (6 months) ────────────────────────────────
+    plan_conditions = or_(
+        *[and_(BudgetMonth.year == y, BudgetMonth.month == m) for y, m in months_6]
+    )
+    plan_rows = (
+        db.query(
+            BudgetMonth.year,
+            BudgetMonth.month,
+            BudgetLine.category_id,
+            BudgetLine.kind,
+            func.sum(BudgetLine.plan_amount).label("total"),
+        )
+        .join(BudgetLine, BudgetLine.budget_month_id == BudgetMonth.id)
+        .filter(BudgetMonth.account_id == user_id, plan_conditions)
+        .group_by(BudgetMonth.year, BudgetMonth.month, BudgetLine.category_id, BudgetLine.kind)
+        .all()
+    )
+    plan_map: dict = {}  # (year, month, category_id, kind) -> float
+    for r in plan_rows:
+        plan_map[(r.year, r.month, r.category_id, r.kind)] = float(r.total)
+
+    # ── Categories ────────────────────────────────────────────────────────────
+    cats = (
+        db.query(CategoryInfo)
+        .filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.is_archived == False,
+            CategoryInfo.is_system == False,
+        )
+        .all()
+    )
+
+    # ── Monthly trend (12 months) ─────────────────────────────────────────────
+    monthly_trend = []
+    for (y, m) in months_12:
+        inc = monthly_totals.get((y, m, "INCOME"), 0.0)
+        exp = monthly_totals.get((y, m, "EXPENSE"), 0.0)
+        monthly_trend.append({
+            "year": y, "month": m,
+            "label": f"{_SHORT_MONTHS[m]} '{y % 100:02d}",
+            "income": round(inc),
+            "expense": round(exp),
+            "savings": round(inc - exp),
+        })
+
+    # ── KPI — 6-month averages ────────────────────────────────────────────────
+    inc_6m = [monthly_totals.get((y, m, "INCOME"), 0.0) for y, m in months_6]
+    exp_6m = [monthly_totals.get((y, m, "EXPENSE"), 0.0) for y, m in months_6]
+    avg_inc = sum(inc_6m) / 6
+    avg_exp = sum(exp_6m) / 6
+    avg_sav = avg_inc - avg_exp
+    avg_sav_rate = round(avg_sav / avg_inc * 100) if avg_inc else None
+
+    # Plan accuracy: expense categories, only months where plan > 0
+    acc_total = acc_ok = 0
+    for (y, m) in months_6:
+        for cat in cats:
+            if cat.category_type != "EXPENSE":
+                continue
+            plan = plan_map.get((y, m, cat.category_id, "EXPENSE"), 0.0)
+            if plan > 0:
+                acc_total += 1
+                if fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0) <= plan:
+                    acc_ok += 1
+    plan_accuracy_6m = round(acc_ok / acc_total * 100) if acc_total else None
+
+    # ── Per-category stats ────────────────────────────────────────────────────
+    total_exp_6m = sum(exp_6m)
+    total_inc_6m = sum(inc_6m)
+
+    cat_results = []
+    for cat in cats:
+        op = cat.category_type  # "INCOME" or "EXPENSE"
+
+        facts_6m = [fact_map.get((y, m, cat.category_id, op), 0.0) for y, m in months_6]
+        facts_3m = facts_6m[-3:]
+        total_6m = sum(facts_6m)
+        if total_6m == 0:
+            continue
+
+        avg_6m_cat = total_6m / 6
+        avg_3m_cat = sum(facts_3m) / 3
+        trend_pct = round((avg_3m_cat - avg_6m_cat) / avg_6m_cat * 100) if avg_6m_cat else None
+
+        total_ref = total_exp_6m if op == "EXPENSE" else total_inc_6m
+        pct = round(total_6m / total_ref * 100) if total_ref else 0
+
+        # Per-category plan accuracy (6 months)
+        cat_acc_total = cat_acc_ok = 0
+        for (y, m) in months_6:
+            plan = plan_map.get((y, m, cat.category_id, op), 0.0)
+            if plan > 0:
+                cat_acc_total += 1
+                fact = fact_map.get((y, m, cat.category_id, op), 0.0)
+                ok = fact <= plan if op == "EXPENSE" else fact >= plan
+                if ok:
+                    cat_acc_ok += 1
+        cat_plan_acc = round(cat_acc_ok / cat_acc_total * 100) if cat_acc_total else None
+
+        months_data = []
+        for (y, m) in months_6:
+            months_data.append({
+                "year": y, "month": m,
+                "label": f"{_SHORT_MONTHS[m]} '{y % 100:02d}",
+                "fact": round(fact_map.get((y, m, cat.category_id, op), 0.0)),
+                "plan": round(plan_map.get((y, m, cat.category_id, op), 0.0)),
+            })
+
+        cat_results.append({
+            "category_id": cat.category_id,
+            "title": cat.title,
+            "kind": op,
+            "avg_3m": round(avg_3m_cat),
+            "avg_6m": round(avg_6m_cat),
+            "pct_of_total_6m": pct,
+            "trend_pct": trend_pct,
+            "plan_accuracy_6m": cat_plan_acc,
+            "months": months_data,
+        })
+
+    cat_results.sort(key=lambda x: -x["avg_6m"])
+
+    return {
+        "kpi": {
+            "avg_income_6m": round(avg_inc),
+            "avg_expense_6m": round(avg_exp),
+            "avg_savings_6m": round(avg_sav),
+            "avg_savings_rate_6m": avg_sav_rate,
+            "plan_accuracy_expense_6m": plan_accuracy_6m,
+        },
+        "monthly_trend": monthly_trend,
+        "categories": cat_results,
     }

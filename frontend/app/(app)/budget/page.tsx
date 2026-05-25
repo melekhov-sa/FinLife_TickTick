@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { BudgetCategoryPanel, type BudgetCategoryStats } from "@/components/budget/BudgetCategoryPanel";
 
 interface BudgetRow {
   category_id: number | null;
@@ -26,6 +27,18 @@ interface BudgetData {
   expense_total: { plan: number; fact: number };
   income_rows: BudgetRow[];
   expense_rows: BudgetRow[];
+}
+
+interface BudgetStatsData {
+  kpi: {
+    avg_income_6m: number;
+    avg_expense_6m: number;
+    avg_savings_6m: number;
+    avg_savings_rate_6m: number | null;
+    plan_accuracy_expense_6m: number | null;
+  };
+  monthly_trend: { year: number; month: number; label: string; income: number; expense: number; savings: number }[];
+  categories: BudgetCategoryStats[];
 }
 
 function fmt(n: number) {
@@ -52,29 +65,45 @@ function Bar({ plan, fact, kind }: { plan: number; fact: number; kind: "income" 
   );
 }
 
-function CategoryRow({ row, kind }: { row: BudgetRow; kind: "income" | "expense" }) {
+function CategoryRow({
+  row,
+  kind,
+  onSelect,
+}: {
+  row: BudgetRow;
+  kind: "income" | "expense";
+  onSelect: (row: BudgetRow) => void;
+}) {
   const diff = row.fact - row.plan;
   const hasPlan = row.plan > 0;
   const isOver = diff > 0 && kind === "expense" && hasPlan;
   const isUnder = diff < 0 && kind === "expense" && hasPlan;
   const isAbove = diff > 0 && kind === "income" && hasPlan;
+  const clickable = row.category_id !== null;
 
   const diffColor = isOver
     ? "text-red-600 dark:text-red-400"
-    : (isUnder || isAbove)
+    : isUnder || isAbove
     ? "text-emerald-600 dark:text-emerald-400"
     : "text-slate-400 dark:text-white/30";
 
   return (
-    <div className={clsx(
-      "flex items-center gap-3 py-2 border-b border-slate-200 dark:border-white/[0.04] last:border-0",
-      row.depth === 1 && "pl-4"
-    )}>
+    <div
+      className={clsx(
+        "flex items-center gap-3 py-2 border-b border-slate-200 dark:border-white/[0.04] last:border-0 rounded-lg -mx-1 px-1 transition-colors",
+        row.depth === 1 && "pl-5",
+        clickable && "cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.04]"
+      )}
+      onClick={() => clickable && onSelect(row)}
+    >
       <div className="flex-1 min-w-0">
-        <p className={clsx(
-          "truncate",
-          row.depth === 0 ? "text-[13px] font-semibold" : "text-[12px] font-normal"
-        )} style={{ color: row.depth === 0 ? "var(--t-primary)" : "var(--t-secondary)" }}>
+        <p
+          className={clsx(
+            "truncate",
+            row.depth === 0 ? "text-[13px] font-semibold" : "text-[12px] font-normal"
+          )}
+          style={{ color: row.depth === 0 ? "var(--t-primary)" : "var(--t-secondary)" }}
+        >
           {row.title}
         </p>
         <Bar plan={row.plan} fact={row.fact} kind={kind} />
@@ -93,10 +122,15 @@ function CategoryRow({ row, kind }: { row: BudgetRow; kind: "income" | "expense"
         </div>
         {hasPlan && diff !== 0 && (
           <p className={clsx("text-[11px] tabular-nums", diffColor)}>
-            {diff > 0 ? "+" : ""}{fmt(diff)}
+            {diff > 0 ? "+" : ""}
+            {fmt(diff)}
           </p>
         )}
       </div>
+
+      {clickable && (
+        <ChevronRightIcon size={14} className="shrink-0 opacity-30" style={{ color: "var(--t-secondary)" }} />
+      )}
     </div>
   );
 }
@@ -106,11 +140,13 @@ function Section({
   rows,
   total,
   kind,
+  onSelectRow,
 }: {
   label: string;
   rows: BudgetRow[];
   total: { plan: number; fact: number };
   kind: "income" | "expense";
+  onSelectRow: (row: BudgetRow) => void;
 }) {
   const diff = total.fact - total.plan;
   const hasPlan = total.plan > 0;
@@ -121,17 +157,19 @@ function Section({
 
   return (
     <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-[14px] p-5">
-      {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[13px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
           {label}
         </h2>
         <div className="text-right">
           <div className="flex items-baseline gap-1.5 justify-end">
-            <span className={clsx(
-              "text-[20px] font-bold tabular-nums leading-none",
-              kind === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-            )} style={{ letterSpacing: "-0.03em" }}>
+            <span
+              className={clsx(
+                "text-[20px] font-bold tabular-nums leading-none",
+                kind === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              )}
+              style={{ letterSpacing: "-0.03em" }}
+            >
               {fmt(total.fact)}
             </span>
             {hasPlan && (
@@ -141,16 +179,26 @@ function Section({
             )}
           </div>
           {hasPlan && diff !== 0 && (
-            <p className={clsx("text-[12px] font-medium tabular-nums", diffPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
-              {diff > 0 ? "+" : ""}{fmt(diff)}
+            <p
+              className={clsx(
+                "text-[12px] font-medium tabular-nums",
+                diffPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              )}
+            >
+              {diff > 0 ? "+" : ""}
+              {fmt(diff)}
             </p>
           )}
         </div>
       </div>
 
-      {/* Rows */}
       {rows.map((row, i) => (
-        <CategoryRow key={row.category_id ?? `other-${i}`} row={row} kind={kind} />
+        <CategoryRow
+          key={row.category_id ?? `other-${i}`}
+          row={row}
+          kind={kind}
+          onSelect={onSelectRow}
+        />
       ))}
     </div>
   );
@@ -167,7 +215,8 @@ export default function BudgetPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedKind, setSelectedKind] = useState<"income" | "expense">("expense");
 
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
 
@@ -176,15 +225,33 @@ export default function BudgetPage() {
     queryFn: () => api.get<BudgetData>(`/api/v2/budget?year=${year}&month=${month}`),
     staleTime: 60_000,
   });
-  const isLoading = isPending;
+
+  const { data: statsData } = useQuery<BudgetStatsData>({
+    queryKey: ["analytics", "budget-stats"],
+    queryFn: () => api.get<BudgetStatsData>("/api/v2/analytics/budget-stats"),
+    staleTime: 5 * 60_000,
+    enabled: selectedCategoryId !== null,
+  });
+
+  const selectedStats = selectedCategoryId !== null
+    ? statsData?.categories.find((c) => c.category_id === selectedCategoryId) ?? null
+    : null;
+
+  function handleSelectRow(row: BudgetRow) {
+    if (row.category_id === null) return;
+    setSelectedCategoryId(row.category_id);
+    setSelectedKind(selectedKind);
+  }
 
   function goBack() {
     const p = prevMonth(year, month);
-    setYear(p.year); setMonth(p.month);
+    setYear(p.year);
+    setMonth(p.month);
   }
   function goForward() {
     const p = nextMonth(year, month);
-    setYear(p.year); setMonth(p.month);
+    setYear(p.year);
+    setMonth(p.month);
   }
 
   const balance = data ? data.income_total.fact - data.expense_total.fact : 0;
@@ -192,7 +259,6 @@ export default function BudgetPage() {
 
   return (
     <>
-
       <PageHeader
         title="Бюджет"
         density="compact"
@@ -208,15 +274,21 @@ export default function BudgetPage() {
       />
 
       <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
-
-        {/* Extended budget link */}
-        <div className="mb-4">
+        {/* Top links */}
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
           <Link
             href="/budget/matrix"
             className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.07] transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
             style={{ color: "var(--t-faint)" }}
           >
             Расширенный бюджет →
+          </Link>
+          <Link
+            href="/budget/stats"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.07] transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
+            style={{ color: "var(--t-faint)" }}
+          >
+            Статистика →
           </Link>
         </div>
 
@@ -231,11 +303,16 @@ export default function BudgetPage() {
           </button>
 
           <div className="text-center">
-            <h1 className="text-[17px] font-semibold" style={{ letterSpacing: "-0.02em", color: "var(--t-primary)" }}>
+            <h1
+              className="text-[17px] font-semibold"
+              style={{ letterSpacing: "-0.02em", color: "var(--t-primary)" }}
+            >
               {data?.period_label ?? `${month} / ${year}`}
             </h1>
             {isCurrentMonth && (
-              <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400/60">текущий месяц</span>
+              <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400/60">
+                текущий месяц
+              </span>
             )}
           </div>
 
@@ -253,36 +330,52 @@ export default function BudgetPage() {
           <div className="rounded-[14px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-5 mb-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>
+                <p
+                  className="text-[11px] font-semibold uppercase tracking-widest mb-1"
+                  style={{ color: "var(--t-faint)" }}
+                >
                   Баланс
                 </p>
-                <p className={clsx(
-                  "text-[28px] font-bold tabular-nums leading-none",
-                  balance >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                )} style={{ letterSpacing: "-0.04em" }}>
-                  {balance >= 0 ? "+" : ""}{fmt(balance)} ₽
+                <p
+                  className={clsx(
+                    "text-[28px] font-bold tabular-nums leading-none",
+                    balance >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                  )}
+                  style={{ letterSpacing: "-0.04em" }}
+                >
+                  {balance >= 0 ? "+" : ""}
+                  {fmt(balance)} ₽
                 </p>
                 {balancePlan !== 0 && (
                   <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>
-                    план: {balancePlan >= 0 ? "+" : ""}{fmt(balancePlan)} ₽
+                    план: {balancePlan >= 0 ? "+" : ""}
+                    {fmt(balancePlan)} ₽
                   </p>
                 )}
               </div>
               <div className="flex flex-col gap-1.5 text-right">
                 <div>
-                  <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Доходы</p>
-                  <p className="text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmt(data.income_total.fact)} ₽</p>
+                  <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                    Доходы
+                  </p>
+                  <p className="text-[14px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    {fmt(data.income_total.fact)} ₽
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Расходы</p>
-                  <p className="text-[14px] font-semibold text-red-600 dark:text-red-400 tabular-nums">{fmt(data.expense_total.fact)} ₽</p>
+                  <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                    Расходы
+                  </p>
+                  <p className="text-[14px] font-semibold text-red-600 dark:text-red-400 tabular-nums">
+                    {fmt(data.expense_total.fact)} ₽
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {isLoading && (
+        {isPending && (
           <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
               <Skeleton key={i} variant="rect" height={192} className="rounded-[14px]" />
@@ -291,28 +384,49 @@ export default function BudgetPage() {
         )}
 
         {isError && (
-          <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">Не удалось загрузить бюджет</p>
+          <p className="text-red-600/80 dark:text-red-400/70 text-sm text-center py-12">
+            Не удалось загрузить бюджет
+          </p>
         )}
 
-        {data && (() => {
-          const incomeEmpty = data.income_rows.length === 0 && data.income_total.fact === 0;
-          const expenseEmpty = data.expense_rows.length === 0 && data.expense_total.fact === 0;
-          if (incomeEmpty && expenseEmpty) {
+        {data &&
+          (() => {
+            const incomeEmpty = data.income_rows.length === 0 && data.income_total.fact === 0;
+            const expenseEmpty = data.expense_rows.length === 0 && data.expense_total.fact === 0;
+            if (incomeEmpty && expenseEmpty) {
+              return (
+                <div className="py-16 text-center" style={{ color: "var(--t-muted)" }}>
+                  <p className="text-sm">Нет данных за этот период</p>
+                </div>
+              );
+            }
             return (
-              <div className="py-16 text-center" style={{ color: "var(--t-muted)" }}>
-                <p className="text-sm">Нет данных за этот период</p>
+              <div className="space-y-4">
+                <Section
+                  label="Доходы"
+                  rows={data.income_rows}
+                  total={data.income_total}
+                  kind="income"
+                  onSelectRow={handleSelectRow}
+                />
+                <Section
+                  label="Расходы"
+                  rows={data.expense_rows}
+                  total={data.expense_total}
+                  kind="expense"
+                  onSelectRow={handleSelectRow}
+                />
               </div>
             );
-          }
-          return (
-            <div className="space-y-4">
-              <Section label="Доходы" rows={data.income_rows} total={data.income_total} kind="income" />
-              <Section label="Расходы" rows={data.expense_rows} total={data.expense_total} kind="expense" />
-            </div>
-          );
-        })()}
-
+          })()}
       </main>
+
+      {selectedStats && (
+        <BudgetCategoryPanel
+          stats={selectedStats}
+          onClose={() => setSelectedCategoryId(null)}
+        />
+      )}
     </>
   );
 }
