@@ -666,9 +666,10 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
     )
 
     # ── Heatmap: 91 days daily task completion ───────────────────────────────
+    _heatmap_day = func.date(TaskModel.completed_at)
     heatmap_raw = (
         db.query(
-            func.date(TaskModel.completed_at).label("day"),
+            _heatmap_day.label("day"),
             func.count().label("cnt"),
         )
         .filter(
@@ -676,7 +677,7 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
             TaskModel.status == "DONE",
             TaskModel.completed_at >= d91,
         )
-        .group_by("day")
+        .group_by(_heatmap_day)
         .all()
     )
     heatmap_map = {str(r.day): r.cnt for r in heatmap_raw}
@@ -719,9 +720,10 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
         })
 
     # ── Weekday rhythm: last 90 days ─────────────────────────────────────────
+    _dow_expr = extract("dow", TaskModel.completed_at)
     wd_raw = (
         db.query(
-            extract("dow", TaskModel.completed_at).label("dow"),
+            _dow_expr.label("dow"),
             func.count().label("cnt"),
         )
         .filter(
@@ -729,7 +731,7 @@ def tasks_overview(request: Request, db: Session = Depends(get_db)):
             TaskModel.status == "DONE",
             TaskModel.completed_at >= d90,
         )
-        .group_by("dow")
+        .group_by(_dow_expr)
         .all()
     )
     WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
