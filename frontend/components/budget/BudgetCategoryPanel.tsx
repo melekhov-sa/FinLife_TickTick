@@ -18,6 +18,9 @@ export interface BudgetCategoryStats {
   kind: "INCOME" | "EXPENSE";
   avg_3m: number;
   avg_6m: number;
+  avg_recent: number;
+  recent_months: number;
+  active_months: number;
   pct_of_total_6m: number;
   trend_pct: number | null;
   plan_accuracy_6m: number | null;
@@ -143,26 +146,40 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5 scroll-slim">
           {/* KPI row */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Ср. 3 мес", value: fmt(stats.avg_3m) + " ₽" },
-              { label: "Ср. 6 мес", value: fmt(stats.avg_6m) + " ₽" },
-              { label: "% от итого", value: stats.pct_of_total_6m + "%" },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="rounded-xl p-3 text-center"
-                style={{ background: "var(--app-sidebar-bg)", border: "1px solid var(--app-border)" }}
-              >
-                <p className="text-[10px] mb-1" style={{ color: "var(--t-faint)" }}>
-                  {label}
-                </p>
-                <p className="text-[13px] font-bold tabular-nums" style={{ color: "var(--t-primary)" }}>
-                  {value}
-                </p>
+          {(() => {
+            const recentM = stats.recent_months ?? 3;
+            const activeM = stats.active_months ?? 6;
+            const avgRecent = stats.avg_recent ?? stats.avg_3m;
+            const showBoth = recentM < activeM;
+            const kpiItems = showBoth
+              ? [
+                  { label: `Ср. ${recentM} мес`, value: fmt(avgRecent) + " ₽" },
+                  { label: `Ср. ${activeM} мес`, value: fmt(stats.avg_6m) + " ₽" },
+                  { label: "% от итого", value: stats.pct_of_total_6m + "%" },
+                ]
+              : [
+                  { label: `Ср. ${activeM} мес`, value: fmt(stats.avg_6m) + " ₽" },
+                  { label: "% от итого", value: stats.pct_of_total_6m + "%" },
+                ];
+            return (
+              <div className={`grid gap-3 ${showBoth ? "grid-cols-3" : "grid-cols-2"}`}>
+                {kpiItems.map(({ label, value }) => (
+                  <div
+                    key={label}
+                    className="rounded-xl p-3 text-center"
+                    style={{ background: "var(--app-sidebar-bg)", border: "1px solid var(--app-border)" }}
+                  >
+                    <p className="text-[10px] mb-1" style={{ color: "var(--t-faint)" }}>
+                      {label}
+                    </p>
+                    <p className="text-[13px] font-bold tabular-nums" style={{ color: "var(--t-primary)" }}>
+                      {value}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {/* Trend + plan accuracy */}
           <div
@@ -186,7 +203,7 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
           {/* 6-month history */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--t-faint)" }}>
-              История — 6 мес
+              История — {stats.months.length} мес
             </p>
             <div className="space-y-0.5">
               {stats.months.map((m) => (

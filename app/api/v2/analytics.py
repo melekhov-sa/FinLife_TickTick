@@ -1028,9 +1028,15 @@ def budget_stats(
         if total_w == 0:
             continue
 
-        # Average: divide by months that actually have data
+        # Full-period average: divide only by months that have data
         active_months = sum(1 for f in facts_w if f > 0) or 1
         avg_w = total_w / active_months
+
+        # Short-term average: last 3 months from window, active only
+        months_recent = months_window[-3:]
+        facts_recent = [fact_map.get((y, m, cat.category_id, op), 0.0) for y, m in months_recent]
+        recent_active = sum(1 for f in facts_recent if f > 0)
+        avg_recent = sum(facts_recent) / recent_active if recent_active > 0 else avg_w
 
         # Trend: compare older half vs newer half — only show when both have data
         facts_old = [fact_map.get((y, m, cat.category_id, op), 0.0) for y, m in months_old]
@@ -1076,10 +1082,13 @@ def budget_stats(
             "title": cat.title,
             "kind": op,
             "avg_period": round(avg_w),
-            "avg_3m": round(avg_w),   # kept for panel compatibility
-            "avg_6m": round(avg_w),   # kept for panel compatibility
+            "active_months": active_months,
+            "avg_recent": round(avg_recent),
+            "recent_months": recent_active if recent_active > 0 else active_months,
+            "avg_3m": round(avg_recent),  # compat alias
+            "avg_6m": round(avg_w),       # compat alias
             "pct_of_total": pct,
-            "pct_of_total_6m": pct,   # kept for panel compatibility
+            "pct_of_total_6m": pct,       # compat alias
             "trend_pct": trend_pct,
             "plan_accuracy_6m": cat_plan_acc,
             "months": months_data,
