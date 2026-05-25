@@ -449,14 +449,38 @@ def reorder_tasks(body: ReorderTasksRequest, request: Request, db: Session = Dep
 
 @router.post("/tasks/{task_id}/complete")
 def complete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    from datetime import datetime, timezone, timedelta
     from fastapi import HTTPException
     from app.application.tasks_usecases import CompleteTaskUseCase, TaskValidationError
+    from app.readmodels.projectors.xp import preview_task_xp
+
     user_id = get_user_id(request, db)
+    task = db.query(TaskModel).filter(
+        TaskModel.task_id == task_id,
+        TaskModel.account_id == user_id,
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    due_date = task.due_date
     try:
         CompleteTaskUseCase(db).execute(task_id=task_id, account_id=user_id, actor_user_id=user_id)
     except TaskValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"ok": True}
+
+    today_msk = datetime.now(tz=timezone(timedelta(hours=3))).date()
+    xp = preview_task_xp(due_date, today_msk)
+    days_early = (due_date - today_msk).days if due_date and today_msk < due_date else 0
+    days_overdue = (today_msk - due_date).days if due_date and today_msk > due_date else 0
+    return {
+        "ok": True,
+        "xp_gained": xp,
+        "context": {
+            "is_early": days_early > 0,
+            "days_early": days_early,
+            "days_overdue": days_overdue,
+        },
+    }
 
 
 @router.post("/tasks/{task_id}/archive")

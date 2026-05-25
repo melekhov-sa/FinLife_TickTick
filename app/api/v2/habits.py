@@ -147,11 +147,13 @@ def _get_or_create_today_occurrence(
     return occ
 
 
+HABIT_MILESTONES = {7, 14, 21, 30, 50, 100, 200, 365}
+
+
 @router.post("/habits/{habit_id}/complete-today")
 def complete_habit_today(habit_id: int, request: Request, db: Session = Depends(get_db)):
     from app.application.habits import CompleteHabitOccurrenceUseCase, HabitValidationError
     user_id = get_user_id(request, db)
-    # Verify habit belongs to user
     habit = db.query(HabitModel).filter(
         HabitModel.habit_id == habit_id, HabitModel.account_id == user_id,
     ).first()
@@ -159,12 +161,21 @@ def complete_habit_today(habit_id: int, request: Request, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Habit not found")
     occ = _get_or_create_today_occurrence(habit_id, user_id, db)
     if occ.status == "DONE":
-        return {"ok": True, "already_done": True}
+        return {"ok": True, "already_done": True, "xp_gained": 0, "context": {"streak": habit.current_streak, "is_milestone": False}}
     try:
         CompleteHabitOccurrenceUseCase(db).execute(occ.id, user_id, actor_user_id=user_id)
     except (HabitValidationError, Exception) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"ok": True}
+    db.refresh(habit)
+    streak = habit.current_streak
+    return {
+        "ok": True,
+        "xp_gained": 3,
+        "context": {
+            "streak": streak,
+            "is_milestone": streak in HABIT_MILESTONES,
+        },
+    }
 
 
 @router.post("/habits/{habit_id}/skip-today")

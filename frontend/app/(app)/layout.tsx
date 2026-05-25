@@ -11,6 +11,7 @@ import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
 import { LevelUpOverlay } from "@/components/LevelUpOverlay";
 import { useLevelUpWatcher } from "@/hooks/useLevelUpWatcher";
+import { CompletionFeedbackLayer } from "@/components/feedback/CompletionFeedbackLayer";
 import { PageTitleProvider } from "@/contexts/PageTitle";
 import { api } from "@/lib/api";
 import type { UserMe } from "@/types/api";
@@ -103,6 +104,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       {celebrateLevel !== null && (
         <LevelUpOverlay level={celebrateLevel} onDismiss={dismiss} />
       )}
+      <CompletionFeedbackLayer />
     </AuthGuard>
   );
 }

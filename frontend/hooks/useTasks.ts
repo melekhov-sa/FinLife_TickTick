@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { TaskItem, TaskAttachment } from "@/types/api";
+import { emitCompletion } from "@/lib/completionFeedback";
 
 export function useTasks(status = "ACTIVE") {
   return useQuery<TaskItem[]>({
@@ -27,11 +28,17 @@ export function useCreateTask() {
 export function useCompleteTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (taskId: number) => api.post(`/api/v2/tasks/${taskId}/complete`),
-    onSuccess: () => {
+    mutationFn: (taskId: number) =>
+      api.post<{ ok: boolean; xp_gained: number; context: { is_early: boolean; days_early: number; days_overdue: number } }>(
+        `/api/v2/tasks/${taskId}/complete`,
+      ),
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["plan"] });
+      if (data?.xp_gained !== undefined) {
+        emitCompletion({ type: "task", xp_gained: data.xp_gained, task_ctx: data.context });
+      }
     },
   });
 }
