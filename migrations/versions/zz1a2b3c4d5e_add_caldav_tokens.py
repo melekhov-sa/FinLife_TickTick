@@ -1,6 +1,6 @@
 """add_caldav_tokens
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: zz1a2b3c4d5e
 Revises: z9a0b1c2d3e4
 Create Date: 2026-05-25
 
@@ -8,7 +8,7 @@ Create Date: 2026-05-25
 from alembic import op
 import sqlalchemy as sa
 
-revision = 'a1b2c3d4e5f6'
+revision = 'zz1a2b3c4d5e'
 down_revision = 'z9a0b1c2d3e4'
 branch_labels = None
 depends_on = None
