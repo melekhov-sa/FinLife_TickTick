@@ -1,16 +1,17 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import { CalendarDays, Pencil, Archive, RotateCcw, X, Check, Plus } from "lucide-react";
+import { CalendarDays, Pencil, Archive, RotateCcw } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
-import { Input } from "@/components/primitives/Input";
 import { Badge } from "@/components/primitives/Badge";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
+import { EventTemplatePanel } from "@/components/events/EventTemplatePanel";
 import type { CompletionMode } from "@/types/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -28,15 +29,9 @@ interface EventTemplate {
   next_date: string | null;
   created_at: string;
   completion_mode: CompletionMode;
+  default_start_time: string | null;
+  default_end_time: string | null;
 }
-
-const COMPLETION_MODE_LABELS: Record<CompletionMode, string> = {
-  end_of_day: "Конец дня",
-  at_event_end: "После события",
-  manual: "Вручную",
-};
-
-const COMPLETION_MODE_CYCLE: CompletionMode[] = ["end_of_day", "at_event_end", "manual"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -72,38 +67,35 @@ export default function EventTemplatesPage() {
   const [archived, setArchived] = useState<TabArchived>(false);
   const { data: all, isLoading, isError } = useEventTemplates();
   const qc = useQueryClient();
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editTitle, setEditTitle] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(null);
 
   async function handleArchive(id: number) {
     await api.post(`/api/v2/events/${id}/archive`);
     qc.invalidateQueries({ queryKey: ["event-templates"] });
+    if (selectedTemplate?.event_id === id) setSelectedTemplate(null);
   }
   async function handleRestore(id: number) {
     await api.post(`/api/v2/events/${id}/restore`);
     qc.invalidateQueries({ queryKey: ["event-templates"] });
   }
-  async function handleSaveTitle(id: number) {
-    if (!editTitle.trim()) return;
-    await api.patch(`/api/v2/events/${id}`, { title: editTitle.trim() });
-    qc.invalidateQueries({ queryKey: ["event-templates"] });
-    setEditingId(null);
-  }
-
-  async function handleCycleCompletionMode(item: EventTemplate) {
-    const current = item.completion_mode ?? "end_of_day";
-    const idx = COMPLETION_MODE_CYCLE.indexOf(current);
-    const next = COMPLETION_MODE_CYCLE[(idx + 1) % COMPLETION_MODE_CYCLE.length];
-    await api.patch(`/api/v2/events/${item.event_id}`, { completion_mode: next });
-    qc.invalidateQueries({ queryKey: ["event-templates"] });
-  }
 
   const templates = (all ?? []).filter((ev) => ev.is_archived === archived);
+
+  // Keep selected template in sync with latest data from query
+  const liveSelected = selectedTemplate
+    ? (all ?? []).find((t) => t.event_id === selectedTemplate.event_id) ?? selectedTemplate
+    : null;
 
   return (
     <>
       {showCreate && <CreateEventModal onClose={() => setShowCreate(false)} />}
+      {liveSelected && (
+        <EventTemplatePanel
+          template={liveSelected}
+          onClose={() => setSelectedTemplate(null)}
+        />
+      )}
       <PageHeader
         title="Шаблоны событий"
         density="compact"
@@ -186,73 +178,47 @@ export default function EventTemplatesPage() {
             {templates.map((item, i) => (
               <div
                 key={item.event_id}
-                className={`flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer ${
                   i < templates.length - 1 ? "border-b border-white/[0.05]" : ""
-                }`}
+                } ${selectedTemplate?.event_id === item.event_id ? "bg-white/[0.04]" : ""}`}
+                onClick={() => setSelectedTemplate(item)}
               >
                 <span className="text-base shrink-0">
                   {item.category_emoji ?? "📅"}
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  {editingId === item.event_id ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        autoFocus
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveTitle(item.event_id); if (e.key === "Escape") setEditingId(null); }}
-                        size="sm"
-                        className="flex-1"
-                      />
-                      <Button onClick={() => handleSaveTitle(item.event_id)} variant="ghost" size="xs" iconOnly><Check size={14} className="text-emerald-400" /></Button>
-                      <Button onClick={() => setEditingId(null)} variant="ghost" size="xs" iconOnly><X size={14} className="text-white/40" /></Button>
-                    </div>
-                  ) : (
-                    <>
-                      <p
-                        className="text-[14px] font-medium truncate"
-                        style={{ color: item.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}
-                      >
-                        {item.title}
-                      </p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
-                        {item.category_title ?? "Без категории"}
-                        {" · "}
-                        {item.freq_label}
-                        {item.next_date && (
-                          <> · Следующий: {formatDate(item.next_date)}</>
-                        )}
-                        {!item.next_date && item.freq && (
-                          <> · Нет запланированных</>
-                        )}
-                      </p>
-                    </>
-                  )}
+                  <p
+                    className="text-[14px] font-medium truncate"
+                    style={{ color: item.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}
+                  >
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+                    {item.category_title ?? "Без категории"}
+                    {" · "}
+                    {item.freq_label}
+                    {item.default_end_time && (
+                      <> · до {item.default_end_time}</>
+                    )}
+                    {item.next_date && (
+                      <> · Следующий: {formatDate(item.next_date)}</>
+                    )}
+                    {!item.next_date && item.freq && (
+                      <> · Нет запланированных</>
+                    )}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  {!item.is_archived && editingId !== item.event_id && (
-                    <Tooltip content={`Авто-завершение: ${COMPLETION_MODE_LABELS[item.completion_mode ?? "end_of_day"]} (нажмите для смены)`}>
-                      <button
-                        onClick={() => handleCycleCompletionMode(item)}
-                        className="px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors hover:bg-white/[0.06]"
-                        style={{ color: "var(--t-faint)", borderColor: "var(--app-border)" }}
-                      >
-                        {COMPLETION_MODE_LABELS[item.completion_mode ?? "end_of_day"]}
-                      </button>
-                    </Tooltip>
-                  )}
-                  {!item.is_archived && editingId !== item.event_id && (
-                    <Tooltip content="Редактировать">
-                      <button
-                        onClick={() => { setEditingId(item.event_id); setEditTitle(item.title); }}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-                      >
-                        <Pencil size={13} className="text-white/40" />
-                      </button>
-                    </Tooltip>
-                  )}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <Tooltip content="Редактировать шаблон">
+                    <button
+                      onClick={() => setSelectedTemplate(item)}
+                      className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                    >
+                      <Pencil size={13} className="text-white/40" />
+                    </button>
+                  </Tooltip>
                   {item.is_archived ? (
                     <Tooltip content="Восстановить">
                       <button

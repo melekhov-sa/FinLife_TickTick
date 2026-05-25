@@ -614,6 +614,9 @@ class CalendarEventModel(Base):
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     repeat_rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> recurrence_rules
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Template-level default times — propagated to rule-generated occurrences
+    default_start_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
+    default_end_time: Mapped[time_type | None] = mapped_column(Time, nullable=True)
     # end_of_day | at_event_end | manual
     completion_mode: Mapped[str] = mapped_column(String(20), nullable=False, server_default="end_of_day")
 

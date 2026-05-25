@@ -490,6 +490,8 @@ def list_event_templates(request: Request, db: Session = Depends(get_db)):
             "next_date": str(next_occ.start_date) if next_occ else None,
             "created_at": str(ev.created_at),
             "completion_mode": ev.completion_mode,
+            "default_start_time": ev.default_start_time.strftime("%H:%M") if ev.default_start_time else None,
+            "default_end_time": ev.default_end_time.strftime("%H:%M") if ev.default_end_time else None,
         })
 
     return result
@@ -503,6 +505,29 @@ class UpdateEventRequest(BaseModel):
     description: str | None = None
     category_id: int | None = None
     completion_mode: str | None = None
+    default_start_time: str | None = None  # "HH:MM" or "" to clear
+    default_end_time: str | None = None    # "HH:MM" or "" to clear
+
+
+@router.get("/events/{event_id}")
+def get_event(event_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    ev = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    cat = db.query(WorkCategory).filter_by(category_id=ev.category_id).first() if ev.category_id else None
+    return {
+        "event_id": ev.event_id,
+        "title": ev.title,
+        "description": ev.description,
+        "category_id": ev.category_id,
+        "category_emoji": cat.emoji if cat else None,
+        "category_title": cat.title if cat else None,
+        "default_start_time": ev.default_start_time.strftime("%H:%M") if ev.default_start_time else None,
+        "default_end_time": ev.default_end_time.strftime("%H:%M") if ev.default_end_time else None,
+        "completion_mode": ev.completion_mode,
+        "is_active": ev.is_active,
+    }
 
 
 @router.patch("/events/{event_id}")
@@ -511,16 +536,21 @@ def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: 
     event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Событие не найдено")
-    if body.title is not None:
+    fields = body.model_fields_set
+    if "title" in fields and body.title is not None:
         event.title = body.title
-    if body.description is not None:
-        event.description = body.description
-    if body.category_id is not None:
+    if "description" in fields:
+        event.description = body.description or None
+    if "category_id" in fields and body.category_id is not None:
         event.category_id = body.category_id
-    if body.completion_mode is not None:
+    if "completion_mode" in fields and body.completion_mode is not None:
         if body.completion_mode not in COMPLETION_MODES:
             raise HTTPException(400, f"completion_mode must be one of: {COMPLETION_MODES}")
         event.completion_mode = body.completion_mode
+    if "default_start_time" in fields:
+        event.default_start_time = t_time.fromisoformat(body.default_start_time) if body.default_start_time else None
+    if "default_end_time" in fields:
+        event.default_end_time = t_time.fromisoformat(body.default_end_time) if body.default_end_time else None
     db.commit()
     return {"ok": True}
 

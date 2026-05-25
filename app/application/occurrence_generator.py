@@ -270,7 +270,8 @@ class OccurrenceGenerator:
                     account_id=account_id,
                     event_id=ev.event_id,
                     start_date=d,
-                    start_time=None,  # all_day for rule-generated
+                    start_time=ev.default_start_time,
+                    end_time=ev.default_end_time,
                     is_cancelled=False,
                     source="rule",
                 )

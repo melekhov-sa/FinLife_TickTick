@@ -105,3 +105,27 @@ export function useUpdateEventSettings() {
     },
   });
 }
+
+export function useUpdateEventTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      data,
+    }: {
+      eventId: number;
+      data: Partial<{
+        title: string;
+        description: string | null;
+        category_id: number | null;
+        completion_mode: string;
+        default_start_time: string | null;
+        default_end_time: string | null;
+      }>;
+    }) => api.patch(`/api/v2/events/${eventId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event-templates"] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
