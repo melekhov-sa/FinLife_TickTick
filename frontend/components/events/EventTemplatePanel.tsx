@@ -21,7 +21,14 @@ interface EventTemplate {
   default_start_time: string | null;
   default_end_time: string | null;
   freq_label: string;
+  freq: string | null;
+  by_weekday: string | null;
 }
+
+const WEEKDAY_LABELS: Record<string, string> = {
+  MO: "Пн", TU: "Вт", WE: "Ср", TH: "Чт", FR: "Пт", SA: "Сб", SU: "Вс",
+};
+const WEEKDAY_ORDER = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 
 interface Props {
   template: EventTemplate;
@@ -139,8 +146,36 @@ export function EventTemplatePanel({ template, onClose }: Props) {
             style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
           />
           <p className="mt-1 text-[11px]" style={{ color: "var(--t-faint)" }}>
-            {template.freq_label}
+            {template.freq === "WEEKLY" && template.by_weekday
+              ? "еженедельно"
+              : template.freq_label}
           </p>
+          {template.freq === "WEEKLY" && template.by_weekday && (() => {
+            const days = template.by_weekday
+              .split(",")
+              .map((d) => d.trim().toUpperCase())
+              .sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b));
+            return (
+              <div className="flex gap-1 mt-1.5 flex-wrap">
+                {WEEKDAY_ORDER.map((code) => {
+                  const active = days.includes(code);
+                  return (
+                    <span
+                      key={code}
+                      className="px-2 py-0.5 rounded-md text-[11px] font-medium"
+                      style={{
+                        background: active ? "var(--app-accent)" : "var(--app-border)",
+                        color: active ? "#fff" : "var(--t-faint)",
+                        opacity: active ? 1 : 0.5,
+                      }}
+                    >
+                      {WEEKDAY_LABELS[code]}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Time defaults */}

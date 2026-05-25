@@ -24,6 +24,7 @@ interface EventTemplate {
   category_emoji: string | null;
   category_title: string | null;
   freq: string | null;
+  by_weekday: string | null;
   freq_label: string;
   is_archived: boolean;
   next_date: string | null;

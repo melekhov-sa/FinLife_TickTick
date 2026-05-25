@@ -227,7 +227,9 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
             elif recurrence_type == "weekly":
                 freq_val = "WEEKLY"
                 by_weekday = body.rec_weekdays
-                rule_start_date = today.isoformat()
+                # Use the user's chosen event start date so the recurrence aligns
+                # with the selected weekdays from the very first week
+                rule_start_date = body.start_date_rule or body.start_date or today.isoformat()
             elif recurrence_type == "interval":
                 freq_val = "INTERVAL_DAYS"
                 interval = body.rec_interval or 1
@@ -422,6 +424,20 @@ def reschedule_occurrence(
     return {"ok": True}
 
 
+_WEEKDAY_ORDER_RU = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+_WEEKDAY_NAMES_RU = {"MO": "Пн", "TU": "Вт", "WE": "Ср", "TH": "Чт", "FR": "Пт", "SA": "Сб", "SU": "Вс"}
+
+
+def _fmt_weekdays(by_weekday: str | None) -> str:
+    if not by_weekday:
+        return ""
+    parts = sorted(
+        [p.strip().upper() for p in by_weekday.split(",") if p.strip()],
+        key=lambda x: _WEEKDAY_ORDER_RU.index(x) if x in _WEEKDAY_ORDER_RU else 99,
+    )
+    return ", ".join(_WEEKDAY_NAMES_RU.get(p, p) for p in parts)
+
+
 @router.get("/event-templates")
 def list_event_templates(request: Request, db: Session = Depends(get_db)):
     from datetime import date as date_type
@@ -465,15 +481,20 @@ def list_event_templates(request: Request, db: Session = Depends(get_db)):
         rule = rules.get(ev.repeat_rule_id) if ev.repeat_rule_id else None
 
         freq_label: str | None = None
+        by_weekday_str: str | None = None
         if rule:
-            freq_map = {
-                "DAILY": "ежедневно",
-                "WEEKLY": "еженедельно",
-                "MONTHLY": "ежемесячно",
-                "YEARLY": "ежегодно",
-                "INTERVAL_DAYS": f"каждые {rule.interval} дн.",
-            }
-            freq_label = freq_map.get(rule.freq, rule.freq.lower())
+            if rule.freq == "WEEKLY":
+                by_weekday_str = rule.by_weekday
+                days_str = _fmt_weekdays(rule.by_weekday)
+                freq_label = f"еженедельно · {days_str}" if days_str else "еженедельно"
+            else:
+                freq_map = {
+                    "DAILY": "ежедневно",
+                    "MONTHLY": "ежемесячно",
+                    "YEARLY": "ежегодно",
+                    "INTERVAL_DAYS": f"каждые {rule.interval} дн.",
+                }
+                freq_label = freq_map.get(rule.freq, rule.freq.lower())
         else:
             freq_label = "однократно"
 
@@ -485,6 +506,7 @@ def list_event_templates(request: Request, db: Session = Depends(get_db)):
             "category_emoji": cat.emoji if cat else None,
             "category_title": cat.title if cat else None,
             "freq": rule.freq if rule else None,
+            "by_weekday": by_weekday_str,
             "freq_label": freq_label,
             "is_archived": not ev.is_active,
             "next_date": str(next_occ.start_date) if next_occ else None,
