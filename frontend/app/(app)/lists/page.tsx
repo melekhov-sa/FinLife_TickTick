@@ -200,7 +200,7 @@ export default function ListsPage() {
       )}
 
       <PageHeader title="Списки" density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6">
         <div className="w-full">
 
           <div className="mb-4">

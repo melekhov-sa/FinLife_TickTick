@@ -189,7 +189,7 @@ export default function StrategyPage() {
   return (
     <>
       <PageHeader title="Аналитика" subtitle={dateSubtitle} density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {isLoading && <StrategySkeleton />}
 
         {isError && (

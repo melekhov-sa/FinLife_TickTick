@@ -465,7 +465,7 @@ export default function PlannedOpsPage() {
       {showCreateOp && <CreateOperationModal onClose={() => setShowCreateOp(false)} />}
       {showCreateTemplate && <PlannedOpEditModal template={null} onClose={() => setShowCreateTemplate(false)} />}
       <PageHeader title="Плановые операции" density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6">
         <div className="w-full">
 
           {/* Header */}

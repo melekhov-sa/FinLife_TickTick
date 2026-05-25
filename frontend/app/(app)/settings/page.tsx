@@ -191,7 +191,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Настройки" density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-lg space-y-6">
 
           {/* ── Notifications Setup Banner ── */}

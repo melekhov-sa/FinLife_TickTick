@@ -452,7 +452,7 @@ export default function EventsPage() {
         }
       />
 
-      <main className="flex-1 overflow-auto p-4 md:p-6">
+      <main className="flex-1 p-4 md:p-6">
         <div className="max-w-[900px] flex gap-5 items-start">
 
           {/* ── Mini calendar (desktop only) ── */}

@@ -64,7 +64,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
   return (
     <>
       <PageHeader title={data?.title ?? "Статья"} density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-[720px]">
           {isLoading && (
             <div className="space-y-4">

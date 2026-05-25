@@ -197,7 +197,7 @@ export default function HabitsPage() {
 
       <WeekStrip />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {isPending && (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (

@@ -320,7 +320,7 @@ export default function NotificationSettingsPage() {
     return (
       <>
         <PageHeader title="Уведомления" density="compact" />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 p-6">
           <div className="max-w-lg space-y-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} variant="rect" height={128} className="rounded-xl" />
@@ -334,7 +334,7 @@ export default function NotificationSettingsPage() {
   return (
     <>
       <PageHeader title="Настройки уведомлений" density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-lg space-y-5">
 
           {/* Back link */}

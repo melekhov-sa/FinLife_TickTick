@@ -49,7 +49,7 @@ export default function ContactsPage() {
   return (
     <>
       <PageHeader title="Участники" density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-md space-y-4">
           <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
             Управление участниками подписок. Добавьте людей, чтобы потом назначать их в подписки.

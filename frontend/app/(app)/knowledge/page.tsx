@@ -93,7 +93,7 @@ export default function KnowledgePage() {
   return (
     <>
       <PageHeader title="База знаний" density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {/* Controls */}
         <div className="flex gap-2 mb-6 items-start">
           <Input

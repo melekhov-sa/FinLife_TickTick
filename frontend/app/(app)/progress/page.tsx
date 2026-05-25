@@ -431,7 +431,7 @@ export default function ProgressPage() {
     <>
       <PageHeader title="Прогресс" density="compact" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full max-w-4xl mx-auto">
+      <main className="flex-1 p-3 md:p-6 w-full max-w-4xl mx-auto">
         {isLoading && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

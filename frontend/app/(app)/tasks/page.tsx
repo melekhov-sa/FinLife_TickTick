@@ -173,7 +173,7 @@ export default function TasksPage() {
 
       <PageHeader title="Задачи" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {/* Controls */}
         <div className="flex flex-col gap-2 mb-3 md:mb-5">
           <div className="flex items-center justify-between">

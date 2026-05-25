@@ -135,7 +135,7 @@ export default function EfficiencyPage() {
   return (
     <>
       <PageHeader title="Аналитика" subtitle={dateSubtitle} density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
             <div className="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />

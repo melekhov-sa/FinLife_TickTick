@@ -420,7 +420,7 @@ export default function CategoriesPage() {
         }
       />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
 
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-4">

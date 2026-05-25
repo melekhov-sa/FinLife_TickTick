@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Home, ClipboardList, Plus, Wallet, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./AppSidebar";
+import { useKeyboardVisible } from "@/lib/useKeyboardVisible";
 
 interface MobileNavProps {
   /** Открыть создание задачи (короткий тап по FAB / default) */
@@ -21,6 +22,7 @@ export function MobileNav({
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const keyboardOpen = useKeyboardVisible();
 
   const isActive = (href: string) => {
     if (href === "/events") return !!(pathname?.startsWith("/events") || pathname?.startsWith("/event-templates"));
@@ -45,12 +47,13 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden flex items-end justify-between px-2 pt-2 shrink-0"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-end justify-between px-2 pt-2 transition-transform duration-200"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
           paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
+          transform: keyboardOpen ? "translateY(100%)" : "translateY(0)",
         }}
       >
         <BottomItem

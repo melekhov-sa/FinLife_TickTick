@@ -80,10 +80,11 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             state={onlineStatus}
             onRetry={() => window.location.reload()}
           />
-          <div className="flex-1 flex flex-col overflow-auto scroll-slim">
+          <div
+            className="flex-1 flex flex-col overflow-auto scroll-slim pb-[calc(62px+env(safe-area-inset-bottom,0px))] md:pb-0"
+          >
             {children}
           </div>
-          {/* Bottom nav — mobile only, in-flow so it never drifts */}
           <MobileNav
             onCreateTask={() => setShowTaskModal(true)}
             onCreateOperation={() => setShowOpModal(true)}

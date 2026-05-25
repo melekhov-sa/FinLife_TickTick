@@ -1153,7 +1153,7 @@ export default function PlanPage() {
           </a>
         }
       />
-      <main className="flex-1 overflow-auto p-3 md:p-6 touch-manipulation">
+      <main className="flex-1 p-3 md:p-6 touch-manipulation">
         <div className="w-full">
 
           {/* ── Controls — compact ────────────────────────────────── */}

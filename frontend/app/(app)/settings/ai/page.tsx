@@ -100,7 +100,7 @@ export default function AISettingsPage() {
     return (
       <>
         <PageHeader title="Настройки AI" density="compact" />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 p-6">
           <div className="max-w-lg animate-pulse space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-24 rounded-xl" style={{ background: cardBg }} />
@@ -144,7 +144,7 @@ export default function AISettingsPage() {
   return (
     <>
       <PageHeader title="Настройки AI" density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-lg space-y-5">
 
           <Link

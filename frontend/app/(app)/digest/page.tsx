@@ -93,7 +93,7 @@ export default function DigestListPage() {
         }
       />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6">
         <div className="w-full space-y-3">
           {isPending && (
             <div className="space-y-3">

@@ -326,7 +326,7 @@ export default function BudgetStatsPage() {
         }
       />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full space-y-4">
+      <main className="flex-1 p-3 md:p-6 w-full space-y-4">
         {isPending && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -88,7 +88,7 @@ export default function ThemeSettingsPage() {
   return (
     <>
       <PageHeader title="Тема оформления" density="compact" />
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-lg space-y-5">
 
           <Link href="/settings" className="inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors hover:opacity-80" style={{ color: "var(--t-faint)" }}>

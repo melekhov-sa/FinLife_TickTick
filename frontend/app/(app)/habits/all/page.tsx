@@ -29,7 +29,7 @@ export default function HabitsAllPage() {
 
       <PageHeader title="Все привычки" subtitle={`${activeHabits.length} активных · ${archivedHabits.length} в архиве`} density="compact" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {/* Back link */}
         <Link
           href="/habits"

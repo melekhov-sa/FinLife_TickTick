@@ -467,7 +467,7 @@ export default function TaskPresetsPage() {
     <>
       <PageHeader title="Шаблоны задач" subtitle="Быстрое заполнение формы создания задачи" density="compact" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-4">
           {tabBtn("active", "Активные", activeCount)}

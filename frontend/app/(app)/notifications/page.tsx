@@ -185,7 +185,7 @@ export default function NotificationsPage() {
   return (
     <>
       <PageHeader title="Уведомления" density="compact" />
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
 
         {/* Header bar */}
         <div className="flex items-center justify-between mb-5">

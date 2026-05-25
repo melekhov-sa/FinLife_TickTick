@@ -273,7 +273,7 @@ export default function BudgetPage() {
         }
       />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full">
+      <main className="flex-1 p-3 md:p-6 w-full">
         {/* Top links */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           <Link

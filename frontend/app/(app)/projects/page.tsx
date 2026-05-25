@@ -26,7 +26,7 @@ export default function ProjectsPage() {
   return (
     <>
       <PageHeader title="Проекты" density="compact" />
-      <main className="flex-1 overflow-auto p-6 max-w-[1400px]">
+      <main className="flex-1 p-6 max-w-[1400px]">
         {/* Controls */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl p-1">

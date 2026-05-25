@@ -104,7 +104,7 @@ export default function CalDAVSettingsPage() {
     <>
       <PageHeader title="iPhone Reminders (CalDAV)" density="compact" />
 
-      <main className="flex-1 overflow-auto p-3 md:p-6 w-full max-w-xl">
+      <main className="flex-1 p-3 md:p-6 w-full max-w-xl">
         {/* Header card */}
         <div
           className="rounded-2xl p-5 mb-5 flex items-start gap-4 border"

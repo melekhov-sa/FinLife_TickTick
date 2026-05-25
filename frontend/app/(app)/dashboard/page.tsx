@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <main className="flex-1 overflow-auto p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6">
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить дашборд
