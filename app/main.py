@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
         title="FinLife",
         debug=True,
         lifespan=lifespan,
+        redirect_slashes=False,
     )
 
     # Error-logging middleware — catches ALL exceptions including sync routes
