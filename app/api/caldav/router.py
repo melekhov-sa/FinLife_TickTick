@@ -22,7 +22,7 @@ from app.api.caldav.auth import authenticate_caldav
 from app.api.caldav import ical
 from app.infrastructure.db.models import TaskModel, User
 
-router = APIRouter(prefix="/caldav", tags=["caldav"])
+router = APIRouter(prefix="/caldav", tags=["caldav"], redirect_slashes=False)
 
 _FILENAME_RE = re.compile(r"^task-(\d+)\.ics$")
 _CT_XML = "application/xml; charset=utf-8"
@@ -88,6 +88,7 @@ async def options_all(path: str = "") -> Response:
 
 # ── PROPFIND root / principals ────────────────────────────────────────────────
 
+@router.api_route("", methods=["PROPFIND"])
 @router.api_route("/", methods=["PROPFIND"])
 async def propfind_root(request: Request, db: Session = Depends(get_db)) -> Response:
     user: User = authenticate_caldav(request, db)
