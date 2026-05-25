@@ -100,6 +100,17 @@ def create_app() -> FastAPI:
     except Exception:
         pass
 
+    # CalDAV — WebDAV endpoints for iPhone Reminders (Basic Auth, no CORS restriction)
+    from app.api.caldav.router import router as caldav_router
+    app.include_router(caldav_router)
+
+    # /.well-known/caldav discovery redirect (all WebDAV methods)
+    from fastapi.responses import Response as _Response
+
+    @app.api_route("/.well-known/caldav", methods=["GET", "HEAD", "OPTIONS", "PROPFIND", "REPORT"])
+    async def well_known_caldav():
+        return _Response(status_code=301, headers={"Location": "/caldav/"})
+
     # Routers - v2 JSON API, then v1 API, then SSR pages
     app.include_router(v2_router)
     app.include_router(wallets.router)

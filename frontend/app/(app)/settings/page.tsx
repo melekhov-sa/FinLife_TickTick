@@ -50,11 +50,12 @@ function usePwaInstall() {
 // ── Settings Items ───────────────────────────────────────────────────────────
 
 const SETTINGS_ITEMS = [
-  { href: "/profile",          icon: User,    label: "Профиль",           desc: "Аккаунт, XP, активность",                          color: "#6366f1" },
-  { href: "/notifications",    icon: Bell,    label: "Уведомления",       desc: "Список уведомлений",                               color: "#f59e0b" },
-  { href: "/work-categories",  icon: Database,label: "Категории дел",     desc: "Типы задач и привычек",                            color: "#8b5cf6" },
-  { href: "/task-presets",     icon: Shield,  label: "Шаблоны задач",     desc: "Быстрое создание из шаблонов",                     color: "#06b6d4" },
-  { href: "/settings/theme",   icon: Palette, label: "Тема оформления",   desc: "Obsidian, Graphite, Midnight, Snow, Emerald",      color: "#ec4899" },
+  { href: "/profile",            icon: User,       label: "Профиль",           desc: "Аккаунт, XP, активность",                          color: "#6366f1" },
+  { href: "/notifications",      icon: Bell,       label: "Уведомления",       desc: "Список уведомлений",                               color: "#f59e0b" },
+  { href: "/work-categories",    icon: Database,   label: "Категории дел",     desc: "Типы задач и привычек",                            color: "#8b5cf6" },
+  { href: "/task-presets",       icon: Shield,     label: "Шаблоны задач",     desc: "Быстрое создание из шаблонов",                     color: "#06b6d4" },
+  { href: "/settings/theme",     icon: Palette,    label: "Тема оформления",   desc: "Obsidian, Graphite, Midnight, Snow, Emerald",      color: "#ec4899" },
+  { href: "/settings/caldav",    icon: Smartphone, label: "iPhone Reminders",  desc: "CalDAV-синхронизация задач с Напоминаниями",        color: "#10b981" },
 ];
 
 // ── Page ─────────────────────────────────────────────────────────────────────

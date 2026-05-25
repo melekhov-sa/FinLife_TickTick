@@ -1866,3 +1866,16 @@ class CounterEntryModel(Base):
     recorded_date: Mapped[date_type] = mapped_column(Date, nullable=False)
     delta: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+# ── CalDAV ──────────────────────────────────────────────────────────────────
+
+class CalDAVTokenModel(Base):
+    """CalDAV auth tokens — one per user, used for iPhone Reminders integration."""
+    __tablename__ = "caldav_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
