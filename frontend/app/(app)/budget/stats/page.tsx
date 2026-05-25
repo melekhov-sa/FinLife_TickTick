@@ -34,10 +34,10 @@ interface BudgetStatsData {
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-function useBudgetStats() {
+function useBudgetStats(months: number) {
   return useQuery<BudgetStatsData>({
-    queryKey: ["analytics", "budget-stats"],
-    queryFn: () => api.get<BudgetStatsData>("/api/v2/analytics/budget-stats"),
+    queryKey: ["analytics", "budget-stats", months],
+    queryFn: () => api.get<BudgetStatsData>(`/api/v2/analytics/budget-stats?months=${months}`),
     staleTime: 5 * 60_000,
   });
 }
@@ -197,10 +197,12 @@ function MonthlyTrendChart({ data }: { data: MonthPoint[] }) {
 function CategoryList({
   cats,
   kind,
+  months,
   onSelect,
 }: {
   cats: BudgetCategoryStats[];
   kind: "INCOME" | "EXPENSE";
+  months: number;
   onSelect: (c: BudgetCategoryStats) => void;
 }) {
   const filtered = cats.filter((c) => c.kind === kind);
@@ -218,7 +220,7 @@ function CategoryList({
       <h2 className="text-[13px] font-semibold mb-4" style={{ color: "var(--t-primary)" }}>
         {title}
         <span className="ml-1.5 text-[11px] font-normal" style={{ color: "var(--t-faint)" }}>
-          ср. 6 мес
+          ср. {months} мес
         </span>
       </h2>
       <div className="space-y-3">
@@ -278,8 +280,15 @@ function CategoryList({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const PERIOD_OPTIONS = [
+  { value: 3, label: "3М" },
+  { value: 6, label: "6М" },
+  { value: 12, label: "12М" },
+];
+
 export default function BudgetStatsPage() {
-  const { data, isPending } = useBudgetStats();
+  const [months, setMonths] = useState(6);
+  const { data, isPending } = useBudgetStats(months);
   const [selectedCat, setSelectedCat] = useState<BudgetCategoryStats | null>(null);
 
   return (
@@ -288,14 +297,32 @@ export default function BudgetStatsPage() {
         title="Статистика бюджета"
         density="compact"
         actions={
-          <Link
-            href="/budget"
-            className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
-            style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
-          >
-            <ChevronLeft size={14} />
-            Бюджет
-          </Link>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "var(--app-border)" }}>
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setMonths(opt.value)}
+                  className="text-[11px] font-medium px-2.5 py-1 transition-colors"
+                  style={{
+                    background: months === opt.value ? "var(--app-accent)" : "transparent",
+                    color: months === opt.value ? "#fff" : "var(--t-faint)",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <Link
+              href="/budget"
+              className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+              style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
+            >
+              <ChevronLeft size={14} />
+              Бюджет
+            </Link>
+          </div>
         }
       />
 
@@ -316,13 +343,13 @@ export default function BudgetStatsPage() {
             {/* KPI row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard
-                label="Ср. доход 6М"
+                label={`Ср. доход ${months}М`}
                 value={fmtK(data.kpi.avg_income_6m) + " ₽"}
                 sub="в месяц"
                 accent="green"
               />
               <KpiCard
-                label="Ср. расход 6М"
+                label={`Ср. расход ${months}М`}
                 value={fmtK(data.kpi.avg_expense_6m) + " ₽"}
                 sub="в месяц"
                 accent="red"
@@ -356,8 +383,8 @@ export default function BudgetStatsPage() {
 
             {/* Category breakdowns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CategoryList cats={data.categories} kind="EXPENSE" onSelect={setSelectedCat} />
-              <CategoryList cats={data.categories} kind="INCOME" onSelect={setSelectedCat} />
+              <CategoryList cats={data.categories} kind="EXPENSE" months={months} onSelect={setSelectedCat} />
+              <CategoryList cats={data.categories} kind="INCOME" months={months} onSelect={setSelectedCat} />
             </div>
           </>
         )}
