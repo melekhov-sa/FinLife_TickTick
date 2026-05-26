@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.api.caldav.auth import authenticate_caldav
 from app.api.caldav import ical
-from app.infrastructure.db.models import TaskModel, User
+from app.infrastructure.db.models import TaskModel, TaskReminderModel, User
 
 router = APIRouter(prefix="/caldav", tags=["caldav"], redirect_slashes=False)
 
@@ -175,10 +175,16 @@ async def report_tasks(
         .filter(TaskModel.account_id == uid, TaskModel.status != "ARCHIVED")
         .all()
     )
+    task_ids = [t.task_id for t in tasks]
+    reminders_by_task: dict[int, list] = {}
+    if task_ids:
+        for r in db.query(TaskReminderModel).filter(TaskReminderModel.task_id.in_(task_ids)).all():
+            reminders_by_task.setdefault(r.task_id, []).append(r)
+
     inner = ""
     for task in tasks:
         fname = f"task-{task.task_id}.ics"
-        vtodo = ical.task_to_vcalendar(task)
+        vtodo = ical.task_to_vcalendar(task, reminders_by_task.get(task.task_id))
         item_props = (
             f"<D:getetag>{ical.task_etag(task)}</D:getetag>"
             f"<C:calendar-data>{vtodo}</C:calendar-data>"
@@ -199,8 +205,9 @@ async def get_task(
         raise HTTPException(status_code=403)
 
     task = _get_task_or_404(filename, user.id, db)
+    reminders = db.query(TaskReminderModel).filter(TaskReminderModel.task_id == task.task_id).all()
     return Response(
-        content=ical.task_to_vcalendar(task),
+        content=ical.task_to_vcalendar(task, reminders),
         media_type=_CT_ICS,
         headers={"ETag": ical.task_etag(task), "DAV": _DAV_CAPS},
     )

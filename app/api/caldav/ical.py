@@ -1,15 +1,19 @@
 """iCalendar VTODO generation and parsing (no external dependencies)."""
 from __future__ import annotations
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
+from typing import Sequence
 
-from app.infrastructure.db.models import TaskModel
+from app.infrastructure.db.models import TaskModel, TaskReminderModel
 
 PRODID = "-//FinLife//CalDAV//EN"
 
 
 # ── Generation ─────────────────────────────────────────────────────────────
 
-def task_to_vcalendar(task: TaskModel) -> str:
+def task_to_vcalendar(
+    task: TaskModel,
+    reminders: Sequence[TaskReminderModel] | None = None,
+) -> str:
     """Return a VCALENDAR string containing one VTODO for the given task."""
     uid = f"finlife-task-{task.task_id}@finlife"
     lines: list[str] = [
@@ -44,6 +48,10 @@ def task_to_vcalendar(task: TaskModel) -> str:
             lines.append(f"CREATED:{ts}")
         except Exception:
             pass
+    for reminder in (reminders or []):
+        alarm = _reminder_to_valarm(task, reminder)
+        if alarm:
+            lines.extend(alarm)
     lines += ["END:VTODO", "END:VCALENDAR"]
     return "\r\n".join(lines) + "\r\n"
 
@@ -106,6 +114,43 @@ def _parse_due(value: str, params: dict, result: dict) -> None:
             result["due_kind"] = "DATETIME"
         except Exception:
             pass
+
+
+def _reminder_to_valarm(task: TaskModel, reminder: TaskReminderModel) -> list[str] | None:
+    """Convert a TaskReminderModel to VALARM lines, or None if not applicable."""
+    if reminder.reminder_kind == "OFFSET":
+        mins = reminder.offset_minutes
+        if task.due_time:
+            # Relative trigger: N minutes before DUE datetime
+            return [
+                "BEGIN:VALARM",
+                "ACTION:DISPLAY",
+                "DESCRIPTION:Напоминание",
+                f"TRIGGER:-PT{mins}M",
+                "END:VALARM",
+            ]
+        elif task.due_date and mins > 0:
+            # Date-only task: absolute trigger at midnight-minus-offset UTC
+            due_midnight = datetime.combine(task.due_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+            ts = (due_midnight - timedelta(minutes=mins)).strftime("%Y%m%dT%H%M%SZ")
+            return [
+                "BEGIN:VALARM",
+                "ACTION:DISPLAY",
+                "DESCRIPTION:Напоминание",
+                f"TRIGGER;VALUE=DATE-TIME:{ts}",
+                "END:VALARM",
+            ]
+    elif reminder.reminder_kind == "FIXED_TIME" and reminder.fixed_time and task.due_date:
+        trigger_dt = datetime.combine(task.due_date, reminder.fixed_time).replace(tzinfo=timezone.utc)
+        ts = trigger_dt.strftime("%Y%m%dT%H%M%SZ")
+        return [
+            "BEGIN:VALARM",
+            "ACTION:DISPLAY",
+            "DESCRIPTION:Напоминание",
+            f"TRIGGER;VALUE=DATE-TIME:{ts}",
+            "END:VALARM",
+        ]
+    return None
 
 
 def _esc(text: str) -> str:
