@@ -21,6 +21,7 @@ from app.api.deps import get_db
 from app.api.caldav.auth import authenticate_caldav
 from app.api.caldav import ical
 from app.infrastructure.db.models import TaskModel, TaskReminderModel, User
+from app.application.tasks_usecases import CreateTaskUseCase
 
 router = APIRouter(prefix="/caldav", tags=["caldav"], redirect_slashes=False)
 
@@ -240,30 +241,30 @@ async def put_task(
             return Response(status_code=204, headers={"ETag": ical.task_etag(task)})
 
     # New task (iOS is creating a task with a client-generated filename)
+    due_date = vtodo.get("due_date")
+    due_time_val = vtodo.get("due_time")
     title = vtodo.get("title") or "Без названия"
-    task = TaskModel(
+    task_id = CreateTaskUseCase(db).execute(
         account_id=user.id,
         title=title,
         note=vtodo.get("note"),
-        due_date=vtodo.get("due_date"),
-        due_time=vtodo.get("due_time"),
         due_kind=vtodo.get("due_kind", "NONE"),
-        status=vtodo.get("status", "ACTIVE"),
+        due_date=due_date.isoformat() if due_date else None,
+        due_time=due_time_val.strftime("%H:%M") if due_time_val else None,
+        actor_user_id=user.id,
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
+    task = db.query(TaskModel).filter(TaskModel.task_id == task_id).first()
     import logging as _log
     _log.getLogger(__name__).info(
         "CalDAV PUT: created task_id=%s title=%r due=%s for user_id=%s (ios_filename=%s)",
-        task.task_id, title, task.due_date, user.id, filename,
+        task_id, title, due_date, user.id, filename,
     )
-    new_fname = f"task-{task.task_id}.ics"
+    new_fname = f"task-{task_id}.ics"
     return Response(
         status_code=201,
         headers={
             "Location": f"/caldav/calendars/{user_id}/tasks/{new_fname}",
-            "ETag": ical.task_etag(task),
+            "ETag": ical.task_etag(task) if task else f'"{task_id}-0"',
         },
     )
 
