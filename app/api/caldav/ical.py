@@ -131,20 +131,21 @@ def _parse_due(value: str, params: dict, result: dict) -> None:
 def _reminder_to_valarm(task: TaskModel, reminder: TaskReminderModel) -> list[str] | None:
     """Convert a TaskReminderModel to VALARM lines, or None if not applicable."""
     if reminder.reminder_kind == "OFFSET":
-        mins = reminder.offset_minutes
+        mins = reminder.offset_minutes  # stored negative: -10 = 10 min before
+        abs_mins = abs(mins)
         if task.due_time:
-            # Relative trigger: N minutes before DUE datetime (timezone-agnostic)
+            # Relative trigger: N minutes before DUE datetime
             return [
                 "BEGIN:VALARM",
                 "ACTION:DISPLAY",
                 "DESCRIPTION:Напоминание",
-                f"TRIGGER:-PT{mins}M",
+                f"TRIGGER:-PT{abs_mins}M",
                 "END:VALARM",
             ]
-        elif task.due_date and mins > 0:
-            # Date-only task: absolute trigger at local midnight minus offset
+        elif task.due_date and mins < 0:
+            # Date-only task: absolute trigger at local midnight of due date minus |offset|
             due_midnight = datetime.combine(task.due_date, datetime.min.time()).replace(tzinfo=_DEFAULT_TZ)
-            ts = (due_midnight - timedelta(minutes=mins)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            ts = (due_midnight - timedelta(minutes=abs_mins)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return [
                 "BEGIN:VALARM",
                 "ACTION:DISPLAY",

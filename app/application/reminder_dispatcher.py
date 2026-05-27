@@ -92,11 +92,13 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     })
                     sent += n
             else:
-                # OFFSET kind — requires a specific time (DATETIME or WINDOW)
+                # OFFSET kind — fire relative to due datetime, or midnight for date-only tasks
                 ref_time = task.due_time or task.due_start_time
-                if not ref_time:
-                    continue
-                due_dt = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
+                if ref_time:
+                    due_dt = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
+                else:
+                    # Date-only task: treat midnight of due date as reference
+                    due_dt = datetime.combine(task.due_date, _time(0, 0), tzinfo=MSK)
                 fire_at = due_dt + timedelta(minutes=rem.offset_minutes)  # offset is <= 0
                 if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
                     n = send_push_to_user(db, task.account_id, {
