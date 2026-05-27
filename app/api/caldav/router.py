@@ -240,9 +240,10 @@ async def put_task(
             return Response(status_code=204, headers={"ETag": ical.task_etag(task)})
 
     # New task (iOS is creating a task with a client-generated filename)
+    title = vtodo.get("title") or "Без названия"
     task = TaskModel(
         account_id=user.id,
-        title=vtodo.get("title") or "Без названия",
+        title=title,
         note=vtodo.get("note"),
         due_date=vtodo.get("due_date"),
         due_time=vtodo.get("due_time"),
@@ -252,6 +253,11 @@ async def put_task(
     db.add(task)
     db.commit()
     db.refresh(task)
+    import logging as _log
+    _log.getLogger(__name__).info(
+        "CalDAV PUT: created task_id=%s title=%r due=%s for user_id=%s (ios_filename=%s)",
+        task.task_id, title, task.due_date, user.id, filename,
+    )
     new_fname = f"task-{task.task_id}.ics"
     return Response(
         status_code=201,

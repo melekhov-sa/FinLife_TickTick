@@ -2,10 +2,12 @@
 from __future__ import annotations
 from datetime import date, datetime, timezone, timedelta
 from typing import Sequence
+from zoneinfo import ZoneInfo
 
 from app.infrastructure.db.models import TaskModel, TaskReminderModel
 
 PRODID = "-//FinLife//CalDAV//EN"
+_DEFAULT_TZ = ZoneInfo("Europe/Moscow")
 
 
 # ── Generation ─────────────────────────────────────────────────────────────
@@ -69,8 +71,16 @@ def parse_vtodo(ical_text: str) -> dict:
     """Parse a VCALENDAR/VTODO string into a dict of task fields."""
     result: dict = {}
     in_vtodo = False
+    # Unfold lines per RFC 5545 §3.1: CRLF + whitespace = continuation
+    unfolded: list[str] = []
     for raw in ical_text.splitlines():
-        line = raw.rstrip()
+        if raw and raw[0] in (" ", "\t") and unfolded:
+            unfolded[-1] += raw[1:]  # append without the leading whitespace
+        else:
+            unfolded.append(raw.rstrip("\r"))
+
+    for line in unfolded:
+        line = line.rstrip()
         if line == "BEGIN:VTODO":
             in_vtodo = True
             continue
@@ -123,7 +133,7 @@ def _reminder_to_valarm(task: TaskModel, reminder: TaskReminderModel) -> list[st
     if reminder.reminder_kind == "OFFSET":
         mins = reminder.offset_minutes
         if task.due_time:
-            # Relative trigger: N minutes before DUE datetime
+            # Relative trigger: N minutes before DUE datetime (timezone-agnostic)
             return [
                 "BEGIN:VALARM",
                 "ACTION:DISPLAY",
@@ -132,9 +142,9 @@ def _reminder_to_valarm(task: TaskModel, reminder: TaskReminderModel) -> list[st
                 "END:VALARM",
             ]
         elif task.due_date and mins > 0:
-            # Date-only task: absolute trigger at midnight-minus-offset UTC
-            due_midnight = datetime.combine(task.due_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-            ts = (due_midnight - timedelta(minutes=mins)).strftime("%Y%m%dT%H%M%SZ")
+            # Date-only task: absolute trigger at local midnight minus offset
+            due_midnight = datetime.combine(task.due_date, datetime.min.time()).replace(tzinfo=_DEFAULT_TZ)
+            ts = (due_midnight - timedelta(minutes=mins)).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return [
                 "BEGIN:VALARM",
                 "ACTION:DISPLAY",
@@ -143,8 +153,9 @@ def _reminder_to_valarm(task: TaskModel, reminder: TaskReminderModel) -> list[st
                 "END:VALARM",
             ]
     elif reminder.reminder_kind == "FIXED_TIME" and reminder.fixed_time and task.due_date:
-        trigger_dt = datetime.combine(task.due_date, reminder.fixed_time).replace(tzinfo=timezone.utc)
-        ts = trigger_dt.strftime("%Y%m%dT%H%M%SZ")
+        # Interpret fixed_time as local time (Europe/Moscow)
+        trigger_dt = datetime.combine(task.due_date, reminder.fixed_time).replace(tzinfo=_DEFAULT_TZ)
+        ts = trigger_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         return [
             "BEGIN:VALARM",
             "ACTION:DISPLAY",
