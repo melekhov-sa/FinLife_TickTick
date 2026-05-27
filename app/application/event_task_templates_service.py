@@ -1,9 +1,10 @@
 """
 Dispatches auto-created tasks from event task templates.
 
-Runs daily: for every active template, looks at event occurrences in the next
-60 days and creates a task (with reminder) for each occurrence that doesn't
-already have one.
+Runs daily: for every active template, finds the event occurrence whose task
+due date falls on TODAY and creates the task if it doesn't exist yet.
+This means tasks are created on the exact day they are due — if the event
+is cancelled before that day, no task is created.
 
 Also auto-completes pre-event tasks when auto_complete_mode is set (runs after
 the event day, marking tasks from yesterday's occurrences as done).
@@ -25,14 +26,11 @@ AUTO_COMPLETE_OCCURRENCE_MODES = {"end_of_day", "at_event_end"}
 
 logger = logging.getLogger(__name__)
 
-HORIZON_DAYS = 60
-
 
 # ── Dispatch (create tasks) ────────────────────────────────────────────────────
 
 def dispatch_event_task_templates(db: Session) -> None:
     today = date.today()
-    horizon = today + timedelta(days=HORIZON_DAYS)
 
     templates = (
         db.query(EventTaskTemplate)
@@ -42,7 +40,7 @@ def dispatch_event_task_templates(db: Session) -> None:
 
     for tpl in templates:
         try:
-            _process_template(db, tpl, today, horizon)
+            _process_template(db, tpl, today)
         except Exception:
             logger.exception("Failed to process event task template id=%s", tpl.id)
 
@@ -51,14 +49,24 @@ def _process_template(
     db: Session,
     tpl: EventTaskTemplate,
     today: date,
-    horizon: date,
 ) -> None:
+    # Determine which event date(s) would produce a task due today.
+    # is_after_event=False: task_due = event_date - days_before  →  event_date = today + days_before
+    # is_after_event=True:  task_due = event_date + days_before  →  event_date = today - days_before
+    #   with minutes_after_end: task time depends on event end time, so check today and yesterday.
+    if not tpl.is_after_event:
+        search_start = search_end = today + timedelta(days=tpl.days_before)
+    elif tpl.minutes_after_end is not None:
+        search_start, search_end = today - timedelta(days=1), today
+    else:
+        search_start = search_end = today - timedelta(days=tpl.days_before)
+
     occurrences = (
         db.query(EventOccurrenceModel)
         .filter(
             EventOccurrenceModel.event_id == tpl.event_id,
-            EventOccurrenceModel.start_date >= today,
-            EventOccurrenceModel.start_date <= horizon,
+            EventOccurrenceModel.start_date >= search_start,
+            EventOccurrenceModel.start_date <= search_end,
             EventOccurrenceModel.is_cancelled == False,
         )
         .all()
@@ -83,7 +91,7 @@ def _process_template(
 
         task_due_date, due_time = _calculate_task_due(occ, tpl)
 
-        if task_due_date < today:
+        if task_due_date != today:
             continue
 
         reminders = None
