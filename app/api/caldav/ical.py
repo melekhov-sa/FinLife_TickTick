@@ -57,7 +57,9 @@ def task_to_vcalendar(
 
 
 def task_etag(task: TaskModel) -> str:
-    ts = int(task.created_at.timestamp()) if task.created_at else 0
+    # Use the most recent modification timestamp so iOS detects status changes.
+    stamp = task.completed_at or task.archived_at or task.created_at
+    ts = int(stamp.timestamp()) if stamp else 0
     return f'"{task.task_id}-{ts}"'
 
 
