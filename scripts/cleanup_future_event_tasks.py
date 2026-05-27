@@ -14,8 +14,7 @@ from datetime import date
 
 sys.path.insert(0, ".")
 
-from app.config import get_settings
-from app.infrastructure.db.session import SessionLocal
+from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.db.models import EventOccurrenceTask, TaskModel
 
 DRY_RUN = "--apply" not in sys.argv
@@ -23,7 +22,7 @@ DRY_RUN = "--apply" not in sys.argv
 
 def main():
     today = date.today()
-    db = SessionLocal()
+    db = get_session_factory()()
     try:
         # Find all future dedup records
         future_links = (
