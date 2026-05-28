@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/primitives/PageHeader";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useMe } from "@/hooks/useMe";
 import { clsx } from "clsx";
-import { Plus, ShoppingBag, ListTodo, Map, Globe, Lock, Trash2, Plane } from "lucide-react";
+import { Plus, ShoppingBag, ShoppingCart, ListTodo, Map, Globe, Lock, Trash2, Plane } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/primitives/Button";
@@ -30,10 +30,11 @@ interface SharedListSummary {
 }
 
 const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string; color: string }> = {
-  wishlist:  { icon: ShoppingBag, label: "Вишлист",  color: "text-indigo-500" },
-  personal:  { icon: ListTodo,    label: "Личное",   color: "text-slate-500" },
-  roadmap:   { icon: Map,         label: "Роадмап",  color: "text-emerald-500" },
-  trip:      { icon: Plane,       label: "Поездка",  color: "text-sky-500" },
+  shopping:  { icon: ShoppingCart, label: "Покупки",  color: "text-orange-500" },
+  wishlist:  { icon: ShoppingBag,  label: "Вишлист",  color: "text-indigo-500" },
+  personal:  { icon: ListTodo,     label: "Личное",   color: "text-slate-500" },
+  roadmap:   { icon: Map,          label: "Роадмап",  color: "text-emerald-500" },
+  trip:      { icon: Plane,        label: "Поездка",  color: "text-sky-500" },
 };
 
 export default function ListsPage() {
@@ -104,8 +105,8 @@ export default function ListsPage() {
   }
 
   const availableTypes = isAdmin
-    ? ["wishlist", "personal", "roadmap", "trip"] as const
-    : ["wishlist", "personal", "trip"] as const;
+    ? ["shopping", "wishlist", "personal", "roadmap", "trip"] as const
+    : ["shopping", "wishlist", "personal", "trip"] as const;
 
   return (
     <>

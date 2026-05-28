@@ -141,6 +141,13 @@ export interface ExpiringSub {
   days_left: number;
 }
 
+export interface ShoppingItem {
+  id: number;
+  title: string;
+  status: string;
+  sort_order: number;
+}
+
 export interface DashboardData {
   today: TodayBlock;
   upcoming_payments: UpcomingPayment[];
@@ -152,6 +159,8 @@ export interface DashboardData {
   efficiency: EfficiencyBlock | null;
   week_events: WeekEvent[];
   expiring_subs: ExpiringSub[];
+  shopping_list_id: number | null;
+  shopping_items: ShoppingItem[];
 }
 
 // ── /api/v2/projects ──────────────────────────────────────────────────────────

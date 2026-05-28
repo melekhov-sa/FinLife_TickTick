@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
+import { ShoppingWidget } from "@/components/dashboard/ShoppingWidget";
 import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -69,6 +70,9 @@ export default function DashboardPage() {
               {/* Right */}
               <div className="space-y-4">
                 <DigestCard />
+                {data.shopping_list_id && data.shopping_items.length > 0 && (
+                  <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
+                )}
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <WeekEventsCard events={data.week_events} />
                 <ExpiringSubsCard subs={data.expiring_subs} />
@@ -85,6 +89,9 @@ export default function DashboardPage() {
                 finState={data.fin_state}
                 financialSummary={data.financial_summary}
               />
+              {data.shopping_list_id && data.shopping_items.length > 0 && (
+                <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
+              )}
               <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />
               <ExpiringSubsCard subs={data.expiring_subs} />

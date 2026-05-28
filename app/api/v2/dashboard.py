@@ -172,6 +172,13 @@ class ExpiringSub(BaseModel):
         return v.isoformat()
 
 
+class ShoppingItem(BaseModel):
+    id: int
+    title: str
+    status: str
+    sort_order: int
+
+
 class DashboardResponse(BaseModel):
     today: TodayBlock
     upcoming_payments: list[UpcomingPayment]
@@ -183,6 +190,8 @@ class DashboardResponse(BaseModel):
     efficiency: EfficiencyBlock | None
     week_events: list[WeekEvent]
     expiring_subs: list[ExpiringSub]
+    shopping_list_id: int | None = None
+    shopping_items: list[ShoppingItem] = []
 
 
 # ── Route ─────────────────────────────────────────────────────────────────────
@@ -431,6 +440,38 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
         ]
         feed.append(FeedGroup(label=group["label"], date=group["date"], events=events))
 
+    # ── Shopping list widget ───────────────────────────────────────────────────
+    shopping_list_id: int | None = None
+    shopping_items: list[ShoppingItem] = []
+    try:
+        from app.infrastructure.db.models import SharedList, SharedListItem
+        shopping_list = (
+            db.query(SharedList)
+            .filter(SharedList.account_id == user_id, SharedList.list_type == "shopping")
+            .order_by(SharedList.id)
+            .first()
+        )
+        if shopping_list:
+            shopping_list_id = shopping_list.id
+            from datetime import datetime, timezone
+            today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+            rows = (
+                db.query(SharedListItem)
+                .filter(
+                    SharedListItem.list_id == shopping_list.id,
+                    (SharedListItem.status == "open") |
+                    ((SharedListItem.status == "done") & (SharedListItem.completed_at >= today_start)),
+                )
+                .order_by(SharedListItem.sort_order, SharedListItem.id)
+                .all()
+            )
+            shopping_items = [
+                ShoppingItem(id=r.id, title=r.title, status=r.status, sort_order=r.sort_order)
+                for r in rows
+            ]
+    except Exception:
+        pass
+
     return DashboardResponse(
         today=today_block,
         upcoming_payments=upcoming,
@@ -442,4 +483,6 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
         efficiency=efficiency_block,
         week_events=week_events,
         expiring_subs=expiring_subs,
+        shopping_list_id=shopping_list_id,
+        shopping_items=shopping_items,
     )
