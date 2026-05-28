@@ -436,7 +436,7 @@ class DashboardService:
                     "title": ev.title,
                     "date": occ.start_date,
                     "time": event_time,
-                    "is_done": False,
+                    "is_done": occ.is_completed,
                     "is_overdue": False,
                     "category_emoji": self._wc_emoji(wc_map, ev.category_id),
                     "category_name": self._wc_name(wc_map, ev.category_id),
@@ -447,6 +447,7 @@ class DashboardService:
                         "end_date": occ.end_date,
                         "person_age": person_age,
                         "is_jubilee": is_jubilee,
+                        "completion_mode": ev.completion_mode,
                     },
                 })
 

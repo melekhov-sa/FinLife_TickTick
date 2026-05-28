@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, SkipForward, Play, Plus, Bell, Minus } from "lucide-react";
+import { CheckCircle2, Circle, SkipForward, Play, Plus, Bell, Minus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import {
@@ -27,6 +27,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api";
 import { useCreateTask, useReorderTasks } from "@/hooks/useTasks";
+import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { pluralizeYears } from "@/lib/utils";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
@@ -94,12 +95,14 @@ function Item({
   isCompleting,
   dragHandleProps,
   onItemClick,
+  onCompleteEvent,
 }: {
   item: DashboardItem;
   onComplete: (item: DashboardItem) => void;
   isCompleting?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   onItemClick?: (item: DashboardItem) => void;
+  onCompleteEvent?: (item: DashboardItem) => void;
 }) {
   const { title, is_done: isDone, is_overdue: isOverdue, time, kind } = item;
   const categoryName = item.category_name ?? null;
@@ -122,7 +125,18 @@ function Item({
     >
       {/* Checkbox / icon */}
       <div className="shrink-0" onClick={isClickable ? (e) => e.stopPropagation() : undefined}>
-        {kind === "event" ? (
+        {kind === "event" && item.meta?.completion_mode === "manual" && onCompleteEvent ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onCompleteEvent(item); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="w-5 h-5 flex items-center justify-center touch-manipulation"
+          >
+            {isDone
+              ? <CheckCircle2 size={16} className="text-emerald-500" />
+              : <Circle size={16} className="text-slate-400 hover:text-indigo-500 transition-colors" />
+            }
+          </button>
+        ) : kind === "event" ? (
           <div className="w-5 h-5 flex items-center justify-center">
             <span className="text-[14px]">📅</span>
           </div>
@@ -525,6 +539,18 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const qc = useQueryClient();
   const { mutate: incrementHabit } = useIncrementHabitToday();
   const { mutate: decrementHabit } = useDecrementHabitToday();
+  const { mutate: completeEvent } = useCompleteEvent();
+  const { mutate: uncompleteEvent } = useUncompleteEvent();
+
+  function handleCompleteEvent(item: DashboardItem) {
+    const occurrenceId = item.meta?.occurrence_id as number | undefined;
+    if (!occurrenceId) return;
+    if (item.is_done) {
+      uncompleteEvent(occurrenceId);
+    } else {
+      completeEvent(occurrenceId);
+    }
+  }
 
   const { mutate: skipOp } = useMutation({
     mutationFn: (occurrenceId: number) =>
@@ -915,7 +941,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               key: "events",
               label: "События",
               content: eventItems.map((item) => (
-                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} onItemClick={setDetailItem} />
+                <Item key={`${item.kind}-${item.id}`} item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} onItemClick={setDetailItem} onCompleteEvent={handleCompleteEvent} />
               )),
             });
           }
