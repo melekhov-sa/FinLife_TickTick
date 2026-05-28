@@ -148,6 +148,27 @@ export interface ShoppingItem {
   sort_order: number;
 }
 
+export interface ExpiringDoc {
+  id: number;
+  title: string;
+  doc_type: string | null;
+  expiry_date: string;
+  days_left: number;
+}
+
+export interface Document {
+  id: number;
+  title: string;
+  doc_type: string | null;
+  issued_date: string | null;
+  expiry_date: string;
+  notify_days_before: number | null;
+  note: string | null;
+  is_archived: boolean;
+  days_until_expiry: number;
+  is_expired: boolean;
+}
+
 export interface DashboardData {
   today: TodayBlock;
   upcoming_payments: UpcomingPayment[];
@@ -159,6 +180,7 @@ export interface DashboardData {
   efficiency: EfficiencyBlock | null;
   week_events: WeekEvent[];
   expiring_subs: ExpiringSub[];
+  expiring_docs: ExpiringDoc[];
   shopping_list_id: number | null;
   shopping_items: ShoppingItem[];
 }

@@ -75,7 +75,7 @@ export default function DashboardPage() {
                 )}
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <WeekEventsCard events={data.week_events} />
-                <ExpiringSubsCard subs={data.expiring_subs} />
+                <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               </div>
             </div>
 
@@ -94,7 +94,7 @@ export default function DashboardPage() {
               )}
               <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />
-              <ExpiringSubsCard subs={data.expiring_subs} />
+              <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               <DigestCard />
               <ActivityFeed feed={data.feed} />
               <ProgressBlock

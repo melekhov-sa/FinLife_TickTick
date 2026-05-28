@@ -1167,6 +1167,31 @@ class SubscriptionNotificationLog(Base):
 
 
 # ============================================================================
+# Documents
+# ============================================================================
+
+
+class DocumentModel(Base):
+    """Personal documents with expiry tracking (passport, visa, driver license, etc.)"""
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    doc_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    issued_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    expiry_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    notify_days_before: Mapped[int | None] = mapped_column(Integer, nullable=True, server_default="30")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ============================================================================
 # XP / Gamification
 # ============================================================================
 

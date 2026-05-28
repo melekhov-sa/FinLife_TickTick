@@ -179,6 +179,18 @@ class ShoppingItem(BaseModel):
     sort_order: int
 
 
+class ExpiringDoc(BaseModel):
+    id: int
+    title: str
+    doc_type: str | None
+    expiry_date: date
+    days_left: int
+
+    @field_serializer("expiry_date")
+    def serialize_date(self, v: date) -> str:
+        return v.isoformat()
+
+
 class DashboardResponse(BaseModel):
     today: TodayBlock
     upcoming_payments: list[UpcomingPayment]
@@ -190,6 +202,7 @@ class DashboardResponse(BaseModel):
     efficiency: EfficiencyBlock | None
     week_events: list[WeekEvent]
     expiring_subs: list[ExpiringSub]
+    expiring_docs: list[ExpiringDoc] = []
     shopping_list_id: int | None = None
     shopping_items: list[ShoppingItem] = []
 
@@ -369,6 +382,35 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
     except Exception:
         expiring_subs = []
 
+    # ── Expiring documents ─────────────────────────────────────────────────────
+    expiring_docs: list[ExpiringDoc] = []
+    try:
+        from app.infrastructure.db.models import DocumentModel
+        doc_horizon = today + timedelta(days=60)
+        doc_rows = (
+            db.query(DocumentModel)
+            .filter(
+                DocumentModel.account_id == user_id,
+                DocumentModel.is_archived == False,  # noqa: E712
+                DocumentModel.expiry_date <= doc_horizon,
+            )
+            .order_by(DocumentModel.expiry_date.asc())
+            .limit(10)
+            .all()
+        )
+        expiring_docs = [
+            ExpiringDoc(
+                id=d.id,
+                title=d.title,
+                doc_type=d.doc_type,
+                expiry_date=d.expiry_date,
+                days_left=(d.expiry_date - today).days,
+            )
+            for d in doc_rows
+        ]
+    except Exception:
+        expiring_docs = []
+
     # ── Assemble response ──────────────────────────────────────────────────────
 
     def _to_item(d: dict) -> DashboardItem:
@@ -483,6 +525,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
         efficiency=efficiency_block,
         week_events=week_events,
         expiring_subs=expiring_subs,
+        expiring_docs=expiring_docs,
         shopping_list_id=shopping_list_id,
         shopping_items=shopping_items,
     )
