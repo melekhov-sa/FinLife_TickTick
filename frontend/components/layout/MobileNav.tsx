@@ -26,7 +26,7 @@ export function MobileNav({
 
   const isActive = (href: string) => {
     if (href === "/events") return !!(pathname?.startsWith("/events") || pathname?.startsWith("/event-templates"));
-    if (href === "/money") return !!(pathname?.startsWith("/money") || pathname?.startsWith("/wallets") || pathname?.startsWith("/subscriptions") || pathname?.startsWith("/categories") || pathname?.startsWith("/goals"));
+    if (href === "/money") return !!(pathname?.startsWith("/money") || pathname?.startsWith("/wallets") || pathname?.startsWith("/categories") || pathname?.startsWith("/goals"));
     return pathname === href || pathname?.startsWith(href + "/");
   };
 

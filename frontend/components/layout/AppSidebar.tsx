@@ -13,7 +13,8 @@ import {
   CalendarDays,
   BarChart3,
   TrendingUp,
-  FileBadge2,
+  Layers,
+  UtensilsCrossed,
   ChevronsLeft,
   ChevronsRight,
   type LucideIcon,
@@ -42,7 +43,8 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "budget", label: "Бюджет",  href: "/budget", icon: PieChart      },
   { id: "habits",    label: "Привычки", href: "/habits",    icon: Heart          },
   { id: "lists",     label: "Списки",   href: "/lists",     icon: ListChecks     },
-  { id: "documents", label: "Документы", href: "/documents", icon: FileBadge2    },
+  { id: "trackers",  label: "Трекеры", href: "/trackers",   icon: Layers           },
+  { id: "meal-plan", label: "Меню",    href: "/meal-plan", icon: UtensilsCrossed  },
   { id: "progress",   label: "Прогресс",   href: "/progress",  icon: TrendingUp },
   { id: "digest",    label: "Итоги",      href: "/digest",    icon: Sparkles   },
   { id: "analytics", label: "Аналитика", href: "/analytics", icon: BarChart3  },
@@ -56,7 +58,6 @@ function isActive(href: string, pathname: string | null): boolean {
     return (
       pathname.startsWith("/money") ||
       pathname.startsWith("/wallets") ||
-      pathname.startsWith("/subscriptions") ||
       pathname.startsWith("/categories") ||
       pathname.startsWith("/goals")
     );

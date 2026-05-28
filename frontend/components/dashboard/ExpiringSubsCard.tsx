@@ -84,10 +84,10 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05] flex gap-3">
-        <a href="/subscriptions" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/trackers?tab=subscriptions" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Подписки →
         </a>
-        <a href="/documents" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/trackers?tab=documents" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
           Документы →
         </a>
       </div>

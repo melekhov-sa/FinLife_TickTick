@@ -37,7 +37,7 @@ function getNotifMeta(n: NotificationItem) {
 
   let href: string | null = null;
   if (rule_code === "TASK_OVERDUE")              href = "/tasks";
-  else if (rule_code.startsWith("SUB_MEMBER"))   href = "/subscriptions";
+  else if (rule_code.startsWith("SUB_MEMBER"))   href = "/trackers?tab=subscriptions";
   else if (rule_code === "PAYMENT_DUE_TOMORROW") href = "/money";
 
   return { Icon, iconColor, iconBg, leftBar, href };

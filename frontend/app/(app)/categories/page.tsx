@@ -351,19 +351,17 @@ function AddCategoryForm({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 const MONEY_TABS = [
-  { id: "/money",         label: "Операции" },
-  { id: "/wallets",       label: "Кошельки" },
-  { id: "/subscriptions", label: "Подписки" },
-  { id: "/categories",    label: "Категории" },
-  { id: "/goals",         label: "Цели" },
+  { id: "/money",      label: "Операции" },
+  { id: "/wallets",    label: "Кошельки" },
+  { id: "/categories", label: "Категории" },
+  { id: "/goals",      label: "Цели" },
 ];
 
 function getMoneyTab(pathname: string | null): string {
   if (!pathname) return "/money";
-  if (pathname.startsWith("/wallets"))       return "/wallets";
-  if (pathname.startsWith("/subscriptions")) return "/subscriptions";
-  if (pathname.startsWith("/categories"))    return "/categories";
-  if (pathname.startsWith("/goals"))         return "/goals";
+  if (pathname.startsWith("/wallets"))    return "/wallets";
+  if (pathname.startsWith("/categories")) return "/categories";
+  if (pathname.startsWith("/goals"))      return "/goals";
   return "/money";
 }
 

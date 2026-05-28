@@ -1192,6 +1192,76 @@ class DocumentModel(Base):
 
 
 # ============================================================================
+# Maintenance
+# ============================================================================
+
+
+class MaintenanceItemModel(Base):
+    """Maintenance tracker: recurring tasks with rolling interval from last completion."""
+    __tablename__ = "maintenance_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interval_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    last_done_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    last_done_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notify_days_before: Mapped[int | None] = mapped_column(Integer, nullable=True, server_default="3")
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ============================================================================
+# Body Metrics
+# ============================================================================
+
+
+class BodyMetricModel(Base):
+    """Body metrics tracker: weight, blood pressure, pulse."""
+    __tablename__ = "body_metrics"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    metric_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    value2: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    recorded_at: Mapped[date_type] = mapped_column(Date, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ============================================================================
+# Meal Plan
+# ============================================================================
+
+
+class MealPlanEntryModel(Base):
+    """Weekly meal plan entries: one row per (account, week, day, slot)."""
+    __tablename__ = "meal_plan_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    week_start: Mapped[date_type] = mapped_column(Date, nullable=False)
+    day_of_week: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    meal_slot: Mapped[str] = mapped_column(String(20), nullable=False)
+    dish_name: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ============================================================================
 # XP / Gamification
 # ============================================================================
 
