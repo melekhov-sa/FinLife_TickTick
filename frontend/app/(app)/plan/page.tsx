@@ -30,8 +30,9 @@ import { DayListModal } from "@/components/modals/DayListModal";
 import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
-import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
 import { api } from "@/lib/api";
+import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -318,6 +319,7 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
 function EntryRow({
   entry,
   onComplete,
+  onCompleteEvent,
   onReschedule,
   onExecuteOp,
   onSkipOp,
@@ -329,6 +331,7 @@ function EntryRow({
 }: {
   entry: PlanEntry;
   onComplete: (entry: PlanEntry) => void;
+  onCompleteEvent: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
@@ -386,6 +389,15 @@ function EntryRow({
             className="w-[16px] h-[16px] rounded-full border-[1.5px] border-amber-300 dark:border-amber-400/50 shrink-0 transition-all hover:bg-amber-50 dark:hover:bg-amber-400/10 hover:border-amber-400 hover:scale-110"
             title="Выполнить операцию"
           />
+        ) : entry.kind === "event" && entry.meta.completion_mode === "manual" ? (
+          <button
+            onClick={() => onCompleteEvent(entry)}
+            className="w-[16px] h-[16px] shrink-0 transition-colors"
+            style={{ color: entry.is_done ? "var(--color-emerald-500, #10b981)" : "var(--t-faint)" }}
+            title={entry.is_done ? "Отменить выполнение" : "Отметить как выполненное"}
+          >
+            {entry.is_done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+          </button>
         ) : entry.kind === "event" ? (
           <div className="w-[16px] h-[16px] shrink-0" aria-hidden="true" />
         ) : (
@@ -490,6 +502,7 @@ function EntryGroupHeader({ label }: { label: string }) {
 function DayGroupCard({
   group,
   onComplete,
+  onCompleteEvent,
   onReschedule,
   onExecuteOp,
   onSkipOp,
@@ -502,6 +515,7 @@ function DayGroupCard({
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
+  onCompleteEvent: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
@@ -666,7 +680,7 @@ function DayGroupCard({
         <div key={g.type}>
           {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -677,6 +691,7 @@ function DayGroupCard({
 function DoneTodayBlock({
   entries,
   onComplete,
+  onCompleteEvent,
   onReschedule,
   onExecuteOp,
   onSkipOp,
@@ -688,6 +703,7 @@ function DoneTodayBlock({
 }: {
   entries: PlanEntry[];
   onComplete: (entry: PlanEntry) => void;
+  onCompleteEvent: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
@@ -719,7 +735,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       )}
@@ -870,6 +886,9 @@ export default function PlanPage() {
     },
   });
 
+  const { mutate: completeEvent } = useCompleteEvent();
+  const { mutate: uncompleteEvent } = useUncompleteEvent();
+
   const [detailEntry, setDetailEntry] = useState<PlanEntry | null>(null);
 
   function handleSkipOp(entry: PlanEntry) {
@@ -892,6 +911,16 @@ export default function PlanPage() {
     if (skipEventOccPending) return;
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipEventOcc(occurrenceId);
+  }
+
+  function handleCompleteEvent(entry: PlanEntry) {
+    const occurrenceId = entry.meta.occurrence_id as number | undefined;
+    if (!occurrenceId) return;
+    if (entry.is_done) {
+      uncompleteEvent(occurrenceId);
+    } else {
+      completeEvent(occurrenceId);
+    }
   }
 
   const rescheduleMutation = useMutation({
@@ -1329,6 +1358,7 @@ export default function PlanPage() {
             <DoneTodayBlock
               entries={filteredData.done_today}
               onComplete={handleOpenComplete}
+              onCompleteEvent={handleCompleteEvent}
               onReschedule={setRescheduleEntry}
               onExecuteOp={setExecuteEntry}
               onSkipOp={handleSkipOp}
@@ -1355,6 +1385,7 @@ export default function PlanPage() {
                     key={i}
                     group={g}
                     onComplete={handleOpenComplete}
+                    onCompleteEvent={handleCompleteEvent}
                     onReschedule={setRescheduleEntry}
                     onExecuteOp={setExecuteEntry}
                     onSkipOp={handleSkipOp}

@@ -379,7 +379,7 @@ def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map
         "title": ev.title,
         "date": occ.start_date,
         "time": occ.start_time,
-        "is_done": False,
+        "is_done": occ.is_completed,
         "is_overdue": False,
         "status": "CANCELLED" if occ.is_cancelled else "ACTIVE",
         "category_emoji": wc.emoji if wc else None,
@@ -393,6 +393,7 @@ def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map
             "person_age": person_age,
             "is_jubilee": is_jubilee,
             "category_slug": wc.slug if wc else None,
+            "completion_mode": ev.completion_mode,
         },
     }
 

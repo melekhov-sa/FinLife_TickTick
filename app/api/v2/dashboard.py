@@ -152,6 +152,8 @@ class WeekEvent(BaseModel):
     is_today: bool
     person_age: int | None = None
     is_jubilee: bool = False
+    completion_mode: str = "end_of_day"
+    is_completed: bool = False
 
     @field_serializer("start_date")
     def serialize_date(self, v: date) -> str:
@@ -283,6 +285,8 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                     is_today=(occ.start_date == today),
                     person_age=person_age,
                     is_jubilee=is_jubilee,
+                    completion_mode=ev.completion_mode,
+                    is_completed=occ.is_completed,
                 ))
     except Exception:
         week_events = []

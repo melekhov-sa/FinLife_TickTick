@@ -129,6 +129,8 @@ export interface WeekEvent {
   is_today: boolean;
   person_age: number | null;
   is_jubilee: boolean;
+  completion_mode: string;
+  is_completed: boolean;
 }
 
 export interface ExpiringSub {
