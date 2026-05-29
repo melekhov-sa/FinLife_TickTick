@@ -267,6 +267,31 @@ async def lookup(media_type: str, q: str, db: Session = Depends(get_db)):
     return []
 
 
+@router.get("/media/kp-raw/{kp_id}")
+async def kp_raw(kp_id: int, db: Session = Depends(get_db)):
+    """Debug: return raw KP API response to inspect available date fields."""
+    key = get_kinopoisk_key(db)
+    if not key:
+        return {"error": "no_key"}
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(
+                f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}",
+                headers={"X-API-KEY": key},
+            )
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        return {"error": str(e)}
+    # Return only date-related fields to keep it concise
+    keys_of_interest = [
+        "kinopoiskId", "nameRu", "nameEn", "year", "type",
+        "premiereRu", "premiereWorld", "releaseDate",
+        "distributors", "startYear", "endYear",
+    ]
+    return {k: data.get(k) for k in keys_of_interest} | {"_all_keys": list(data.keys())}
+
+
 @router.get("/media/kp-premiere", response_model=KpPremiereResult)
 async def kp_premiere(kp_id: int, db: Session = Depends(get_db)):
     """Fetch Russian and world premiere dates for a Kinopoisk film."""
