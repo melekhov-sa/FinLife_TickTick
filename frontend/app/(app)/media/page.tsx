@@ -3,11 +3,11 @@
 import { useState } from "react";
 import {
   Plus, Star, Pencil, Trash2, BookOpen, Film, Tv, Gamepad2,
-  CalendarPlus, Trophy, Clock, MapPin, RefreshCw,
+  CalendarPlus, Trophy, Clock, MapPin, RefreshCw, RotateCcw,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useMedia, useUpdateMedia, useDeleteMedia, useKpRefresh, type MediaEntry } from "@/hooks/useMedia";
-import { useFootballMatches, type FootballMatch } from "@/hooks/useFootball";
+import { useFootballMatches, useFootballSync, type FootballMatch } from "@/hooks/useFootball";
 import { MediaModal } from "@/components/modals/MediaModal";
 import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -381,6 +381,7 @@ export default function MediaPage() {
   );
 
   const { data: footballMatches, isLoading: footballLoading } = useFootballMatches(!showRecentMatches);
+  const { mutate: syncFootball, isPending: syncing } = useFootballSync();
 
   const { Icon: ActiveIcon } = TABS.find((t) => t.type === activeTab)!;
 
@@ -442,8 +443,9 @@ export default function MediaPage() {
         {/* Football tab content */}
         {isFootball && (
           <div className="max-w-2xl">
-            {/* Recent / Upcoming toggle */}
-            <div className="flex gap-1 mb-5 bg-slate-100 dark:bg-white/[0.04] rounded-xl p-1 w-fit">
+            {/* Recent / Upcoming toggle + sync button */}
+            <div className="flex items-center gap-3 mb-5">
+            <div className="flex gap-1 bg-slate-100 dark:bg-white/[0.04] rounded-xl p-1 w-fit">
               {[
                 { label: "Предстоящие", value: false },
                 { label: "Прошедшие",   value: true  },
@@ -463,6 +465,16 @@ export default function MediaPage() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => syncFootball()}
+              disabled={syncing}
+              title="Синхронизировать матчи с AllSportsAPI"
+              className="w-8 h-8 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.08] disabled:opacity-40"
+              style={{ color: "var(--t-faint)" }}
+            >
+              <RotateCcw size={15} className={syncing ? "animate-spin" : ""} />
+            </button>
+            </div>
 
             {footballLoading && (
               <div className="space-y-3">
@@ -471,14 +483,23 @@ export default function MediaPage() {
             )}
 
             {!footballLoading && (!footballMatches || footballMatches.length === 0) && (
-              <div className="flex flex-col items-center gap-2 py-16 text-center">
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <Trophy size={32} className="text-slate-300 dark:text-white/20" />
                 <p className="text-[14px]" style={{ color: "var(--t-muted)" }}>
                   {showRecentMatches ? "Нет недавних матчей" : "Нет запланированных матчей"}
                 </p>
                 <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
-                  Добавьте API Football ключ в Настройки → API ключи
+                  Если ключ AllSportsAPI добавлен — нажмите синхронизировать
                 </p>
+                <button
+                  onClick={() => syncFootball()}
+                  disabled={syncing}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90 disabled:opacity-50 text-white mt-1"
+                  style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}
+                >
+                  <RotateCcw size={14} className={syncing ? "animate-spin" : ""} />
+                  {syncing ? "Загружаем матчи…" : "Синхронизировать"}
+                </button>
               </div>
             )}
 

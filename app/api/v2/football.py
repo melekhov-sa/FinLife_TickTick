@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
-from app.api.v2.deps import get_user_id
+from app.api.v2.deps import get_user_id, get_current_user
 
 router = APIRouter()
 
@@ -57,3 +57,18 @@ def list_matches(
         ).order_by(FootballMatchModel.match_date.desc()).limit(10)
 
     return q.all()
+
+
+@router.post("/football/sync", status_code=200)
+def sync_matches(request: Request, db: Session = Depends(get_db)):
+    """Manually trigger football fixture refresh (admin only)."""
+    user = get_current_user(request, db)
+    if not user or not user.is_admin:
+        from fastapi import HTTPException
+        raise HTTPException(403, "Admin access required")
+
+    from app.application.football_refresh import refresh_football_matches
+    refresh_football_matches(db)
+    from app.infrastructure.db.models import FootballMatchModel
+    count = db.query(FootballMatchModel).count()
+    return {"ok": True, "total_matches": count}
