@@ -13,12 +13,29 @@ export interface MediaEntry {
   cover_url: string | null;
   note: string | null;
   finished_at: string | null;
+  release_date: string | null;
 }
 
 export interface LookupResult {
   title: string;
   author: string | null;
   cover_url: string | null;
+  kp_id: number | null;
+  year: number | null;
+}
+
+export interface KpPremiereResult {
+  premiere_ru: string | null;
+  premiere_world: string | null;
+}
+
+export function useKpPremiere(kpId: number | null) {
+  return useQuery<KpPremiereResult>({
+    queryKey: ["kp-premiere", kpId],
+    queryFn: () => api.get<KpPremiereResult>(`/api/v2/media/kp-premiere?kp_id=${kpId}`),
+    enabled: kpId !== null,
+    staleTime: 24 * 60 * 60_000,
+  });
 }
 
 export function useMedia(mediaType?: string, status?: string) {

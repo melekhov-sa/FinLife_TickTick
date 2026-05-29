@@ -36,6 +36,19 @@ const TYPE_PLACEHOLDER: Record<MediaType, React.ElementType> = {
   book: BookOpen, movie: Film, series: Tv, game: Gamepad2,
 };
 
+function ReleaseBadge({ dateStr }: { dateStr: string }) {
+  const d = new Date(dateStr + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (d <= today) return null;
+  const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
+  return (
+    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400">
+      Выйдет {label}
+    </span>
+  );
+}
+
 function Stars({ value }: { value: number | null }) {
   if (!value) return null;
   return (
@@ -99,9 +112,13 @@ function MediaCard({
         )}
 
         <div className="flex items-center gap-2 flex-wrap mt-auto">
-          <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full", badge.cls)}>
-            {badge.label}
-          </span>
+          {entry.release_date ? (
+            <ReleaseBadge dateStr={entry.release_date} />
+          ) : (
+            <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full", badge.cls)}>
+              {badge.label}
+            </span>
+          )}
           <Stars value={entry.rating} />
         </div>
 

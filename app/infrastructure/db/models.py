@@ -1259,6 +1259,7 @@ class MediaEntryModel(Base):
     cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     finished_at: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    release_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

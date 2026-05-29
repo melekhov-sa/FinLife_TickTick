@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Search, Star } from "lucide-react";
-import { useCreateMedia, useUpdateMedia, useLookupMedia, type MediaEntry, type LookupResult } from "@/hooks/useMedia";
+import { useCreateMedia, useUpdateMedia, useLookupMedia, useKpPremiere, type MediaEntry, type LookupResult } from "@/hooks/useMedia";
 
 type MediaType = "book" | "movie" | "series" | "game";
 type Status = "want" | "in_progress" | "done";
@@ -54,12 +54,20 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const isEdit = !!entry;
   const [type, setType] = useState<MediaType>((entry?.media_type as MediaType) ?? defaultType);
   const [query, setQuery] = useState(entry?.title ?? "");
-  const [selected, setSelected] = useState<{ title: string; author: string | null; cover_url: string | null } | null>(
+  const [selected, setSelected] = useState<{ title: string; author: string | null; cover_url: string | null; kp_id?: number | null } | null>(
     entry ? { title: entry.title, author: entry.author, cover_url: entry.cover_url } : null,
   );
   const [status, setStatus] = useState<Status>((entry?.status as Status) ?? "want");
   const [rating, setRating] = useState(entry?.rating ?? 0);
   const [note, setNote] = useState(entry?.note ?? "");
+  const [releaseDate, setReleaseDate] = useState(entry?.release_date ?? "");
+
+  const { data: kpPremiere } = useKpPremiere(selected?.kp_id ?? null);
+
+  useEffect(() => {
+    if (kpPremiere?.premiere_ru) setReleaseDate(kpPremiere.premiere_ru);
+    else if (kpPremiere?.premiere_world) setReleaseDate(kpPremiere.premiere_world);
+  }, [kpPremiere]);
 
   const { data: suggestions, isFetching } = useLookupMedia(type, query);
   const { mutate: create, isPending: isCreating } = useCreateMedia();
@@ -71,7 +79,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   }, [type, isEdit]);
 
   function handleSelect(s: LookupResult) {
-    setSelected(s);
+    setSelected({ title: s.title, author: s.author, cover_url: s.cover_url, kp_id: s.kp_id });
     setQuery(s.title);
   }
 
@@ -88,6 +96,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
       status,
       rating: rating || null,
       note: note.trim() || null,
+      release_date: releaseDate || null,
       finished_at: status === "done" ? new Date().toISOString().slice(0, 10) : null,
     };
 
@@ -212,6 +221,24 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
               ))}
             </div>
           </div>
+
+          {(type === "movie" || type === "series") && (
+            <div>
+              <label className="block text-[12px] font-medium mb-1" style={{ color: "var(--t-muted)" }}>
+                Дата выхода
+                {kpPremiere && (releaseDate) && (
+                  <span className="ml-1.5 text-indigo-400">с Кинопоиска</span>
+                )}
+              </label>
+              <input
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-[12px] font-medium mb-1.5" style={{ color: "var(--t-muted)" }}>Оценка</label>

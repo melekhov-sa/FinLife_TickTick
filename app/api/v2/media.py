@@ -14,9 +14,6 @@ from app.config import get_settings
 
 router = APIRouter()
 
-MEDIA_TYPES = {"book", "movie", "series", "game"}
-STATUSES = {"want", "in_progress", "done"}
-
 
 # ── Pydantic schemas ──────────────────────────────────────────────────────────
 
@@ -30,6 +27,7 @@ class MediaEntryOut(BaseModel):
     cover_url: Optional[str]
     note: Optional[str]
     finished_at: Optional[date]
+    release_date: Optional[date]
 
     class Config:
         from_attributes = True
@@ -39,6 +37,13 @@ class LookupResult(BaseModel):
     title: str
     author: Optional[str]
     cover_url: Optional[str]
+    kp_id: Optional[int] = None
+    year: Optional[int] = None
+
+
+class KpPremiereResult(BaseModel):
+    premiere_ru: Optional[date] = None
+    premiere_world: Optional[date] = None
 
 
 class MediaCreate(BaseModel):
@@ -50,6 +55,7 @@ class MediaCreate(BaseModel):
     cover_url: Optional[str] = None
     note: Optional[str] = None
     finished_at: Optional[date] = None
+    release_date: Optional[date] = None
 
 
 class MediaUpdate(BaseModel):
@@ -60,9 +66,10 @@ class MediaUpdate(BaseModel):
     cover_url: Optional[str] = None
     title: Optional[str] = None
     author: Optional[str] = None
+    release_date: Optional[date] = None
 
 
-# ── Cover lookup helpers ──────────────────────────────────────────────────────
+# ── Cover / metadata lookup helpers ──────────────────────────────────────────
 
 async def _lookup_kinopoisk(q: str, media_type: str) -> list[LookupResult]:
     key = get_settings().KINOPOISK_API_KEY
@@ -78,23 +85,29 @@ async def _lookup_kinopoisk(q: str, media_type: str) -> list[LookupResult]:
         return []
 
     results = []
-    kp_type = "TV_SERIES" if media_type == "series" else "FILM"
     for film in data.get("films", [])[:8]:
-        if media_type != "movie" and media_type != "series":
-            continue
         film_type = film.get("type", "")
         if media_type == "series" and film_type not in ("TV_SERIES", "MINI_SERIES", "TV_SHOW"):
             continue
         if media_type == "movie" and film_type not in ("FILM", ""):
             continue
         title = film.get("nameRu") or film.get("nameEn") or ""
-        year = film.get("year", "")
+        year = film.get("year")
+        try:
+            year_int = int(year) if year else None
+        except (ValueError, TypeError):
+            year_int = None
+        label = f"{title} ({year})" if year else title
         results.append(LookupResult(
-            title=f"{title} ({year})" if year else title,
+            title=label,
             author=film.get("genres", [{}])[0].get("genre") if film.get("genres") else None,
             cover_url=film.get("posterUrlPreview") or film.get("posterUrl"),
+            kp_id=film.get("filmId"),
+            year=year_int,
         ))
-    return results[:5]
+        if len(results) >= 5:
+            break
+    return results
 
 
 async def _lookup_books(q: str) -> list[LookupResult]:
@@ -147,7 +160,6 @@ async def _lookup_steam(q: str) -> list[LookupResult]:
 
 @router.get("/media/lookup", response_model=list[LookupResult])
 async def lookup(media_type: str, q: str):
-    """Search external APIs for title suggestions + covers."""
     if media_type in ("movie", "series"):
         return await _lookup_kinopoisk(q, media_type)
     if media_type == "book":
@@ -155,6 +167,35 @@ async def lookup(media_type: str, q: str):
     if media_type == "game":
         return await _lookup_steam(q)
     return []
+
+
+@router.get("/media/kp-premiere", response_model=KpPremiereResult)
+async def kp_premiere(kp_id: int):
+    """Fetch Russian and world premiere dates for a Kinopoisk film."""
+    key = get_settings().KINOPOISK_API_KEY
+    if not key:
+        return KpPremiereResult()
+    url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}"
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(url, headers={"X-API-KEY": key})
+            r.raise_for_status()
+            data = r.json()
+    except Exception:
+        return KpPremiereResult()
+
+    def parse_date(s: Optional[str]) -> Optional[date]:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(s[:10])
+        except ValueError:
+            return None
+
+    return KpPremiereResult(
+        premiere_ru=parse_date(data.get("premiereRu")),
+        premiere_world=parse_date(data.get("premiereWorld")),
+    )
 
 
 @router.get("/media", response_model=list[MediaEntryOut])
@@ -190,6 +231,7 @@ def create_media(body: MediaCreate, request: Request, db: Session = Depends(get_
         cover_url=body.cover_url,
         note=body.note,
         finished_at=body.finished_at,
+        release_date=body.release_date,
     )
     db.add(entry)
     db.commit()
