@@ -12,7 +12,10 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_current_user
 from app.infrastructure.db.models import User
-from app.application.app_config import get_config, set_openai_key, get_openai_key, OPENAI_KEY
+from app.application.app_config import (
+    get_config, set_openai_key, get_openai_key, OPENAI_KEY,
+    set_kinopoisk_key, get_kinopoisk_key, KINOPOISK_KEY,
+)
 from app.infrastructure.crypto import decrypt
 from app.config import get_settings
 
@@ -119,4 +122,57 @@ def test_openai_connection(request: Request, db: Session = Depends(get_db)):
         ok=result["ok"],
         error=result.get("error"),
         model_used=result.get("model"),
+    )
+
+
+# ── Kinopoisk config ─────────────────────────────────────────────────────────
+
+class KinopoiskConfigResponse(BaseModel):
+    has_key: bool
+    source: str  # 'db' | 'env' | 'none'
+    masked: str | None
+
+
+class PatchKinopoiskKeyRequest(BaseModel):
+    api_key: str
+
+
+def _get_kp_source(db: Session) -> tuple[str | None, str]:
+    db_val = get_config(db, KINOPOISK_KEY)
+    if db_val:
+        from app.infrastructure.crypto import decrypt
+        plain = decrypt(db_val)
+        if plain:
+            return plain, "db"
+    env_val = get_settings().KINOPOISK_API_KEY
+    if env_val:
+        return env_val, "env"
+    return None, "none"
+
+
+@router.get("/kinopoisk-config", response_model=KinopoiskConfigResponse)
+def get_kinopoisk_config(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    raw, source = _get_kp_source(db)
+    return KinopoiskConfigResponse(
+        has_key=raw is not None,
+        source=source,
+        masked=_mask_key(raw) if raw else None,
+    )
+
+
+@router.patch("/kinopoisk-config", response_model=KinopoiskConfigResponse)
+def update_kinopoisk_config(
+    body: PatchKinopoiskKeyRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request, db)
+    new_val = body.api_key.strip() if body.api_key else None
+    set_kinopoisk_key(db, new_val if new_val else None)
+    raw, source = _get_kp_source(db)
+    return KinopoiskConfigResponse(
+        has_key=raw is not None,
+        source=source,
+        masked=_mask_key(raw) if raw else None,
     )

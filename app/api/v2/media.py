@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.config import get_settings
+from app.application.app_config import get_kinopoisk_key
 
 router = APIRouter()
 
@@ -71,8 +71,7 @@ class MediaUpdate(BaseModel):
 
 # ── Cover / metadata lookup helpers ──────────────────────────────────────────
 
-async def _lookup_kinopoisk(q: str, media_type: str) -> list[LookupResult]:
-    key = get_settings().KINOPOISK_API_KEY
+async def _lookup_kinopoisk(q: str, media_type: str, key: str) -> list[LookupResult]:
     if not key:
         return []
     url = f"https://kinopoiskapiunofficial.tech/api/v2.1/films/search-by-keyword?keyword={quote(q)}&page=1"
@@ -159,9 +158,10 @@ async def _lookup_steam(q: str) -> list[LookupResult]:
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/media/lookup", response_model=list[LookupResult])
-async def lookup(media_type: str, q: str):
+async def lookup(media_type: str, q: str, db: Session = Depends(get_db)):
     if media_type in ("movie", "series"):
-        return await _lookup_kinopoisk(q, media_type)
+        key = get_kinopoisk_key(db)
+        return await _lookup_kinopoisk(q, media_type, key or "")
     if media_type == "book":
         return await _lookup_books(q)
     if media_type == "game":
@@ -170,9 +170,9 @@ async def lookup(media_type: str, q: str):
 
 
 @router.get("/media/kp-premiere", response_model=KpPremiereResult)
-async def kp_premiere(kp_id: int):
+async def kp_premiere(kp_id: int, db: Session = Depends(get_db)):
     """Fetch Russian and world premiere dates for a Kinopoisk film."""
-    key = get_settings().KINOPOISK_API_KEY
+    key = get_kinopoisk_key(db)
     if not key:
         return KpPremiereResult()
     url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}"

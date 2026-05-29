@@ -9,12 +9,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, Info,
-  Trash2, Wifi, Save, Eye, EyeOff,
+  Trash2, Wifi, Save, Eye, EyeOff, Film,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "next-themes";
 
 interface OpenAIConfig {
+  has_key: boolean;
+  source: "db" | "env" | "none";
+  masked: string | null;
+}
+
+interface KinopoiskConfig {
   has_key: boolean;
   source: "db" | "env" | "none";
   masked: string | null;
@@ -38,6 +44,10 @@ export default function AISettingsPage() {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [flash, setFlash] = useState<{ msg: string; ok: boolean } | null>(null);
 
+  const [kpKeyInput, setKpKeyInput] = useState("");
+  const [showKpKey, setShowKpKey] = useState(false);
+  const [kpFlash, setKpFlash] = useState<{ msg: string; ok: boolean } | null>(null);
+
   const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const cardBg = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
   const inputCls = clsx(
@@ -52,6 +62,42 @@ export default function AISettingsPage() {
     queryFn: () => api.get("/api/v2/admin/openai-config"),
     enabled: !!me?.is_admin,
     staleTime: 30_000,
+  });
+
+  const { data: kpConfig, isLoading: kpConfigLoading } = useQuery<KinopoiskConfig>({
+    queryKey: ["admin-kinopoisk-config"],
+    queryFn: () => api.get("/api/v2/admin/kinopoisk-config"),
+    enabled: !!me?.is_admin,
+    staleTime: 30_000,
+  });
+
+  const kpSaveMut = useMutation({
+    mutationFn: (key: string) =>
+      api.patch<KinopoiskConfig>("/api/v2/admin/kinopoisk-config", { api_key: key }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-kinopoisk-config"] });
+      setKpKeyInput("");
+      setKpFlash({ msg: "Ключ сохранён", ok: true });
+      setTimeout(() => setKpFlash(null), 3000);
+    },
+    onError: (e: any) => {
+      setKpFlash({ msg: e?.message || "Ошибка сохранения", ok: false });
+      setTimeout(() => setKpFlash(null), 4000);
+    },
+  });
+
+  const kpDeleteMut = useMutation({
+    mutationFn: () =>
+      api.patch<KinopoiskConfig>("/api/v2/admin/kinopoisk-config", { api_key: "" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-kinopoisk-config"] });
+      setKpFlash({ msg: "Ключ из БД удалён", ok: true });
+      setTimeout(() => setKpFlash(null), 4000);
+    },
+    onError: (e: any) => {
+      setKpFlash({ msg: e?.message || "Ошибка удаления", ok: false });
+      setTimeout(() => setKpFlash(null), 4000);
+    },
   });
 
   const saveMut = useMutation({
@@ -99,7 +145,7 @@ export default function AISettingsPage() {
   if (meLoading || !me) {
     return (
       <>
-        <PageHeader title="Настройки AI" density="compact" />
+        <PageHeader title="API ключи" density="compact" />
         <main className="flex-1 p-6">
           <div className="max-w-lg animate-pulse space-y-4">
             {[1, 2, 3].map((i) => (
@@ -143,7 +189,7 @@ export default function AISettingsPage() {
 
   return (
     <>
-      <PageHeader title="Настройки AI" density="compact" />
+      <PageHeader title="API ключи" density="compact" />
       <main className="flex-1 p-6">
         <div className="max-w-lg space-y-5">
 
@@ -284,7 +330,7 @@ export default function AISettingsPage() {
           </div>
 
           <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
-            Ключ хранится в БД в открытом виде. Используется для генерации AI-комментариев
+            Ключ хранится в БД в зашифрованном виде. Используется для генерации AI-комментариев
             в дайджестах. Получить ключ можно на{" "}
             <a
               href="https://platform.openai.com/api-keys"
@@ -293,6 +339,131 @@ export default function AISettingsPage() {
               className="underline hover:opacity-80"
             >
               platform.openai.com/api-keys
+            </a>
+            .
+          </p>
+
+          {/* ── Kinopoisk ── */}
+          <div
+            className="rounded-xl border p-5 space-y-4"
+            style={{ borderColor: cardBorder, background: cardBg }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500/10">
+                <Film size={16} className="text-orange-400" />
+              </div>
+              <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+                Кинопоиск API ключ
+              </h2>
+            </div>
+
+            {kpConfigLoading ? (
+              <div className="h-10 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+            ) : kpConfig ? (
+              <div
+                className="flex items-start gap-3 px-4 py-3 rounded-lg text-[13px]"
+                style={{
+                  background: kpConfig.source === "none"
+                    ? "rgba(245,158,11,0.1)"
+                    : kpConfig.source === "db"
+                    ? "rgba(52,211,153,0.1)"
+                    : "rgba(96,165,250,0.1)",
+                }}
+              >
+                {kpConfig.source === "none" ? (
+                  <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                ) : kpConfig.source === "db" ? (
+                  <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <Info size={15} className="text-blue-400 shrink-0 mt-0.5" />
+                )}
+                <span style={{
+                  color: kpConfig.source === "none" ? "var(--t-secondary)" : kpConfig.source === "db" ? "#34d399" : "#60a5fa"
+                }}>
+                  {kpConfig.source === "none"
+                    ? "Ключ не настроен. Поиск фильмов/сериалов недоступен."
+                    : kpConfig.source === "env"
+                    ? "Ключ прочитан из .env файла сервера."
+                    : "Ключ настроен через интерфейс. " + kpConfig.masked}
+                </span>
+              </div>
+            ) : null}
+
+            {kpFlash && (
+              <div
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium",
+                  kpFlash.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400",
+                )}
+              >
+                {kpFlash.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                {kpFlash.msg}
+              </div>
+            )}
+
+            <h3
+              className="text-[13px] font-semibold uppercase tracking-wider"
+              style={{ color: "var(--t-faint)" }}
+            >
+              Установить новый ключ
+            </h3>
+
+            <div className="relative">
+              <input
+                type={showKpKey ? "text" : "password"}
+                value={kpKeyInput}
+                onChange={(e) => setKpKeyInput(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className={inputCls}
+                style={{ color: "var(--t-primary)", paddingRight: "2.5rem" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKpKey((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-70 transition-opacity"
+                tabIndex={-1}
+              >
+                {showKpKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => kpSaveMut.mutate(kpKeyInput)}
+                disabled={!kpKeyInput.trim() || kpSaveMut.isPending}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-[#fff] transition-all hover:opacity-90 disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
+              >
+                <Save size={14} />
+                {kpSaveMut.isPending ? "..." : "Сохранить"}
+              </button>
+
+              {kpConfig?.source === "db" && (
+                <button
+                  onClick={() => {
+                    if (confirm("Удалить ключ Кинопоиска из БД?")) kpDeleteMut.mutate();
+                  }}
+                  disabled={kpDeleteMut.isPending}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold border transition-all hover:bg-red-500/10 disabled:opacity-40"
+                  style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+                >
+                  <Trash2 size={14} />
+                  {kpDeleteMut.isPending ? "..." : "Удалить"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
+            Ключ Кинопоиска используется для поиска фильмов и сериалов с обложками, а также
+            для получения дат выхода. Получить ключ можно на{" "}
+            <a
+              href="https://kinopoiskapiunofficial.tech"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:opacity-80"
+            >
+              kinopoiskapiunofficial.tech
             </a>
             .
           </p>

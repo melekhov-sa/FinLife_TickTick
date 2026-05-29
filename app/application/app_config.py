@@ -11,6 +11,7 @@ from app.infrastructure.db.models import AppConfigModel
 from app.infrastructure.crypto import encrypt, decrypt
 
 OPENAI_KEY = "openai_api_key"
+KINOPOISK_KEY = "kinopoisk_api_key"
 
 logger = logging.getLogger(__name__)
 
@@ -53,4 +54,27 @@ def get_openai_key(db: Session) -> str | None:
             logger.warning("Failed to decrypt openai_api_key — falling back to env")
     from app.config import get_settings
     env_val = get_settings().OPENAI_API_KEY
+    return env_val if env_val else None
+
+
+def set_kinopoisk_key(db: Session, plaintext: str | None) -> None:
+    if plaintext:
+        value = encrypt(plaintext)
+    else:
+        value = None
+    set_config(db, KINOPOISK_KEY, value)
+
+
+def get_kinopoisk_key(db: Session) -> str | None:
+    """Return the Kinopoisk API key: DB value first (auto-decrypted), then .env fallback."""
+    db_val = get_config(db, KINOPOISK_KEY)
+    if db_val:
+        try:
+            plain = decrypt(db_val)
+            if plain:
+                return plain
+        except Exception:
+            logger.warning("Failed to decrypt kinopoisk_api_key — falling back to env")
+    from app.config import get_settings
+    env_val = get_settings().KINOPOISK_API_KEY
     return env_val if env_val else None

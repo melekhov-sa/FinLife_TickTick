@@ -346,8 +346,8 @@ export default function SettingsPage() {
                   <Sparkles size={18} style={{ color: "#8b5cf6" }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>AI настройки</p>
-                  <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>OpenAI API ключ, тест соединения</p>
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>API ключи</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "var(--t-faint)" }}>OpenAI, Кинопоиск и другие интеграции</p>
                 </div>
                 <ChevronRight size={16} style={{ color: "var(--t-faint)" }} className="shrink-0" />
               </Link>
