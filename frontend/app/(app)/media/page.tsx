@@ -66,6 +66,17 @@ function Stars({ value }: { value: number | null }) {
   );
 }
 
+function CoverPlaceholder({ Icon }: { Icon: React.ElementType }) {
+  return (
+    <div className="w-14 h-20 rounded-lg flex-shrink-0 flex flex-col items-center justify-center gap-1 bg-slate-100 dark:bg-white/[0.06]">
+      <Icon size={16} className="text-slate-300 dark:text-white/20" />
+      <span className="text-[9px] font-medium text-slate-300 dark:text-white/20 text-center leading-tight px-0.5">
+        Без<br />обложки
+      </span>
+    </div>
+  );
+}
+
 function MediaCard({
   entry,
   mediaType,
@@ -75,19 +86,29 @@ function MediaCard({
   mediaType: MediaType;
   onEdit: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const { mutate: update } = useUpdateMedia();
   const { mutate: remove } = useDeleteMedia();
   const PlaceholderIcon = TYPE_PLACEHOLDER[mediaType];
   const badge = STATUS_BADGE[entry.status as Status];
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const releaseIsFuture = entry.release_date
+    ? new Date(entry.release_date + "T00:00:00") > today
+    : false;
+
   return (
     <div className="group flex gap-3 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.09] rounded-2xl p-3 hover:border-slate-300 dark:hover:border-white/[0.15] transition-colors">
-      {entry.cover_url ? (
-        <img src={entry.cover_url} alt="" className="w-14 h-20 object-cover rounded-lg flex-shrink-0" />
+      {entry.cover_url && !imgError ? (
+        <img
+          src={entry.cover_url}
+          alt=""
+          className="w-14 h-20 object-cover rounded-lg flex-shrink-0"
+          onError={() => setImgError(true)}
+        />
       ) : (
-        <div className="w-14 h-20 rounded-lg flex-shrink-0 flex items-center justify-center bg-slate-100 dark:bg-white/[0.06]">
-          <PlaceholderIcon size={20} className="text-slate-300 dark:text-white/20" />
-        </div>
+        <CoverPlaceholder Icon={PlaceholderIcon} />
       )}
 
       <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -123,9 +144,9 @@ function MediaCard({
         )}
 
         <div className="flex items-center gap-2 flex-wrap mt-auto">
-          {entry.release_date ? (
-            <ReleaseBadge dateStr={entry.release_date} source={entry.release_date_source} />
-          ) : entry.kp_id && entry.status === "want" ? (
+          {releaseIsFuture ? (
+            <ReleaseBadge dateStr={entry.release_date!} source={entry.release_date_source} />
+          ) : !entry.release_date && entry.kp_id && entry.status === "want" ? (
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/[0.12] text-orange-600 dark:text-orange-400">
               Скоро выйдет
             </span>
