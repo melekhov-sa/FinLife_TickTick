@@ -1240,6 +1240,32 @@ class BodyMetricModel(Base):
 
 
 # ============================================================================
+# Media Log
+# ============================================================================
+
+
+class MediaEntryModel(Base):
+    """Media log: books, movies, series, games with status and rating."""
+    __tablename__ = "media_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    media_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    author: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="want")
+    rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    finished_at: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ============================================================================
 # Meal Plan
 # ============================================================================
 

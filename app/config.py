@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     # Future-proof: Anthropic key placeholder (not used yet)
     ANTHROPIC_API_KEY: str = ""
 
+    # Media log cover lookup
+    KINOPOISK_API_KEY: str = ""  # kinopoiskapiunofficial.tech — movies & series covers
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
