@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Star, Pencil, Trash2, BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
+import { Plus, Star, Pencil, Trash2, BookOpen, Film, Tv, Gamepad2, CalendarPlus } from "lucide-react";
 import { clsx } from "clsx";
 import { useMedia, useUpdateMedia, useDeleteMedia, type MediaEntry } from "@/hooks/useMedia";
 import { MediaModal } from "@/components/modals/MediaModal";
+import { CreateEventModal } from "@/components/modals/CreateEventModal";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -81,10 +82,12 @@ function MediaCard({
   entry,
   mediaType,
   onEdit,
+  onCreateEvent,
 }: {
   entry: MediaEntry;
   mediaType: MediaType;
   onEdit: () => void;
+  onCreateEvent: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const { mutate: update } = useUpdateMedia();
@@ -117,6 +120,14 @@ function MediaCard({
             {entry.title}
           </p>
           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={onCreateEvent}
+              title="Идём в кино"
+              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-500 transition-colors"
+              style={{ color: "var(--t-faint)" }}
+            >
+              <CalendarPlus size={11} />
+            </button>
             <button
               onClick={onEdit}
               className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors"
@@ -187,6 +198,7 @@ export default function MediaPage() {
   const [activeStatus, setActiveStatus] = useState<Status | "all">("all");
   const [editEntry, setEditEntry] = useState<MediaEntry | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [cinemaEntry, setCinemaEntry] = useState<MediaEntry | null>(null);
 
   const { data: entries, isLoading } = useMedia(activeType, activeStatus === "all" ? undefined : activeStatus);
 
@@ -199,6 +211,13 @@ export default function MediaPage() {
       )}
       {editEntry && (
         <MediaModal entry={editEntry} onClose={() => setEditEntry(null)} />
+      )}
+      {cinemaEntry && (
+        <CreateEventModal
+          initialTitle={`Идём в кино на «${cinemaEntry.title}»`}
+          initialDate={cinemaEntry.release_date && new Date(cinemaEntry.release_date + "T00:00:00") > new Date() ? cinemaEntry.release_date : ""}
+          onClose={() => setCinemaEntry(null)}
+        />
       )}
 
       <PageHeader
@@ -266,7 +285,7 @@ export default function MediaPage() {
         {!isLoading && entries && entries.length > 0 && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {entries.map((e) => (
-              <MediaCard key={e.id} entry={e} mediaType={activeType} onEdit={() => setEditEntry(e)} />
+              <MediaCard key={e.id} entry={e} mediaType={activeType} onEdit={() => setEditEntry(e)} onCreateEvent={() => setCinemaEntry(e)} />
             ))}
           </div>
         )}

@@ -21,6 +21,7 @@ import {
 interface Props {
   onClose: () => void;
   initialDate?: string;
+  initialTitle?: string;
 }
 
 const inputCls =
@@ -74,12 +75,12 @@ type StagedReminder =
   | { mode: "offset"; offset_minutes: number; label: string }
   | { mode: "fixed_time"; fixed_time: string; label: string };
 
-export function CreateEventModal({ onClose, initialDate }: Props) {
+export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) {
   const qc = useQueryClient();
   const { toast } = useToast();
 
   // ── Core fields ──────────────────────────────────────────────
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle ?? "");
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [startDate, setStartDate] = useState(initialDate ?? "");
 
