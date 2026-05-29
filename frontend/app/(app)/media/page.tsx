@@ -208,6 +208,19 @@ function CoverPlaceholder({ Icon }: { Icon: React.ElementType }) {
   );
 }
 
+function ReleasedBadge({ dateStr }: { dateStr: string }) {
+  const d = new Date(dateStr + "T00:00:00");
+  const label = d.toLocaleDateString("ru-RU", {
+    day: "numeric", month: "short",
+    year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+  });
+  return (
+    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400">
+      Вышел {label}
+    </span>
+  );
+}
+
 function NextEpisodeBadge({ dateStr, label }: { dateStr: string; label: string | null }) {
   const d = new Date(dateStr + "T00:00:00");
   const today = new Date();
@@ -317,19 +330,20 @@ function MediaCard({
         )}
 
         <div className="flex items-center gap-2 flex-wrap mt-auto">
-          {/* Release date badge */}
-          {releaseIsFuture ? (
+          <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full", badge.cls)}>
+            {badge.label}
+          </span>
+          {releaseIsFuture && (
             <ReleaseBadge dateStr={entry.release_date!} source={entry.release_date_source} />
-          ) : !entry.release_date && entry.kp_id && entry.status === "want" && mediaType === "movie" ? (
+          )}
+          {!releaseIsFuture && entry.release_date && (mediaType === "movie" || mediaType === "series") && (
+            <ReleasedBadge dateStr={entry.release_date} />
+          )}
+          {!releaseIsFuture && !entry.release_date && entry.kp_id && entry.status === "want" && (mediaType === "movie" || mediaType === "series") && (
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/[0.12] text-orange-600 dark:text-orange-400">
               Скоро выйдет
             </span>
-          ) : (
-            <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full", badge.cls)}>
-              {badge.label}
-            </span>
           )}
-          {/* Next episode badge (series) */}
           {nextEpIsFuture && (
             <NextEpisodeBadge dateStr={entry.next_episode_date!} label={entry.next_episode_label} />
           )}
@@ -358,6 +372,21 @@ function MediaCard({
       </div>
     </div>
   );
+}
+
+function sortByRelease(entries: MediaEntry[]): MediaEntry[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return [...entries].sort((a, b) => {
+    const ra = a.release_date ? new Date(a.release_date + "T00:00:00") : null;
+    const rb = b.release_date ? new Date(b.release_date + "T00:00:00") : null;
+    const au = ra && ra > today;
+    const bu = rb && rb > today;
+    if (au && bu) return ra!.getTime() - rb!.getTime();
+    if (au) return -1;
+    if (bu) return 1;
+    return 0;
+  });
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -551,7 +580,7 @@ export default function MediaPage() {
 
             {!mediaLoading && entries && entries.length > 0 && (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {entries.map((e) => (
+                {((activeTab === "movie" || activeTab === "series") ? sortByRelease(entries) : entries).map((e) => (
                   <MediaCard
                     key={e.id}
                     entry={e}
