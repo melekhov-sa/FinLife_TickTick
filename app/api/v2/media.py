@@ -31,6 +31,8 @@ class MediaEntryOut(BaseModel):
     release_date_source: Optional[str] = None
     kp_id: Optional[int] = None
     episodes_count: Optional[int] = None
+    next_episode_date: Optional[date] = None
+    next_episode_label: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -61,6 +63,8 @@ class MediaCreate(BaseModel):
     release_date: Optional[date] = None
     release_date_source: Optional[str] = None
     kp_id: Optional[int] = None
+    next_episode_date: Optional[date] = None
+    next_episode_label: Optional[str] = None
 
 
 class MediaUpdate(BaseModel):
@@ -73,6 +77,80 @@ class MediaUpdate(BaseModel):
     author: Optional[str] = None
     release_date: Optional[date] = None
     release_date_source: Optional[str] = None
+    next_episode_date: Optional[date] = None
+    next_episode_label: Optional[str] = None
+
+
+# ── KP data helpers ───────────────────────────────────────────────────────────
+
+def _parse_date(s) -> Optional[date]:
+    if not s:
+        return None
+    try:
+        return date.fromisoformat(str(s)[:10])
+    except ValueError:
+        return None
+
+
+def _fetch_kp_data_sync(kp_id: int, key: str, media_type: str) -> dict:
+    """
+    Fetch premiere dates and next episode date from KP for a movie/series.
+    Returns dict with keys: release_date, release_date_source,
+    next_episode_date, next_episode_label.
+    All values may be None.
+    """
+    result: dict = {
+        "release_date": None,
+        "release_date_source": None,
+        "next_episode_date": None,
+        "next_episode_label": None,
+    }
+    try:
+        with httpx.Client(timeout=5) as client:
+            r = client.get(
+                f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}",
+                headers={"X-API-KEY": key},
+            )
+            r.raise_for_status()
+            data = r.json()
+    except Exception:
+        return result
+
+    premiere_ru = _parse_date(data.get("premiereRu"))
+    premiere_world = _parse_date(data.get("premiereWorld"))
+    if premiere_ru:
+        result["release_date"] = premiere_ru
+        result["release_date_source"] = "ru"
+    elif premiere_world:
+        result["release_date"] = premiere_world
+        result["release_date_source"] = "world"
+
+    if media_type == "series":
+        try:
+            with httpx.Client(timeout=5) as client:
+                r = client.get(
+                    f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}/seasons",
+                    headers={"X-API-KEY": key},
+                )
+                r.raise_for_status()
+                seasons = r.json().get("items", [])
+        except Exception:
+            seasons = []
+
+        today = date.today()
+        next_ep: Optional[tuple[date, str]] = None
+        for season in seasons:
+            for ep in season.get("episodes") or []:
+                ep_date = _parse_date(ep.get("releaseDate"))
+                if ep_date and ep_date > today:
+                    label = f"S{season['number']}E{ep['episodeNumber']}"
+                    if next_ep is None or ep_date < next_ep[0]:
+                        next_ep = (ep_date, label)
+        if next_ep:
+            result["next_episode_date"] = next_ep[0]
+            result["next_episode_label"] = next_ep[1]
+
+    return result
 
 
 # ── Cover / metadata lookup helpers ──────────────────────────────────────────
@@ -227,6 +305,24 @@ def create_media(body: MediaCreate, request: Request, db: Session = Depends(get_
     from app.infrastructure.db.models import MediaEntryModel
     user_id = get_user_id(request, db)
 
+    release_date = body.release_date
+    release_date_source = body.release_date_source
+    next_episode_date = body.next_episode_date
+    next_episode_label = body.next_episode_label
+
+    # Auto-fetch from KP when kp_id is provided — handles race condition where
+    # the frontend hasn't received premiere data yet before the user submits.
+    if body.kp_id and body.media_type in ("movie", "series"):
+        key = get_kinopoisk_key(db)
+        if key:
+            kp = _fetch_kp_data_sync(body.kp_id, key, body.media_type)
+            if not release_date and kp["release_date"]:
+                release_date = kp["release_date"]
+                release_date_source = kp["release_date_source"]
+            if not next_episode_date and kp["next_episode_date"]:
+                next_episode_date = kp["next_episode_date"]
+                next_episode_label = kp["next_episode_label"]
+
     entry = MediaEntryModel(
         account_id=user_id,
         media_type=body.media_type,
@@ -237,9 +333,11 @@ def create_media(body: MediaCreate, request: Request, db: Session = Depends(get_
         cover_url=body.cover_url,
         note=body.note,
         finished_at=body.finished_at,
-        release_date=body.release_date,
-        release_date_source=body.release_date_source,
+        release_date=release_date,
+        release_date_source=release_date_source,
         kp_id=body.kp_id,
+        next_episode_date=next_episode_date,
+        next_episode_label=next_episode_label,
     )
     db.add(entry)
     db.commit()
@@ -260,6 +358,39 @@ def update_media(entry_id: int, body: MediaUpdate, request: Request, db: Session
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(entry, field, value)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.post("/media/{entry_id}/kp-refresh", response_model=MediaEntryOut)
+def kp_refresh(entry_id: int, request: Request, db: Session = Depends(get_db)):
+    """Re-fetch premiere/episode data from Kinopoisk and update the entry."""
+    from app.infrastructure.db.models import MediaEntryModel
+    user_id = get_user_id(request, db)
+
+    entry = db.query(MediaEntryModel).filter(
+        MediaEntryModel.id == entry_id, MediaEntryModel.account_id == user_id
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404)
+    if not entry.kp_id or entry.media_type not in ("movie", "series"):
+        raise HTTPException(status_code=400, detail="No kp_id or unsupported type")
+
+    key = get_kinopoisk_key(db)
+    if not key:
+        raise HTTPException(status_code=503, detail="Kinopoisk API key not configured")
+
+    kp = _fetch_kp_data_sync(entry.kp_id, key, entry.media_type)
+    if kp["release_date"]:
+        entry.release_date = kp["release_date"]
+        entry.release_date_source = kp["release_date_source"]
+    if kp["next_episode_date"] is not None:
+        entry.next_episode_date = kp["next_episode_date"]
+        entry.next_episode_label = kp["next_episode_label"]
+    elif entry.media_type == "series":
+        entry.next_episode_date = None
+        entry.next_episode_label = None
     db.commit()
     db.refresh(entry)
     return entry

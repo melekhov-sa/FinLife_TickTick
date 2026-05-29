@@ -55,7 +55,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const [type, setType] = useState<MediaType>((entry?.media_type as MediaType) ?? defaultType);
   const [query, setQuery] = useState(entry?.title ?? "");
   const [selected, setSelected] = useState<{ title: string; author: string | null; cover_url: string | null; kp_id?: number | null } | null>(
-    entry ? { title: entry.title, author: entry.author, cover_url: entry.cover_url } : null,
+    entry ? { title: entry.title, author: entry.author, cover_url: entry.cover_url, kp_id: entry.kp_id } : null,
   );
   const [status, setStatus] = useState<Status>((entry?.status as Status) ?? "want");
   const [rating, setRating] = useState(entry?.rating ?? 0);
@@ -63,16 +63,20 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const [releaseDate, setReleaseDate] = useState(entry?.release_date ?? "");
   const [releaseDateSource, setReleaseDateSource] = useState<string | null>(entry?.release_date_source ?? null);
 
-  const { data: kpPremiere } = useKpPremiere(selected?.kp_id ?? null);
+  const { data: kpPremiere, isLoading: kpLoading } = useKpPremiere(selected?.kp_id ?? null);
 
   useEffect(() => {
-    if (kpPremiere?.premiere_ru) {
+    if (!kpPremiere) return;
+    if (kpPremiere.premiere_ru) {
+      // Always prefer KP RU date — it's authoritative
       setReleaseDate(kpPremiere.premiere_ru);
       setReleaseDateSource("ru");
-    } else if (kpPremiere?.premiere_world) {
+    } else if (kpPremiere.premiere_world && !releaseDate) {
+      // Only fill world premiere if we have nothing yet
       setReleaseDate(kpPremiere.premiere_world);
       setReleaseDateSource("world");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kpPremiere]);
 
   const { data: suggestions, isFetching } = useLookupMedia(type, query);
@@ -234,20 +238,28 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
             <div>
               <label className="block text-[12px] font-medium mb-1" style={{ color: "var(--t-muted)" }}>
                 Дата выхода
-                {releaseDate && releaseDateSource === "ru" && (
+                {kpLoading && selected?.kp_id && (
+                  <span className="ml-1.5 text-indigo-400">загружаем с КП…</span>
+                )}
+                {!kpLoading && releaseDate && releaseDateSource === "ru" && (
                   <span className="ml-1.5 text-indigo-400">РФ · с Кинопоиска</span>
                 )}
-                {releaseDate && releaseDateSource === "world" && (
+                {!kpLoading && releaseDate && releaseDateSource === "world" && (
                   <span className="ml-1.5 text-amber-400">мировой прокат · даты в РФ пока нет</span>
                 )}
               </label>
               <input
                 type="date"
                 value={releaseDate}
-                onChange={(e) => setReleaseDate(e.target.value)}
+                onChange={(e) => { setReleaseDate(e.target.value); setReleaseDateSource(null); }}
                 className={inputCls}
                 style={inputStyle}
               />
+              {kpLoading && selected?.kp_id && !releaseDate && (
+                <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+                  Дата будет подтянута автоматически — можно сохранять
+                </p>
+              )}
             </div>
           )}
 

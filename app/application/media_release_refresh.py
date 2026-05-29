@@ -42,8 +42,11 @@ def _fetch_kp_details(kp_id: int, key: str) -> dict | None:
         return None
 
 
-def _fetch_episodes_count(kp_id: int, key: str) -> int | None:
-    """Return total episode count across all seasons, or None on error."""
+def _fetch_seasons_data(kp_id: int, key: str) -> tuple[int | None, date | None, str | None]:
+    """
+    Fetch episode data for a series.
+    Returns (aired_count, next_episode_date, next_episode_label).
+    """
     url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}/seasons"
     try:
         with httpx.Client(timeout=5) as client:
@@ -51,23 +54,33 @@ def _fetch_episodes_count(kp_id: int, key: str) -> int | None:
             r.raise_for_status()
             data = r.json()
     except Exception:
-        return None
+        return None, None, None
 
+    today = date.today()
     total = 0
+    next_ep: tuple[date, str] | None = None
+
     for season in data.get("items", []):
         episodes = season.get("episodes") or []
-        # Count only episodes with a past/present air date
-        today = date.today()
         for ep in episodes:
             raw = ep.get("releaseDate")
-            if raw:
-                try:
-                    ep_date = date.fromisoformat(raw[:10])
-                    if ep_date <= today:
-                        total += 1
-                except ValueError:
-                    pass
-    return total if total > 0 else None
+            if not raw:
+                continue
+            try:
+                ep_date = date.fromisoformat(raw[:10])
+            except ValueError:
+                continue
+            if ep_date <= today:
+                total += 1
+            else:
+                label = f"S{season['number']}E{ep['episodeNumber']}"
+                if next_ep is None or ep_date < next_ep[0]:
+                    next_ep = (ep_date, label)
+
+    aired = total if total > 0 else None
+    if next_ep:
+        return aired, next_ep[0], next_ep[1]
+    return aired, None, None
 
 
 def _get_channels(db: Session, user_id: int) -> list[str]:
@@ -160,9 +173,9 @@ def refresh_media_release_dates(db: Session) -> None:
                     entry.release_date = new_date
                     entry.release_date_source = new_source
 
-        # ── Episode count refresh (series only) ───────────────────────────────
+        # ── Episode count + next episode date (series only) ───────────────────
         if entry.media_type == "series":
-            new_count = _fetch_episodes_count(entry.kp_id, key)
+            new_count, next_ep_date, next_ep_label = _fetch_seasons_data(entry.kp_id, key)
             if new_count is not None:
                 old_count = entry.episodes_count or 0
                 if new_count > old_count:
@@ -174,6 +187,8 @@ def refresh_media_release_dates(db: Session) -> None:
                         "total": new_count,
                     }, channels)
                     entry.episodes_count = new_count
+            entry.next_episode_date = next_ep_date
+            entry.next_episode_label = next_ep_label
 
     db.commit()
     logger.info("media_release_refresh: processed %d entries", len(entries))

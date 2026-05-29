@@ -17,6 +17,8 @@ export interface MediaEntry {
   release_date_source: string | null;
   kp_id: number | null;
   episodes_count: number | null;
+  next_episode_date: string | null;
+  next_episode_label: string | null;
 }
 
 export interface LookupResult {
@@ -41,7 +43,7 @@ export function useKpPremiere(kpId: number | null) {
   });
 }
 
-export function useMedia(mediaType?: string, status?: string) {
+export function useMedia(mediaType?: string, status?: string, options?: { enabled?: boolean }) {
   const params = new URLSearchParams();
   if (mediaType) params.set("media_type", mediaType);
   if (status) params.set("status", status);
@@ -49,6 +51,7 @@ export function useMedia(mediaType?: string, status?: string) {
   return useQuery<MediaEntry[]>({
     queryKey: ["media", mediaType ?? "all", status ?? "all"],
     queryFn: () => api.get<MediaEntry[]>(`/api/v2/media${qs ? "?" + qs : ""}`),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -83,6 +86,14 @@ export function useDeleteMedia() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.delete(`/api/v2/media/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["media"] }),
+  });
+}
+
+export function useKpRefresh() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<MediaEntry>(`/api/v2/media/${id}/kp-refresh`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["media"] }),
   });
 }
