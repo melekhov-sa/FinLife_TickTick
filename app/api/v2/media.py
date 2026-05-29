@@ -28,6 +28,7 @@ class MediaEntryOut(BaseModel):
     note: Optional[str]
     finished_at: Optional[date]
     release_date: Optional[date]
+    kp_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -56,6 +57,7 @@ class MediaCreate(BaseModel):
     note: Optional[str] = None
     finished_at: Optional[date] = None
     release_date: Optional[date] = None
+    kp_id: Optional[int] = None
 
 
 class MediaUpdate(BaseModel):
@@ -96,7 +98,7 @@ async def _lookup_kinopoisk(q: str, media_type: str, key: str) -> list[LookupRes
             year_int = int(year) if year else None
         except (ValueError, TypeError):
             year_int = None
-        label = f"{title} ({year})" if year else title
+        label = f"{title} ({year_int})" if year_int else title
         results.append(LookupResult(
             title=label,
             author=film.get("genres", [{}])[0].get("genre") if film.get("genres") else None,
@@ -232,6 +234,7 @@ def create_media(body: MediaCreate, request: Request, db: Session = Depends(get_
         note=body.note,
         finished_at=body.finished_at,
         release_date=body.release_date,
+        kp_id=body.kp_id,
     )
     db.add(entry)
     db.commit()

@@ -181,6 +181,21 @@ def _run_calendar_refresh():
             logger.exception("calendar_refresh failed for year %d", year)
 
 
+def _run_media_release_refresh():
+    """Daily: refresh Kinopoisk release dates for tracked upcoming movies/series."""
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.media_release_refresh import refresh_media_release_dates
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        refresh_media_release_dates(db)
+    except Exception:
+        logger.exception("media_release_refresh job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     from app.config import get_settings
@@ -276,6 +291,16 @@ def start_scheduler():
         _run_calendar_refresh,
         CronTrigger(day_of_week="mon", hour=3, minute=0, timezone="UTC"),
         id="calendar_refresh",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Media release dates refresh — daily 10:00 UTC (13:00 MSK)
+    scheduler.add_job(
+        _run_media_release_refresh,
+        CronTrigger(hour=10, minute=0, timezone="UTC"),
+        id="media_release_refresh",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

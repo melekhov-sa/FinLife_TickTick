@@ -14,6 +14,7 @@ export interface MediaEntry {
   note: string | null;
   finished_at: string | null;
   release_date: string | null;
+  kp_id: number | null;
 }
 
 export interface LookupResult {

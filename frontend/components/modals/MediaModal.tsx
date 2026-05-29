@@ -98,6 +98,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
       note: note.trim() || null,
       release_date: releaseDate || null,
       finished_at: status === "done" ? new Date().toISOString().slice(0, 10) : null,
+      kp_id: selected?.kp_id ?? null,
     };
 
     if (isEdit) {

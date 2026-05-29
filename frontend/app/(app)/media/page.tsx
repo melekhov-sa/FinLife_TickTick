@@ -114,6 +114,10 @@ function MediaCard({
         <div className="flex items-center gap-2 flex-wrap mt-auto">
           {entry.release_date ? (
             <ReleaseBadge dateStr={entry.release_date} />
+          ) : entry.kp_id && entry.status === "want" ? (
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/[0.12] text-orange-600 dark:text-orange-400">
+              Скоро выйдет
+            </span>
           ) : (
             <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full", badge.cls)}>
               {badge.label}
