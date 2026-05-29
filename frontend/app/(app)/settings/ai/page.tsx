@@ -509,7 +509,7 @@ export default function AISettingsPage() {
                 <Trophy size={16} className="text-emerald-500" />
               </div>
               <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
-                API Football (матчи Зенита)
+                AllSportsAPI (матчи Зенита)
               </h2>
             </div>
 
@@ -578,14 +578,10 @@ export default function AISettingsPage() {
           </div>
 
           <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
-            Ключ API Football используется для загрузки расписания матчей Зенита.
-            Бесплатный tier — 100 запросов/день, карта не нужна. Зарегистрироваться на{" "}
-            <a href="https://www.api-football.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
-              api-football.com
-            </a>{" "}
-            или{" "}
-            <a href="https://rapidapi.com/api-sports/api/api-football" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
-              RapidAPI
+            Ключ AllSportsAPI используется для загрузки расписания матчей Зенита.
+            Бесплатный тариф — 100 запросов/день, карта не нужна. Зарегистрироваться на{" "}
+            <a href="https://allsportsapi.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+              allsportsapi.com
             </a>.
           </p>
 
