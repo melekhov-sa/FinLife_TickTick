@@ -118,6 +118,20 @@ def _fetch_kp_data_sync(kp_id: int, key: str, media_type: str) -> dict:
 
     premiere_ru = _parse_date(data.get("premiereRu"))
     premiere_world = _parse_date(data.get("premiereWorld"))
+
+    # Fallback: distributors array for Russian theatrical release
+    if not premiere_ru:
+        for dist in (data.get("distributors") or []):
+            country = (dist.get("country") or "").upper()
+            d = _parse_date(dist.get("releaseDate"))
+            if d and country in ("RUSSIA", "RU", "РФ", "РОССИЯ"):
+                premiere_ru = d
+                break
+
+    # Last resort: generic releaseDate field
+    if not premiere_ru and not premiere_world:
+        premiere_world = _parse_date(data.get("releaseDate"))
+
     if premiere_ru:
         result["release_date"] = premiere_ru
         result["release_date_source"] = "ru"
@@ -261,24 +275,41 @@ async def kp_premiere(kp_id: int, db: Session = Depends(get_db)):
         return KpPremiereResult()
     url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}"
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=8) as client:
             r = await client.get(url, headers={"X-API-KEY": key})
             r.raise_for_status()
             data = r.json()
     except Exception:
         return KpPremiereResult()
 
-    def parse_date(s: Optional[str]) -> Optional[date]:
+    def pd(s) -> Optional[date]:
         if not s:
             return None
         try:
-            return date.fromisoformat(s[:10])
+            return date.fromisoformat(str(s)[:10])
         except ValueError:
             return None
 
+    # Primary fields
+    premiere_ru = pd(data.get("premiereRu"))
+    premiere_world = pd(data.get("premiereWorld"))
+
+    # Fallback: check distributors array (Russian theatrical release)
+    if not premiere_ru:
+        for dist in (data.get("distributors") or []):
+            country = (dist.get("country") or "").upper()
+            d = pd(dist.get("releaseDate"))
+            if d and country in ("RUSSIA", "RU", "РФ", "РОССИЯ"):
+                premiere_ru = d
+                break
+
+    # Fallback: if still nothing but film is from current/recent year, try releaseDate
+    if not premiere_ru and not premiere_world:
+        premiere_world = pd(data.get("releaseDate"))
+
     return KpPremiereResult(
-        premiere_ru=parse_date(data.get("premiereRu")),
-        premiere_world=parse_date(data.get("premiereWorld")),
+        premiere_ru=premiere_ru,
+        premiere_world=premiere_world,
     )
 
 

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X, Search, Star } from "lucide-react";
-import { useCreateMedia, useUpdateMedia, useLookupMedia, useKpPremiere, type MediaEntry, type LookupResult } from "@/hooks/useMedia";
+import { useCreateMedia, useUpdateMedia, useLookupMedia, type MediaEntry, type LookupResult } from "@/hooks/useMedia";
+import { api } from "@/lib/api";
 
 type MediaType = "book" | "movie" | "series" | "game";
 type Status = "want" | "in_progress" | "done";
@@ -62,22 +63,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const [note, setNote] = useState(entry?.note ?? "");
   const [releaseDate, setReleaseDate] = useState(entry?.release_date ?? "");
   const [releaseDateSource, setReleaseDateSource] = useState<string | null>(entry?.release_date_source ?? null);
-
-  const { data: kpPremiere, isLoading: kpLoading } = useKpPremiere(selected?.kp_id ?? null);
-
-  useEffect(() => {
-    if (!kpPremiere) return;
-    if (kpPremiere.premiere_ru) {
-      // Always prefer KP RU date — it's authoritative
-      setReleaseDate(kpPremiere.premiere_ru);
-      setReleaseDateSource("ru");
-    } else if (kpPremiere.premiere_world && !releaseDate) {
-      // Only fill world premiere if we have nothing yet
-      setReleaseDate(kpPremiere.premiere_world);
-      setReleaseDateSource("world");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kpPremiere]);
+  const [kpLoading, setKpLoading] = useState(false);
 
   const { data: suggestions, isFetching } = useLookupMedia(type, query);
   const { mutate: create, isPending: isCreating } = useCreateMedia();
@@ -85,12 +71,37 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const isPending = isCreating || isUpdating;
 
   useEffect(() => {
-    if (!isEdit) setSelected(null);
+    if (!isEdit) { setSelected(null); setReleaseDate(""); setReleaseDateSource(null); }
   }, [type, isEdit]);
 
-  function handleSelect(s: LookupResult) {
+  // When editing an existing entry that has kp_id but no release date, fetch on mount
+  useEffect(() => {
+    if (!isEdit || !entry?.kp_id || entry.release_date || !["movie","series"].includes(type)) return;
+    setKpLoading(true);
+    api.get<{ premiere_ru: string | null; premiere_world: string | null }>(
+      `/api/v2/media/kp-premiere?kp_id=${entry.kp_id}`
+    ).then((d) => {
+      if (d.premiere_ru) { setReleaseDate(d.premiere_ru); setReleaseDateSource("ru"); }
+      else if (d.premiere_world) { setReleaseDate(d.premiere_world); setReleaseDateSource("world"); }
+    }).catch(() => {}).finally(() => setKpLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSelect(s: LookupResult) {
     setSelected({ title: s.title, author: s.author, cover_url: s.cover_url, kp_id: s.kp_id });
     setQuery(s.title);
+
+    if (s.kp_id && (type === "movie" || type === "series")) {
+      setKpLoading(true);
+      try {
+        const d = await api.get<{ premiere_ru: string | null; premiere_world: string | null }>(
+          `/api/v2/media/kp-premiere?kp_id=${s.kp_id}`
+        );
+        if (d.premiere_ru) { setReleaseDate(d.premiere_ru); setReleaseDateSource("ru"); }
+        else if (d.premiere_world) { setReleaseDate(d.premiere_world); setReleaseDateSource("world"); }
+      } catch {}
+      setKpLoading(false);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
