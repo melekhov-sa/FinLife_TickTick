@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Sparkles, CheckCircle2, AlertTriangle, Info,
-  Trash2, Wifi, Save, Eye, EyeOff, Film,
+  Trash2, Wifi, Save, Eye, EyeOff, Film, Trophy,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTheme } from "next-themes";
@@ -48,6 +48,10 @@ export default function AISettingsPage() {
   const [showKpKey, setShowKpKey] = useState(false);
   const [kpFlash, setKpFlash] = useState<{ msg: string; ok: boolean } | null>(null);
 
+  const [fbKeyInput, setFbKeyInput] = useState("");
+  const [showFbKey, setShowFbKey] = useState(false);
+  const [fbFlash, setFbFlash] = useState<{ msg: string; ok: boolean } | null>(null);
+
   const cardBorder = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
   const cardBg = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
   const inputCls = clsx(
@@ -62,6 +66,42 @@ export default function AISettingsPage() {
     queryFn: () => api.get("/api/v2/admin/openai-config"),
     enabled: !!me?.is_admin,
     staleTime: 30_000,
+  });
+
+  interface FootballConfig { has_key: boolean; source: string; masked: string | null; }
+
+  const { data: fbConfig, isLoading: fbConfigLoading } = useQuery<FootballConfig>({
+    queryKey: ["admin-football-config"],
+    queryFn: () => api.get("/api/v2/admin/football-config"),
+    enabled: !!me?.is_admin,
+    staleTime: 30_000,
+  });
+
+  const fbSaveMut = useMutation({
+    mutationFn: (key: string) => api.patch<FootballConfig>("/api/v2/admin/football-config", { api_key: key }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-football-config"] });
+      setFbKeyInput("");
+      setFbFlash({ msg: "Ключ сохранён", ok: true });
+      setTimeout(() => setFbFlash(null), 3000);
+    },
+    onError: (e: any) => {
+      setFbFlash({ msg: e?.message || "Ошибка сохранения", ok: false });
+      setTimeout(() => setFbFlash(null), 4000);
+    },
+  });
+
+  const fbDeleteMut = useMutation({
+    mutationFn: () => api.patch<FootballConfig>("/api/v2/admin/football-config", { api_key: "" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-football-config"] });
+      setFbFlash({ msg: "Ключ из БД удалён", ok: true });
+      setTimeout(() => setFbFlash(null), 4000);
+    },
+    onError: (e: any) => {
+      setFbFlash({ msg: e?.message || "Ошибка удаления", ok: false });
+      setTimeout(() => setFbFlash(null), 4000);
+    },
   });
 
   const { data: kpConfig, isLoading: kpConfigLoading } = useQuery<KinopoiskConfig>({
@@ -457,15 +497,96 @@ export default function AISettingsPage() {
           <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
             Ключ Кинопоиска используется для поиска фильмов и сериалов с обложками, а также
             для получения дат выхода. Получить ключ можно на{" "}
-            <a
-              href="https://kinopoiskapiunofficial.tech"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:opacity-80"
-            >
+            <a href="https://kinopoiskapiunofficial.tech" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
               kinopoiskapiunofficial.tech
-            </a>
-            .
+            </a>.
+          </p>
+
+          {/* ── API Football ── */}
+          <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: cardBorder, background: cardBg }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10">
+                <Trophy size={16} className="text-emerald-500" />
+              </div>
+              <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+                API Football (матчи Зенита)
+              </h2>
+            </div>
+
+            {fbConfigLoading ? (
+              <div className="h-10 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+            ) : fbConfig ? (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-lg text-[13px]" style={{
+                background: fbConfig.source === "none" ? "rgba(245,158,11,0.1)" : fbConfig.source === "db" ? "rgba(52,211,153,0.1)" : "rgba(96,165,250,0.1)",
+              }}>
+                {fbConfig.source === "none" ? <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                  : fbConfig.source === "db" ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
+                  : <Info size={15} className="text-blue-400 shrink-0 mt-0.5" />}
+                <span style={{ color: fbConfig.source === "none" ? "var(--t-secondary)" : fbConfig.source === "db" ? "#34d399" : "#60a5fa" }}>
+                  {fbConfig.source === "none" ? "Ключ не настроен. Страница матчей Зенита недоступна."
+                    : fbConfig.source === "env" ? "Ключ прочитан из .env."
+                    : "Ключ настроен через интерфейс. " + fbConfig.masked}
+                </span>
+              </div>
+            ) : null}
+
+            {fbFlash && (
+              <div className={clsx("flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-medium",
+                fbFlash.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400")}>
+                {fbFlash.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                {fbFlash.msg}
+              </div>
+            )}
+
+            <h3 className="text-[13px] font-semibold uppercase tracking-wider" style={{ color: "var(--t-faint)" }}>
+              Установить ключ
+            </h3>
+
+            <div className="relative">
+              <input
+                type={showFbKey ? "text" : "password"}
+                value={fbKeyInput}
+                onChange={(e) => setFbKeyInput(e.target.value)}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className={inputCls}
+                style={{ color: "var(--t-primary)", paddingRight: "2.5rem" }}
+              />
+              <button type="button" onClick={() => setShowFbKey(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-70 transition-opacity" tabIndex={-1}>
+                {showFbKey ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => fbSaveMut.mutate(fbKeyInput)}
+                disabled={!fbKeyInput.trim() || fbSaveMut.isPending}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-[#fff] transition-all hover:opacity-90 disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
+                <Save size={14} />
+                {fbSaveMut.isPending ? "..." : "Сохранить"}
+              </button>
+              {fbConfig?.source === "db" && (
+                <button onClick={() => { if (confirm("Удалить ключ API Football из БД?")) fbDeleteMut.mutate(); }}
+                  disabled={fbDeleteMut.isPending}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold border transition-all hover:bg-red-500/10 disabled:opacity-40"
+                  style={{ borderColor: "rgba(239,68,68,0.2)", color: "#ef4444" }}>
+                  <Trash2 size={14} />
+                  {fbDeleteMut.isPending ? "..." : "Удалить"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[12px] leading-relaxed" style={{ color: "var(--t-faint)" }}>
+            Ключ API Football используется для загрузки расписания матчей Зенита.
+            Бесплатный tier — 100 запросов/день, карта не нужна. Зарегистрироваться на{" "}
+            <a href="https://www.api-football.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+              api-football.com
+            </a>{" "}
+            или{" "}
+            <a href="https://rapidapi.com/api-sports/api/api-football" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+              RapidAPI
+            </a>.
           </p>
 
         </div>

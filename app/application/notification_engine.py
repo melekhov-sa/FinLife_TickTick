@@ -87,6 +87,18 @@ _TEMPLATES: dict[str, dict] = {
         "body_inapp": "«{title}»: вышло +{count} {episodes_word} (всего {total}).",
         "body_telegram": "📺 <b>Новые серии</b>\n«{title}»\n🆕 +{count} {episodes_word} (всего {total})",
     },
+    "FOOTBALL_MATCH_NEW": {
+        "severity": "info",
+        "title": "Новый матч в расписании",
+        "body_inapp": "{home} vs {away} — {date} ({competition}).",
+        "body_telegram": "⚽ <b>Новый матч</b>\n{home} vs {away}\n📅 {date}\n🏆 {competition}",
+    },
+    "FOOTBALL_MATCH_RESCHEDULED": {
+        "severity": "warn",
+        "title": "Матч перенесён",
+        "body_inapp": "{home} vs {away}: перенесён с {old_date} на {new_date}.",
+        "body_telegram": "🔄 <b>Матч перенесён</b>\n{home} vs {away}\n📅 {old_date} → {new_date}\n🏆 {competition}",
+    },
 }
 
 

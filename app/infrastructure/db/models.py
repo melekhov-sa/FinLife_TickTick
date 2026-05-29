@@ -1270,6 +1270,35 @@ class MediaEntryModel(Base):
 
 
 # ============================================================================
+# Football Matches
+# ============================================================================
+
+
+class FootballMatchModel(Base):
+    """Global table of football fixtures fetched from api-football.com."""
+    __tablename__ = "football_matches"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    external_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+
+    match_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    match_time: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    home_team: Mapped[str] = mapped_column(String(100), nullable=False)
+    away_team: Mapped[str] = mapped_column(String(100), nullable=False)
+    competition: Mapped[str] = mapped_column(String(100), nullable=False)
+    venue: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="NS")
+    score_home: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score_away: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+# ============================================================================
 # Meal Plan
 # ============================================================================
 

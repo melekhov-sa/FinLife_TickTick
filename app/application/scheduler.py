@@ -196,6 +196,21 @@ def _run_media_release_refresh():
         db.close()
 
 
+def _run_football_refresh():
+    """Daily: fetch Zenit fixtures, notify on new matches and reschedules."""
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.football_refresh import refresh_football_matches
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        refresh_football_matches(db)
+    except Exception:
+        logger.exception("football_refresh job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     from app.config import get_settings
@@ -301,6 +316,16 @@ def start_scheduler():
         _run_media_release_refresh,
         CronTrigger(hour=10, minute=0, timezone="UTC"),
         id="media_release_refresh",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Football fixtures refresh — daily 09:00 UTC (12:00 MSK)
+    scheduler.add_job(
+        _run_football_refresh,
+        CronTrigger(hour=9, minute=0, timezone="UTC"),
+        id="football_refresh",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

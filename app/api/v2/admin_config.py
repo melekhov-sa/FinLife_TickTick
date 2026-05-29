@@ -15,6 +15,7 @@ from app.infrastructure.db.models import User
 from app.application.app_config import (
     get_config, set_openai_key, get_openai_key, OPENAI_KEY,
     set_kinopoisk_key, get_kinopoisk_key, KINOPOISK_KEY,
+    set_apifootball_key, get_apifootball_key, APIFOOTBALL_KEY,
 )
 from app.infrastructure.crypto import decrypt
 from app.config import get_settings
@@ -172,6 +173,59 @@ def update_kinopoisk_config(
     set_kinopoisk_key(db, new_val if new_val else None)
     raw, source = _get_kp_source(db)
     return KinopoiskConfigResponse(
+        has_key=raw is not None,
+        source=source,
+        masked=_mask_key(raw) if raw else None,
+    )
+
+
+# ── API Football config ───────────────────────────────────────────────────────
+
+class FootballConfigResponse(BaseModel):
+    has_key: bool
+    source: str
+    masked: str | None
+
+
+class PatchFootballKeyRequest(BaseModel):
+    api_key: str
+
+
+def _get_football_source(db: Session) -> tuple[str | None, str]:
+    db_val = get_config(db, APIFOOTBALL_KEY)
+    if db_val:
+        from app.infrastructure.crypto import decrypt
+        plain = decrypt(db_val)
+        if plain:
+            return plain, "db"
+    env_val = get_settings().APIFOOTBALL_KEY
+    if env_val:
+        return env_val, "env"
+    return None, "none"
+
+
+@router.get("/football-config", response_model=FootballConfigResponse)
+def get_football_config(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request, db)
+    raw, source = _get_football_source(db)
+    return FootballConfigResponse(
+        has_key=raw is not None,
+        source=source,
+        masked=_mask_key(raw) if raw else None,
+    )
+
+
+@router.patch("/football-config", response_model=FootballConfigResponse)
+def update_football_config(
+    body: PatchFootballKeyRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request, db)
+    new_val = body.api_key.strip() if body.api_key else None
+    set_apifootball_key(db, new_val if new_val else None)
+    raw, source = _get_football_source(db)
+    return FootballConfigResponse(
         has_key=raw is not None,
         source=source,
         masked=_mask_key(raw) if raw else None,

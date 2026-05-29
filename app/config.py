@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Media log cover lookup
     KINOPOISK_API_KEY: str = ""  # kinopoiskapiunofficial.tech — movies & series covers
 
+    # Football fixtures (api-football.com / api-sports.io)
+    APIFOOTBALL_KEY: str = ""  # free tier: 100 req/day, no card needed
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
