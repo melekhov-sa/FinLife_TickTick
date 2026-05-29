@@ -283,13 +283,23 @@ async def kp_raw(kp_id: int, db: Session = Depends(get_db)):
             data = r.json()
     except Exception as e:
         return {"error": str(e)}
-    # Return only date-related fields to keep it concise
     keys_of_interest = [
         "kinopoiskId", "nameRu", "nameEn", "year", "type",
         "premiereRu", "premiereWorld", "releaseDate",
         "distributors", "startYear", "endYear",
     ]
-    return {k: data.get(k) for k in keys_of_interest} | {"_all_keys": list(data.keys())}
+    result: dict = {"main": {k: data.get(k) for k in keys_of_interest} | {"_all_keys": list(data.keys())}}
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r2 = await client.get(
+                f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}/distributions",
+                headers={"X-API-KEY": key},
+            )
+            r2.raise_for_status()
+            result["distributions"] = r2.json()
+    except Exception as e:
+        result["distributions_error"] = str(e)
+    return result
 
 
 async def _kp_fetch_distributions(kp_id: int, key: str) -> tuple[Optional[date], Optional[date]]:
