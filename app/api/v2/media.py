@@ -333,7 +333,8 @@ async def _kp_fetch_distributions(kp_id: int, key: str) -> tuple[Optional[date],
         d = pd(item.get("date"))
         if not d:
             continue
-        country_name = (item.get("country") or {}).get("name", "").lower()
+        country_obj = item.get("country") or {}
+        country_name = (country_obj.get("country") or country_obj.get("name") or "").lower()
         dist_type = (item.get("type") or "").upper()
         if "росси" in country_name or country_name in ("russia", "ru"):
             if ru_date is None or d < ru_date:
