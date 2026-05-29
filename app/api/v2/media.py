@@ -292,19 +292,53 @@ async def kp_raw(kp_id: int, db: Session = Depends(get_db)):
     return {k: data.get(k) for k in keys_of_interest} | {"_all_keys": list(data.keys())}
 
 
+async def _kp_fetch_distributions(kp_id: int, key: str) -> tuple[Optional[date], Optional[date]]:
+    """
+    Fetch Russian and world theatrical release dates from /distributions endpoint.
+    Returns (ru_date, world_date).
+    """
+    url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}/distributions"
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(url, headers={"X-API-KEY": key})
+            r.raise_for_status()
+            items = r.json().get("items") or []
+    except Exception:
+        return None, None
+
+    def pd(s) -> Optional[date]:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(str(s)[:10])
+        except ValueError:
+            return None
+
+    ru_date: Optional[date] = None
+    world_date: Optional[date] = None
+
+    for item in items:
+        if item.get("reRelease"):
+            continue
+        d = pd(item.get("date"))
+        if not d:
+            continue
+        country_name = (item.get("country") or {}).get("name", "").lower()
+        dist_type = (item.get("type") or "").upper()
+        if "росси" in country_name or country_name in ("russia", "ru"):
+            if ru_date is None or d < ru_date:
+                ru_date = d
+        elif dist_type in ("WORLD_PREMIER", "PREMIERE") and world_date is None:
+            world_date = d
+
+    return ru_date, world_date
+
+
 @router.get("/media/kp-premiere", response_model=KpPremiereResult)
 async def kp_premiere(kp_id: int, db: Session = Depends(get_db)):
     """Fetch Russian and world premiere dates for a Kinopoisk film."""
     key = get_kinopoisk_key(db)
     if not key:
-        return KpPremiereResult()
-    url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}"
-    try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(url, headers={"X-API-KEY": key})
-            r.raise_for_status()
-            data = r.json()
-    except Exception:
         return KpPremiereResult()
 
     def pd(s) -> Optional[date]:
@@ -315,20 +349,30 @@ async def kp_premiere(kp_id: int, db: Session = Depends(get_db)):
         except ValueError:
             return None
 
-    # Primary fields
+    # Step 1: main film details
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(
+                f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}",
+                headers={"X-API-KEY": key},
+            )
+            r.raise_for_status()
+            data = r.json()
+    except Exception:
+        return KpPremiereResult()
+
     premiere_ru = pd(data.get("premiereRu"))
     premiere_world = pd(data.get("premiereWorld"))
 
-    # Fallback: check distributors array (Russian theatrical release)
-    if not premiere_ru:
-        for dist in (data.get("distributors") or []):
-            country = (dist.get("country") or "").upper()
-            d = pd(dist.get("releaseDate"))
-            if d and country in ("RUSSIA", "RU", "РФ", "РОССИЯ"):
-                premiere_ru = d
-                break
+    # Step 2: if missing, check /distributions (theatrical release by country)
+    if not premiere_ru or not premiere_world:
+        dist_ru, dist_world = await _kp_fetch_distributions(kp_id, key)
+        if not premiere_ru:
+            premiere_ru = dist_ru
+        if not premiere_world:
+            premiere_world = dist_world
 
-    # Fallback: if still nothing but film is from current/recent year, try releaseDate
+    # Step 3: last resort — generic releaseDate field
     if not premiere_ru and not premiere_world:
         premiere_world = pd(data.get("releaseDate"))
 
