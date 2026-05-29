@@ -1260,6 +1260,7 @@ class MediaEntryModel(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     finished_at: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     release_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    release_date_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
     kp_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(

@@ -61,12 +61,18 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const [rating, setRating] = useState(entry?.rating ?? 0);
   const [note, setNote] = useState(entry?.note ?? "");
   const [releaseDate, setReleaseDate] = useState(entry?.release_date ?? "");
+  const [releaseDateSource, setReleaseDateSource] = useState<string | null>(entry?.release_date_source ?? null);
 
   const { data: kpPremiere } = useKpPremiere(selected?.kp_id ?? null);
 
   useEffect(() => {
-    if (kpPremiere?.premiere_ru) setReleaseDate(kpPremiere.premiere_ru);
-    else if (kpPremiere?.premiere_world) setReleaseDate(kpPremiere.premiere_world);
+    if (kpPremiere?.premiere_ru) {
+      setReleaseDate(kpPremiere.premiere_ru);
+      setReleaseDateSource("ru");
+    } else if (kpPremiere?.premiere_world) {
+      setReleaseDate(kpPremiere.premiere_world);
+      setReleaseDateSource("world");
+    }
   }, [kpPremiere]);
 
   const { data: suggestions, isFetching } = useLookupMedia(type, query);
@@ -97,6 +103,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
       rating: rating || null,
       note: note.trim() || null,
       release_date: releaseDate || null,
+      release_date_source: releaseDate ? releaseDateSource : null,
       finished_at: status === "done" ? new Date().toISOString().slice(0, 10) : null,
       kp_id: selected?.kp_id ?? null,
     };
@@ -227,8 +234,11 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
             <div>
               <label className="block text-[12px] font-medium mb-1" style={{ color: "var(--t-muted)" }}>
                 Дата выхода
-                {kpPremiere && (releaseDate) && (
-                  <span className="ml-1.5 text-indigo-400">с Кинопоиска</span>
+                {releaseDate && releaseDateSource === "ru" && (
+                  <span className="ml-1.5 text-indigo-400">РФ · с Кинопоиска</span>
+                )}
+                {releaseDate && releaseDateSource === "world" && (
+                  <span className="ml-1.5 text-amber-400">мировой прокат · даты в РФ пока нет</span>
                 )}
               </label>
               <input

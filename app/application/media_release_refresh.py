@@ -13,7 +13,8 @@ from app.application.app_config import get_kinopoisk_key
 logger = logging.getLogger(__name__)
 
 
-def _fetch_premiere(kp_id: int, key: str) -> date | None:
+def _fetch_premiere(kp_id: int, key: str) -> tuple[date, str] | None:
+    """Returns (date, source) where source is 'ru' or 'world', or None."""
     url = f"https://kinopoiskapiunofficial.tech/api/v2.2/films/{kp_id}"
     try:
         with httpx.Client(timeout=5) as client:
@@ -23,11 +24,11 @@ def _fetch_premiere(kp_id: int, key: str) -> date | None:
     except Exception:
         return None
 
-    for field in ("premiereRu", "premiereWorld"):
+    for field, source in (("premiereRu", "ru"), ("premiereWorld", "world")):
         raw = data.get(field)
         if raw:
             try:
-                return date.fromisoformat(raw[:10])
+                return date.fromisoformat(raw[:10]), source
             except ValueError:
                 pass
     return None
@@ -58,10 +59,13 @@ def refresh_media_release_dates(db: Session) -> None:
         # Skip if already has a past/present date (already released)
         if entry.release_date and entry.release_date <= today:
             continue
-        new_date = _fetch_premiere(entry.kp_id, key)
-        if new_date and new_date != entry.release_date:
-            entry.release_date = new_date
-            updated += 1
+        result = _fetch_premiere(entry.kp_id, key)
+        if result:
+            new_date, source = result
+            if new_date != entry.release_date or source != entry.release_date_source:
+                entry.release_date = new_date
+                entry.release_date_source = source
+                updated += 1
 
     if updated:
         db.commit()

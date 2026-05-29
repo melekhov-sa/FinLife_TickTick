@@ -36,15 +36,21 @@ const TYPE_PLACEHOLDER: Record<MediaType, React.ElementType> = {
   book: BookOpen, movie: Film, series: Tv, game: Gamepad2,
 };
 
-function ReleaseBadge({ dateStr }: { dateStr: string }) {
+function ReleaseBadge({ dateStr, source }: { dateStr: string; source?: string | null }) {
   const d = new Date(dateStr + "T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (d <= today) return null;
   const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
+  const isWorld = source === "world";
   return (
-    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400">
-      Выйдет {label}
+    <span className={clsx(
+      "text-[11px] font-semibold px-2 py-0.5 rounded-full",
+      isWorld
+        ? "bg-amber-100 dark:bg-amber-500/[0.15] text-amber-600 dark:text-amber-400"
+        : "bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400",
+    )}>
+      {isWorld ? `Мировая ${label}` : `Выйдет ${label}`}
     </span>
   );
 }
@@ -113,7 +119,7 @@ function MediaCard({
 
         <div className="flex items-center gap-2 flex-wrap mt-auto">
           {entry.release_date ? (
-            <ReleaseBadge dateStr={entry.release_date} />
+            <ReleaseBadge dateStr={entry.release_date} source={entry.release_date_source} />
           ) : entry.kp_id && entry.status === "want" ? (
             <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/[0.12] text-orange-600 dark:text-orange-400">
               Скоро выйдет

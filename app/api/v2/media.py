@@ -28,6 +28,7 @@ class MediaEntryOut(BaseModel):
     note: Optional[str]
     finished_at: Optional[date]
     release_date: Optional[date]
+    release_date_source: Optional[str] = None
     kp_id: Optional[int] = None
 
     class Config:
@@ -57,6 +58,7 @@ class MediaCreate(BaseModel):
     note: Optional[str] = None
     finished_at: Optional[date] = None
     release_date: Optional[date] = None
+    release_date_source: Optional[str] = None
     kp_id: Optional[int] = None
 
 
@@ -69,6 +71,7 @@ class MediaUpdate(BaseModel):
     title: Optional[str] = None
     author: Optional[str] = None
     release_date: Optional[date] = None
+    release_date_source: Optional[str] = None
 
 
 # ── Cover / metadata lookup helpers ──────────────────────────────────────────
@@ -234,6 +237,7 @@ def create_media(body: MediaCreate, request: Request, db: Session = Depends(get_
         note=body.note,
         finished_at=body.finished_at,
         release_date=body.release_date,
+        release_date_source=body.release_date_source,
         kp_id=body.kp_id,
     )
     db.add(entry)
