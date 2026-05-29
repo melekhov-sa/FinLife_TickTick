@@ -1262,6 +1262,7 @@ class MediaEntryModel(Base):
     release_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     release_date_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
     kp_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    episodes_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

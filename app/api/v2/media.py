@@ -30,6 +30,7 @@ class MediaEntryOut(BaseModel):
     release_date: Optional[date]
     release_date_source: Optional[str] = None
     kp_id: Optional[int] = None
+    episodes_count: Optional[int] = None
 
     class Config:
         from_attributes = True

@@ -16,6 +16,7 @@ export interface MediaEntry {
   release_date: string | null;
   release_date_source: string | null;
   kp_id: number | null;
+  episodes_count: number | null;
 }
 
 export interface LookupResult {

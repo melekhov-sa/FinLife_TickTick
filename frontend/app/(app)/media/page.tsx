@@ -114,7 +114,12 @@ function MediaCard({
         </div>
 
         {entry.author && (
-          <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>{entry.author}</p>
+          <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
+            {entry.author}
+            {entry.episodes_count ? (
+              <span className="ml-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>· {entry.episodes_count} сер.</span>
+            ) : null}
+          </p>
         )}
 
         <div className="flex items-center gap-2 flex-wrap mt-auto">

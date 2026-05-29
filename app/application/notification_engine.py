@@ -69,6 +69,24 @@ _TEMPLATES: dict[str, dict] = {
         "body_inapp": "Дайджест недели {week}: {completed} задач · {habit_pct}% привычек · +{xp} XP",
         "body_telegram": "📊 <b>Дайджест недели {week}</b>\n{completed} задач · {habit_pct}% привычек · +{xp} XP\nОткрыть → /digest/week/{week}",
     },
+    "MEDIA_DATE_APPEARED": {
+        "severity": "info",
+        "title": "Дата выхода появилась",
+        "body_inapp": "«{title}» выйдет {date}{source_label}.",
+        "body_telegram": "🎬 <b>Дата выхода появилась</b>\n«{title}»\n📅 {date}{source_label}",
+    },
+    "MEDIA_DATE_CHANGED": {
+        "severity": "info",
+        "title": "Дата выхода изменилась",
+        "body_inapp": "«{title}»: дата выхода {old_date} → {new_date}{source_label}.",
+        "body_telegram": "🔄 <b>Дата выхода изменилась</b>\n«{title}»\n📅 {old_date} → {new_date}{source_label}",
+    },
+    "MEDIA_NEW_EPISODES": {
+        "severity": "info",
+        "title": "Новые серии",
+        "body_inapp": "«{title}»: вышло +{count} {episodes_word} (всего {total}).",
+        "body_telegram": "📺 <b>Новые серии</b>\n«{title}»\n🆕 +{count} {episodes_word} (всего {total})",
+    },
 }
 
 
