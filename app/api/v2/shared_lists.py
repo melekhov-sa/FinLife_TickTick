@@ -100,7 +100,7 @@ def get_lists(request: Request, db: Session = Depends(get_db)):
 @router.post("/lists")
 def create_list(body: CreateListRequest, request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
-    allowed_types = ("wishlist", "personal", "roadmap", "trip")
+    allowed_types = ("wishlist", "personal", "roadmap", "trip", "shopping")
     if body.list_type not in allowed_types:
         raise HTTPException(400, "Invalid list_type")
     if body.list_type == "roadmap":
