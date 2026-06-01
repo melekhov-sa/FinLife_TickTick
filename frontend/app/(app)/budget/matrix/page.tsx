@@ -86,8 +86,9 @@ interface EditingProps {
 interface DragHandlers {
   onDragStart: (e: React.DragEvent, catId: number, parentId: number | null) => void;
   onDragOver: (e: React.DragEvent, catId: number, parentId: number | null) => void;
+  onDragLeave: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
-  dragOverId: number | null;
+  dragOver: { id: number; pos: "before" | "after" | "invalid" | "end" } | null;
 }
 
 // ── Inline cell input ────────────────────────────────────────────────────────
@@ -700,18 +701,23 @@ function CategoryDataRow({
   const { dragHandlers } = editing;
   const canDrag = !!row.category_id; // groups AND children can be dragged
   const canReceiveDrop = !!row.category_id;
-  const isDropTarget = dragHandlers.dragOverId === row.category_id;
+  const dragOverState = dragHandlers.dragOver?.id === row.category_id ? dragHandlers.dragOver : null;
 
   return (
     <tr
       className={clsx(
         "transition-colors",
-        isDropTarget && "!border-t-[3px] !border-t-indigo-500"
+        dragOverState?.pos === "invalid" && "!bg-red-50 dark:!bg-red-500/[0.06]",
       )}
-      data-drag-over={isDropTarget || undefined}
-      draggable={canDrag}
-      onDragStart={canDrag ? (e) => dragHandlers.onDragStart(e, row.category_id!, row.parent_id) : undefined}
+      style={
+        dragOverState?.pos === "before"
+          ? { boxShadow: "inset 0 3px 0 #6366F1" }
+          : dragOverState?.pos === "after"
+          ? { boxShadow: "inset 0 -3px 0 #6366F1" }
+          : undefined
+      }
       onDragOver={canReceiveDrop ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
+      onDragLeave={dragHandlers.onDragLeave}
       onDragEnd={dragHandlers.onDragEnd}
       onDrop={canReceiveDrop && onDrop ? (e) => onDrop(e, row.category_id!) : undefined}
     >
@@ -730,7 +736,14 @@ function CategoryDataRow({
       >
         <span className="inline-flex items-center gap-1 group/cat">
           {canDrag && (
-            <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
+            <span
+              draggable
+              onDragStart={(e) => dragHandlers.onDragStart(e, row.category_id!, row.parent_id)}
+              className="cursor-grab"
+              style={{ lineHeight: 0 }}
+            >
+              <GripVertical size={12} className="text-slate-300 shrink-0 pointer-events-none" />
+            </span>
           )}
           {row.depth > 0 && <span className="text-slate-300 text-[10px] mr-0.5">└</span>}
           <span className={editing.hiddenCatIds?.has(row.category_id!) ? "opacity-40 line-through" : ""}>
@@ -1582,7 +1595,7 @@ export default function BudgetMatrixPage() {
 
   // ── Drag-and-drop reorder state ──
   const dragSrc = useRef<{ catId: number; parentId: number | null } | null>(null);
-  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<{ id: number; pos: "before" | "after" | "invalid" | "end" } | null>(null);
 
   const onDragStart = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
     dragSrc.current = { catId, parentId };
@@ -1590,49 +1603,74 @@ export default function BudgetMatrixPage() {
   }, []);
 
   const onDragOver = useCallback((e: React.DragEvent, catId: number, parentId: number | null) => {
-    if (!dragSrc.current) return;
-    // Allow reorder within same parent group
-    if (dragSrc.current.parentId !== parentId) return;
-    if (dragSrc.current.catId === catId) return;
+    if (!dragSrc.current || dragSrc.current.catId === catId) return;
     e.preventDefault();
+    if (dragSrc.current.parentId !== parentId) {
+      e.dataTransfer.dropEffect = "none";
+      setDragOver({ id: catId, pos: "invalid" });
+      return;
+    }
     e.dataTransfer.dropEffect = "move";
-    setDragOverId(catId);
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const pos = e.clientY < r.top + r.height / 2 ? "before" : "after";
+    setDragOver({ id: catId, pos });
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOver(null);
+    }
   }, []);
 
   const onDragEnd = useCallback((_e: React.DragEvent) => {
-    setDragOverId(null);
+    setDragOver(null);
     dragSrc.current = null;
   }, []);
 
   async function handleDrop(e: React.DragEvent, targetCatId: number, rows: BudgetRow[]) {
     e.preventDefault();
-    setDragOverId(null);
+    const pos = dragOver?.pos;
+    setDragOver(null);
     if (!dragSrc.current || dragSrc.current.catId === targetCatId) return;
+    if (pos === "invalid") { dragSrc.current = null; return; }
 
+    const srcId = dragSrc.current.catId;
+    const srcParentId = dragSrc.current.parentId;
+    dragSrc.current = null;
+
+    const tgtRow = rows.find(r => r.category_id === targetCatId);
+    if (!tgtRow || tgtRow.parent_id !== srcParentId) return;
+
+    const siblings = rows.filter(r => r.category_id && r.parent_id === srcParentId);
+    const ids = siblings.map(r => r.category_id!);
+    const srcIdx = ids.indexOf(srcId);
+    if (srcIdx < 0) return;
+
+    ids.splice(srcIdx, 1);
+    let insertIdx = ids.indexOf(targetCatId);
+    if (insertIdx < 0) return;
+    if (pos === "after") insertIdx += 1;
+    ids.splice(insertIdx, 0, srcId);
+
+    const items = ids.map((id, i) => ({ category_id: id, sort_order: i }));
+    await api.post("/api/v2/categories/reorder", { items });
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
+
+  async function handleDropEnd(rows: BudgetRow[]) {
+    setDragOver(null);
+    if (!dragSrc.current) return;
     const srcId = dragSrc.current.catId;
     const parentId = dragSrc.current.parentId;
     dragSrc.current = null;
 
-    // Get siblings: top-level items (parent_id=null) or children of same parent
-    const siblings = rows.filter((r) =>
-      r.category_id && r.parent_id === parentId
-    );
-    const ids = siblings.map((r) => r.category_id!);
+    const siblings = rows.filter(r => r.category_id && r.parent_id === parentId);
+    const ids = siblings.map(r => r.category_id!);
     const srcIdx = ids.indexOf(srcId);
-    const tgtIdx = ids.indexOf(targetCatId);
-    if (srcIdx < 0 || tgtIdx < 0) return;
+    if (srcIdx < 0) return;
 
-    // Determine direction and insert accordingly
-    const movingDown = srcIdx < tgtIdx;
     ids.splice(srcIdx, 1);
-    const newTgtIdx = ids.indexOf(targetCatId);
-    if (movingDown) {
-      // Moving down: place AFTER target
-      ids.splice(newTgtIdx + 1, 0, srcId);
-    } else {
-      // Moving up: place BEFORE target
-      ids.splice(newTgtIdx, 0, srcId);
-    }
+    ids.push(srcId);
 
     const items = ids.map((id, i) => ({ category_id: id, sort_order: i }));
     await api.post("/api/v2/categories/reorder", { items });
@@ -1865,7 +1903,7 @@ export default function BudgetMatrixPage() {
   const editingProps: EditingProps = {
     openPlanEdit: setPlanEditTarget,
     openFactDetail: setFactDetailTarget,
-    dragHandlers: { onDragStart, onDragOver, onDragEnd, dragOverId },
+    dragHandlers: { onDragStart, onDragOver, onDragLeave, onDragEnd, dragOver },
     toggleVisibility: showHidden ? toggleVisibility : undefined,
     hiddenCatIds: showHidden ? hiddenCatIds : undefined,
     showHidden,
@@ -2152,6 +2190,15 @@ export default function BudgetMatrixPage() {
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
+                  {incomeOpen && (
+                    <tr
+                      onDragOver={(e) => { if (!dragSrc.current) return; e.preventDefault(); setDragOver({ id: -1, pos: "end" }); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
+                      onDrop={(e) => { e.preventDefault(); handleDropEnd(data.income_rows); }}
+                    >
+                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                    </tr>
+                  )}
                   {/* Прочие доходы — always visible */}
                   {incomeOpen && (
                     <OtherRow
@@ -2223,6 +2270,15 @@ export default function BudgetMatrixPage() {
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
+                  {expenseOpen && (
+                    <tr
+                      onDragOver={(e) => { if (!dragSrc.current) return; e.preventDefault(); setDragOver({ id: -1, pos: "end" }); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
+                      onDrop={(e) => { e.preventDefault(); handleDropEnd(data.expense_rows); }}
+                    >
+                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                    </tr>
+                  )}
                   {/* Прочие расходы — always visible, clickable */}
                   {expenseOpen && (
                     <OtherRow
