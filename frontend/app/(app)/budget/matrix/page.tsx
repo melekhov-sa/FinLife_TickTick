@@ -1957,7 +1957,7 @@ export default function BudgetMatrixPage() {
       <main className="flex-1 flex flex-col overflow-hidden">
 
         {/* ── MOBILE VIEW ── */}
-        <div className="md:hidden flex-1 overflow-auto" style={{ background: "var(--app-bg)" }}>
+        <div className="md:hidden flex-1 min-h-0 overflow-auto" style={{ background: "var(--app-bg)" }}>
           {isPending && (
             <div className="p-4 space-y-2">
               {[...Array(8)].map((_, i) => (

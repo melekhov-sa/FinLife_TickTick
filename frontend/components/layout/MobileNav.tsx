@@ -47,13 +47,14 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-end justify-between px-2 pt-2 transition-transform duration-200"
+        className="md:hidden shrink-0 overflow-hidden flex items-end justify-between px-2 transition-all duration-200"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
-          paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
-          transform: keyboardOpen ? "translateY(100%)" : "translateY(0)",
+          paddingBottom: keyboardOpen ? 0 : "calc(6px + env(safe-area-inset-bottom, 0px))",
+          paddingTop: keyboardOpen ? 0 : "8px",
+          maxHeight: keyboardOpen ? 0 : "120px",
         }}
       >
         <BottomItem
