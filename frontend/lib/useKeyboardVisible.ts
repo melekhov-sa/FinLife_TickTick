@@ -14,12 +14,15 @@ export function useKeyboardVisible(): boolean {
     const vv = window.visualViewport;
     if (!vv) return; // старый браузер — просто не прячем
 
+    // standalone-PWA при запуске 500мс устаканивает вьюпорт — игнорируем в это время
+    const mountedAt = Date.now();
+
     let raf = 0;
     const measure = () => {
       // разница между layout-viewport и видимой областью
       // > 120px = клавиатура (не адресная строка / жесты)
       const gap = window.innerHeight - vv.height - vv.offsetTop;
-      setOpen(gap > 120);
+      setOpen(gap > 120 && Date.now() - mountedAt > 500);
     };
     const onChange = () => {
       cancelAnimationFrame(raf);
