@@ -226,8 +226,8 @@ const SENTINEL_ID = "__dnd-end-sentinel__";
  * Non-zero height is needed so closestCenter can detect it.
  */
 function SentinelDropZone() {
-  const { setNodeRef } = useDroppable({ id: SENTINEL_ID });
-  return <div ref={setNodeRef} style={{ height: 12 }} aria-hidden />;
+  const { setNodeRef, active } = useDroppable({ id: SENTINEL_ID });
+  return <div ref={setNodeRef} style={{ height: active ? 12 : 0 }} aria-hidden />;
 }
 
 /** Drag-and-drop wrapper for a single task row (kind === "task" only). */
