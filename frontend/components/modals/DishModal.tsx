@@ -110,7 +110,7 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
     }
     try {
       const { url } = await uploadImage({ dishId: savedDishIdRef.current, file });
-      editor?.chain().focus().insertContent(`<img src="${url}" />`).run();
+      editor?.chain().focus().insertContent({ type: "image", attrs: { src: url } }).run();
     } catch {
       setError("Ошибка загрузки изображения");
     }

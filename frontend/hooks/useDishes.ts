@@ -99,13 +99,7 @@ export function useUploadDishImage() {
     mutationFn: async ({ dishId, file }: { dishId: number; file: File }) => {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(`/api/v2/dishes/${dishId}/images`, {
-        method: "POST",
-        body: fd,
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json() as Promise<{ url: string }>;
+      return api.postForm<{ url: string }>(`/api/v2/dishes/${dishId}/images`, fd);
     },
   });
 }

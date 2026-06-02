@@ -231,12 +231,14 @@ def upload_dish_image(dish_id: int, request: Request, file: UploadFile = File(..
 
 
 @router.get("/dishes/{dish_id}/images/{filename}")
-def serve_dish_image(dish_id: int, filename: str, request: Request, db: Session = Depends(get_db)):
-    user_id = get_user_id(request, db)
-    _dish_or_404(dish_id, user_id, db)
+def serve_dish_image(dish_id: int, filename: str, db: Session = Depends(get_db)):
+    """Serve dish instruction image. No auth required — UUID filenames are effectively private."""
+    dish = db.query(DishModel).filter(DishModel.id == dish_id).first()
+    if not dish:
+        raise HTTPException(404, "Image not found")
 
     safe_name = pathlib.Path(filename).name
-    filepath = _uploads_dir() / str(user_id) / "dishes" / str(dish_id) / safe_name
+    filepath = _uploads_dir() / str(dish.account_id) / "dishes" / str(dish_id) / safe_name
     if not filepath.exists():
         raise HTTPException(404, "Image not found")
 
