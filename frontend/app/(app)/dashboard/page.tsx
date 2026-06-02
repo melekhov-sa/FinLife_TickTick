@@ -5,7 +5,6 @@ import { TodayBlock } from "@/components/dashboard/TodayBlock";
 import { FinanceBlock } from "@/components/dashboard/FinanceBlock";
 import { UpcomingPayments } from "@/components/dashboard/UpcomingPayments";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { ProgressBlock } from "@/components/dashboard/ProgressBlock";
 import { WeekEventsCard } from "@/components/dashboard/WeekEventsCard";
 import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
 import { ShoppingWidget } from "@/components/dashboard/ShoppingWidget";
@@ -51,11 +50,9 @@ export default function DashboardPage() {
                   finState={data.fin_state}
                   financialSummary={data.financial_summary}
                 />
-                <ProgressBlock
-                  level={data.level}
-                  efficiency={data.efficiency}
-                  cells={data.habit_heatmap}
-                />
+                {data.shopping_list_id && data.shopping_items.length > 0 && (
+                  <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
+                )}
               </div>
 
               {/* Center */}
@@ -70,16 +67,13 @@ export default function DashboardPage() {
               {/* Right */}
               <div className="space-y-4">
                 <DigestCard />
-                {data.shopping_list_id && data.shopping_items.length > 0 && (
-                  <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
-                )}
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <WeekEventsCard events={data.week_events} />
                 <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               </div>
             </div>
 
-            {/* < xl: single column, action block first, Productivity last */}
+            {/* < xl: single column */}
             <div className="xl:hidden space-y-3 md:space-y-4">
               <TodayBlock
                 today={data.today}
@@ -97,11 +91,6 @@ export default function DashboardPage() {
               <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               <DigestCard />
               <ActivityFeed feed={data.feed} />
-              <ProgressBlock
-                level={data.level}
-                efficiency={data.efficiency}
-                cells={data.habit_heatmap}
-              />
             </div>
           </div>
         )}
