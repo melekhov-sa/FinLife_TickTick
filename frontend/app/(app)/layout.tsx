@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import type { UserMe } from "@/types/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OfflineBanner } from "@/components/primitives/OfflineBanner";
+import { useViewportHeight } from "@/lib/useViewportHeight";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
@@ -56,11 +57,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   const onlineStatus = useOnlineStatus();
 
+  useViewportHeight();
+
   return (
     <AuthGuard>
       <div
-        className="fixed inset-0 w-full flex"
-        style={{ background: "var(--app-bg)" }}
+        className="fixed inset-x-0 top-0 w-full flex"
+        style={{ height: "var(--app-height, 100dvh)", background: "var(--app-bg)" }}
       >
         {/* Desktop sidebar */}
         <div className="hidden md:flex">
