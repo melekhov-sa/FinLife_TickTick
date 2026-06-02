@@ -9,6 +9,7 @@ export interface MealEntry {
   day_of_week: number;
   meal_slot: string;
   dish_name: string;
+  dish_id: number | null;
 }
 
 export function useMealPlan(weekStart: string) {
@@ -21,7 +22,7 @@ export function useMealPlan(weekStart: string) {
 export function useUpsertMealEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { week_start: string; day_of_week: number; meal_slot: string; dish_name: string }) =>
+    mutationFn: (data: { week_start: string; day_of_week: number; meal_slot: string; dish_name: string; dish_id?: number | null }) =>
       api.post<MealEntry>("/api/v2/meal-plan/entries", data),
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ["meal-plan", vars.week_start] }),
   });

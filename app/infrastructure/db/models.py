@@ -1305,6 +1305,31 @@ class FootballMatchModel(Base):
 # ============================================================================
 
 
+class DishModel(Base):
+    """Dish catalog entry."""
+    __tablename__ = "dishes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    meal_types: Mapped[str | None] = mapped_column(Text, nullable=True)  # comma-separated
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)  # HTML from Tiptap
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class DishIngredientModel(Base):
+    """Ingredient row for a dish."""
+    __tablename__ = "dish_ingredients"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    dish_id: Mapped[int] = mapped_column(Integer, ForeignKey("dishes.id", ondelete="CASCADE"), nullable=False, index=True)
+    ingredient_name: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+
 class MealPlanEntryModel(Base):
     """Weekly meal plan entries: one row per (account, week, day, slot)."""
     __tablename__ = "meal_plan_entries"
@@ -1316,6 +1341,7 @@ class MealPlanEntryModel(Base):
     day_of_week: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     meal_slot: Mapped[str] = mapped_column(String(20), nullable=False)
     dish_name: Mapped[str] = mapped_column(Text, nullable=False)
+    dish_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("dishes.id", ondelete="SET NULL"), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
