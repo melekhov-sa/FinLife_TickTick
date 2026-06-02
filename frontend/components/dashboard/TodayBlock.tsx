@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, Circle, SkipForward, Play, Plus, Bell, Minus } from "lucide-react";
+import { CheckCircle2, Circle, SkipForward, Play, Plus, Bell, Minus, ListChecks, Repeat2, CalendarDays, Wallet, type LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import {
@@ -320,13 +320,21 @@ function getDaysOverdue(item: DashboardItem): number {
 }
 
 
-function GroupHeader({ label }: { label: string }) {
+const GROUP_META: Record<string, { Icon: LucideIcon; color: string }> = {
+  tasks:   { Icon: ListChecks,   color: "#4F46E5" },
+  habits:  { Icon: Repeat2,      color: "#7C3AED" },
+  events:  { Icon: CalendarDays, color: "#4F46E5" },
+  finance: { Icon: Wallet,       color: "#4F46E5" },
+};
+
+function GroupHeader({ label, groupKey }: { label: string; groupKey?: string }) {
+  const meta = groupKey ? GROUP_META[groupKey] : undefined;
+  const Icon = meta?.Icon;
+  const color = meta?.color ?? "var(--t-secondary)";
   return (
-    <div className="flex items-center gap-2 pt-2 pb-0.5 first:pt-0">
-      <p className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--t-muted)", opacity: 0.6 }}>
-        {label}
-      </p>
-      <div className="flex-1 h-px bg-indigo-200/40 dark:bg-white/[0.06]" />
+    <div className="flex items-center gap-[7px] pt-3 pb-1 first:pt-0.5">
+      {Icon && <Icon size={14} strokeWidth={2.1} style={{ color }} />}
+      <p className="text-[12.5px] font-semibold tracking-[-0.005em]" style={{ color }}>{label}</p>
     </div>
   );
 }
@@ -967,10 +975,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
           return (
             <>
-              {groups.map((g, idx) => (
+              {groups.map((g) => (
                 <div key={g.key}>
-                  {idx > 0 && <div className="h-px bg-slate-200/70 dark:bg-white/[0.06] my-2" />}
-                  <GroupHeader label={g.label} />
+                  <GroupHeader label={g.label} groupKey={g.key} />
                   {g.content}
                 </div>
               ))}
@@ -1008,6 +1015,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
             (byKind[e.kind] ??= []).push(e);
           }
           const sectionLabels: Record<string, string> = { task: "Задачи", task_occ: "Задачи", event: "События", planned_op: "Финансы", habit: "Привычки" };
+          const kindToGroup: Record<string, string> = { task: "tasks", task_occ: "tasks", event: "events", planned_op: "finance", habit: "habits" };
           const kindOrder = ["task", "task_occ", "event", "planned_op", "habit"];
           const sections = kindOrder.filter((k) => byKind[k]?.length);
 
@@ -1017,10 +1025,9 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 Ожидает завтра · {dateLabel}
               </p>
               <div className="opacity-60 space-y-0">
-                {sections.map((kind, idx) => (
+                {sections.map((kind) => (
                   <div key={kind}>
-                    {idx > 0 && <div className="h-px bg-slate-200/70 dark:bg-white/[0.06] my-2" />}
-                    <GroupHeader label={sectionLabels[kind]} />
+                    <GroupHeader label={sectionLabels[kind]} groupKey={kindToGroup[kind]} />
                     {byKind[kind].map((e) => (
                       <Item
                         key={`tomorrow-${kind}-${e.id}`}
