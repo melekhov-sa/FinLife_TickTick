@@ -53,6 +53,7 @@ export default function DashboardPage() {
                 {data.shopping_list_id && data.shopping_items.length > 0 && (
                   <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
                 )}
+                <WeekEventsCard events={data.week_events} />
               </div>
 
               {/* Center */}
@@ -68,7 +69,6 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 <DigestCard />
                 <UpcomingPayments payments={data.upcoming_payments} />
-                <WeekEventsCard events={data.week_events} />
                 <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               </div>
             </div>
@@ -86,8 +86,8 @@ export default function DashboardPage() {
               {data.shopping_list_id && data.shopping_items.length > 0 && (
                 <ShoppingWidget listId={data.shopping_list_id} items={data.shopping_items} />
               )}
-              <UpcomingPayments payments={data.upcoming_payments} />
               <WeekEventsCard events={data.week_events} />
+              <UpcomingPayments payments={data.upcoming_payments} />
               <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
               <DigestCard />
               <ActivityFeed feed={data.feed} />
