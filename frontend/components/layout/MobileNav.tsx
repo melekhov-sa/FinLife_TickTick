@@ -90,13 +90,14 @@ export function MobileNav({
       <nav
         ref={navRef}
         aria-label="Основная навигация"
-        className="md:hidden shrink-0 flex items-end justify-between px-2"
+        className="md:hidden shrink-0 flex items-stretch justify-between px-2"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
+          minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
+          paddingTop: "6px",
           paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
-          paddingTop: "8px",
         }}
       >
         <BottomItem
@@ -290,7 +291,7 @@ function BottomItem({
   return (
     <Link
       href={href}
-      className="flex-1 flex flex-col items-center gap-0.5 py-1.5 select-none"
+      className="flex-1 flex flex-col items-center justify-center gap-0.5 select-none"
       style={{ color: active ? "var(--app-accent)" : "var(--t-muted)" }}
     >
       {icon}
@@ -312,7 +313,7 @@ function BottomButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex-1 flex flex-col items-center gap-0.5 py-1.5 select-none"
+      className="flex-1 flex flex-col items-center justify-center gap-0.5 select-none"
       style={{ color: "var(--t-muted)" }}
     >
       {icon}
