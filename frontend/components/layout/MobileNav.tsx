@@ -47,7 +47,7 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-30 overflow-hidden flex items-end justify-between px-2 transition-transform duration-200"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 relative overflow-hidden flex items-end justify-between px-2 transition-transform duration-200"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
@@ -57,6 +57,9 @@ export function MobileNav({
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
+        <span style={{ position: "absolute", top: -16, left: 8, fontSize: 9, color: "red", zIndex: 99 }}>
+          v-test-1
+        </span>
         <BottomItem
           href="/dashboard"
           label="Главная"
