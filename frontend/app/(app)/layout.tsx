@@ -62,8 +62,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <div
-        className="fixed inset-0 w-full flex"
-        style={{ background: "var(--app-bg)" }}
+        className="fixed top-0 left-0 right-0 w-full flex"
+        style={{ height: "100lvh", background: "var(--app-bg)" }}
       >
         {/* Desktop sidebar */}
         <div className="hidden md:flex">
@@ -84,7 +84,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             onRetry={() => window.location.reload()}
           />
           <div
-            className="flex-1 min-h-0 flex flex-col overflow-auto scroll-slim pb-[calc(68px+env(safe-area-inset-bottom,0px))] md:pb-0"
+            className="flex-1 min-h-0 flex flex-col overflow-auto scroll-slim"
           >
             {children}
           </div>
