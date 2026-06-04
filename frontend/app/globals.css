@@ -660,7 +660,7 @@ html.dark[data-color-theme="emerald"] {
   }
 
   body {
-    background: var(--app-bg);
+    background: red !important;
     @apply text-foreground;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 15px;
