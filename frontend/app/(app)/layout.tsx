@@ -84,7 +84,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             onRetry={() => window.location.reload()}
           />
           <div
-            className="flex-1 min-h-0 flex flex-col overflow-auto scroll-slim"
+            className="flex-1 min-h-0 flex flex-col overflow-auto scroll-slim pb-[calc(68px+env(safe-area-inset-bottom,0px))] md:pb-0"
           >
             {children}
           </div>
