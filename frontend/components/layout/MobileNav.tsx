@@ -57,7 +57,7 @@ export function MobileNav({
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
-        <span style={{ position: "absolute", top: -16, left: 8, fontSize: 9, color: "red", zIndex: 99 }}>
+        <span style={{ position: "absolute", top: 2, left: 8, fontSize: 9, color: "red", zIndex: 99 }}>
           v-test-1
         </span>
         <BottomItem
