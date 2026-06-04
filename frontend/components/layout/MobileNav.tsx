@@ -90,7 +90,7 @@ export function MobileNav({
       <nav
         ref={navRef}
         aria-label="Основная навигация"
-        className="md:hidden shrink-0 overflow-hidden flex items-end justify-between px-2"
+        className="md:hidden shrink-0 flex items-end justify-between px-2"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
