@@ -295,7 +295,7 @@ function BottomItem({
       style={{ color: active ? "var(--app-accent)" : "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[10.5px] font-medium">{label}</span>
+      <span className="text-[13px] font-bold" style={{ color: "red" }}>{label}</span>
     </Link>
   );
 }
@@ -317,7 +317,7 @@ function BottomButton({
       style={{ color: "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[10.5px] font-medium">{label}</span>
+      <span className="text-[13px] font-bold" style={{ color: "red" }}>{label}</span>
     </button>
   );
 }
