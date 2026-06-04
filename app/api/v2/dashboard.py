@@ -495,8 +495,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
         )
         if shopping_list:
             shopping_list_id = shopping_list.id
-            from datetime import timezone
-            today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+            today_start = datetime.combine(today, datetime.min.time(), tzinfo=ZoneInfo(get_settings().TIMEZONE))
             rows = (
                 db.query(SharedListItem)
                 .filter(
