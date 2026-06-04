@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ClipboardList, Plus, Wallet, Menu, X } from "lucide-react";
@@ -23,35 +23,6 @@ export function MobileNav({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const keyboardOpen = useKeyboardVisible();
-  const [dbg, setDbg] = useState({ ih: 0, vh: 0, vot: 0, navTop: 0, navBot: 0, sab: 0 });
-  const navRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const upd = () => {
-      const vv = window.visualViewport;
-      const r = navRef.current?.getBoundingClientRect();
-      const sab = getComputedStyle(document.documentElement)
-        .getPropertyValue("--sab-probe") || "0";
-      setDbg({
-        ih: Math.round(window.innerHeight),
-        vh: Math.round(vv?.height ?? 0),
-        vot: Math.round(vv?.offsetTop ?? 0),
-        navTop: Math.round(r?.top ?? 0),
-        navBot: Math.round(r?.bottom ?? 0),
-        sab: parseInt(sab) || 0,
-      });
-    };
-    upd();
-    const id = setInterval(upd, 300);
-    window.visualViewport?.addEventListener("resize", upd);
-    window.visualViewport?.addEventListener("scroll", upd);
-    window.addEventListener("scroll", upd, true);
-    return () => {
-      clearInterval(id);
-      window.visualViewport?.removeEventListener("resize", upd);
-      window.visualViewport?.removeEventListener("scroll", upd);
-      window.removeEventListener("scroll", upd, true);
-    };
-  }, []);
 
   const isActive = (href: string) => {
     if (href === "/events") return !!(pathname?.startsWith("/events") || pathname?.startsWith("/event-templates"));
@@ -60,8 +31,6 @@ export function MobileNav({
   };
 
   const handleCreate = () => {
-    // Если переданы оба — показываем меню выбора.
-    // Если один — сразу вызываем его.
     if (onCreateTask && onCreateOperation) {
       setCreateMenuOpen((v) => !v);
     } else if (onCreateTask) {
@@ -73,24 +42,10 @@ export function MobileNav({
 
   return (
     <>
-      <div style={{
-        position: "fixed", top: 60, left: 8, zIndex: 9999,
-        background: "rgba(0,0,0,.8)", color: "#0f0", font: "11px monospace",
-        padding: "6px 8px", borderRadius: 6, lineHeight: 1.5, pointerEvents: "none",
-      }}>
-        innerH: {dbg.ih}<br/>
-        visualH: {dbg.vh}<br/>
-        vp.offsetTop: {dbg.vot}<br/>
-        nav.top: {dbg.navTop}<br/>
-        nav.bottom: {dbg.navBot}<br/>
-        safe-bottom: {dbg.sab}<br/>
-        screen.h: {typeof screen !== "undefined" ? screen.height : 0}
-      </div>
       {/* Нижняя плашка */}
       <nav
-        ref={navRef}
         aria-label="Основная навигация"
-        className="md:hidden shrink-0 flex items-stretch justify-between px-2"
+        className="md:hidden shrink-0 flex items-stretch justify-between px-2 transition-transform duration-200"
         style={{
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
@@ -98,6 +53,7 @@ export function MobileNav({
           minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
           paddingTop: "6px",
           paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
+          transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
         <BottomItem
@@ -295,7 +251,7 @@ function BottomItem({
       style={{ color: active ? "var(--app-accent)" : "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[13px] font-bold" style={{ color: "red" }}>{label}</span>
+      <span className="text-[10.5px] font-medium">{label}</span>
     </Link>
   );
 }
@@ -317,7 +273,7 @@ function BottomButton({
       style={{ color: "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[13px] font-bold" style={{ color: "red" }}>{label}</span>
+      <span className="text-[10.5px] font-medium">{label}</span>
     </button>
   );
 }

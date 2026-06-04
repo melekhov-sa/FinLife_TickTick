@@ -49,7 +49,6 @@
 
 /* ── Light theme (shadcn base) ───────────────────────────────────────────── */
 :root {
-  --sab-probe: env(safe-area-inset-bottom, 0px);
   --background: oklch(0.98 0.004 85);
   --foreground: oklch(0.18 0.01 260);
   --card: oklch(1 0 0);
