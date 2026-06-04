@@ -1,44 +1,30 @@
 "use client";
-
 import { useState, useEffect } from "react";
 
-/**
- * true, когда экранная клавиатура реально открыта.
- * Детект по visualViewport — единственный надёжный сигнал на iOS
- * (и в Safari, и в standalone-PWA). Без ложных срабатываний от фокуса.
- */
 export function useKeyboardVisible(): boolean {
   const [open, setOpen] = useState(false);
-
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return; // старый браузер — просто не прячем
-
-    // standalone-PWA при запуске 500мс устаканивает вьюпорт — игнорируем в это время
+    if (!vv) return;
     const mountedAt = Date.now();
-
     let raf = 0;
     const measure = () => {
-      // разница между layout-viewport и видимой областью
-      // > 120px = клавиатура (не адресная строка / жесты)
-      const gap = window.innerHeight - vv.height - vv.offsetTop;
-      setOpen(gap > 120 && Date.now() - mountedAt > 500);
+      const el = document.activeElement;
+      const editing = !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+      const gap = window.innerHeight - vv.height;
+      setOpen(editing && gap > 120 && Date.now() - mountedAt > 500);
     };
-    const onChange = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(measure);
-    };
-
-    vv.addEventListener("resize", onChange);
-    vv.addEventListener("scroll", onChange);
+    const onResize = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(measure); };
+    vv.addEventListener("resize", onResize);
+    document.addEventListener("focusin", measure);
+    document.addEventListener("focusout", measure);
     measure();
-
     return () => {
-      vv.removeEventListener("resize", onChange);
-      vv.removeEventListener("scroll", onChange);
+      vv.removeEventListener("resize", onResize);
+      document.removeEventListener("focusin", measure);
+      document.removeEventListener("focusout", measure);
       cancelAnimationFrame(raf);
     };
   }, []);
-
   return open;
 }
