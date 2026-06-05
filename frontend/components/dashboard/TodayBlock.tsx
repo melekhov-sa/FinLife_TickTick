@@ -570,7 +570,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
     },
   });
 
-  const { mutate: reorderTasks, isPending: isReordering } = useReorderTasks();
+  const { mutate: reorderTasks } = useReorderTasks();
 
   // Local order for optimistic DnD -- mirrors activeTasks, updated on drag
   const [localTaskOrder, setLocalTaskOrder] = useState<DashboardItem[]>([]);
@@ -620,22 +620,34 @@ export function TodayBlock({ today, plannedOps }: Props) {
     });
   }
 
-  // On drop — order is already correct from handleDragOver, commit to server.
-  // Reset the ref so next activeTasks change (server response) will sync local order.
   function handleDragEnd(event: DragEndEvent) {
-    isDraggingRef.current = false;
     const { over } = event;
 
     if (!over) {
-      // Drag cancelled — reset to server state immediately
+      isDraggingRef.current = false;
       setLocalTaskOrder(activeTasks);
       return;
     }
 
-    setLocalTaskOrder((current) => {
-      const taskIds = current.filter((t) => t.kind === "task").map((t) => t.id);
-      if (!isReordering && taskIds.length > 0) reorderTasks(taskIds);
-      return current;
+    const taskIds = localTaskOrder
+      .filter((t) => t.kind === "task")
+      .map((t) => t.id);
+
+    if (taskIds.length === 0) {
+      isDraggingRef.current = false;
+      return;
+    }
+
+    // Keep isDraggingRef true until the server confirms — prevents an
+    // in-flight dashboard refetch from overwriting the local order.
+    reorderTasks(taskIds, {
+      onError: () => {
+        isDraggingRef.current = false;
+        setLocalTaskOrder(activeTasks);
+      },
+      onSettled: () => {
+        isDraggingRef.current = false;
+      },
     });
   }
 
