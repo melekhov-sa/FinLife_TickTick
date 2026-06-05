@@ -826,6 +826,12 @@ function GoalDataRow({
   goalPlanType,
   isHidden,
   onToggleVisibility,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDragEnd,
+  onDrop,
+  dragOverPos,
 }: {
   row: BudgetGoalRow;
   periodCount: number;
@@ -835,16 +841,42 @@ function GoalDataRow({
   goalPlanType?: string;
   isHidden?: boolean;
   onToggleVisibility?: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  dragOverPos?: "before" | "after" | null;
 }) {
   return (
-    <tr className="transition-colors">
+    <tr
+      className="transition-colors"
+      style={
+        dragOverPos === "before"
+          ? { boxShadow: "inset 0 3px 0 #6366F1" }
+          : dragOverPos === "after"
+          ? { boxShadow: "inset 0 -3px 0 #6366F1" }
+          : undefined
+      }
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+    >
       <td
         className="text-[12px] py-1.5 px-3 sticky left-0 z-10 max-w-[200px] truncate font-normal"
         style={{ color: "var(--t-secondary)", background: "var(--bgt-row-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
         title={row.title}
       >
         <span className="inline-flex items-center gap-1 group/goal">
-          <GripVertical size={12} className="text-slate-300 cursor-grab shrink-0" />
+          <span
+            draggable={!!onDragStart}
+            onDragStart={onDragStart}
+            className={onDragStart ? "cursor-grab" : ""}
+            style={{ lineHeight: 0 }}
+          >
+            <GripVertical size={12} className="text-slate-300 shrink-0 pointer-events-none" />
+          </span>
           <span className={isHidden ? "opacity-40 line-through" : ""}>{row.title}</span>
           {onToggleVisibility && (
             <Tooltip content={isHidden ? "Показать в бюджете" : "Скрыть из бюджета"}>
@@ -1679,6 +1711,70 @@ export default function BudgetMatrixPage() {
 
   const qc = useQueryClient();
 
+  // ── Goal drag-and-drop (withdrawal + savings sections) ──
+  const dragSrcGoal = useRef<number | null>(null);
+  const [dragOverGoal, setDragOverGoal] = useState<{ id: number; pos: "before" | "after" } | null>(null);
+
+  const onGoalDragStart = useCallback((e: React.DragEvent, goalId: number) => {
+    dragSrcGoal.current = goalId;
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
+  const onGoalDragOver = useCallback((e: React.DragEvent, goalId: number) => {
+    if (!dragSrcGoal.current || dragSrcGoal.current === goalId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const pos = e.clientY < r.top + r.height / 2 ? "before" : "after";
+    setDragOverGoal({ id: goalId, pos });
+  }, []);
+
+  const onGoalDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverGoal(null);
+  }, []);
+
+  const onGoalDragEnd = useCallback((_e: React.DragEvent) => {
+    setDragOverGoal(null);
+    dragSrcGoal.current = null;
+  }, []);
+
+  async function handleGoalDrop(e: React.DragEvent, targetGoalId: number, rows: BudgetGoalRow[]) {
+    e.preventDefault();
+    const pos = dragOverGoal?.pos;
+    setDragOverGoal(null);
+    if (!dragSrcGoal.current || dragSrcGoal.current === targetGoalId) return;
+    const srcId = dragSrcGoal.current;
+    dragSrcGoal.current = null;
+
+    const ids = rows.map(r => r.goal_id);
+    const srcIdx = ids.indexOf(srcId);
+    if (srcIdx < 0) return;
+    ids.splice(srcIdx, 1);
+    let insertIdx = ids.indexOf(targetGoalId);
+    if (insertIdx < 0) return;
+    if (pos === "after") insertIdx += 1;
+    ids.splice(insertIdx, 0, srcId);
+
+    const items = ids.map((id, i) => ({ goal_id: id, sort_order: i }));
+    await api.patch("/api/v2/goals/reorder", items);
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
+
+  async function handleGoalDropEnd(rows: BudgetGoalRow[]) {
+    setDragOverGoal(null);
+    if (!dragSrcGoal.current) return;
+    const srcId = dragSrcGoal.current;
+    dragSrcGoal.current = null;
+    const ids = rows.map(r => r.goal_id);
+    const srcIdx = ids.indexOf(srcId);
+    if (srcIdx < 0) return;
+    ids.splice(srcIdx, 1);
+    ids.push(srcId);
+    const items = ids.map((id, i) => ({ goal_id: id, sort_order: i }));
+    await api.patch("/api/v2/goals/reorder", items);
+    qc.invalidateQueries({ queryKey: ["budget-matrix"] });
+  }
+
   async function savePlan(target: PlanEditTarget, amount: string, note: string, copyForward: boolean) {
     const months = [target.month];
     if (copyForward) {
@@ -2240,8 +2336,23 @@ export default function BudgetMatrixPage() {
                           goalPlanType="withdrawal"
                           isHidden={showHidden && hiddenWGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "withdrawal") : undefined}
+                          onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
+                          onDragOver={(e) => onGoalDragOver(e, row.goal_id)}
+                          onDragLeave={onGoalDragLeave}
+                          onDragEnd={onGoalDragEnd}
+                          onDrop={(e) => handleGoalDrop(e, row.goal_id, data.withdrawal_rows)}
+                          dragOverPos={dragOverGoal?.id === row.goal_id ? dragOverGoal.pos : null}
                         />
                       ))}
+                      {withdrawOpen && (
+                        <tr
+                          onDragOver={(e) => { if (!dragSrcGoal.current) return; e.preventDefault(); setDragOverGoal({ id: -1, pos: "after" }); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverGoal(null); }}
+                          onDrop={(e) => { e.preventDefault(); handleGoalDropEnd(data.withdrawal_rows); }}
+                        >
+                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                        </tr>
+                      )}
                       <TotalsRow
                         label="Итого взять"
                         totals={data.withdrawal_totals}
@@ -2320,8 +2431,23 @@ export default function BudgetMatrixPage() {
                           goalPlanType="goal"
                           isHidden={showHidden && hiddenGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "goal") : undefined}
+                          onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
+                          onDragOver={(e) => onGoalDragOver(e, row.goal_id)}
+                          onDragLeave={onGoalDragLeave}
+                          onDragEnd={onGoalDragEnd}
+                          onDrop={(e) => handleGoalDrop(e, row.goal_id, data.goal_rows)}
+                          dragOverPos={dragOverGoal?.id === row.goal_id ? dragOverGoal.pos : null}
                         />
                       ))}
+                      {goalsOpen && (
+                        <tr
+                          onDragOver={(e) => { if (!dragSrcGoal.current) return; e.preventDefault(); setDragOverGoal({ id: -2, pos: "after" }); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverGoal(null); }}
+                          onDrop={(e) => { e.preventDefault(); handleGoalDropEnd(data.goal_rows); }}
+                        >
+                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -2 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                        </tr>
+                      )}
                       <TotalsRow
                         label="Итого отложить"
                         totals={data.goal_totals}
