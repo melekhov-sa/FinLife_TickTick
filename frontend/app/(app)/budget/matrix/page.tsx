@@ -1057,15 +1057,24 @@ function ForecastRow({
   const currentIdx = periods.findIndex((p) => getPeriodKind(p) !== "past");
   const startIdx = currentIdx < 0 ? periodCount : currentIdx;
 
-  // Cumulative projected balance per period (current+future only)
+  // For a period: remaining = plan - fact for current, full plan for future
+  function remaining(cells: BudgetCell[], i: number): number {
+    const cell = cells[i];
+    if (!cell) return 0;
+    const pk = periods[i] ? getPeriodKind(periods[i]) : "future";
+    return pk === "current" ? cell.plan - cell.fact : cell.plan;
+  }
+
+  // Cumulative projected balance: walletBalance already includes all fact transactions,
+  // so we add only what is still expected (remaining plan per period)
   const projected: (number | null)[] = [];
   let running = walletBalance;
   for (let i = 0; i < periodCount; i++) {
     if (i < startIdx) { projected.push(null); continue; }
-    running += (incomeTotals.cells[i]?.plan ?? 0)
-             - (expenseTotals.cells[i]?.plan ?? 0)
-             + (withdrawalTotals.cells[i]?.plan ?? 0)
-             - (goalTotals.cells[i]?.plan ?? 0);
+    running += remaining(incomeTotals.cells, i)
+             - remaining(expenseTotals.cells, i)
+             + remaining(withdrawalTotals.cells, i)
+             - remaining(goalTotals.cells, i);
     projected.push(running);
   }
 
@@ -1098,18 +1107,21 @@ function ForecastRow({
     return <td key={i} className={tdVal}>{cell}</td>;
   }
 
-  // Renders one complete "plan value per period" row
-  function planRow(label: string, cells: BudgetCell[], total: BudgetCell, color: string) {
+  // Renders one complete "remaining plan per period" row
+  // Current period shows plan−fact (what's still expected); future shows full plan
+  function planRow(label: string, cells: BudgetCell[], color: string) {
+    // Total = sum of remaining values across current+future periods
+    const totalRemaining = cells.slice(startIdx, periodCount).reduce((s, _, i) => s + remaining(cells, startIdx + i), 0);
     return (
       <tr>
         <td className={labelCls} style={{ color: "var(--t-secondary)", background: rowBg, borderRight: stickyBorder }}>
           {label}
         </td>
-        {cells.slice(0, periodCount).map((cell, i) =>
-          periodCells(i, i >= startIdx ? cell.plan : null, color)
+        {cells.slice(0, periodCount).map((_, i) =>
+          periodCells(i, i >= startIdx ? remaining(cells, i) : null, color)
         )}
         <td className={clsx(tdVal, "bgt-tc-plan")} style={{ color, background: "var(--app-sidebar-bg)" }}>
-          {fmt(total.plan)}
+          {fmt(totalRemaining)}
         </td>
         <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)" }} />
       </tr>
@@ -1153,10 +1165,10 @@ function ForecastRow({
         <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)" }} />
       </tr>
 
-      {planRow("Доходы", incomeTotals.cells, incomeTotals.total, "rgb(52 211 153)")}
-      {planRow("Расходы", expenseTotals.cells, expenseTotals.total, "rgb(248 113 113)")}
-      {planRow("Взять из отложенного", withdrawalTotals.cells, withdrawalTotals.total, "rgb(96 165 250)")}
-      {planRow("Отложить", goalTotals.cells, goalTotals.total, "rgb(167 139 250)")}
+      {planRow("Доходы", incomeTotals.cells, "rgb(52 211 153)")}
+      {planRow("Расходы", expenseTotals.cells, "rgb(248 113 113)")}
+      {planRow("Взять из отложенного", withdrawalTotals.cells, "rgb(96 165 250)")}
+      {planRow("Отложить", goalTotals.cells, "rgb(167 139 250)")}
 
       {/* Остаток на конец — cumulative projected balance */}
       <tr>
