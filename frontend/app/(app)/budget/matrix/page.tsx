@@ -1054,85 +1054,133 @@ function ForecastRow({
   withdrawalTotals: BudgetSectionTotals;
   goalTotals: BudgetSectionTotals;
 }) {
-  // Find first current-or-future period
   const currentIdx = periods.findIndex((p) => getPeriodKind(p) !== "past");
   const startIdx = currentIdx < 0 ? periodCount : currentIdx;
 
-  // Cumulative projected balance per period (only for current+future)
+  // Cumulative projected balance per period (current+future only)
   const projected: (number | null)[] = [];
   let running = walletBalance;
   for (let i = 0; i < periodCount; i++) {
-    if (i < startIdx) {
-      projected.push(null);
-    } else {
-      const inc = incomeTotals.cells[i]?.plan ?? 0;
-      const exp = expenseTotals.cells[i]?.plan ?? 0;
-      const wth = withdrawalTotals.cells[i]?.plan ?? 0;
-      const gol = goalTotals.cells[i]?.plan ?? 0;
-      running += inc - exp + wth - gol;
-      projected.push(running);
-    }
+    if (i < startIdx) { projected.push(null); continue; }
+    running += (incomeTotals.cells[i]?.plan ?? 0)
+             - (expenseTotals.cells[i]?.plan ?? 0)
+             + (withdrawalTotals.cells[i]?.plan ?? 0)
+             - (goalTotals.cells[i]?.plan ?? 0);
+    projected.push(running);
   }
 
-  const tdBase = "tabular-nums text-right px-2 py-2.5 text-[12px] font-bold";
-  const pk0 = periods[0] ? getPeriodKind(periods[0]) : "current";
+  const tdVal = "tabular-nums text-right px-2 py-1.5 text-[12px]";
+  const tdBold = "tabular-nums text-right px-2 py-2 text-[12px] font-bold";
+  const labelCls = "text-[11px] px-3 py-1.5 sticky left-0 z-10";
+  const rowBg = "var(--bgt-row-bg)";
+  const stickyBorder = "2px solid var(--bgt-sticky-border)";
+
+  // Renders one period's cells for a "plan-only" row (no colSpan — matches TotalsRow structure)
+  function periodCells(i: number, val: number | null, color: string) {
+    const pk = periods[i] ? getPeriodKind(periods[i]) : "current";
+    const show = val !== null;
+    const cell = show
+      ? <span style={{ color }}>{fmt(val as number)}</span>
+      : null;
+    if (pk === "past") return (
+      <React.Fragment key={i}>
+        <td className={tdVal}>{cell}</td>
+        <td />
+      </React.Fragment>
+    );
+    if (pk === "current") return (
+      <React.Fragment key={i}>
+        <td className={tdVal}>{cell}</td>
+        <td />
+        <td />
+      </React.Fragment>
+    );
+    return <td key={i} className={tdVal}>{cell}</td>;
+  }
+
+  // Renders one complete "plan value per period" row
+  function planRow(label: string, cells: BudgetCell[], total: BudgetCell, color: string) {
+    return (
+      <tr>
+        <td className={labelCls} style={{ color: "var(--t-secondary)", background: rowBg, borderRight: stickyBorder }}>
+          {label}
+        </td>
+        {cells.slice(0, periodCount).map((cell, i) =>
+          periodCells(i, i >= startIdx ? cell.plan : null, color)
+        )}
+        <td className={clsx(tdVal, "bgt-tc-plan")} style={{ color, background: "var(--app-sidebar-bg)" }}>
+          {fmt(total.plan)}
+        </td>
+        <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)" }} />
+      </tr>
+    );
+  }
 
   return (
     <>
-      {/* Separator + label */}
+      {/* Top separator */}
       <tr>
-        <td
-          colSpan={1}
-          className="text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1 sticky left-0 z-10"
-          style={{ color: "var(--t-muted)", background: "var(--app-sidebar-bg)" }}
-        >
-          Прогноз
-        </td>
-        {/* fill remaining columns */}
-        {Array.from({ length: (pk0 === "past" ? 2 : pk0 === "current" ? 3 : 1) * periodCount + 2 - 1 }).map((_, i) => (
-          <td key={i} style={{ background: "var(--app-bg)" }} />
-        ))}
+        <td className="sticky left-0 z-10" style={{ background: "var(--app-sidebar-bg)", borderTop: "2px solid var(--bgt-cell-border-strong)" }} />
+        {periods.slice(0, periodCount).map((p, i) => {
+          const pk = getPeriodKind(p);
+          if (pk === "past") return <React.Fragment key={i}><td style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} /><td style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} /></React.Fragment>;
+          if (pk === "current") return <React.Fragment key={i}><td style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} /><td style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} /><td style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} /></React.Fragment>;
+          return <td key={i} style={{ borderTop: "2px solid var(--bgt-cell-border-strong)" }} />;
+        })}
+        <td className="bgt-tc-plan" style={{ background: "var(--app-sidebar-bg)", borderTop: "2px solid var(--bgt-cell-border-strong)" }} />
+        <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)", borderTop: "2px solid var(--bgt-cell-border-strong)" }} />
       </tr>
-      {/* Wallet balance reference row */}
-      <tr style={{ background: "var(--app-bg)" }}>
-        <td
-          className="text-[11px] px-3 py-1.5 sticky left-0 z-10"
-          style={{ color: "var(--t-secondary)", background: "var(--bgt-row-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
-        >
+
+      {/* Баланс сейчас — shown only in the current period's plan cell */}
+      <tr>
+        <td className={labelCls} style={{ color: "var(--t-secondary)", background: rowBg, borderRight: stickyBorder }}>
           Баланс сейчас
         </td>
-        {Array.from({ length: periodCount }).map((_, i) => {
-          const pk = periods[i] ? getPeriodKind(periods[i]) : "current";
-          const colSpan = pk === "past" ? 2 : pk === "current" ? 3 : 1;
-          if (i !== startIdx) return <td key={i} colSpan={colSpan} />;
-          return (
-            <td key={i} colSpan={colSpan} className={tdBase} style={{ color: "var(--t-primary)" }}>
-              {fmt(walletBalance)}
-            </td>
+        {periods.slice(0, periodCount).map((p, i) => {
+          const pk = getPeriodKind(p);
+          const show = i === startIdx;
+          if (pk === "past") return <React.Fragment key={i}><td /><td /></React.Fragment>;
+          if (pk === "current") return (
+            <React.Fragment key={i}>
+              <td className={tdVal} style={{ color: show ? "var(--t-primary)" : undefined }}>{show ? fmt(walletBalance) : null}</td>
+              <td />
+              <td />
+            </React.Fragment>
           );
+          return <td key={i} />;
         })}
-        <td colSpan={2} />
+        <td className={clsx(tdVal, "bgt-tc-plan")} style={{ color: "var(--t-primary)", background: "var(--app-sidebar-bg)" }}>{fmt(walletBalance)}</td>
+        <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)" }} />
       </tr>
-      {/* Projected balance row */}
-      <tr className="border-t" style={{ borderColor: "var(--bgt-cell-border-strong)", background: "var(--app-bg)" }}>
-        <td
-          className="text-[12px] font-bold px-3 py-2 sticky left-0 z-10"
-          style={{ color: "var(--t-primary)", background: "var(--app-sidebar-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
-        >
+
+      {planRow("Доходы", incomeTotals.cells, incomeTotals.total, "rgb(52 211 153)")}
+      {planRow("Расходы", expenseTotals.cells, expenseTotals.total, "rgb(248 113 113)")}
+      {planRow("Взять из отложенного", withdrawalTotals.cells, withdrawalTotals.total, "rgb(96 165 250)")}
+      {planRow("Отложить", goalTotals.cells, goalTotals.total, "rgb(167 139 250)")}
+
+      {/* Остаток на конец — cumulative projected balance */}
+      <tr>
+        <td className="text-[12px] font-bold px-3 py-2 sticky left-0 z-10"
+          style={{ color: "var(--t-primary)", background: "var(--app-sidebar-bg)", borderRight: stickyBorder, borderTop: "1px solid var(--bgt-cell-border-strong)" }}>
           Остаток на конец
         </td>
-        {projected.map((val, i) => {
-          const pk = periods[i] ? getPeriodKind(periods[i]) : "current";
-          const colSpan = pk === "past" ? 2 : pk === "current" ? 3 : 1;
-          if (val === null) return <td key={i} colSpan={colSpan} />;
-          const color = val >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
-          return (
-            <td key={i} colSpan={colSpan} className={tdBase} style={{ color }}>
-              {fmt(val)}
-            </td>
+        {periods.slice(0, periodCount).map((p, i) => {
+          const pk = getPeriodKind(p);
+          const val = projected[i];
+          const color = val != null && val >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
+          const borderTop = "1px solid var(--bgt-cell-border-strong)";
+          if (pk === "past") return <React.Fragment key={i}><td style={{ borderTop }} /><td style={{ borderTop }} /></React.Fragment>;
+          if (pk === "current") return (
+            <React.Fragment key={i}>
+              <td className={tdBold} style={{ color: val != null ? color : undefined, borderTop }}>{val != null ? fmt(val) : null}</td>
+              <td style={{ borderTop }} />
+              <td style={{ borderTop }} />
+            </React.Fragment>
           );
+          return <td key={i} className={tdBold} style={{ color: val != null ? color : undefined, borderTop }}>{val != null ? fmt(val) : null}</td>;
         })}
-        <td colSpan={2} />
+        <td className="bgt-tc-plan" style={{ background: "var(--app-sidebar-bg)", borderTop: "1px solid var(--bgt-cell-border-strong)" }} />
+        <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)", borderTop: "1px solid var(--bgt-cell-border-strong)" }} />
       </tr>
     </>
   );
