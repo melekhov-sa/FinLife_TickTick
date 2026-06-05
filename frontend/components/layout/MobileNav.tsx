@@ -50,9 +50,9 @@ export function MobileNav({
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
-          minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
+          minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))",
           paddingTop: "6px",
-          paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
+          paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
@@ -251,7 +251,7 @@ function BottomItem({
       style={{ color: active ? "var(--app-accent)" : "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[10.5px] font-medium">{label}</span>
+      <span className="text-[11px] font-semibold leading-none" style={{ opacity: 1 }}>{label}</span>
     </Link>
   );
 }
@@ -273,7 +273,7 @@ function BottomButton({
       style={{ color: "var(--t-muted)" }}
     >
       {icon}
-      <span className="text-[10.5px] font-medium">{label}</span>
+      <span className="text-[11px] font-semibold leading-none" style={{ opacity: 1 }}>{label}</span>
     </button>
   );
 }
