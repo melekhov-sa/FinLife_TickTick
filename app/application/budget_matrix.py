@@ -271,6 +271,17 @@ class BudgetMatrixService:
             account_id, periods, n, has_manual, budget_variant_id, hidden_withdrawal_goal_ids,
         )
 
+        # --- Wallet balance (REGULAR wallets only, for balance forecast row) ---
+        wallet_balance = int(
+            self.db.query(func.coalesce(func.sum(WalletBalance.balance), 0))
+            .filter(
+                WalletBalance.account_id == account_id,
+                WalletBalance.wallet_type == "REGULAR",
+                WalletBalance.is_archived == False,
+            )
+            .scalar() or 0
+        )
+
         return {
             "grain": grain,
             "range_count": range_count,
@@ -288,6 +299,7 @@ class BudgetMatrixService:
             "withdrawal_rows": withdrawal_rows,
             "withdrawal_totals": withdrawal_totals,
             "avg_months": avg_months,
+            "wallet_balance": wallet_balance,
         }
 
     # ------------------------------------------------------------------

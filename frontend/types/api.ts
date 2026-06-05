@@ -558,6 +558,7 @@ export interface BudgetMatrix {
   withdrawal_rows: BudgetGoalRow[];
   withdrawal_totals: BudgetSectionTotals;
   avg_months: number;
+  wallet_balance: number;
 }
 
 // ── Digests ──────────────────────────────────────────────────────────────────

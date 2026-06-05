@@ -1035,6 +1035,109 @@ function ResultRow({
   );
 }
 
+// ── Balance forecast row ──────────────────────────────────────────────────────
+
+function ForecastRow({
+  walletBalance,
+  periodCount,
+  periods,
+  incomeTotals,
+  expenseTotals,
+  withdrawalTotals,
+  goalTotals,
+}: {
+  walletBalance: number;
+  periodCount: number;
+  periods: BudgetPeriod[];
+  incomeTotals: BudgetSectionTotals;
+  expenseTotals: BudgetSectionTotals;
+  withdrawalTotals: BudgetSectionTotals;
+  goalTotals: BudgetSectionTotals;
+}) {
+  // Find first current-or-future period
+  const currentIdx = periods.findIndex((p) => getPeriodKind(p) !== "past");
+  const startIdx = currentIdx < 0 ? periodCount : currentIdx;
+
+  // Cumulative projected balance per period (only for current+future)
+  const projected: (number | null)[] = [];
+  let running = walletBalance;
+  for (let i = 0; i < periodCount; i++) {
+    if (i < startIdx) {
+      projected.push(null);
+    } else {
+      const inc = incomeTotals.cells[i]?.plan ?? 0;
+      const exp = expenseTotals.cells[i]?.plan ?? 0;
+      const wth = withdrawalTotals.cells[i]?.plan ?? 0;
+      const gol = goalTotals.cells[i]?.plan ?? 0;
+      running += inc - exp + wth - gol;
+      projected.push(running);
+    }
+  }
+
+  const tdBase = "tabular-nums text-right px-2 py-2.5 text-[12px] font-bold";
+  const pk0 = periods[0] ? getPeriodKind(periods[0]) : "current";
+
+  return (
+    <>
+      {/* Separator + label */}
+      <tr>
+        <td
+          colSpan={1}
+          className="text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1 sticky left-0 z-10"
+          style={{ color: "var(--t-muted)", background: "var(--app-sidebar-bg)" }}
+        >
+          Прогноз
+        </td>
+        {/* fill remaining columns */}
+        {Array.from({ length: (pk0 === "past" ? 2 : pk0 === "current" ? 3 : 1) * periodCount + 2 - 1 }).map((_, i) => (
+          <td key={i} style={{ background: "var(--app-bg)" }} />
+        ))}
+      </tr>
+      {/* Wallet balance reference row */}
+      <tr style={{ background: "var(--app-bg)" }}>
+        <td
+          className="text-[11px] px-3 py-1.5 sticky left-0 z-10"
+          style={{ color: "var(--t-secondary)", background: "var(--bgt-row-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
+        >
+          Баланс сейчас
+        </td>
+        {Array.from({ length: periodCount }).map((_, i) => {
+          const pk = periods[i] ? getPeriodKind(periods[i]) : "current";
+          const colSpan = pk === "past" ? 2 : pk === "current" ? 3 : 1;
+          if (i !== startIdx) return <td key={i} colSpan={colSpan} />;
+          return (
+            <td key={i} colSpan={colSpan} className={tdBase} style={{ color: "var(--t-primary)" }}>
+              {fmt(walletBalance)}
+            </td>
+          );
+        })}
+        <td colSpan={2} />
+      </tr>
+      {/* Projected balance row */}
+      <tr className="border-t" style={{ borderColor: "var(--bgt-cell-border-strong)", background: "var(--app-bg)" }}>
+        <td
+          className="text-[12px] font-bold px-3 py-2 sticky left-0 z-10"
+          style={{ color: "var(--t-primary)", background: "var(--app-sidebar-bg)", borderRight: "2px solid var(--bgt-sticky-border)" }}
+        >
+          Остаток на конец
+        </td>
+        {projected.map((val, i) => {
+          const pk = periods[i] ? getPeriodKind(periods[i]) : "current";
+          const colSpan = pk === "past" ? 2 : pk === "current" ? 3 : 1;
+          if (val === null) return <td key={i} colSpan={colSpan} />;
+          const color = val >= 0 ? "rgb(52 211 153)" : "rgb(248 113 113)";
+          return (
+            <td key={i} colSpan={colSpan} className={tdBase} style={{ color }}>
+              {fmt(val)}
+            </td>
+          );
+        })}
+        <td colSpan={2} />
+      </tr>
+    </>
+  );
+}
+
 // ── Period picker ─────────────────────────────────────────────────────────────
 
 const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
@@ -2460,6 +2563,17 @@ export default function BudgetMatrixPage() {
 
                   {/* ── РЕЗУЛЬТАТ ── */}
                   <ResultRow result={data.result} periodCount={rangeCount} periods={periods} />
+
+                  {/* ── ПРОГНОЗ ОСТАТКА ── */}
+                  <ForecastRow
+                    walletBalance={data.wallet_balance}
+                    periodCount={rangeCount}
+                    periods={periods}
+                    incomeTotals={data.income_totals}
+                    expenseTotals={data.expense_totals}
+                    withdrawalTotals={data.withdrawal_totals}
+                    goalTotals={data.goal_totals}
+                  />
 
                 </tbody>
               </table>
