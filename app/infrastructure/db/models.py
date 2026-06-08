@@ -2061,3 +2061,81 @@ class CalDAVTokenModel(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+# ── Collection ────────────────────────────────────────────────────────────────
+
+class CollectionCategory(Base):
+    __tablename__ = "collection_categories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    emoji: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # serial | name | pokemon
+    tracking_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="name")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class CollectionItem(Base):
+    __tablename__ = "collection_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("collection_categories.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Common identifier
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    serial_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Banknote-specific
+    denomination: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    issue_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    series: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Pokemon-specific
+    pokemon_card_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pokemon_set_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    pokemon_card_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pokemon_rarity: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    pokemon_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Financial
+    acquisition_date: Mapped[date_type | None] = mapped_column(Date(), nullable=True)
+    acquisition_price: Mapped[Decimal] = mapped_column(Numeric(precision=14, scale=2), nullable=False, server_default="0")
+    current_value: Mapped[Decimal] = mapped_column(Numeric(precision=14, scale=2), nullable=False, server_default="0")
+
+    # Common
+    comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class CollectionPriceHistory(Base):
+    __tablename__ = "collection_price_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(Integer, ForeignKey("collection_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    valued_at: Mapped[date_type] = mapped_column(Date(), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(precision=14, scale=2), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PokemonCard(Base):
+    """Local mirror of pokemontcg.io card data (loaded from GitHub JSON)."""
+    __tablename__ = "pokemon_cards"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)   # e.g. "base1-4"
+    name: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
+    set_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    set_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    number: Mapped[str] = mapped_column(String(20), nullable=False)
+    rarity: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    supertype: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    image_url_small: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_url_large: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from typing import Dict, Any
 
 # Wallet types (from FinLife OS)
-WALLET_TYPE_REGULAR = "REGULAR"  # Обычный - обычный кошелёк
-WALLET_TYPE_CREDIT = "CREDIT"    # Кредит - долговой кошелёк (баланс <= 0)
-WALLET_TYPE_SAVINGS = "SAVINGS"  # Накопления - накопительный (только пополнение)
+WALLET_TYPE_REGULAR = "REGULAR"       # Обычный - обычный кошелёк
+WALLET_TYPE_CREDIT = "CREDIT"         # Кредит - долговой кошелёк (баланс <= 0)
+WALLET_TYPE_SAVINGS = "SAVINGS"       # Накопления - накопительный (только пополнение)
+WALLET_TYPE_COLLECTION = "COLLECTION" # Коллекция — неликвидные активы (баланс = сумма предметов)
 
 
 @dataclass

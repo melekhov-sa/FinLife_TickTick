@@ -84,6 +84,7 @@ export interface FinStateBlock {
   regular_total: number;
   credit_total: number;
   savings_total: number;
+  collection_total: number;
   financial_result: number;
   debt_load_pct: number | null;
   capital_delta_30: number | null;
@@ -636,6 +637,67 @@ export interface DigestDetail {
   viewed_at: string | null;
   ai_comment: string | null;
   payload: DigestPayload;
+}
+
+// ── /api/v2/collection ───────────────────────────────────────────────────────
+
+export interface CollectionCategory {
+  id: number;
+  name: string;
+  emoji: string | null;
+  tracking_type: "serial" | "name" | "pokemon";
+  sort_order: number;
+  item_count: number;
+  total_value: number;
+}
+
+export interface CollectionItem {
+  id: number;
+  category_id: number;
+  name: string | null;
+  serial_number: string | null;
+  denomination: string | null;
+  country: string | null;
+  issue_year: number | null;
+  series: string | null;
+  pokemon_card_id: string | null;
+  pokemon_set_name: string | null;
+  pokemon_card_number: string | null;
+  pokemon_rarity: string | null;
+  pokemon_image_url: string | null;
+  acquisition_date: string | null;
+  acquisition_price: number;
+  current_value: number;
+  roi_pct: number | null;
+  comment: string | null;
+  sort_order: number;
+}
+
+export interface CollectionPriceHistory {
+  id: number;
+  valued_at: string;
+  value: number;
+  note: string | null;
+}
+
+export interface CollectionSummary {
+  total_acquisition: number;
+  total_current_value: number;
+  total_roi_pct: number | null;
+  item_count: number;
+  wallet_id: number | null;
+}
+
+export interface PokemonCardResult {
+  id: string;
+  name: string;
+  set_id: string;
+  set_name: string;
+  number: string;
+  rarity: string | null;
+  supertype: string | null;
+  image_url_small: string | null;
+  image_url_large: string | null;
 }
 
 // ── /api/v2/counters ──────────────────────────────────────────────────────────

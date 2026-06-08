@@ -735,14 +735,15 @@ class DashboardService:
                 return None
             return int(sum(w.balance_30d_ago for w in ws))
 
-        regular_total = _total("REGULAR")
-        credit_total  = _total("CREDIT")
-        savings_total = _total("SAVINGS")
+        regular_total    = _total("REGULAR")
+        credit_total     = _total("CREDIT")
+        savings_total    = _total("SAVINGS")
+        collection_total = _total("COLLECTION")
 
-        financial_result = regular_total + savings_total + credit_total
+        financial_result = regular_total + savings_total + credit_total + collection_total
 
         # ── Debt load ──
-        assets = regular_total + savings_total
+        assets = regular_total + savings_total + collection_total
         debt = abs(credit_total)
         if assets > 0:
             debt_load_pct = round(debt / assets * 100)
@@ -750,12 +751,13 @@ class DashboardService:
             debt_load_pct = None
 
         # ── Capital delta 30d (via balance_30d_ago snapshots) ──
-        regular_30 = _total_30d_ago("REGULAR")
-        credit_30  = _total_30d_ago("CREDIT")
-        savings_30 = _total_30d_ago("SAVINGS")
+        regular_30    = _total_30d_ago("REGULAR")
+        credit_30     = _total_30d_ago("CREDIT")
+        savings_30    = _total_30d_ago("SAVINGS")
+        collection_30 = _total_30d_ago("COLLECTION")
 
-        if regular_30 is not None and credit_30 is not None and savings_30 is not None:
-            net_worth_30 = regular_30 + savings_30 + credit_30
+        if all(v is not None for v in [regular_30, credit_30, savings_30, collection_30]):
+            net_worth_30 = regular_30 + savings_30 + credit_30 + collection_30  # type: ignore[operator]
             capital_delta_30 = financial_result - net_worth_30
         else:
             capital_delta_30 = None
@@ -764,6 +766,7 @@ class DashboardService:
             "regular_total":    regular_total,
             "credit_total":     credit_total,
             "savings_total":    savings_total,
+            "collection_total": collection_total,
             "financial_result": financial_result,
             "debt_load_pct":    debt_load_pct,
             "capital_delta_30": capital_delta_30,
