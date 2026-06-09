@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.models import Flashcard, FlashcardCategory, UserFlashcardProgress
-from app.api.v2.auth import get_current_account_id
+from app.api.v2.deps import get_user_id
 
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 
@@ -231,7 +231,7 @@ def _apply_review(p: UserFlashcardProgress, quality: str) -> None:
 @router.get("/categories", response_model=list[CategoryOut])
 def get_categories(
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     cats = db.query(FlashcardCategory).order_by(FlashcardCategory.sort_order).all()
     result = []
@@ -266,7 +266,7 @@ def get_categories(
 @router.get("/today", response_model=list[SessionCard])
 def get_today_session(
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     today = date.today()
 
@@ -314,7 +314,7 @@ def get_today_session(
 @router.get("/stats", response_model=StatsOut)
 def get_stats(
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     today = date.today()
     total_cards = db.query(func.count(Flashcard.id)).scalar() or 0
@@ -418,7 +418,7 @@ def get_stats(
 def mark_seen(
     flashcard_id: int,
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     card = db.query(Flashcard).filter_by(id=flashcard_id).first()
     if not card:
@@ -439,7 +439,7 @@ def review_card(
     flashcard_id: int,
     body: ReviewIn,
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     card = db.query(Flashcard).filter_by(id=flashcard_id).first()
     if not card:
@@ -454,7 +454,7 @@ def review_card(
 def skip_card(
     flashcard_id: int,
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     card = db.query(Flashcard).filter_by(id=flashcard_id).first()
     if not card:
@@ -492,7 +492,7 @@ class ProgressOut(BaseModel):
 @router.get("/progress", response_model=ProgressOut)
 def get_progress(
     db: Session = Depends(get_db),
-    account_id: int = Depends(get_current_account_id),
+    account_id: int = Depends(get_user_id),
 ):
     # ── per-category stats ────────────────────────────────────────────────────
     cats = db.query(FlashcardCategory).order_by(FlashcardCategory.sort_order).all()
