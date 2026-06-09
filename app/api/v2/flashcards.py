@@ -85,6 +85,7 @@ class StatsOut(BaseModel):
     level: int
     xp_in_level: int         # XP накоплено на текущем уровне
     xp_to_next: int          # XP до следующего уровня
+    weak_count: int          # слова, которые даются трудно (низкая точность)
     achievements: list[Achievement]
 
 
@@ -450,6 +451,17 @@ def get_stats(
 
     achievements = _compute_achievements(learned, streak, total_correct, total_wrong, categories_touched)
 
+    # Слабые слова: были ошибки и точность ниже 70% (3*correct < 7*wrong)
+    weak_count = (
+        db.query(func.count(UserFlashcardProgress.id))
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.wrong_count > 0,
+            UserFlashcardProgress.correct_count * 3 < UserFlashcardProgress.wrong_count * 7,
+        )
+        .scalar() or 0
+    )
+
     return StatsOut(
         total_cards=total_cards,
         learned=learned,
@@ -464,8 +476,45 @@ def get_stats(
         level=level,
         xp_in_level=xp_in_level,
         xp_to_next=xp_to_next,
+        weak_count=weak_count,
         achievements=achievements,
     )
+
+
+@router.get("/weak", response_model=list[SessionCard])
+def get_weak_session(
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_user_id),
+):
+    """Тренировка слабых слов: карточки с низкой точностью (где чаще ошибаешься).
+
+    Всегда в режиме повторения (квиз). Сортировка — от самых проблемных.
+    """
+    WEAK_LIMIT = 12
+    progresses = (
+        db.query(UserFlashcardProgress)
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.wrong_count > 0,
+            UserFlashcardProgress.correct_count * 3 < UserFlashcardProgress.wrong_count * 7,
+        )
+        .all()
+    )
+    if not progresses:
+        return []
+
+    def _acc(p: UserFlashcardProgress) -> float:
+        t = p.correct_count + p.wrong_count
+        return p.correct_count / t if t else 0.0
+
+    progresses.sort(key=lambda p: (_acc(p), -p.wrong_count))
+    card_ids = [p.flashcard_id for p in progresses[:WEAK_LIMIT]]
+    cards = db.query(Flashcard).filter(Flashcard.id.in_(card_ids)).all()
+    by_id = {c.id: c for c in cards}
+    return [
+        _build_session_card(by_id[cid], "review", db, account_id)
+        for cid in card_ids if cid in by_id
+    ]
 
 
 @router.post("/{flashcard_id}/seen")

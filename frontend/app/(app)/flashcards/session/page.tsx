@@ -198,6 +198,7 @@ function LearnCard({ card, onSeen, onSkip }: { card: SessionCard; onSeen: () => 
 function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct: boolean) => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [wasCorrect, setWasCorrect] = useState<boolean | null>(null);
 
   const handleSelect = (opt: string) => {
     if (submitted) return;
@@ -208,7 +209,11 @@ function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct:
     if (!selected || submitted) return;
     setSubmitted(true);
     const isCorrect = selected === card.short_definition;
-    setTimeout(() => onAnswer(isCorrect), 1200);
+    setWasCorrect(isCorrect);
+    // Правильно — едем дальше сами. Ошибся — показываем разбор и ждём кнопку.
+    if (isCorrect) {
+      setTimeout(() => onAnswer(true), 1000);
+    }
   };
 
   const getOptionStyle = (opt: string): React.CSSProperties => {
@@ -277,6 +282,36 @@ function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct:
           </button>
         ))}
       </div>
+
+      {/* разбор при ошибке — закрепляем слово */}
+      {submitted && wasCorrect === false && (
+        <div className="flex flex-col gap-3">
+          <div className="rounded-2xl p-4" style={{ background: "var(--app-accent-weak)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--app-accent)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Простыми словами
+            </div>
+            <div style={{ fontSize: 14.5, color: "var(--t-primary)", lineHeight: 1.55 }}>
+              {card.simple_explanation}
+            </div>
+          </div>
+          <div className="rounded-2xl p-4" style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Пример
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--t-secondary)", lineHeight: 1.55, fontStyle: "italic" }}>
+              {card.example}
+            </div>
+          </div>
+          <button
+            onClick={() => onAnswer(false)}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl transition-all"
+            style={{ height: 52, background: "var(--app-accent)", color: "#fff", fontWeight: 700, fontSize: 15 }}
+          >
+            Понятно, дальше
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
 
       {/* submit */}
       {!submitted && selected && (
@@ -386,14 +421,17 @@ export default function FlashcardsSessionPage() {
   const [done, setDone] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [reviewTotal, setReviewTotal] = useState(0);
-  // "today" = daily lesson; "practice" = unlimited extra rounds.
-  const [mode, setMode] = useState<"today" | "practice">(
-    searchParams.get("mode") === "practice" ? "practice" : "today",
-  );
+  // "today" = daily lesson; "practice" = unlimited rounds; "weak" = слабые слова.
+  const initialMode =
+    searchParams.get("mode") === "practice" ? "practice"
+    : searchParams.get("mode") === "weak" ? "weak"
+    : "today";
+  const [mode, setMode] = useState<"today" | "practice" | "weak">(initialMode);
   const [round, setRound] = useState(0); // bumped to fetch a fresh batch
 
-  const endpoint = mode === "practice" ? "practice" : "today";
-  const url = categoryParam
+  const endpoint = mode === "practice" ? "practice" : mode === "weak" ? "weak" : "today";
+  const sessionTitle = mode === "weak" ? "Слабые слова" : "Занятие";
+  const url = categoryParam && mode !== "weak"
     ? `/api/v2/flashcards/${endpoint}?category_id=${categoryParam}`
     : `/api/v2/flashcards/${endpoint}`;
 
@@ -407,7 +445,8 @@ export default function FlashcardsSessionPage() {
     setDone(false);
     setCorrect(0);
     setReviewTotal(0);
-    setMode("practice");
+    // «Ещё урок» продолжает текущий режим; дневной урок исчерпан — уходим в практику.
+    setMode(m => (m === "today" ? "practice" : m));
     setRound(r => r + 1);
   }, []);
 
@@ -469,7 +508,7 @@ export default function FlashcardsSessionPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <PageHeader title="Занятие" back={{ onClick: () => router.push("/flashcards") }} />
+        <PageHeader title={sessionTitle} back={{ onClick: () => router.push("/flashcards") }} />
         <div className="flex-1 flex items-center justify-center">
           <div style={{ color: "var(--t-muted)" }}>Загрузка...</div>
         </div>
@@ -481,7 +520,7 @@ export default function FlashcardsSessionPage() {
   if (done) {
     return (
       <div className="flex flex-col h-full">
-        <PageHeader title="Занятие" back={{ onClick: () => router.push("/flashcards") }} />
+        <PageHeader title={sessionTitle} back={{ onClick: () => router.push("/flashcards") }} />
         <div className="flex-1 overflow-hidden">
           <DoneScreen
             total={reviewTotal}
@@ -499,15 +538,17 @@ export default function FlashcardsSessionPage() {
   if (!cards || cards.length === 0) {
     return (
       <div className="flex flex-col h-full">
-        <PageHeader title="Занятие" back={{ onClick: () => router.push("/flashcards") }} />
+        <PageHeader title={sessionTitle} back={{ onClick: () => router.push("/flashcards") }} />
         <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
-          <div style={{ fontSize: 64 }}>📭</div>
+          <div style={{ fontSize: 64 }}>{mode === "weak" ? "💪" : "📭"}</div>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
-              Пока нет слов
+              {mode === "weak" ? "Слабых слов нет" : "Пока нет слов"}
             </div>
             <div className="mt-2" style={{ fontSize: 14.5, color: "var(--t-muted)", maxWidth: 340 }}>
-              {mode === "practice"
+              {mode === "weak"
+                ? "Отлично — сейчас нет слов, которые даются трудно. Они появятся здесь, если будешь ошибаться в повторениях."
+                : mode === "practice"
                 ? "Сейчас нечего тренировать — изучи новые слова в дневном уроке или загляни позже."
                 : "На сегодня всё пройдено. Можно потренировать уже изученные слова."}
             </div>
@@ -547,7 +588,7 @@ export default function FlashcardsSessionPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Занятие"
+        title={sessionTitle}
         back={{ onClick: () => router.push("/flashcards") }}
         subtitle={`${currentIndex + 1} из ${total}`}
       />

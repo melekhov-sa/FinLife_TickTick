@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Flame, Brain, CheckCircle2, XCircle,
-  Play, Target, Zap, Lock, TrendingUp, RotateCw,
+  Play, Target, Zap, Lock, TrendingUp, RotateCw, Dumbbell,
 } from "lucide-react";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
@@ -37,6 +37,7 @@ interface StatsOut {
   level: number;
   xp_in_level: number;
   xp_to_next: number;
+  weak_count: number;
   achievements: Achievement[];
 }
 
@@ -231,6 +232,7 @@ function SessionTab({
   catsLoading,
   onStart,
   onPractice,
+  onWeak,
   onCategoryClick,
 }: {
   stats: StatsOut | undefined;
@@ -238,6 +240,7 @@ function SessionTab({
   catsLoading: boolean;
   onStart: () => void;
   onPractice: () => void;
+  onWeak: () => void;
   onCategoryClick: (id: number) => void;
 }) {
   const canStart = stats && (stats.new_today > 0 || stats.due_today > 0);
@@ -348,6 +351,24 @@ function SessionTab({
         >
           <RotateCw size={15} />
           Тренироваться без лимита
+        </button>
+      )}
+
+      {/* Weak-words training — only when there are weak words */}
+      {stats && stats.weak_count > 0 && (
+        <button
+          onClick={onWeak}
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl transition-colors"
+          style={{
+            background: "color-mix(in srgb, #EF4444 8%, transparent)",
+            border: "1px solid color-mix(in srgb, #EF4444 30%, transparent)",
+            color: "#EF4444",
+            fontWeight: 600,
+            fontSize: 14,
+          }}
+        >
+          <Dumbbell size={15} />
+          Тренировать слабые слова · {stats.weak_count}
         </button>
       )}
 
@@ -847,6 +868,7 @@ export default function FlashcardsPage() {
               catsLoading={catsLoading || statsLoading}
               onStart={() => router.push("/flashcards/session")}
               onPractice={() => router.push("/flashcards/session?mode=practice")}
+              onWeak={() => router.push("/flashcards/session?mode=weak")}
               onCategoryClick={(id) =>
                 router.push(`/flashcards/session?category=${id}&mode=practice`)
               }
