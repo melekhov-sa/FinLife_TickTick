@@ -57,6 +57,13 @@ tests/                      # pytest
 
 ## Backend — конвенции
 
+- **Канонические импорты v2-роутера** (копировать дословно, НЕ угадывать пути):
+  ```python
+  from app.infrastructure.db.session import get_db        # НЕ ...db.database
+  from app.infrastructure.db.models import <Модели>
+  from app.api.v2.deps import get_user_id                 # НЕ ...v2.auth, НЕ get_current_account_id
+  ```
+  Перед коммитом нового роутера — открыть рабочий (напр. `habits.py`) и сверить импорты 1-в-1.
 - **Авторизация v2**: скоуп по пользователю всегда через
   `account_id: int = Depends(get_user_id)` (импорт `from app.api.v2.deps import get_user_id`).
   ⚠️ НЕ выдумывать имена вроде `get_current_account_id` — их нет.

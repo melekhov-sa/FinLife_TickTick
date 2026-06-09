@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.infrastructure.db.database import get_db
+from app.infrastructure.db.session import get_db
 from app.infrastructure.db.models import Flashcard, FlashcardCategory, UserFlashcardProgress
 from app.api.v2.deps import get_user_id
 
