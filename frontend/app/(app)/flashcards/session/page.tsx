@@ -477,7 +477,8 @@ export default function FlashcardsSessionPage() {
     );
   }
 
-  if (done || !cards || cards.length === 0) {
+  // Finished a real session (had cards) — show celebration + stats.
+  if (done) {
     return (
       <div className="flex flex-col h-full">
         <PageHeader title="Занятие" back={{ onClick: () => router.push("/flashcards") }} />
@@ -489,6 +490,55 @@ export default function FlashcardsSessionPage() {
             onMore={startMore}
             morePending={isFetching}
           />
+        </div>
+      </div>
+    );
+  }
+
+  // Nothing to study (empty batch) — distinct from finishing a session.
+  if (!cards || cards.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <PageHeader title="Занятие" back={{ onClick: () => router.push("/flashcards") }} />
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 px-6 text-center">
+          <div style={{ fontSize: 64 }}>📭</div>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--t-primary)", letterSpacing: "-0.02em" }}>
+              Пока нет слов
+            </div>
+            <div className="mt-2" style={{ fontSize: 14.5, color: "var(--t-muted)", maxWidth: 340 }}>
+              {mode === "practice"
+                ? "Сейчас нечего тренировать — изучи новые слова в дневном уроке или загляни позже."
+                : "На сегодня всё пройдено. Можно потренировать уже изученные слова."}
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+            <button
+              onClick={startMore}
+              disabled={isFetching}
+              className="w-full px-8 py-3 rounded-2xl font-semibold transition-all"
+              style={{
+                background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                color: "#fff",
+                fontSize: 15,
+                opacity: isFetching ? 0.7 : 1,
+              }}
+            >
+              {isFetching ? "Проверяем..." : "Попробовать тренировку"}
+            </button>
+            <button
+              onClick={() => router.push("/flashcards")}
+              className="w-full px-8 py-3 rounded-2xl font-semibold"
+              style={{
+                background: "var(--app-card-bg)",
+                border: "1px solid var(--app-border)",
+                color: "var(--t-primary)",
+                fontSize: 15,
+              }}
+            >
+              На главную
+            </button>
+          </div>
         </div>
       </div>
     );

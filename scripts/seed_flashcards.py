@@ -1,20 +1,20 @@
 """
 Seed flashcard categories and cards into the database.
-Run: python scripts/seed_flashcards.py
+Run inside the app container:
+    docker compose -f docker-compose.prod.yml exec app python scripts/seed_flashcards.py
+
+Uses the application's own DB engine (get_session_factory), so the connection
+string and driver always match the running app — no DATABASE_URL juggling.
 """
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL env var is required")
+from app.infrastructure.db.session import get_session_factory
 
-engine = create_engine(DATABASE_URL)
-Session = sessionmaker(bind=engine)
+Session = get_session_factory()
 
 CATEGORIES = [
     {"id": 1, "name": "Финансы",                  "emoji": "💰", "description": "Термины финансистов и бухгалтеров", "sort_order": 1},
