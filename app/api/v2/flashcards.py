@@ -464,3 +464,86 @@ def skip_card(
     p.last_reviewed_at = datetime.utcnow()
     db.commit()
     return {"ok": True}
+
+
+# ── Progress endpoint ──────────────────────────────────────────────────────────
+
+class CategoryProgress(BaseModel):
+    id: int
+    name: str
+    emoji: Optional[str]
+    total: int
+    learned: int
+    correct: int
+    wrong: int
+    accuracy: float
+
+
+class DayActivity(BaseModel):
+    date: str   # ISO YYYY-MM-DD
+    count: int  # cards reviewed on that day
+
+
+class ProgressOut(BaseModel):
+    categories: list[CategoryProgress]
+    activity: list[DayActivity]   # last 84 days (12 weeks)
+
+
+@router.get("/progress", response_model=ProgressOut)
+def get_progress(
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    # ── per-category stats ────────────────────────────────────────────────────
+    cats = db.query(FlashcardCategory).order_by(FlashcardCategory.sort_order).all()
+    categories = []
+    for cat in cats:
+        total = db.query(func.count(Flashcard.id)).filter_by(category_id=cat.id).scalar() or 0
+        learned = (
+            db.query(func.count(UserFlashcardProgress.id))
+            .join(Flashcard, Flashcard.id == UserFlashcardProgress.flashcard_id)
+            .filter(
+                UserFlashcardProgress.account_id == account_id,
+                UserFlashcardProgress.status == "learning",
+                Flashcard.category_id == cat.id,
+            )
+            .scalar() or 0
+        )
+        agg = (
+            db.query(
+                func.coalesce(func.sum(UserFlashcardProgress.correct_count), 0),
+                func.coalesce(func.sum(UserFlashcardProgress.wrong_count), 0),
+            )
+            .join(Flashcard, Flashcard.id == UserFlashcardProgress.flashcard_id)
+            .filter(
+                UserFlashcardProgress.account_id == account_id,
+                Flashcard.category_id == cat.id,
+            )
+            .one()
+        )
+        correct, wrong = int(agg[0]), int(agg[1])
+        accuracy = correct / (correct + wrong) if (correct + wrong) > 0 else 0.0
+        categories.append(CategoryProgress(
+            id=cat.id, name=cat.name, emoji=cat.emoji,
+            total=total, learned=learned,
+            correct=correct, wrong=wrong, accuracy=accuracy,
+        ))
+
+    # ── activity calendar (last 84 days = 12 weeks) ───────────────────────────
+    cutoff = date.today() - timedelta(days=83)
+    rows = (
+        db.query(
+            func.date(UserFlashcardProgress.last_reviewed_at).label("day"),
+            func.count(UserFlashcardProgress.id).label("cnt"),
+        )
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.last_reviewed_at >= cutoff,
+        )
+        .group_by(func.date(UserFlashcardProgress.last_reviewed_at))
+        .order_by(func.date(UserFlashcardProgress.last_reviewed_at))
+        .all()
+    )
+    activity = [DayActivity(date=str(r.day), count=r.cnt) for r in rows]
+
+    return ProgressOut(categories=categories, activity=activity)
