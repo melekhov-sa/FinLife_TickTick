@@ -16,6 +16,7 @@ from app.api.v2.deps import get_user_id
 router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 
 NEW_PER_DAY = 3
+PRACTICE_BATCH = 6  # cards per "extra practice" round (unlimited rounds)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -265,6 +266,7 @@ def get_categories(
 
 @router.get("/today", response_model=list[SessionCard])
 def get_today_session(
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
     account_id: int = Depends(get_user_id),
 ):
@@ -281,7 +283,10 @@ def get_today_session(
         .all()
     )
     due_card_ids = {p.flashcard_id for p in due_progresses}
-    due_cards = db.query(Flashcard).filter(Flashcard.id.in_(due_card_ids)).all() if due_card_ids else []
+    due_q = db.query(Flashcard).filter(Flashcard.id.in_(due_card_ids)) if due_card_ids else None
+    if due_q is not None and category_id is not None:
+        due_q = due_q.filter(Flashcard.category_id == category_id)
+    due_cards = due_q.all() if due_q is not None else []
 
     # New cards — not yet seen (no progress row or status=new), limit NEW_PER_DAY
     seen_ids = (
@@ -294,19 +299,68 @@ def get_today_session(
     )
     seen_set = {r[0] for r in seen_ids}
 
-    new_cards = (
-        db.query(Flashcard)
-        .filter(Flashcard.id.notin_(seen_set))
-        .order_by(Flashcard.sort_order, Flashcard.id)
-        .limit(NEW_PER_DAY)
-        .all()
-    )
+    new_q = db.query(Flashcard).filter(Flashcard.id.notin_(seen_set))
+    if category_id is not None:
+        new_q = new_q.filter(Flashcard.category_id == category_id)
+    new_cards = new_q.order_by(Flashcard.sort_order, Flashcard.id).limit(NEW_PER_DAY).all()
 
     result = []
     for card in new_cards:
         result.append(_build_session_card(card, "learn", db, account_id))
     for card in due_cards:
         result.append(_build_session_card(card, "review", db, account_id))
+
+    return result
+
+
+@router.get("/practice", response_model=list[SessionCard])
+def get_practice_session(
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_user_id),
+):
+    """Unlimited extra practice: ignores the daily limit and the review schedule.
+
+    Returns a batch of cards — first any unseen new words (in order), then fills
+    the rest with already-learned words for repetition (random, regardless of
+    next_review_at). Lets the user keep practising as much as they want.
+    """
+    # Unseen new words (status not learning/skipped)
+    seen_ids = (
+        db.query(UserFlashcardProgress.flashcard_id)
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.status.in_(["learning", "skipped"]),
+        )
+        .all()
+    )
+    seen_set = {r[0] for r in seen_ids}
+
+    new_q = db.query(Flashcard).filter(Flashcard.id.notin_(seen_set))
+    if category_id is not None:
+        new_q = new_q.filter(Flashcard.category_id == category_id)
+    new_cards = new_q.order_by(Flashcard.sort_order, Flashcard.id).limit(PRACTICE_BATCH).all()
+
+    result = [_build_session_card(card, "learn", db, account_id) for card in new_cards]
+
+    # Fill remainder with learned words for repetition (any, ignore due date)
+    remaining = PRACTICE_BATCH - len(result)
+    if remaining > 0:
+        learning_ids = (
+            db.query(UserFlashcardProgress.flashcard_id)
+            .filter(
+                UserFlashcardProgress.account_id == account_id,
+                UserFlashcardProgress.status == "learning",
+            )
+            .all()
+        )
+        learning_set = {r[0] for r in learning_ids}
+        if learning_set:
+            review_q = db.query(Flashcard).filter(Flashcard.id.in_(learning_set))
+            if category_id is not None:
+                review_q = review_q.filter(Flashcard.category_id == category_id)
+            review_cards = review_q.order_by(func.random()).limit(remaining).all()
+            result.extend(_build_session_card(card, "review", db, account_id) for card in review_cards)
 
     return result
 

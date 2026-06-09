@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BookOpen, Flame, Play, CheckCircle2, Star } from "lucide-react";
+import { BookOpen, Flame, Play } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -130,22 +130,22 @@ export function FlashcardsWidget() {
         </div>
       )}
 
-      {/* CTA button */}
+      {/* CTA button — daily lesson if available, else unlimited practice */}
       <div className="px-4 pb-4">
         <button
-          onClick={e => { e.stopPropagation(); router.push("/flashcards/session"); }}
-          disabled={!hasSession}
+          onClick={e => {
+            e.stopPropagation();
+            router.push(hasSession ? "/flashcards/session" : "/flashcards/session?mode=practice");
+          }}
           className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
           style={{
             height: 40,
             fontWeight: 600,
             fontSize: 13.5,
-            background: hasSession
-              ? "linear-gradient(90deg, #6366f1, #818cf8)"
-              : "rgba(99,102,241,0.08)",
-            color: hasSession ? "#fff" : "rgba(99,102,241,0.4)",
-            border: hasSession ? "none" : "1px solid rgba(99,102,241,0.15)",
-            cursor: hasSession ? "pointer" : "default",
+            background: "linear-gradient(90deg, #6366f1, #818cf8)",
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
           }}
         >
           {hasSession ? (
@@ -155,8 +155,8 @@ export function FlashcardsWidget() {
             </>
           ) : (
             <>
-              <CheckCircle2 size={14} />
-              На сегодня готово
+              <Play size={14} fill="#fff" />
+              Тренироваться
             </>
           )}
         </button>

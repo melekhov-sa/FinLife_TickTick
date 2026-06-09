@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Flame, Brain, CheckCircle2, XCircle,
-  Play, Target, Zap, Lock, TrendingUp,
+  Play, Target, Zap, Lock, TrendingUp, RotateCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
@@ -230,12 +230,14 @@ function SessionTab({
   categories,
   catsLoading,
   onStart,
+  onPractice,
   onCategoryClick,
 }: {
   stats: StatsOut | undefined;
   categories: CategoryOut[] | undefined;
   catsLoading: boolean;
   onStart: () => void;
+  onPractice: () => void;
   onCategoryClick: (id: number) => void;
 }) {
   const canStart = stats && (stats.new_today > 0 || stats.due_today > 0);
@@ -300,49 +302,54 @@ function SessionTab({
         </div>
       )}
 
-      {/* Start button */}
+      {/* Primary button — daily lesson if available, else practice */}
       <button
-        onClick={onStart}
-        disabled={!canStart}
+        onClick={canStart ? onStart : onPractice}
+        disabled={!stats}
         className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all"
         style={{
-          background: canStart
-            ? "linear-gradient(135deg, #6366f1, #818cf8)"
-            : "var(--app-card-bg)",
-          border: canStart ? "none" : "1px solid var(--app-border)",
-          color: canStart ? "#fff" : "var(--t-muted)",
-          opacity: canStart ? 1 : 0.7,
-          cursor: canStart ? "pointer" : "default",
+          background: "linear-gradient(135deg, #6366f1, #818cf8)",
+          border: "none",
+          color: "#fff",
+          opacity: stats ? 1 : 0.6,
+          cursor: stats ? "pointer" : "default",
         }}
       >
         <div className="flex flex-col items-start gap-0.5">
           <span style={{ fontWeight: 700, fontSize: 16 }}>
-            {!stats
-              ? "Загрузка..."
-              : canStart
-              ? "Начать занятие"
-              : "На сегодня всё готово 🎉"}
+            {!stats ? "Загрузка..." : canStart ? "Начать занятие" : "Тренироваться"}
           </span>
-          {stats && !canStart && (
-            <span style={{ fontSize: 12.5 }}>
-              Следующий урок — завтра
+          {stats && (
+            <span style={{ fontSize: 12.5, opacity: 0.85 }}>
+              {canStart ? "Новые слова и повторение" : "Дневной урок пройден 🎉 — закрепляй сколько хочешь"}
             </span>
           )}
         </div>
         <div
           className="shrink-0 flex items-center justify-center rounded-full"
-          style={{
-            width: 42,
-            height: 42,
-            background: canStart
-              ? "rgba(255,255,255,0.2)"
-              : "var(--app-accent-weak)",
-            color: canStart ? "#fff" : "var(--app-accent)",
-          }}
+          style={{ width: 42, height: 42, background: "rgba(255,255,255,0.2)", color: "#fff" }}
         >
           <Play size={18} fill="currentColor" />
         </div>
       </button>
+
+      {/* Secondary practice button — only when the daily lesson is still available */}
+      {canStart && (
+        <button
+          onClick={onPractice}
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-2xl transition-colors hover:bg-[var(--app-accent-weak)]"
+          style={{
+            background: "var(--app-card-bg)",
+            border: "1px solid var(--app-border)",
+            color: "var(--t-secondary)",
+            fontWeight: 600,
+            fontSize: 14,
+          }}
+        >
+          <RotateCw size={15} />
+          Тренироваться без лимита
+        </button>
+      )}
 
       {/* Overall mini-stats */}
       {stats && (
@@ -839,8 +846,9 @@ export default function FlashcardsPage() {
               categories={categories}
               catsLoading={catsLoading || statsLoading}
               onStart={() => router.push("/flashcards/session")}
+              onPractice={() => router.push("/flashcards/session?mode=practice")}
               onCategoryClick={(id) =>
-                router.push(`/flashcards/session?category=${id}`)
+                router.push(`/flashcards/session?category=${id}&mode=practice`)
               }
             />
           ) : (

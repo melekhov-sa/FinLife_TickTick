@@ -294,7 +294,19 @@ function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct:
 
 // ── Done screen ────────────────────────────────────────────────────────────────
 
-function DoneScreen({ total, correct, onBack }: { total: number; correct: number; onBack: () => void }) {
+function DoneScreen({
+  total,
+  correct,
+  onBack,
+  onMore,
+  morePending,
+}: {
+  total: number;
+  correct: number;
+  onBack: () => void;
+  onMore: () => void;
+  morePending: boolean;
+}) {
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
   const emoji = pct >= 80 ? "🎉" : pct >= 50 ? "👍" : "💪";
   return (
@@ -331,13 +343,33 @@ function DoneScreen({ total, correct, onBack }: { total: number; correct: number
         </div>
       )}
 
-      <button
-        onClick={onBack}
-        className="px-8 py-3 rounded-2xl font-semibold"
-        style={{ background: "var(--app-accent)", color: "#fff", fontSize: 15 }}
-      >
-        На главную
-      </button>
+      <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+        <button
+          onClick={onMore}
+          disabled={morePending}
+          className="w-full flex items-center justify-center gap-2 px-8 py-3 rounded-2xl font-semibold transition-all"
+          style={{
+            background: "linear-gradient(135deg, #6366f1, #818cf8)",
+            color: "#fff",
+            fontSize: 15,
+            opacity: morePending ? 0.7 : 1,
+          }}
+        >
+          {morePending ? "Готовим карточки..." : "Ещё урок"}
+        </button>
+        <button
+          onClick={onBack}
+          className="w-full px-8 py-3 rounded-2xl font-semibold transition-colors"
+          style={{
+            background: "var(--app-card-bg)",
+            border: "1px solid var(--app-border)",
+            color: "var(--t-primary)",
+            fontSize: 15,
+          }}
+        >
+          На главную
+        </button>
+      </div>
     </div>
   );
 }
@@ -354,15 +386,30 @@ export default function FlashcardsSessionPage() {
   const [done, setDone] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [reviewTotal, setReviewTotal] = useState(0);
+  // "today" = daily lesson; "practice" = unlimited extra rounds.
+  const [mode, setMode] = useState<"today" | "practice">(
+    searchParams.get("mode") === "practice" ? "practice" : "today",
+  );
+  const [round, setRound] = useState(0); // bumped to fetch a fresh batch
 
+  const endpoint = mode === "practice" ? "practice" : "today";
   const url = categoryParam
-    ? `/api/v2/flashcards/today?category_id=${categoryParam}`
-    : "/api/v2/flashcards/today";
+    ? `/api/v2/flashcards/${endpoint}?category_id=${categoryParam}`
+    : `/api/v2/flashcards/${endpoint}`;
 
-  const { data: cards, isLoading } = useQuery({
-    queryKey: ["flashcards-session", categoryParam],
+  const { data: cards, isLoading, isFetching } = useQuery({
+    queryKey: ["flashcards-session", endpoint, categoryParam, round],
     queryFn: () => api.get<SessionCard[]>(url),
   });
+
+  const startMore = useCallback(() => {
+    setCurrentIndex(0);
+    setDone(false);
+    setCorrect(0);
+    setReviewTotal(0);
+    setMode("practice");
+    setRound(r => r + 1);
+  }, []);
 
   const seenMutation = useMutation({
     mutationFn: (id: number) => api.post(`/api/v2/flashcards/${id}/seen`, {}),
@@ -439,6 +486,8 @@ export default function FlashcardsSessionPage() {
             total={reviewTotal}
             correct={correct}
             onBack={() => router.push("/flashcards")}
+            onMore={startMore}
+            morePending={isFetching}
           />
         </div>
       </div>
