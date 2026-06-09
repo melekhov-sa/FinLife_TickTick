@@ -686,6 +686,29 @@ def suggest_category(
     except (ValueError, TypeError):
         return []
 
+    # ── Уровень 1: точный повтор суммы (сильнейший сигнал) ──────────────────
+    # «Ровно такая же сумма уже была — почти всегда та же категория»
+    # (857 ₽ → связь, 3200 ₽ → транспорт). Узкий допуск, чтобы 850 не примешалось.
+    exact_tol = max(1.0, amount * 0.005)   # ±0.5%, минимум 1 ₽
+    exact_rows = [r for r in rows if abs(float(r.amount) - amount) <= exact_tol]
+    if len(exact_rows) >= 2:
+        exact_cat: dict = _defaultdict(float)
+        exact_total = 0.0
+        for r in exact_rows:
+            w = 1.0 if (body.wallet_id is not None and r.wallet_id == body.wallet_id) else 0.7
+            exact_cat[r.category_id] += w
+            exact_total += w
+        best_cid = max(exact_cat, key=lambda c: exact_cat[c])
+        share = exact_cat[best_cid] / exact_total
+        if share >= 0.6:
+            return [SuggestCategoryResult(
+                category_id=best_cid,
+                confidence=round(max(0.85, share), 4),
+                exact=True,
+                reason="повторяющийся платёж",
+            )]
+
+    # ── Уровень 2: похожие суммы (weighted k-NN) ───────────────────────────
     now = datetime.utcnow()
     cur_time_bkt = _time_bucket(body.hour) if body.hour is not None else None
 
