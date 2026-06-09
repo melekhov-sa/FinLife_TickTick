@@ -1,0 +1,357 @@
+"""Flashcards API — vocabulary learning with spaced repetition."""
+from datetime import datetime, date, timedelta
+from decimal import Decimal
+from typing import Optional
+import random
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.infrastructure.db.database import get_db
+from app.infrastructure.db.models import Flashcard, FlashcardCategory, UserFlashcardProgress
+from app.api.v2.auth import get_current_account_id
+
+router = APIRouter(prefix="/flashcards", tags=["flashcards"])
+
+NEW_PER_DAY = 3
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
+class CategoryOut(BaseModel):
+    id: int
+    name: str
+    emoji: Optional[str]
+    description: Optional[str]
+    total: int
+    learned: int
+    skipped: int
+
+    class Config:
+        from_attributes = True
+
+
+class FlashcardOut(BaseModel):
+    id: int
+    category_id: int
+    category_name: str
+    category_emoji: Optional[str]
+    word: str
+    short_definition: str
+    simple_explanation: str
+    example: str
+    difficulty: int
+
+    class Config:
+        from_attributes = True
+
+
+class SessionCard(BaseModel):
+    id: int
+    category_id: int
+    category_name: str
+    category_emoji: Optional[str]
+    word: str
+    short_definition: str
+    simple_explanation: str
+    example: str
+    difficulty: int
+    mode: str  # "learn" | "review"
+    quiz_options: Optional[list[str]] = None  # 3 варианта для review
+
+
+class StatsOut(BaseModel):
+    total_cards: int
+    learned: int
+    skipped: int
+    due_today: int
+    new_today: int
+    streak_days: int
+
+
+class ReviewIn(BaseModel):
+    quality: str  # "correct" | "wrong"
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _get_progress(db: Session, account_id: int, flashcard_id: int) -> UserFlashcardProgress:
+    p = db.query(UserFlashcardProgress).filter_by(
+        account_id=account_id, flashcard_id=flashcard_id
+    ).first()
+    if not p:
+        p = UserFlashcardProgress(
+            account_id=account_id,
+            flashcard_id=flashcard_id,
+            status="new",
+            interval_days=1,
+            ease_factor=Decimal("2.5"),
+            repetitions=0,
+            correct_count=0,
+            wrong_count=0,
+        )
+        db.add(p)
+        db.flush()
+    return p
+
+
+def _build_session_card(card: Flashcard, mode: str, db: Session, account_id: int) -> SessionCard:
+    cat = db.query(FlashcardCategory).filter_by(id=card.category_id).first()
+    quiz_options = None
+    if mode == "review":
+        # Pick 2 wrong short_definitions from other cards
+        wrongs = (
+            db.query(Flashcard.short_definition)
+            .filter(Flashcard.id != card.id)
+            .order_by(func.random())
+            .limit(2)
+            .all()
+        )
+        options = [card.short_definition] + [w[0] for w in wrongs]
+        random.shuffle(options)
+        quiz_options = options
+    return SessionCard(
+        id=card.id,
+        category_id=card.category_id,
+        category_name=cat.name if cat else "",
+        category_emoji=cat.emoji if cat else None,
+        word=card.word,
+        short_definition=card.short_definition,
+        simple_explanation=card.simple_explanation,
+        example=card.example,
+        difficulty=card.difficulty,
+        mode=mode,
+        quiz_options=quiz_options,
+    )
+
+
+def _apply_review(p: UserFlashcardProgress, quality: str) -> None:
+    now = datetime.utcnow()
+    today = date.today()
+    p.last_reviewed_at = now
+    p.repetitions += 1
+
+    if quality == "correct":
+        p.correct_count += 1
+        new_interval = max(1, int(p.interval_days * float(p.ease_factor)))
+        new_interval = min(new_interval, 60)
+        p.interval_days = new_interval
+        p.ease_factor = min(Decimal("3.0"), p.ease_factor + Decimal("0.1"))
+        p.next_review_at = today + timedelta(days=new_interval)
+        p.status = "learning"
+    else:
+        p.wrong_count += 1
+        p.interval_days = 1
+        p.ease_factor = max(Decimal("1.3"), p.ease_factor - Decimal("0.2"))
+        p.next_review_at = today + timedelta(days=1)
+        # If wrong twice in a row reset to learn mode
+        if p.wrong_count > 0 and p.correct_count == 0:
+            p.status = "new"
+        else:
+            p.status = "learning"
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get("/categories", response_model=list[CategoryOut])
+def get_categories(
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    cats = db.query(FlashcardCategory).order_by(FlashcardCategory.sort_order).all()
+    result = []
+    for cat in cats:
+        total = db.query(func.count(Flashcard.id)).filter_by(category_id=cat.id).scalar() or 0
+        learned = (
+            db.query(func.count(UserFlashcardProgress.id))
+            .filter_by(account_id=account_id)
+            .join(Flashcard, Flashcard.id == UserFlashcardProgress.flashcard_id)
+            .filter(Flashcard.category_id == cat.id, UserFlashcardProgress.status == "learning")
+            .scalar() or 0
+        )
+        skipped = (
+            db.query(func.count(UserFlashcardProgress.id))
+            .filter_by(account_id=account_id)
+            .join(Flashcard, Flashcard.id == UserFlashcardProgress.flashcard_id)
+            .filter(Flashcard.category_id == cat.id, UserFlashcardProgress.status == "skipped")
+            .scalar() or 0
+        )
+        result.append(CategoryOut(
+            id=cat.id,
+            name=cat.name,
+            emoji=cat.emoji,
+            description=cat.description,
+            total=total,
+            learned=learned,
+            skipped=skipped,
+        ))
+    return result
+
+
+@router.get("/today", response_model=list[SessionCard])
+def get_today_session(
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    today = date.today()
+
+    # Due for review (status=learning, next_review_at <= today)
+    due_progresses = (
+        db.query(UserFlashcardProgress)
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.status == "learning",
+            UserFlashcardProgress.next_review_at <= today,
+        )
+        .all()
+    )
+    due_card_ids = {p.flashcard_id for p in due_progresses}
+    due_cards = db.query(Flashcard).filter(Flashcard.id.in_(due_card_ids)).all() if due_card_ids else []
+
+    # New cards — not yet seen (no progress row or status=new), limit NEW_PER_DAY
+    seen_ids = (
+        db.query(UserFlashcardProgress.flashcard_id)
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.status.in_(["learning", "skipped"]),
+        )
+        .all()
+    )
+    seen_set = {r[0] for r in seen_ids}
+
+    new_cards = (
+        db.query(Flashcard)
+        .filter(Flashcard.id.notin_(seen_set))
+        .order_by(Flashcard.sort_order, Flashcard.id)
+        .limit(NEW_PER_DAY)
+        .all()
+    )
+
+    result = []
+    for card in new_cards:
+        result.append(_build_session_card(card, "learn", db, account_id))
+    for card in due_cards:
+        result.append(_build_session_card(card, "review", db, account_id))
+
+    return result
+
+
+@router.get("/stats", response_model=StatsOut)
+def get_stats(
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    today = date.today()
+    total_cards = db.query(func.count(Flashcard.id)).scalar() or 0
+
+    learned = (
+        db.query(func.count(UserFlashcardProgress.id))
+        .filter_by(account_id=account_id, status="learning")
+        .scalar() or 0
+    )
+    skipped = (
+        db.query(func.count(UserFlashcardProgress.id))
+        .filter_by(account_id=account_id, status="skipped")
+        .scalar() or 0
+    )
+    due_today = (
+        db.query(func.count(UserFlashcardProgress.id))
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.status == "learning",
+            UserFlashcardProgress.next_review_at <= today,
+        )
+        .scalar() or 0
+    )
+
+    seen_ids = (
+        db.query(UserFlashcardProgress.flashcard_id)
+        .filter(
+            UserFlashcardProgress.account_id == account_id,
+            UserFlashcardProgress.status.in_(["learning", "skipped"]),
+        )
+        .all()
+    )
+    seen_set = {r[0] for r in seen_ids}
+    new_available = db.query(func.count(Flashcard.id)).filter(Flashcard.id.notin_(seen_set)).scalar() or 0
+    new_today = min(NEW_PER_DAY, new_available)
+
+    # Simple streak: count days back where last_reviewed_at exists
+    streak = 0
+    check_date = today
+    while True:
+        had_activity = (
+            db.query(UserFlashcardProgress)
+            .filter(
+                UserFlashcardProgress.account_id == account_id,
+                func.date(UserFlashcardProgress.last_reviewed_at) == check_date,
+            )
+            .first()
+        )
+        if not had_activity:
+            break
+        streak += 1
+        check_date -= timedelta(days=1)
+
+    return StatsOut(
+        total_cards=total_cards,
+        learned=learned,
+        skipped=skipped,
+        due_today=due_today,
+        new_today=new_today,
+        streak_days=streak,
+    )
+
+
+@router.post("/{flashcard_id}/seen")
+def mark_seen(
+    flashcard_id: int,
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    card = db.query(Flashcard).filter_by(id=flashcard_id).first()
+    if not card:
+        raise HTTPException(404, "Card not found")
+    p = _get_progress(db, account_id, flashcard_id)
+    now = datetime.utcnow()
+    if not p.first_seen_at:
+        p.first_seen_at = now
+    p.status = "learning"
+    p.next_review_at = date.today() + timedelta(days=1)
+    p.last_reviewed_at = now
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/{flashcard_id}/review")
+def review_card(
+    flashcard_id: int,
+    body: ReviewIn,
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    card = db.query(Flashcard).filter_by(id=flashcard_id).first()
+    if not card:
+        raise HTTPException(404, "Card not found")
+    p = _get_progress(db, account_id, flashcard_id)
+    _apply_review(p, body.quality)
+    db.commit()
+    return {"ok": True, "next_review_at": str(p.next_review_at), "interval_days": p.interval_days}
+
+
+@router.post("/{flashcard_id}/skip")
+def skip_card(
+    flashcard_id: int,
+    db: Session = Depends(get_db),
+    account_id: int = Depends(get_current_account_id),
+):
+    card = db.query(Flashcard).filter_by(id=flashcard_id).first()
+    if not card:
+        raise HTTPException(404, "Card not found")
+    p = _get_progress(db, account_id, flashcard_id)
+    p.status = "skipped"
+    p.last_reviewed_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}

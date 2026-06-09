@@ -2139,3 +2139,44 @@ class PokemonCard(Base):
     supertype: Mapped[str | None] = mapped_column(String(30), nullable=True)
     image_url_small: Mapped[str | None] = mapped_column(String(500), nullable=True)
     image_url_large: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class FlashcardCategory(Base):
+    __tablename__ = "flashcard_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    emoji: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Flashcard(Base):
+    __tablename__ = "flashcards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("flashcard_categories.id", ondelete="CASCADE"), nullable=False)
+    word: Mapped[str] = mapped_column(String(200), nullable=False)
+    short_definition: Mapped[str] = mapped_column(String(500), nullable=False)
+    simple_explanation: Mapped[str] = mapped_column(Text(), nullable=False)
+    example: Mapped[str] = mapped_column(Text(), nullable=False)
+    difficulty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class UserFlashcardProgress(Base):
+    __tablename__ = "user_flashcard_progress"
+    __table_args__ = (UniqueConstraint("account_id", "flashcard_id", name="uq_user_flashcard"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    flashcard_id: Mapped[int] = mapped_column(Integer, ForeignKey("flashcards.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="new")
+    interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    ease_factor: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=False, default=Decimal("2.5"))
+    next_review_at: Mapped[date_type | None] = mapped_column(Date(), nullable=True)
+    repetitions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    correct_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    wrong_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_seen_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    last_reviewed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
