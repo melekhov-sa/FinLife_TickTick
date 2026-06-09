@@ -62,6 +62,14 @@ class SessionCard(BaseModel):
     quiz_options: Optional[list[str]] = None  # 3 варианта для review
 
 
+class Achievement(BaseModel):
+    id: str
+    name: str
+    emoji: str
+    description: str
+    unlocked: bool
+
+
 class StatsOut(BaseModel):
     total_cards: int
     learned: int
@@ -69,10 +77,75 @@ class StatsOut(BaseModel):
     due_today: int
     new_today: int
     streak_days: int
+    total_correct: int
+    total_wrong: int
+    accuracy: float          # 0.0–1.0
+    xp: int
+    level: int
+    xp_in_level: int         # XP накоплено на текущем уровне
+    xp_to_next: int          # XP до следующего уровня
+    achievements: list[Achievement]
 
 
 class ReviewIn(BaseModel):
     quality: str  # "correct" | "wrong"
+
+
+# ── Level & XP helpers ────────────────────────────────────────────────────────
+
+def _level_threshold(n: int) -> int:
+    """XP needed to START level n. Level 1 starts at 0."""
+    return (n - 1) * n * 25
+
+
+def _compute_level(xp: int) -> tuple[int, int, int]:
+    """Returns (level, xp_in_level, xp_to_next)."""
+    level = 1
+    while True:
+        next_t = _level_threshold(level + 1)
+        if xp < next_t:
+            cur_t = _level_threshold(level)
+            return level, xp - cur_t, next_t - xp
+        level += 1
+
+
+_ACHIEVEMENT_DEFS = [
+    ("first_word",   "Первое слово",   "🌱", "Изучил первое слово"),
+    ("streak_3",     "3 дня подряд",   "🔥", "Занимался 3 дня подряд"),
+    ("streak_7",     "Неделя силы",    "⚡", "7 дней занятий подряд"),
+    ("streak_30",    "Железная воля",  "💎", "30 дней занятий подряд"),
+    ("words_10",     "Десяточка",      "📖", "10 слов изучено"),
+    ("words_50",     "Полста слов",    "🎓", "50 слов изучено"),
+    ("words_100",    "Сотня",          "🏆", "100 слов изучено"),
+    ("sharpshooter", "Снайпер",        "🎯", "80% правильных при 20+ ответах"),
+    ("master",       "Мастер слова",   "⭐", "95% правильных при 50+ ответах"),
+    ("explorer",     "Исследователь",  "🗺️", "Изучал слова из 3+ категорий"),
+]
+
+
+def _compute_achievements(
+    learned: int, streak_days: int,
+    total_correct: int, total_wrong: int,
+    categories_touched: int,
+) -> list[Achievement]:
+    total_answers = total_correct + total_wrong
+    accuracy = total_correct / total_answers if total_answers else 0.0
+    checks = {
+        "first_word":   learned >= 1,
+        "streak_3":     streak_days >= 3,
+        "streak_7":     streak_days >= 7,
+        "streak_30":    streak_days >= 30,
+        "words_10":     learned >= 10,
+        "words_50":     learned >= 50,
+        "words_100":    learned >= 100,
+        "sharpshooter": total_answers >= 20 and accuracy >= 0.8,
+        "master":       total_answers >= 50 and accuracy >= 0.95,
+        "explorer":     categories_touched >= 3,
+    }
+    return [
+        Achievement(id=aid, name=name, emoji=emoji, description=desc, unlocked=checks.get(aid, False))
+        for aid, name, emoji, desc in _ACHIEVEMENT_DEFS
+    ]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -295,6 +368,34 @@ def get_stats(
         streak += 1
         check_date -= timedelta(days=1)
 
+    # Aggregate correct/wrong from all progress rows
+    agg = (
+        db.query(
+            func.coalesce(func.sum(UserFlashcardProgress.correct_count), 0),
+            func.coalesce(func.sum(UserFlashcardProgress.wrong_count), 0),
+        )
+        .filter(UserFlashcardProgress.account_id == account_id)
+        .one()
+    )
+    total_correct = int(agg[0])
+    total_wrong = int(agg[1])
+    total_answers = total_correct + total_wrong
+    accuracy = total_correct / total_answers if total_answers else 0.0
+
+    # XP: 5 per learned card + 10 per correct answer
+    xp = learned * 5 + total_correct * 10
+    level, xp_in_level, xp_to_next = _compute_level(xp)
+
+    # How many distinct categories the user has touched
+    categories_touched = (
+        db.query(func.count(func.distinct(Flashcard.category_id)))
+        .join(UserFlashcardProgress, UserFlashcardProgress.flashcard_id == Flashcard.id)
+        .filter(UserFlashcardProgress.account_id == account_id)
+        .scalar() or 0
+    )
+
+    achievements = _compute_achievements(learned, streak, total_correct, total_wrong, categories_touched)
+
     return StatsOut(
         total_cards=total_cards,
         learned=learned,
@@ -302,6 +403,14 @@ def get_stats(
         due_today=due_today,
         new_today=new_today,
         streak_days=streak,
+        total_correct=total_correct,
+        total_wrong=total_wrong,
+        accuracy=accuracy,
+        xp=xp,
+        level=level,
+        xp_in_level=xp_in_level,
+        xp_to_next=xp_to_next,
+        achievements=achievements,
     )
 
 

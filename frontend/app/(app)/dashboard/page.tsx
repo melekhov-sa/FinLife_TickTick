@@ -10,6 +10,7 @@ import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
 import { ShoppingWidget } from "@/components/dashboard/ShoppingWidget";
 import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
+import { FlashcardsWidget } from "@/components/dashboard/FlashcardsWidget";
 import { Skeleton } from "@/components/primitives/Skeleton";
 
 export default function DashboardPage() {
@@ -67,6 +68,7 @@ export default function DashboardPage() {
 
               {/* Right */}
               <div className="space-y-4">
+                <FlashcardsWidget />
                 <DigestCard />
                 <UpcomingPayments payments={data.upcoming_payments} />
                 <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
@@ -89,6 +91,7 @@ export default function DashboardPage() {
               <WeekEventsCard events={data.week_events} />
               <UpcomingPayments payments={data.upcoming_payments} />
               <ExpiringSubsCard subs={data.expiring_subs} docs={data.expiring_docs} />
+              <FlashcardsWidget />
               <DigestCard />
               <ActivityFeed feed={data.feed} />
             </div>
