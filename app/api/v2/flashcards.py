@@ -302,7 +302,7 @@ def get_today_session(
     new_q = db.query(Flashcard).filter(Flashcard.id.notin_(seen_set))
     if category_id is not None:
         new_q = new_q.filter(Flashcard.category_id == category_id)
-    new_cards = new_q.order_by(Flashcard.sort_order, Flashcard.id).limit(NEW_PER_DAY).all()
+    new_cards = new_q.order_by(func.random()).limit(NEW_PER_DAY).all()
 
     result = []
     for card in new_cards:
@@ -339,7 +339,7 @@ def get_practice_session(
     new_q = db.query(Flashcard).filter(Flashcard.id.notin_(seen_set))
     if category_id is not None:
         new_q = new_q.filter(Flashcard.category_id == category_id)
-    new_cards = new_q.order_by(Flashcard.sort_order, Flashcard.id).limit(PRACTICE_BATCH).all()
+    new_cards = new_q.order_by(func.random()).limit(PRACTICE_BATCH).all()
 
     result = [_build_session_card(card, "learn", db, account_id) for card in new_cards]
 
