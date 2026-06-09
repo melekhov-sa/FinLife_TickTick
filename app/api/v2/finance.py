@@ -599,17 +599,27 @@ def aggregate_transactions(
 
 
 # ── Category suggestion ────────────────────────────────────────────────────
+#
+# Модель «похожих соседей» (weighted k-NN) по сумме / кошельку / времени.
+# Описание не используется — пользователь его обычно не заполняет.
+#
+# Идея: новая операция, скорее всего, той же категории, что и прошлые операции
+# с ПОХОЖЕЙ суммой (а точное совпадение — почти стопроцентный сигнал, напр.
+# 3200 ₽ каждый месяц на транспорт). Каждая прошлая операция «голосует» за свою
+# категорию с весом = близость суммы × кошелёк × время × свежесть.
+# Никакого перекоса на «самую частую категорию»: редкая, но точно совпадающая
+# по сумме категория уверенно побеждает.
 
+import math as _math
 from collections import defaultdict as _defaultdict
 
-
-def _amount_bucket(amount) -> int:
-    a = float(amount)
-    if a < 100: return 0
-    if a < 500: return 1
-    if a < 2000: return 2
-    if a < 10000: return 3
-    return 4
+_LOOKBACK_DAYS = 180          # ловим и помесячные платежи (≈6 повторов)
+_AMOUNT_SIGMA = 0.12          # «ширина» похожести суммы (~±12% — сильное совпадение)
+_WALLET_OTHER = 0.45         # вес операции с другого кошелька
+_TIME_OTHER = 0.80           # вес операции в другое время суток
+_MIN_TOTAL_WEIGHT = 0.8      # минимум «похожей истории», иначе не подсказываем
+_NEAR_EXACT = 0.90           # порог «почти точное совпадение суммы»
+_MIN_CONFIDENCE = 0.45
 
 
 def _time_bucket(hour: int) -> int:
@@ -617,6 +627,14 @@ def _time_bucket(hour: int) -> int:
     if 12 <= hour < 18: return 1
     if 18 <= hour < 22: return 2
     return 3
+
+
+def _amount_similarity(a: float, b: float) -> float:
+    """1.0 — суммы совпадают; плавно убывает с относительной разницей (гаусс)."""
+    if a <= 0 or b <= 0:
+        return 0.0
+    d = abs(a - b) / max(a, b)            # относительная разница в [0, 1]
+    return _math.exp(-(d * d) / (2 * _AMOUNT_SIGMA * _AMOUNT_SIGMA))
 
 
 class SuggestCategoryRequest(BaseModel):
@@ -629,6 +647,8 @@ class SuggestCategoryRequest(BaseModel):
 class SuggestCategoryResult(BaseModel):
     category_id: int
     confidence: float
+    exact: bool = False        # есть прошлый платёж почти с такой же суммой
+    reason: str = ""           # короткое объяснение «почему»
 
 
 @router.post("/transactions/suggest-category", response_model=list[SuggestCategoryResult])
@@ -638,7 +658,7 @@ def suggest_category(
     db: Session = Depends(get_db),
 ):
     user_id = get_user_id(request, db)
-    since = datetime.utcnow() - timedelta(days=90)
+    since = datetime.utcnow() - timedelta(days=_LOOKBACK_DAYS)
 
     rows = (
         db.query(
@@ -656,7 +676,7 @@ def suggest_category(
         .all()
     )
 
-    if len(rows) < 5:
+    if len(rows) < 3:
         return []
 
     try:
@@ -666,44 +686,72 @@ def suggest_category(
     except (ValueError, TypeError):
         return []
 
-    total = len(rows)
-    amount_bkt = _amount_bucket(amount)
-    time_bkt = _time_bucket(body.hour) if body.hour is not None else None
+    now = datetime.utcnow()
+    cur_time_bkt = _time_bucket(body.hour) if body.hour is not None else None
 
-    cat_counts: dict = _defaultdict(int)
-    cat_amount_match: dict = _defaultdict(int)
-    cat_time_match: dict = _defaultdict(int)
-    cat_wallet_match: dict = _defaultdict(int)
+    cat_weight: dict = _defaultdict(float)
+    cat_best_sim: dict = _defaultdict(float)   # лучшая близость суммы в категории
+    cat_contrib: dict = _defaultdict(int)      # сколько заметно похожих операций
+    cat_same_wallet: dict = _defaultdict(int)
+    total_weight = 0.0
 
     for row in rows:
+        a_sim = _amount_similarity(amount, float(row.amount))
+        if a_sim < 0.05:
+            continue   # сумма совсем другая — не учитываем
+
+        same_wallet = body.wallet_id is not None and row.wallet_id == body.wallet_id
+        wallet_factor = 1.0 if same_wallet else _WALLET_OTHER
+
+        if cur_time_bkt is not None and row.occurred_at:
+            time_factor = 1.0 if _time_bucket(row.occurred_at.hour) == cur_time_bkt else _TIME_OTHER
+        else:
+            time_factor = 1.0
+
+        if row.occurred_at:
+            age_days = max(0.0, (now - row.occurred_at).total_seconds() / 86400.0)
+            recency = max(0.6, 1.0 - (age_days / _LOOKBACK_DAYS) * 0.4)
+        else:
+            recency = 0.8
+
+        w = a_sim * wallet_factor * time_factor * recency
         cid = row.category_id
-        cat_counts[cid] += 1
-        if _amount_bucket(row.amount) == amount_bkt:
-            cat_amount_match[cid] += 1
-        if time_bkt is not None and row.occurred_at:
-            if _time_bucket(row.occurred_at.hour) == time_bkt:
-                cat_time_match[cid] += 1
-        if body.wallet_id is not None and row.wallet_id == body.wallet_id:
-            cat_wallet_match[cid] += 1
+        cat_weight[cid] += w
+        total_weight += w
+        cat_best_sim[cid] = max(cat_best_sim[cid], a_sim)
+        if a_sim >= 0.5:
+            cat_contrib[cid] += 1
+        if same_wallet:
+            cat_same_wallet[cid] += 1
+
+    if total_weight < _MIN_TOTAL_WEIGHT:
+        return []   # нет осмысленно похожей истории
 
     results = []
-    for cid, cnt in cat_counts.items():
-        freq_score = cnt / total
-        amount_score = cat_amount_match[cid] / cnt
-        time_score = cat_time_match[cid] / cnt if time_bkt is not None else 0.5
-        wallet_score = cat_wallet_match[cid] / cnt if body.wallet_id is not None else 0.5
+    for cid, w in cat_weight.items():
+        confidence = w / total_weight
+        near_exact = cat_best_sim[cid] >= _NEAR_EXACT
+        # нужна реальная опора: либо ≥2 похожих операции, либо одна почти точная
+        if not (cat_contrib[cid] >= 2 or near_exact):
+            continue
+        if confidence < _MIN_CONFIDENCE:
+            continue
 
-        confidence = (
-            0.30 * freq_score
-            + 0.40 * amount_score
-            + 0.15 * time_score
-            + 0.15 * wallet_score
-        )
+        if near_exact:
+            reason = "повторяющийся платёж"
+        elif cat_same_wallet[cid] >= 2:
+            reason = "похожие траты с этого кошелька"
+        else:
+            reason = "по похожим суммам"
 
-        if confidence >= 0.50:
-            results.append(SuggestCategoryResult(category_id=cid, confidence=round(confidence, 4)))
+        results.append(SuggestCategoryResult(
+            category_id=cid,
+            confidence=round(confidence, 4),
+            exact=near_exact,
+            reason=reason,
+        ))
 
-    results.sort(key=lambda r: r.confidence, reverse=True)
+    results.sort(key=lambda r: (r.exact, r.confidence), reverse=True)
     return results[:3]
 
 

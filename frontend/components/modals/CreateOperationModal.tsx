@@ -104,7 +104,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
-  const [suggestion, setSuggestion] = useState<{ category_id: number; confidence: number } | null>(null);
+  const [suggestion, setSuggestion] = useState<{ category_id: number; confidence: number; exact?: boolean; reason?: string } | null>(null);
   const categoryIdRef = useRef(categoryId);
   const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -287,13 +287,14 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
     suggestTimerRef.current = setTimeout(async () => {
       try {
-        const results = await api.post<{ category_id: number; confidence: number }[]>(
+        const results = await api.post<{ category_id: number; confidence: number; exact?: boolean; reason?: string }[]>(
           "/api/v2/transactions/suggest-category",
           { amount, wallet_id: walletId, operation_type: opType, hour: new Date().getHours() },
         );
         if (results.length > 0) {
           setSuggestion(results[0]);
-          if (results[0].confidence >= 0.85 && !categoryIdRef.current) {
+          // Авто-подставляем только при почти точном повторе суммы — надёжный случай.
+          if (results[0].exact && results[0].confidence >= 0.8 && !categoryIdRef.current) {
             setCategoryId(results[0].category_id);
           }
         } else {
@@ -607,7 +608,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   const sugCat = (finCats ?? []).find((c) => c.category_id === suggestion.category_id);
                   if (!sugCat || suggestion.category_id === Number(categoryId || 0)) return null;
                   return (
-                    <div className="flex items-center gap-1.5 mt-1.5">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Вероятно:</span>
                       <button
                         type="button"
@@ -619,6 +620,11 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                       >
                         {sugCat.title}
                       </button>
+                      {suggestion.reason && (
+                        <span className="text-[10.5px]" style={{ color: "var(--t-faint)" }}>
+                          · {suggestion.reason}
+                        </span>
+                      )}
                     </div>
                   );
                 })()}
