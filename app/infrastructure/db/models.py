@@ -2169,7 +2169,7 @@ class UserFlashcardProgress(Base):
     __table_args__ = (UniqueConstraint("account_id", "flashcard_id", name="uq_user_flashcard"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     flashcard_id: Mapped[int] = mapped_column(Integer, ForeignKey("flashcards.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="new")
     interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

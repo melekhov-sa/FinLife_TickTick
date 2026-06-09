@@ -53,7 +53,6 @@ def upgrade() -> None:
         sa.Column('wrong_count', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('first_seen_at', sa.DateTime(), nullable=True),
         sa.Column('last_reviewed_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['account_id'], ['accounts.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['flashcard_id'], ['flashcards.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('account_id', 'flashcard_id', name='uq_user_flashcard'),
