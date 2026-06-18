@@ -222,6 +222,15 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
     svc = DashboardService(db)
     today = datetime.now(ZoneInfo(get_settings().TIMEZONE)).date()
 
+    # Досоздаём занятия на сегодня при чтении — генерация при создании
+    # привычки/задачи ненадёжна (гонка с фоновым планировщиком), поэтому
+    # дашборд гарантирует, что сегодняшние вхождения существуют. Идемпотентно.
+    from app.application.occurrence_generator import OccurrenceGenerator
+    try:
+        OccurrenceGenerator(db).generate_all(user_id)
+    except Exception:
+        pass  # генерация не должна ронять дашборд
+
     # ── Existing blocks ────────────────────────────────────────────────────────
     today_block_raw = svc.get_today_block(user_id, today)
     upcoming_raw = svc.get_upcoming_payments(user_id, today)
