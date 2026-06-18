@@ -16,7 +16,7 @@ from datetime import time as _time
 
 from app.infrastructure.db.models import (
     TaskModel, TaskReminderModel,
-    EventOccurrenceModel, EventReminderModel,
+    EventOccurrenceModel, EventReminderModel, EventDefaultReminderModel,
     CalendarEventModel, PushSubscription, User,
     HabitModel, HabitOccurrence,
     TelegramSettings, UserNotificationSettings,
@@ -132,48 +132,72 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
 
     occ_map = {o.id: o for o in occs}
     occ_ids = list(occ_map.keys())
+    event_ids = {o.event_id for o in occs}
 
-    reminders = (
+    # Per-occurrence reminders (materialised) ...
+    per_occ_reminders: dict[int, list] = {}
+    for rem in (
         db.query(EventReminderModel)
         .filter(
             EventReminderModel.occurrence_id.in_(occ_ids),
             EventReminderModel.is_enabled == True,
         )
         .all()
-    )
+    ):
+        per_occ_reminders.setdefault(rem.occurrence_id, []).append(rem)
+
+    # ... plus event default reminders (the templates the user actually edits).
+    # Per-occurrence rows are materialised only when an occurrence is generated
+    # AFTER the reminder was added, so they're unreliable — fall back to the
+    # defaults so notifications fire regardless of materialisation timing.
+    defaults_by_event: dict[int, list] = {}
+    for dr in (
+        db.query(EventDefaultReminderModel)
+        .filter(
+            EventDefaultReminderModel.event_id.in_(event_ids),
+            EventDefaultReminderModel.is_enabled == True,
+        )
+        .all()
+    ):
+        defaults_by_event.setdefault(dr.event_id, []).append(dr)
 
     # Load event titles
-    event_ids = {o.event_id for o in occs}
     events = db.query(CalendarEventModel).filter(CalendarEventModel.event_id.in_(event_ids)).all()
     event_map = {e.event_id: e for e in events}
 
-    for rem in reminders:
-        occ = occ_map.get(rem.occurrence_id)
-        if not occ:
-            continue
-
+    for occ in occs:
         start_dt = _compute_start_dt(occ.start_date, occ.start_time)
 
-        if rem.mode == "offset" and rem.offset_minutes is not None:
-            fire_at = start_dt - timedelta(minutes=rem.offset_minutes)
-        elif rem.mode == "fixed_time" and rem.fixed_time is not None:
-            if not occ.start_date:
+        # Union of per-occurrence + default reminders, deduped by (mode, offset, fixed_time).
+        combined = per_occ_reminders.get(occ.id, []) + defaults_by_event.get(occ.event_id, [])
+        seen: set = set()
+
+        for rem in combined:
+            key = (rem.mode, rem.offset_minutes, rem.fixed_time)
+            if key in seen:
                 continue
-            fire_at = datetime.combine(occ.start_date, rem.fixed_time, tzinfo=MSK)
-        else:
-            continue
+            seen.add(key)
 
-        if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
-            event = event_map.get(occ.event_id)
-            title = event.title if event else "Событие"
-            time_str = occ.start_time.strftime("%H:%M") if occ.start_time else ""
+            if rem.mode == "offset" and rem.offset_minutes is not None:
+                fire_at = start_dt - timedelta(minutes=rem.offset_minutes)
+            elif rem.mode == "fixed_time" and rem.fixed_time is not None:
+                if not occ.start_date:
+                    continue
+                fire_at = datetime.combine(occ.start_date, rem.fixed_time, tzinfo=MSK)
+            else:
+                continue
 
-            n = send_push_to_user(db, occ.account_id, {
-                "title": f"📅 {title}",
-                "body": f"Сегодня в {time_str}" if time_str else "Сегодня",
-                "url": "/events",
-            })
-            sent += n
+            if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                event = event_map.get(occ.event_id)
+                title = event.title if event else "Событие"
+                time_str = occ.start_time.strftime("%H:%M") if occ.start_time else ""
+
+                n = send_push_to_user(db, occ.account_id, {
+                    "title": f"📅 {title}",
+                    "body": f"Сегодня в {time_str}" if time_str else "Сегодня",
+                    "url": "/events",
+                })
+                sent += n
 
     return sent
 
