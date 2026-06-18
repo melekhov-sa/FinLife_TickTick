@@ -7,8 +7,9 @@ import { PageHeader } from "@/components/primitives/PageHeader";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { clsx } from "clsx";
-import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags } from "lucide-react";
-import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, useDroppable } from "@dnd-kit/core";
+import { Plus, Globe, Lock, Check, Trash2, ExternalLink, FolderPlus, Copy, List, LayoutGrid, Pencil, ImagePlus, X, Columns3, GripVertical, Tags, ChevronRight } from "lucide-react";
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, useDroppable, type DraggableAttributes } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { api } from "@/lib/api";
@@ -374,16 +375,34 @@ export default function ListDetailPage() {
 
   // ── Render helpers ───────────────────────────────────────────────────
 
-  function renderListItem(item: ListItem) {
+  function renderListItem(item: ListItem, sortable?: {
+    setNodeRef: (el: HTMLElement | null) => void;
+    style: React.CSSProperties | undefined;
+    attributes: DraggableAttributes;
+    listeners: SyntheticListenerMap | undefined;
+  }) {
     const img = imageUrl(item);
     return (
       <div
+        ref={sortable?.setNodeRef}
+        style={sortable?.style}
         key={item.id}
         className={clsx(
           "flex items-center gap-2.5 px-3 py-2.5 border-b last:border-0 border-slate-100 dark:border-white/[0.04] group/item transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
           item.status === "done" && "opacity-60"
         )}
       >
+        {sortable && (
+          <button
+            {...sortable.attributes}
+            {...sortable.listeners}
+            className="shrink-0 -ml-1 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none md:opacity-0 md:group-hover/item:opacity-100 transition-opacity"
+            style={{ color: "var(--t-faint)" }}
+            aria-label="Перетащить"
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
         <button onClick={() => updateItem({ itemId: item.id, status: item.status === "done" ? "open" : "done" })} className="shrink-0 touch-manipulation">
           {item.status === "done" ? (
             <div className="w-[18px] h-[18px] rounded-full bg-emerald-500 flex items-center justify-center"><Check size={10} className="text-[#fff]" strokeWidth={3} /></div>
@@ -417,6 +436,52 @@ export default function ListDetailPage() {
         <Tooltip content="Удалить"><button onClick={() => setDeleteTarget(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={13} /></button></Tooltip>
       </div>
     );
+  }
+
+  // Sortable wrapper for an active item in the simple list view.
+  function SortableListRow({ item }: { item: ListItem }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+    const style: React.CSSProperties = {
+      transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      background: isDragging ? "var(--app-card-bg)" : undefined,
+      position: "relative",
+      zIndex: isDragging ? 20 : undefined,
+    };
+    return renderListItem(item, { setNodeRef, style, attributes, listeners });
+  }
+
+  function toggleDoneSection(key: string) {
+    setDoneOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  // Reorder active items in the list view; persist order and keep done at bottom.
+  function handleListReorder(activeIds: number[], doneIds: number[], e: DragEndEvent) {
+    if (!e.over || e.active.id === e.over.id) return;
+    const oldIndex = activeIds.indexOf(e.active.id as number);
+    const newIndex = activeIds.indexOf(e.over.id as number);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const newActive = [...activeIds];
+    const [moved] = newActive.splice(oldIndex, 1);
+    newActive.splice(newIndex, 0, moved);
+    const orderedIds = [...newActive, ...doneIds];
+
+    // Optimistic: apply new sort_order locally so the row stays put.
+    qc.setQueryData<SharedListFull>(["shared-list", listId], (old) => {
+      if (!old) return old;
+      const pos = new Map(orderedIds.map((id, i) => [id, i] as const));
+      return { ...old, items: old.items.map((it) => pos.has(it.id) ? { ...it, sort_order: pos.get(it.id)! } : it) };
+    });
+
+    api.post(`/api/v2/lists/${listId}/items/reorder`, { ids: orderedIds })
+      .then(invalidate)
+      .catch(invalidate);
   }
 
   function renderGridItem(item: ListItem) {
@@ -478,6 +543,8 @@ export default function ListDetailPage() {
   const [dragOverGroupId, setDragOverGroupId] = useState<number | null | undefined>(undefined);
   const [inlineAddGroupId, setInlineAddGroupId] = useState<number | null>(null);
   const [inlineAddTitle, setInlineAddTitle] = useState("");
+  // Expanded "Готово (N)" sections in the simple list view, keyed by group.
+  const [doneOpen, setDoneOpen] = useState<Set<string>>(new Set());
 
   // Resolve target group_id from a drop target (column droppable "col-{gid}"
   // or a card — take its group_id). Used both by onDragOver (for highlight)
@@ -1085,11 +1152,42 @@ export default function ListDetailPage() {
                         </div>
                       )}
 
-                      {viewMode === "list" ? (
-                        <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
-                          {items.map(renderListItem)}
-                        </div>
-                      ) : (
+                      {viewMode === "list" ? (() => {
+                        const groupKey = String(group?.id ?? "ungrouped");
+                        const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order);
+                        const active = sorted.filter((it) => it.status !== "done");
+                        const done = sorted.filter((it) => it.status === "done");
+                        const activeIds = active.map((it) => it.id);
+                        const doneIds = done.map((it) => it.id);
+                        const isDoneOpen = doneOpen.has(groupKey);
+                        return (
+                          <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCorners}
+                              onDragEnd={(e) => handleListReorder(activeIds, doneIds, e)}
+                            >
+                              <SortableContext items={activeIds} strategy={verticalListSortingStrategy}>
+                                {active.map((it) => <SortableListRow key={it.id} item={it} />)}
+                              </SortableContext>
+                            </DndContext>
+
+                            {done.length > 0 && (
+                              <div className={clsx(active.length > 0 && "border-t border-slate-100 dark:border-white/[0.04]")}>
+                                <button
+                                  onClick={() => toggleDoneSection(groupKey)}
+                                  className="w-full flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-slate-50/50 dark:hover:bg-white/[0.03]"
+                                  style={{ color: "var(--t-muted)" }}
+                                >
+                                  <ChevronRight size={14} className={clsx("transition-transform", isDoneOpen && "rotate-90")} />
+                                  Готово · {done.length}
+                                </button>
+                                {isDoneOpen && done.map((it) => renderListItem(it))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })() : (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                           {items.map(renderGridItem)}
                         </div>
