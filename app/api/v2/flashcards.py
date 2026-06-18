@@ -17,6 +17,7 @@ router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 
 NEW_PER_DAY = 3
 PRACTICE_BATCH = 6  # cards per "extra practice" round (unlimited rounds)
+DAILY_REVIEW_CAP = 12  # max due reviews in the daily lesson (keeps it short)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -273,7 +274,8 @@ def get_today_session(
 ):
     today = date.today()
 
-    # Due for review (status=learning, next_review_at <= today)
+    # Due for review (status=learning, next_review_at <= today) — most overdue
+    # first, capped at DAILY_REVIEW_CAP so the daily lesson stays short.
     due_progresses = (
         db.query(UserFlashcardProgress)
         .filter(
@@ -281,13 +283,18 @@ def get_today_session(
             UserFlashcardProgress.status == "learning",
             UserFlashcardProgress.next_review_at <= today,
         )
+        .order_by(UserFlashcardProgress.next_review_at.asc())
         .all()
     )
-    due_card_ids = {p.flashcard_id for p in due_progresses}
-    due_q = db.query(Flashcard).filter(Flashcard.id.in_(due_card_ids)) if due_card_ids else None
-    if due_q is not None and category_id is not None:
-        due_q = due_q.filter(Flashcard.category_id == category_id)
-    due_cards = due_q.all() if due_q is not None else []
+    due_ids_ordered = [p.flashcard_id for p in due_progresses]
+    if due_ids_ordered:
+        q = db.query(Flashcard).filter(Flashcard.id.in_(due_ids_ordered))
+        if category_id is not None:
+            q = q.filter(Flashcard.category_id == category_id)
+        by_id = {c.id: c for c in q.all()}
+        due_cards = [by_id[cid] for cid in due_ids_ordered if cid in by_id][:DAILY_REVIEW_CAP]
+    else:
+        due_cards = []
 
     # New cards — not yet seen (no progress row or status=new), limit NEW_PER_DAY
     seen_ids = (
@@ -384,7 +391,7 @@ def get_stats(
         .filter_by(account_id=account_id, status="skipped")
         .scalar() or 0
     )
-    due_today = (
+    due_today_total = (
         db.query(func.count(UserFlashcardProgress.id))
         .filter(
             UserFlashcardProgress.account_id == account_id,
@@ -393,6 +400,8 @@ def get_stats(
         )
         .scalar() or 0
     )
+    # Cap to match the daily lesson size (extra reviews roll over to next days).
+    due_today = min(due_today_total, DAILY_REVIEW_CAP)
 
     seen_ids = (
         db.query(UserFlashcardProgress.flashcard_id)
