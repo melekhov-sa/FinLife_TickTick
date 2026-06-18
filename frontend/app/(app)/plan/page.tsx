@@ -30,9 +30,10 @@ import { DayListModal } from "@/components/modals/DayListModal";
 import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
 import { clsx } from "clsx";
-import { CalendarDays, List, Play, SkipForward, Plus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
+import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { DateInput } from "@/components/primitives/DateInput";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -346,6 +347,15 @@ function EntryRow({
   const opKind = entry.meta.op_kind as string | undefined;
   const amountFormatted = entry.meta.amount_formatted as string | undefined;
 
+  // Counter habit (e.g. «1/2 таблеток») — same look/controls as on the dashboard.
+  const isCounterHabit = entry.kind === "habit" && entry.meta.habit_type === "counter";
+  const habitId = entry.meta.habit_id as number | undefined;
+  const counterCount = (entry.meta.completion_count as number) ?? 0;
+  const counterTarget = (entry.meta.target_count as number) ?? 1;
+  const counterUnit = entry.meta.unit_label as string | null | undefined;
+  const { mutate: incrementHabit } = useIncrementHabitToday();
+  const { mutate: decrementHabit } = useDecrementHabitToday();
+
   const canDrag = (entry.kind === "task" || entry.kind === "event" || entry.kind === "planned_op") && !entry.is_done;
   const draggableId = `${entry.kind}-${entry.id}`;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -365,7 +375,16 @@ function EntryRow({
     >
       {/* Checkbox / icon */}
       <div className="shrink-0">
-        {canComplete ? (
+        {isCounterHabit && !entry.is_done && habitId ? (
+          <button
+            onClick={() => incrementHabit(habitId)}
+            className="w-[16px] h-[16px] rounded-[5px] border-[1.5px] border-violet-400 hover:bg-violet-500/15 transition-colors text-violet-400 text-[10px] font-bold flex items-center justify-center"
+            title="+1"
+            aria-label="+1"
+          >
+            +
+          </button>
+        ) : canComplete ? (
           <button
             onClick={() => { if (!isCompleting) onComplete(entry); }}
             className={clsx(
@@ -435,6 +454,17 @@ function EntryRow({
             </span>
           )}
 
+          {isCounterHabit && (
+            <span className={clsx(
+              "text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded border shrink-0",
+              entry.is_done
+                ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                : "text-violet-500 bg-violet-500/10 border-violet-500/20"
+            )}>
+              {counterCount}/{counterTarget}{counterUnit ? ` ${counterUnit}` : ""}
+            </span>
+          )}
+
           {entry.kind === "habit" && Boolean(entry.meta.current_streak) && (
             <span className="text-[11px] shrink-0" style={{ color: "var(--t-muted)" }}>
               🔥{String(entry.meta.current_streak)}
@@ -454,6 +484,18 @@ function EntryRow({
           )}
         </div>
       </div>
+
+      {isCounterHabit && counterCount > 0 && habitId && (
+        <button
+          onClick={() => decrementHabit(habitId)}
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+          style={{ color: "var(--t-faint)" }}
+          title="Отменить +1"
+          aria-label="Отменить +1"
+        >
+          <Minus size={12} />
+        </button>
+      )}
 
       <div className="shrink-0">
         <RowMenu
