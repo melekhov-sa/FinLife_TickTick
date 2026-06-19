@@ -96,6 +96,7 @@ class FinStateBlock(BaseModel):
     credit_total: int
     savings_total: int
     collection_total: int
+    collection_cost: int
     financial_result: int
     debt_load_pct: int | None
     capital_delta_30: int | None

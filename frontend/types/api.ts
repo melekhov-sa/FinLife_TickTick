@@ -85,6 +85,7 @@ export interface FinStateBlock {
   credit_total: number;
   savings_total: number;
   collection_total: number;
+  collection_cost: number;
   financial_result: number;
   debt_load_pct: number | null;
   capital_delta_30: number | null;

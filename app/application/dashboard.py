@@ -23,7 +23,7 @@ from app.infrastructure.db.models import (
     TransactionFeed, WalletBalance,
     WorkCategory, WishModel,
     EventLog, CategoryInfo, ProjectModel, GoalInfo,
-    TaskDueChangeLog,
+    TaskDueChangeLog, CollectionItem,
 )
 from app.utils.money import format_money
 
@@ -740,10 +740,17 @@ class DashboardService:
         savings_total    = _total("SAVINGS")
         collection_total = _total("COLLECTION")
 
-        financial_result = regular_total + savings_total + credit_total + collection_total
+        # Collection cost basis (sum of acquisition_price from the Collection feature).
+        collection_cost = int(
+            self.db.query(func.coalesce(func.sum(CollectionItem.acquisition_price), 0))
+            .filter(CollectionItem.account_id == account_id)
+            .scalar() or 0
+        )
+
+        financial_result = regular_total + savings_total + credit_total + collection_total + collection_cost
 
         # ── Debt load ──
-        assets = regular_total + savings_total + collection_total
+        assets = regular_total + savings_total + collection_total + collection_cost
         debt = abs(credit_total)
         if assets > 0:
             debt_load_pct = round(debt / assets * 100)
@@ -757,7 +764,9 @@ class DashboardService:
         collection_30 = _total_30d_ago("COLLECTION")
 
         if all(v is not None for v in [regular_30, credit_30, savings_30, collection_30]):
-            net_worth_30 = regular_30 + savings_30 + credit_30 + collection_30  # type: ignore[operator]
+            # collection_cost is historical cost (no 30d snapshot) — add to both
+            # sides so it cancels and doesn't distort the 30-day capital delta.
+            net_worth_30 = regular_30 + savings_30 + credit_30 + collection_30 + collection_cost  # type: ignore[operator]
             capital_delta_30 = financial_result - net_worth_30
         else:
             capital_delta_30 = None
@@ -767,6 +776,7 @@ class DashboardService:
             "credit_total":     credit_total,
             "savings_total":    savings_total,
             "collection_total": collection_total,
+            "collection_cost":  collection_cost,
             "financial_result": financial_result,
             "debt_load_pct":    debt_load_pct,
             "capital_delta_30": capital_delta_30,
