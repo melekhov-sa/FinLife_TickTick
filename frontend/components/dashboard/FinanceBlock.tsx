@@ -63,8 +63,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             {/* Collection cost basis — only when the collection has items */}
             {finState.collection_cost > 0 && (
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Коллекционирование (себес.)</span>
-                <span className="text-[13px] md:text-[14px] font-semibold tabular-nums" style={{ color: "var(--t-secondary)" }}>
+                <span className="text-[12px] md:text-[13px] min-w-0 truncate" style={{ color: "var(--t-muted)" }}>Коллекция (себес.)</span>
+                <span className="text-[13px] md:text-[14px] font-semibold tabular-nums whitespace-nowrap shrink-0" style={{ color: "var(--t-secondary)" }}>
                   {fmt(finState.collection_cost)} ₽
                 </span>
               </div>
