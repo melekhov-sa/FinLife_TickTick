@@ -1096,6 +1096,49 @@ def budget_stats(
 
     cat_results.sort(key=lambda x: -x["avg_period"])
 
+    # ── Extra metrics ─────────────────────────────────────────────────────────
+    win_start = datetime(months_window[0][0], months_window[0][1], 1)
+    n_win = len(months_window)
+
+    # Financial cushion: liquid SAVINGS (RUB) ÷ average monthly expense
+    savings_total = int(
+        db.query(func.coalesce(func.sum(WalletBalance.balance), 0))
+        .filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.is_archived == False,  # noqa: E712
+            WalletBalance.currency == "RUB",
+            WalletBalance.wallet_type == "SAVINGS",
+        ).scalar() or 0
+    )
+    runway_months = round(savings_total / avg_exp, 1) if avg_exp else None
+
+    # Average expense check + monthly transaction frequency (window)
+    exp_tx_count = (
+        db.query(func.count(TransactionFeed.amount))
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.operation_type == "EXPENSE",
+            TransactionFeed.occurred_at >= win_start,
+            TransactionFeed.occurred_at < d_end,
+        ).scalar() or 0
+    )
+    avg_check = round(total_exp_w / exp_tx_count) if exp_tx_count else None
+    tx_per_month = round(exp_tx_count / n_win, 1) if n_win else None
+
+    # Out-of-plan expenses: categories with spend but no budget plan in the window
+    out_of_plan_total = 0.0
+    out_of_plan_cats = []
+    for cat in cats:
+        if cat.category_type != "EXPENSE":
+            continue
+        cat_fact = sum(fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0) for y, m in months_window)
+        cat_plan = sum(plan_map.get((y, m, cat.category_id, "EXPENSE"), 0.0) for y, m in months_window)
+        if cat_fact > 0 and cat_plan == 0:
+            out_of_plan_total += cat_fact
+            out_of_plan_cats.append({"title": cat.title, "avg": round(cat_fact / n_win)})
+    out_of_plan_cats.sort(key=lambda x: -x["avg"])
+    out_of_plan_avg = round(out_of_plan_total / n_win) if n_win else 0
+
     return {
         "months": months,
         "kpi": {
@@ -1104,6 +1147,12 @@ def budget_stats(
             "avg_savings": round(avg_sav),
             "avg_savings_rate": avg_sav_rate,
             "plan_accuracy_expense": plan_accuracy,
+            # extra
+            "savings_total": savings_total,
+            "runway_months": runway_months,
+            "avg_check": avg_check,
+            "tx_per_month": tx_per_month,
+            "exp_tx_count": exp_tx_count,
             # kept for compatibility
             "avg_income_6m": round(avg_inc),
             "avg_expense_6m": round(avg_exp),
@@ -1113,4 +1162,9 @@ def budget_stats(
         },
         "monthly_trend": monthly_trend,
         "categories": cat_results,
+        "out_of_plan": {
+            "avg": out_of_plan_avg,
+            "total": round(out_of_plan_total),
+            "categories": out_of_plan_cats[:8],
+        },
     }

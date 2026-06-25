@@ -27,9 +27,19 @@ interface BudgetStatsData {
     avg_savings_6m: number;
     avg_savings_rate_6m: number | null;
     plan_accuracy_expense_6m: number | null;
+    savings_total: number;
+    runway_months: number | null;
+    avg_check: number | null;
+    tx_per_month: number | null;
+    exp_tx_count: number;
   };
   monthly_trend: MonthPoint[];
   categories: BudgetCategoryStats[];
+  out_of_plan: {
+    avg: number;
+    total: number;
+    categories: { title: string; avg: number }[];
+  };
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -286,6 +296,126 @@ const PERIOD_OPTIONS = [
   { value: 12, label: "12М" },
 ];
 
+// ── Savings-rate trend + best/worst + cumulative ───────────────────────────────
+
+function SavingsRateBlock({ data }: { data: MonthPoint[] }) {
+  const pts = data.filter((m) => m.income > 0 || m.expense > 0);
+  if (pts.length === 0) return null;
+  const rates = pts.map((m) => ({
+    label: m.label,
+    rate: m.income > 0 ? Math.round((m.savings / m.income) * 100) : 0,
+    savings: m.savings,
+  }));
+  const best = pts.reduce((a, b) => (b.savings > a.savings ? b : a));
+  const worst = pts.reduce((a, b) => (b.savings < a.savings ? b : a));
+  const cumulative = pts.reduce((s, m) => s + m.savings, 0);
+  const maxAbs = Math.max(1, ...rates.map((r) => Math.abs(r.rate)));
+
+  return (
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+      <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
+        Норма сбережений по месяцам
+      </h3>
+      <div className="flex items-end gap-1.5 h-24">
+        {rates.map((r, i) => {
+          const h = Math.max(2, (Math.abs(r.rate) / maxAbs) * 88);
+          const pos = r.rate >= 0;
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1" title={`${r.label}: ${r.rate}%`}>
+              <span className="text-[9px] tabular-nums" style={{ color: pos ? "#10B981" : "#EF4444" }}>{r.rate}%</span>
+              <div className="w-full rounded-t" style={{ height: h, background: pos ? "#10B981" : "#EF4444", opacity: 0.85 }} />
+              <span className="text-[8px]" style={{ color: "var(--t-faint)" }}>{r.label.split(" ")[0]}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t" style={{ borderColor: "var(--app-border)" }}>
+        <div>
+          <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Лучший месяц</p>
+          <p className="text-[13px] font-semibold tabular-nums money-income">{best.label}: {fmtK(best.savings)} ₽</p>
+        </div>
+        <div>
+          <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Худший месяц</p>
+          <p className="text-[13px] font-semibold tabular-nums money-expense">{worst.label}: {fmtK(worst.savings)} ₽</p>
+        </div>
+        <div>
+          <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Накоплено за период</p>
+          <p className="text-[13px] font-semibold tabular-nums" style={{ color: cumulative >= 0 ? "var(--t-primary)" : "#EF4444" }}>{fmtK(cumulative)} ₽</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Income concentration + top-5 expense share ─────────────────────────────────
+
+function StructureBlock({ cats }: { cats: BudgetCategoryStats[] }) {
+  const inc = cats.filter((c) => c.kind === "INCOME");
+  const exp = cats.filter((c) => c.kind === "EXPENSE");
+  const topIncome = inc.length ? inc.reduce((a, b) => (b.pct_of_total_6m > a.pct_of_total_6m ? b : a)) : null;
+  const top5Share = exp.slice(0, 5).reduce((s, c) => s + c.pct_of_total_6m, 0);
+  const concentrated = topIncome && topIncome.pct_of_total_6m >= 70;
+
+  return (
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+      <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
+        Структура и концентрация
+      </h3>
+      <div className="space-y-3">
+        {topIncome && (
+          <div>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>Главный источник дохода</span>
+              <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--t-primary)" }}>
+                {topIncome.title} · {topIncome.pct_of_total_6m}%
+              </span>
+            </div>
+            {concentrated && (
+              <p className="text-[11px] mt-1 text-amber-600 dark:text-amber-400">
+                ⚠ Почти весь доход из одного источника — стоит диверсифицировать
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>Доля топ-5 категорий расходов</span>
+          <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--t-primary)" }}>{top5Share}%</span>
+        </div>
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--app-border)" }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, top5Share)}%`, background: "var(--app-accent)" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Out-of-plan expenses ───────────────────────────────────────────────────────
+
+function OutOfPlanBlock({ data }: { data: BudgetStatsData["out_of_plan"] }) {
+  if (!data || data.categories.length === 0) return null;
+  return (
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+      <div className="flex items-baseline justify-between gap-2 mb-3">
+        <h3 className="text-[13px] md:text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Расходы вне плана
+        </h3>
+        <span className="text-[13px] font-semibold tabular-nums money-expense">{fmtK(data.avg)} ₽/мес</span>
+      </div>
+      <p className="text-[11px] mb-3" style={{ color: "var(--t-faint)" }}>
+        Категории, где есть траты, но не задан план в бюджете
+      </p>
+      <div className="space-y-1.5">
+        {data.categories.map((c, i) => (
+          <div key={i} className="flex items-baseline justify-between gap-2">
+            <span className="text-[12px] truncate" style={{ color: "var(--t-secondary)" }}>{c.title}</span>
+            <span className="text-[12px] font-semibold tabular-nums shrink-0" style={{ color: "var(--t-muted)" }}>{fmtK(c.avg)} ₽</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BudgetStatsPage() {
   const [months, setMonths] = useState(6);
   const { data, isPending } = useBudgetStats(months);
@@ -378,8 +508,50 @@ export default function BudgetStatsPage() {
               />
             </div>
 
+            {/* KPI row 2 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard
+                label="Финансовая подушка"
+                value={data.kpi.runway_months !== null ? `${String(data.kpi.runway_months).replace(".", ",")} мес` : "—"}
+                sub={`накоплений ${fmtK(data.kpi.savings_total)} ₽`}
+                accent={
+                  data.kpi.runway_months === null ? "neutral"
+                  : data.kpi.runway_months >= 6 ? "green"
+                  : data.kpi.runway_months >= 3 ? "indigo"
+                  : "red"
+                }
+              />
+              <KpiCard
+                label="Прогноз накоплений"
+                value={fmtK(data.kpi.avg_savings_6m * 12) + " ₽"}
+                sub="за 12 мес при текущем темпе"
+                accent={data.kpi.avg_savings_6m >= 0 ? "green" : "red"}
+              />
+              <KpiCard
+                label="Средний чек расхода"
+                value={data.kpi.avg_check !== null ? fmtK(data.kpi.avg_check) + " ₽" : "—"}
+                sub={data.kpi.tx_per_month !== null ? `${String(data.kpi.tx_per_month).replace(".", ",")} операций/мес` : undefined}
+                accent="neutral"
+              />
+              <KpiCard
+                label="Расходы вне плана"
+                value={fmtK(data.out_of_plan?.avg ?? 0) + " ₽"}
+                sub="в месяц, без плана в бюджете"
+                accent={(data.out_of_plan?.avg ?? 0) > 0 ? "red" : "green"}
+              />
+            </div>
+
             {/* Trend chart */}
             <MonthlyTrendChart data={data.monthly_trend} />
+
+            {/* Savings rate + structure */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SavingsRateBlock data={data.monthly_trend} />
+              <StructureBlock cats={data.categories} />
+            </div>
+
+            {/* Out-of-plan */}
+            <OutOfPlanBlock data={data.out_of_plan} />
 
             {/* Category breakdowns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
