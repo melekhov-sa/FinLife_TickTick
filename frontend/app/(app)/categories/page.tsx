@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
-import { Pencil, Check, X, Archive, ArchiveRestore, Plus } from "lucide-react";
+import { Pencil, Check, X, Archive, ArchiveRestore, Plus, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
@@ -27,6 +27,7 @@ interface FinCategory {
   is_frequent: boolean;
   is_archived: boolean;
   is_system: boolean;
+  is_mandatory: boolean;
 }
 
 type TabType = "EXPENSE" | "INCOME";
@@ -88,6 +89,18 @@ function useRestoreCategory() {
   });
 }
 
+function useSetMandatory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ categoryId, value }: { categoryId: number; value: boolean }) =>
+      api.post(`/api/v2/fin-categories/${categoryId}/mandatory`, { value }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-categories"] });
+      qc.invalidateQueries({ queryKey: ["analytics", "budget-stats"] });
+    },
+  });
+}
+
 // ── CategoryRow ─────────────────────────────────────────────────────────────
 
 function CategoryRow({
@@ -105,6 +118,7 @@ function CategoryRow({
   const { mutate: rename, isPending: renaming } = useRenameCategory();
   const { mutate: archive } = useArchiveCategory();
   const { mutate: restore } = useRestoreCategory();
+  const { mutate: setMandatory } = useSetMandatory();
 
   function startEdit() {
     setTitle(cat.title);
@@ -204,6 +218,23 @@ function CategoryRow({
       {/* Actions */}
       {!cat.is_system && !editing && (
         <div className="flex items-center gap-1 ml-2 shrink-0">
+          {cat.category_type === "EXPENSE" && !cat.is_archived && (
+            <Tooltip content={cat.is_mandatory ? "Обязательный расход — нажми, чтобы снять" : "Пометить как обязательный расход"}>
+              <button
+                onClick={() => setMandatory({ categoryId: cat.category_id, value: !cat.is_mandatory })}
+                className={clsx(
+                  "flex items-center gap-1 py-1 px-2 rounded-lg border text-[11px] transition-all",
+                  cat.is_mandatory
+                    ? "border-amber-400/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border-slate-200 dark:border-white/[0.07] hover:bg-amber-500/10 hover:border-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400"
+                )}
+                style={cat.is_mandatory ? undefined : { color: "var(--t-faint)" }}
+              >
+                <Lock size={11} />
+                <span>{cat.is_mandatory ? "Обязательная" : "Обяз.?"}</span>
+              </button>
+            </Tooltip>
+          )}
           {cat.is_archived ? (
             <button
               onClick={() => restore(cat.category_id)}

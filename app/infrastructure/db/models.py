@@ -2180,3 +2180,17 @@ class UserFlashcardProgress(Base):
     wrong_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     first_seen_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     last_reviewed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class MandatoryCategory(Base):
+    """Categories the user marks as mandatory (обязательные расходы). Kept in a
+    separate table (not the event-sourced categories read model) so it survives
+    projector rebuilds."""
+    __tablename__ = "mandatory_categories"
+    __table_args__ = (
+        UniqueConstraint("account_id", "category_id", name="uq_mandatory_category"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    category_id: Mapped[int] = mapped_column(Integer, nullable=False)

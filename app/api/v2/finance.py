@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
-from app.infrastructure.db.models import WalletBalance, CategoryInfo, TransactionFeed
+from app.infrastructure.db.models import WalletBalance, CategoryInfo, TransactionFeed, MandatoryCategory
 
 router = APIRouter()
 
@@ -173,6 +173,7 @@ class FinCategoryItemFull(BaseModel):
     is_frequent: bool = False
     is_archived: bool = False
     is_system: bool = False
+    is_mandatory: bool = False
 
 
 @router.get("/fin-categories", response_model=list[FinCategoryItemFull])
@@ -208,6 +209,11 @@ def list_fin_categories(
 
     freq_ids = _top5("INCOME") | _top5("EXPENSE")
 
+    mandatory_ids = {
+        r[0] for r in db.query(MandatoryCategory.category_id)
+        .filter(MandatoryCategory.account_id == user_id).all()
+    }
+
     return [
         FinCategoryItemFull(
             category_id=c.category_id,
@@ -217,9 +223,43 @@ def list_fin_categories(
             is_frequent=c.category_id in freq_ids,
             is_archived=c.is_archived,
             is_system=c.is_system,
+            is_mandatory=c.category_id in mandatory_ids,
         )
         for c in cats
     ]
+
+
+class SetMandatoryRequest(BaseModel):
+    value: bool
+
+
+@router.post("/fin-categories/{category_id}/mandatory")
+def set_category_mandatory(
+    category_id: int,
+    body: SetMandatoryRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Mark/unmark an expense category as mandatory (обязательный расход)."""
+    user_id = get_user_id(request, db)
+    cat = db.query(CategoryInfo).filter(
+        CategoryInfo.category_id == category_id,
+        CategoryInfo.account_id == user_id,
+    ).first()
+    if not cat:
+        raise HTTPException(404, "Категория не найдена")
+
+    existing = db.query(MandatoryCategory).filter(
+        MandatoryCategory.account_id == user_id,
+        MandatoryCategory.category_id == category_id,
+    ).first()
+
+    if body.value and not existing:
+        db.add(MandatoryCategory(account_id=user_id, category_id=category_id))
+    elif not body.value and existing:
+        db.delete(existing)
+    db.commit()
+    return {"ok": True, "is_mandatory": body.value}
 
 
 class CreateFinCategoryRequest(BaseModel):

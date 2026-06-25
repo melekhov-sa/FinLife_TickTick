@@ -40,6 +40,13 @@ interface BudgetStatsData {
     total: number;
     categories: { title: string; avg: number }[];
   };
+  mandatory: {
+    configured: boolean;
+    mandatory_avg: number;
+    optional_avg: number;
+    mandatory_pct_income: number | null;
+    free_money: number;
+  };
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -416,6 +423,56 @@ function OutOfPlanBlock({ data }: { data: BudgetStatsData["out_of_plan"] }) {
   );
 }
 
+// ── Mandatory vs optional expenses ─────────────────────────────────────────────
+
+function MandatoryBlock({ data }: { data: BudgetStatsData["mandatory"] }) {
+  if (!data) return null;
+  if (!data.configured) {
+    return (
+      <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+        <h3 className="text-[13px] md:text-[14px] font-semibold mb-1" style={{ color: "var(--t-primary)" }}>
+          Обязательные vs необязательные
+        </h3>
+        <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+          Пометь обязательные статьи (ипотека, коммуналка, абонементы…) в разделе{" "}
+          <Link href="/categories" className="text-indigo-500 hover:text-indigo-600 font-medium">Категории</Link>{" "}
+          — и здесь появится разбивка обязательных/необязательных расходов и «свободные деньги».
+        </p>
+      </div>
+    );
+  }
+  const total = Math.max(1, data.mandatory_avg + data.optional_avg);
+  const mandPct = Math.round((data.mandatory_avg / total) * 100);
+  return (
+    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+      <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
+        Обязательные vs необязательные
+      </h3>
+      <div className="flex h-3 rounded-full overflow-hidden mb-2" style={{ background: "var(--app-border)" }}>
+        <div style={{ width: `${mandPct}%`, background: "#EF4444" }} title={`Обязательные ${mandPct}%`} />
+        <div style={{ width: `${100 - mandPct}%`, background: "#10B981" }} title={`Необязательные ${100 - mandPct}%`} />
+      </div>
+      <div className="flex items-center justify-between text-[11px] mb-4" style={{ color: "var(--t-muted)" }}>
+        <span>🔴 Обязательные {fmtK(data.mandatory_avg)} ₽ ({mandPct}%)</span>
+        <span>🟢 Необязательные {fmtK(data.optional_avg)} ₽</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 pt-3 border-t" style={{ borderColor: "var(--app-border)" }}>
+        <div>
+          <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Обязательные от дохода</p>
+          <p className="text-[15px] font-bold tabular-nums" style={{ color: "var(--t-primary)" }}>
+            {data.mandatory_pct_income !== null ? `${data.mandatory_pct_income}%` : "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>Свободные деньги</p>
+          <p className="text-[15px] font-bold tabular-nums money-income">{fmtK(data.free_money)} ₽</p>
+          <p className="text-[10px]" style={{ color: "var(--t-faint)" }}>доход минус обязательные</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BudgetStatsPage() {
   const [months, setMonths] = useState(6);
   const { data, isPending } = useBudgetStats(months);
@@ -550,8 +607,11 @@ export default function BudgetStatsPage() {
               <StructureBlock cats={data.categories} />
             </div>
 
-            {/* Out-of-plan */}
-            <OutOfPlanBlock data={data.out_of_plan} />
+            {/* Mandatory + out-of-plan */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <MandatoryBlock data={data.mandatory} />
+              <OutOfPlanBlock data={data.out_of_plan} />
+            </div>
 
             {/* Category breakdowns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

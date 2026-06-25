@@ -25,7 +25,7 @@ from app.infrastructure.db.models import (
     WalletBalance, TransactionFeed, GoalInfo, GoalWalletBalance,
     SubscriptionModel, SubscriptionMemberModel,
     UserActivityDaily, CategoryInfo, WorkCategory,
-    BudgetLine, BudgetMonth,
+    BudgetLine, BudgetMonth, MandatoryCategory,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -1139,6 +1139,22 @@ def budget_stats(
     out_of_plan_cats.sort(key=lambda x: -x["avg"])
     out_of_plan_avg = round(out_of_plan_total / n_win) if n_win else 0
 
+    # Mandatory vs optional expenses (categories the user flagged as mandatory)
+    mandatory_ids = {
+        r[0] for r in db.query(MandatoryCategory.category_id)
+        .filter(MandatoryCategory.account_id == user_id).all()
+    }
+    mandatory_avg = 0.0
+    for cat in cats:
+        if cat.category_type != "EXPENSE" or cat.category_id not in mandatory_ids:
+            continue
+        cat_fact = sum(fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0) for y, m in months_window)
+        mandatory_avg += cat_fact / n_win if n_win else 0
+    mandatory_avg = round(mandatory_avg)
+    optional_avg = round(avg_exp) - mandatory_avg
+    mandatory_pct_income = round(mandatory_avg / avg_inc * 100) if avg_inc else None
+    free_money = round(avg_inc) - mandatory_avg  # доход после обязательных
+
     return {
         "months": months,
         "kpi": {
@@ -1166,5 +1182,12 @@ def budget_stats(
             "avg": out_of_plan_avg,
             "total": round(out_of_plan_total),
             "categories": out_of_plan_cats[:8],
+        },
+        "mandatory": {
+            "configured": len(mandatory_ids) > 0,
+            "mandatory_avg": mandatory_avg,
+            "optional_avg": optional_avg,
+            "mandatory_pct_income": mandatory_pct_income,
+            "free_money": free_money,
         },
     }
