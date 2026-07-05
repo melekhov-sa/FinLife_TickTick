@@ -11,6 +11,8 @@ export interface UserMe {
   enable_task_reschedule_reasons: boolean;
   ai_digest_enabled: boolean;
   ai_digest_available: boolean;
+  vacation?: boolean;
+  vacation_end?: string | null;
 }
 
 // ── /api/v2/dashboard ─────────────────────────────────────────────────────────

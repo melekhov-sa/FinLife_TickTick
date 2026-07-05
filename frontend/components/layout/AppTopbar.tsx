@@ -14,6 +14,7 @@ import { Popover } from "@/components/primitives/Popover";
 export function AppTopbar() {
   const { data: me } = useMe();
   const email = me?.email ?? "";
+  const vacation = !!me?.vacation;
   const pageMeta = usePageTitleMeta();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,7 +23,9 @@ export function AppTopbar() {
     <header
       className="relative shrink-0 flex items-center justify-between px-4 sm:px-6"
       style={{
-        background: "var(--app-topbar-bg)",
+        background: vacation
+          ? "linear-gradient(120deg, #06b6d4 0%, #0ea5e9 45%, #f59e0b 100%)"
+          : "var(--app-topbar-bg)",
         boxShadow: "var(--shadow-topbar)",
         minHeight: "calc(56px + env(safe-area-inset-top, 0px))",
         paddingTop: "env(safe-area-inset-top, 0px)",
@@ -76,6 +79,16 @@ export function AppTopbar() {
               <span className="text-[#fff] text-[10px] font-bold tracking-tight">FL</span>
             </span>
           </div>
+        )}
+
+        {vacation && (
+          <span
+            className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+            style={{ background: "rgba(255,255,255,0.22)", color: "#fff" }}
+            title="Вы в отпуске"
+          >
+            🏖 Отпуск
+          </span>
         )}
       </div>
 

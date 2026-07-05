@@ -436,7 +436,9 @@ class DashboardService:
                     "title": ev.title,
                     "date": occ.start_date,
                     "time": event_time,
-                    "is_done": occ.is_completed,
+                    # Ongoing multi-day event (ends in the future) isn't "done" —
+                    # don't strike through e.g. an active «Отпуск».
+                    "is_done": occ.is_completed and not (occ.end_date and occ.end_date > today),
                     "is_overdue": False,
                     "category_emoji": self._wc_emoji(wc_map, ev.category_id),
                     "category_name": self._wc_name(wc_map, ev.category_id),
