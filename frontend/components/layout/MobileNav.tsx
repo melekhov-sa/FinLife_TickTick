@@ -50,9 +50,9 @@ export function MobileNav({
           background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
-          minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))",
+          minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
           paddingTop: "6px",
-          paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
+          paddingBottom: "calc(4px + env(safe-area-inset-bottom, 8px))",
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
