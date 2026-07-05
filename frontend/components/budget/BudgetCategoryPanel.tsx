@@ -123,8 +123,8 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-4 border-b shrink-0"
-          style={{ borderColor: "var(--app-border)" }}
+          className="flex items-center justify-between px-5 pb-4 border-b shrink-0"
+          style={{ borderColor: "var(--app-border)", paddingTop: "max(16px, env(safe-area-inset-top))" }}
         >
           <div>
             <p className="text-[15px] font-semibold" style={{ color: "var(--t-primary)" }}>

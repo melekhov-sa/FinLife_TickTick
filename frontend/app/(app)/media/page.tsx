@@ -448,15 +448,15 @@ export default function MediaPage() {
         }
       />
 
-      <main className="flex-1 p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6 overflow-x-hidden">
         {/* Tabs */}
-        <div className="flex gap-1 mb-4 bg-slate-100 dark:bg-white/[0.04] rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-4 bg-slate-100 dark:bg-white/[0.04] rounded-xl p-1 w-fit max-w-full overflow-x-auto ph-scroll-x">
           {TABS.map(({ type, label, Icon }) => (
             <button
               key={type}
               onClick={() => setActiveTab(type)}
               className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all shrink-0",
                 activeTab === type
                   ? "bg-white dark:bg-white/[0.10] shadow-sm"
                   : "hover:bg-white/60 dark:hover:bg-white/[0.05]",
