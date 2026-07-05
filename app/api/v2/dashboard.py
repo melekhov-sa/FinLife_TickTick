@@ -48,6 +48,8 @@ class TodayBlock(BaseModel):
     done: list[DashboardItem]
     events: list[DashboardItem]
     progress: ProgressBlock
+    vacation: bool = False
+    vacation_end: str | None = None
 
 
 class UpcomingPayment(BaseModel):
@@ -444,6 +446,8 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
         done=[_to_item(x) for x in today_block_raw["done"]],
         events=[_to_item(x) for x in today_block_raw["events"]],
         progress=ProgressBlock(**today_block_raw["progress"]),
+        vacation=today_block_raw.get("vacation", False),
+        vacation_end=today_block_raw.get("vacation_end"),
     )
 
     upcoming = [
