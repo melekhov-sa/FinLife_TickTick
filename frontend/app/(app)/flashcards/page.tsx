@@ -130,10 +130,10 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
             background: "rgba(99,102,241,0.2)",
             fontSize: 13,
             fontWeight: 700,
-            color: "#818cf8",
+            color: "var(--app-accent)",
           }}
         >
-          <Zap size={13} fill="#818cf8" />
+          <Zap size={13} fill="currentColor" style={{ color: "var(--app-accent)" }} />
           {stats.xp} XP
         </div>
       </div>
@@ -154,7 +154,7 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
             className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${pct}%`,
-              background: "linear-gradient(90deg, #6366f1, #818cf8)",
+              background: "var(--app-accent-gradient)",
               boxShadow: pct > 5 ? "0 0 8px rgba(99,102,241,0.5)" : "none",
             }}
           />
@@ -264,7 +264,7 @@ function SessionTab({
                 border: "1px solid rgba(99,102,241,0.2)",
               }}
             >
-              <Brain size={16} style={{ color: "#818cf8" }} />
+              <Brain size={16} style={{ color: "var(--app-accent)" }} />
               <div
                 style={{
                   fontSize: 22,
@@ -311,7 +311,7 @@ function SessionTab({
         disabled={!stats}
         className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all"
         style={{
-          background: "linear-gradient(135deg, #6366f1, #818cf8)",
+          background: "var(--app-accent-gradient)",
           border: "none",
           color: "#fff",
           opacity: stats ? 1 : 0.6,

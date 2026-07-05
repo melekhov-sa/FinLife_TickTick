@@ -337,7 +337,7 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
             onClick={handleSave}
             disabled={saving}
             className="px-5 py-2 rounded-xl text-[13px] font-semibold text-white disabled:opacity-60 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)" }}
+            style={{ background: "var(--app-accent-gradient)" }}
           >
             {saving ? "Сохранение…" : isEdit ? "Сохранить" : "Создать"}
           </button>

@@ -58,7 +58,7 @@ export function FlashcardsWidget() {
           className="flex items-center justify-center rounded-xl shrink-0"
           style={{ width: 36, height: 36, background: "rgba(99,102,241,0.18)" }}
         >
-          <BookOpen size={17} style={{ color: "#818cf8" }} />
+          <BookOpen size={17} style={{ color: "var(--app-accent)" }} />
         </div>
         <div className="flex-1 min-w-0">
           <div style={{ fontWeight: 700, fontSize: 14, color: "var(--t-primary)", lineHeight: 1.2 }}>
@@ -93,7 +93,7 @@ export function FlashcardsWidget() {
               className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${xpPct}%`,
-                background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                background: "var(--app-accent-gradient)",
                 boxShadow: xpPct > 5 ? "0 0 6px rgba(99,102,241,0.5)" : "none",
               }}
             />
@@ -122,7 +122,7 @@ export function FlashcardsWidget() {
           </div>
           <div style={{ width: 1, height: 28, background: "rgba(99,102,241,0.15)" }} />
           <div className="flex-1 flex flex-col items-center py-3">
-            <div style={{ fontSize: 16, fontWeight: 700, color: hasSession ? "#6366f1" : "var(--t-primary)" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: hasSession ? "var(--app-accent)" : "var(--t-primary)" }}>
               {(stats.new_today + stats.due_today) || "✓"}
             </div>
             <div style={{ fontSize: 10.5, color: "var(--t-muted)" }}>сегодня</div>
@@ -142,7 +142,7 @@ export function FlashcardsWidget() {
             height: 40,
             fontWeight: 600,
             fontSize: 13.5,
-            background: "linear-gradient(90deg, #6366f1, #818cf8)",
+            background: "var(--app-accent-gradient)",
             color: "#fff",
             border: "none",
             cursor: "pointer",

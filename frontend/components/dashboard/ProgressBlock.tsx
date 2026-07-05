@@ -71,7 +71,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
                   className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${levelPct}%`,
-                    background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                    background: "var(--app-accent-gradient)",
                     boxShadow: levelPct > 5 ? "0 0 8px rgba(99,102,241,0.6)" : "none",
                   }}
                 />

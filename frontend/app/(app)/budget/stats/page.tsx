@@ -179,7 +179,7 @@ function MonthlyTrendChart({ data }: { data: MonthPoint[] }) {
                 {mode !== "income" && (
                   <div
                     className="flex-1 rounded-t-sm"
-                    style={{ height: `${expPct}%`, background: "#6366f1", opacity: 0.85, minHeight: expPct > 0 ? 2 : 0 }}
+                    style={{ height: `${expPct}%`, background: "var(--app-accent)", opacity: 0.85, minHeight: expPct > 0 ? 2 : 0 }}
                   />
                 )}
               </div>
@@ -200,7 +200,7 @@ function MonthlyTrendChart({ data }: { data: MonthPoint[] }) {
         )}
         {mode !== "income" && (
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-2 rounded-sm" style={{ background: "#6366f1" }} />
+            <div className="w-3 h-2 rounded-sm" style={{ background: "var(--app-accent)" }} />
             <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>расходы</span>
           </div>
         )}
@@ -225,7 +225,7 @@ function CategoryList({
   const filtered = cats.filter((c) => c.kind === kind);
   const maxAvg = Math.max(...filtered.map((c) => c.avg_6m), 1);
   const title = kind === "EXPENSE" ? "Расходы по категориям" : "Доходы по категориям";
-  const color = kind === "EXPENSE" ? "#6366f1" : "#10b981";
+  const color = kind === "EXPENSE" ? "var(--app-accent)" : "#10b981";
 
   if (filtered.length === 0) return null;
 

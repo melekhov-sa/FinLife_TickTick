@@ -384,7 +384,7 @@ function DoneScreen({
           disabled={morePending}
           className="w-full flex items-center justify-center gap-2 px-8 py-3 rounded-2xl font-semibold transition-all"
           style={{
-            background: "linear-gradient(135deg, #6366f1, #818cf8)",
+            background: "var(--app-accent-gradient)",
             color: "#fff",
             fontSize: 15,
             opacity: morePending ? 0.7 : 1,
@@ -559,7 +559,7 @@ export default function FlashcardsSessionPage() {
               disabled={isFetching}
               className="w-full px-8 py-3 rounded-2xl font-semibold transition-all"
               style={{
-                background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                background: "var(--app-accent-gradient)",
                 color: "#fff",
                 fontSize: 15,
                 opacity: isFetching ? 0.7 : 1,

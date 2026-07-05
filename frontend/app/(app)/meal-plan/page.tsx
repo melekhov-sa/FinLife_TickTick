@@ -319,7 +319,7 @@ export default function MealPlanPage() {
               <button
                 onClick={() => setDishModal({ open: true })}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-white"
-                style={{ background: "linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)" }}
+                style={{ background: "var(--app-accent-gradient)" }}
               >
                 <Plus size={14} />
                 Новое блюдо
@@ -424,7 +424,7 @@ export default function MealPlanPage() {
                 <button
                   onClick={() => setDishModal({ open: true })}
                   className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold text-white"
-                  style={{ background: "linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)" }}
+                  style={{ background: "var(--app-accent-gradient)" }}
                 >
                   <Plus size={14} />
                   Добавить первое блюдо

@@ -352,8 +352,8 @@ function WeekdayChart({ data }: { data: { day: string; avg: number; total: numbe
             <div className="w-full rounded-t-md transition-all" style={{
               height: `${Math.max(pct, 4)}%`,
               background: isTop
-                ? "linear-gradient(180deg, #818cf8, #6366f1)"
-                : "rgba(99,102,241,0.25)",
+                ? "var(--app-accent-gradient)"
+                : "var(--app-accent-light)",
               minHeight: 4,
             }} />
             <span className="text-[10px] font-medium" style={{ color: "var(--t-secondary)" }}>{d.day}</span>
@@ -524,7 +524,7 @@ export default function ProgressPage() {
                       <div className="h-1.5 rounded-full bg-white/[0.06]">
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${cat.pct}%`, background: "linear-gradient(90deg, #6366f1, #818cf8)" }}
+                          style={{ width: `${cat.pct}%`, background: "var(--app-accent-gradient)" }}
                         />
                       </div>
                     </div>

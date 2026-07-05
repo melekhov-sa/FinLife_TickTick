@@ -216,7 +216,7 @@ export function OnboardingModal({ onComplete }: Props) {
             <div className="text-center space-y-5">
               <div
                 className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
+                style={{ background: "var(--app-accent-gradient)" }}
               >
                 <span className="text-[#fff] text-xl font-bold">FL</span>
               </div>
@@ -363,7 +363,7 @@ export function OnboardingModal({ onComplete }: Props) {
               {success && <SuccessHint text={success} />}
               <div className="flex gap-2">
                 <Button variant="secondary" size="md" onClick={handleSkip} fullWidth>Пропустить</Button>
-                <button onClick={handleNext} disabled={loading} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)" }}>
+                <button onClick={handleNext} disabled={loading} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold text-[#fff] disabled:opacity-40 transition-all hover:opacity-90" style={{ background: "var(--app-accent-gradient)" }}>
                   {loading ? "..." : `Добавить (${cats.filter((c) => c.enabled).length})`}
                 </button>
               </div>

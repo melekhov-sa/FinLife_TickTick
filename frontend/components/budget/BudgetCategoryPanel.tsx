@@ -75,7 +75,7 @@ function MonthBar({ m, maxVal, kind }: { m: CategoryMonthData; maxVal: number; k
     ? "#10b981"
     : kind === "INCOME"
     ? "#10b981"
-    : "#6366f1";
+    : "var(--app-accent)";
 
   return (
     <div className="flex items-center gap-3 py-1.5">
@@ -213,7 +213,7 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
             {/* Legend */}
             <div className="flex items-center gap-4 mt-3">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-2 rounded-sm" style={{ background: stats.kind === "INCOME" ? "#10b981" : "#6366f1" }} />
+                <div className="w-3 h-2 rounded-sm" style={{ background: stats.kind === "INCOME" ? "#10b981" : "var(--app-accent)" }} />
                 <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>факт</span>
               </div>
               <div className="flex items-center gap-1.5">

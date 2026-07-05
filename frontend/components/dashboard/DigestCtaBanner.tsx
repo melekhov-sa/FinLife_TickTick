@@ -26,7 +26,7 @@ export function DigestCtaBanner() {
       href={href}
       className="digest-cta-banner relative block rounded-xl overflow-hidden mb-3 transition-transform duration-200 hover:scale-[1.02] focus-visible:scale-[1.02]"
       style={{
-        background: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)",
+        background: "var(--app-accent-gradient)",
         animation:
           "digest-slide-down 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards, digest-banner-glow 3s ease-in-out 0.5s infinite",
         boxShadow:

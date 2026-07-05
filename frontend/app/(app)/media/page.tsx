@@ -524,7 +524,7 @@ export default function MediaPage() {
                   onClick={() => syncFootball()}
                   disabled={syncing}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90 disabled:opacity-50 text-white mt-1"
-                  style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)" }}
+                  style={{ background: "var(--app-accent-gradient)" }}
                 >
                   <RotateCcw size={14} className={syncing ? "animate-spin" : ""} />
                   {syncing ? "Загружаем матчи…" : "Синхронизировать"}

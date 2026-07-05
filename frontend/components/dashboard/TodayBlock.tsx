@@ -784,7 +784,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                   width: `${progressPct}%`,
                   background: progressPct === 100
                     ? "linear-gradient(90deg, #10b981, #34d399)"
-                    : "linear-gradient(90deg, #6366f1, #818cf8)",
+                    : "var(--app-accent-gradient)",
                   boxShadow: progressPct === 100
                     ? "0 0 10px rgba(16,185,129,0.45)"
                     : "0 0 10px rgba(99,102,241,0.4)",
