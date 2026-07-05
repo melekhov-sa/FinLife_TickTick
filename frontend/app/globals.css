@@ -646,6 +646,97 @@ html.dark[data-color-theme="emerald"] {
   --ring: oklch(0.65 0.19 160);
 }
 
+/* ── 7. Vivid («Живой») — electric violet + fuchsia, bright fintech ────── */
+html:not(.dark)[data-color-theme="vivid"] {
+  --app-bg:            radial-gradient(ellipse 60% 45% at 12% 4%, rgba(124,58,237,0.09) 0%, transparent 55%),
+                       radial-gradient(ellipse 55% 40% at 92% 8%, rgba(219,39,119,0.06) 0%, transparent 55%),
+                       #FAF7FF;
+  --app-sidebar-bg:    #F6F0FD;
+  --app-topbar-bg:     linear-gradient(120deg, #7C3AED 0%, #DB2777 55%, #FB7185 100%);
+  --app-topbar-text:   rgba(255,255,255,0.96);
+  --app-border:        rgba(88,28,135,0.10);
+  --app-border-subtle: rgba(88,28,135,0.05);
+
+  --t-primary:   #1E1836;
+  --t-secondary: #443C63;
+  --t-muted:     #7A7193;
+  --t-faint:     #A79FBE;
+  --t-label:     #5B5277;
+
+  --app-card-bg:     #FFFFFF;
+  --app-card-border: rgba(88,28,135,0.08);
+  --app-card-shadow: 0 1px 4px rgba(88,28,135,0.07), 0 4px 20px rgba(124,58,237,0.06);
+
+  --app-accent:       #7C3AED;
+  --app-accent-light: rgba(124,58,237,0.10);
+  --app-accent-weak:  #F3E8FF;
+  --app-accent-ink:   #6D28D9;
+
+  --app-sidebar-border: rgba(88,28,135,0.08);
+
+  --shadow-card:   0 1px 3px rgba(88,28,135,0.07), 0 8px 24px -12px rgba(124,58,237,0.12);
+  --shadow-topbar: 0 1px 0 rgba(124,58,237,0.25), 0 8px 24px -16px rgba(219,39,119,0.40);
+  --shadow-fab:    0 4px 16px rgba(219,39,119,0.42), 0 1px 3px rgba(88,28,135,0.20);
+  --shadow-mobile: 0 -4px 24px rgba(88,28,135,0.08);
+
+  --c-neutral-bg:  #EFE9F6;
+  --c-neutral-fg:  #6D28D9;
+  --c-neutral-ink: #5B21B6;
+
+  --bgt-totals-bg:  #F3E8FF;
+  --bgt-hover-bg:   #FAF5FF;
+  --bgt-row-bg:     #FFFFFF;
+  --bgt-row-group:  #F6F0FD;
+  --bgt-head-bg:    #F0E7FB;
+  --bgt-subhead-bg: #E9DDF7;
+}
+
+html.dark[data-color-theme="vivid"] {
+  --app-bg:            radial-gradient(ellipse 60% 45% at 12% 5%, rgba(124,58,237,0.15) 0%, transparent 55%),
+                       radial-gradient(ellipse 55% 45% at 88% 92%, rgba(219,39,119,0.10) 0%, transparent 55%),
+                       #120C20;
+  --app-sidebar-bg:    #1A1130;
+  --app-topbar-bg:     linear-gradient(120deg, #6D28D9 0%, #BE185D 55%, #E11D48 100%);
+  --app-topbar-text:   rgba(255,255,255,0.94);
+  --app-border:        rgba(255,255,255,0.09);
+  --app-border-subtle: rgba(255,255,255,0.05);
+
+  --t-primary:   #F5F1FF;
+  --t-secondary: #E2DAF5;
+  --t-muted:     #A99FC6;
+  --t-faint:     #7B7099;
+  --t-label:     #A99FC6;
+
+  --app-card-bg:     #1F1636;
+  --app-card-border: rgba(255,255,255,0.07);
+  --app-card-shadow: 0 1px 3px rgba(0,0,0,0.45);
+
+  --app-accent:       #C084FC;
+  --app-accent-light: rgba(192,132,252,0.14);
+  --app-accent-weak:  rgba(192,132,252,0.16);
+  --app-accent-ink:   #E9D5FF;
+
+  --app-sidebar-border: rgba(255,255,255,0.07);
+
+  --shadow-card:   0 1px 0 rgba(0,0,0,0.45);
+  --shadow-topbar: 0 1px 0 rgba(255,255,255,0.05), 0 10px 30px -18px rgba(219,39,119,0.55);
+  --shadow-fab:    0 4px 16px rgba(219,39,119,0.50), 0 1px 3px rgba(0,0,0,0.35);
+  --shadow-mobile: 0 -4px 24px rgba(0,0,0,0.6);
+
+  --c-neutral-bg:  rgba(192,132,252,0.14);
+  --c-neutral-fg:  #DDD0F5;
+  --c-neutral-ink: #C084FC;
+
+  --bgt-row-bg:     #1F1636;
+  --bgt-row-group:  #17102A;
+  --bgt-section-bg: rgba(255,255,255,0.04);
+  --bgt-head-bg:    #1F1636;
+  --bgt-subhead-bg: rgba(0,0,0,0.3);
+  --bgt-totals-bg:  rgba(124,58,237,0.16);
+  --bgt-hover-bg:   rgba(124,58,237,0.10);
+  --bgt-dash:       rgba(255,255,255,0.18);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

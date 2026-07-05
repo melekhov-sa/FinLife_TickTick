@@ -19,6 +19,13 @@ interface ThemeDef {
 
 const THEMES: ThemeDef[] = [
   {
+    id: "vivid",
+    name: "Живой",
+    desc: "Электрический фиолет + фуксия. Яркий, живой fintech.",
+    mode: "light",
+    preview: { bg: "#FAF7FF", sidebar: "#F6F0FD", accent: "#7C3AED", card: "#FFFFFF" },
+  },
+  {
     id: "obsidian",
     name: "Obsidian",
     desc: "Тёмно-синий + индиго. Как Linear.",

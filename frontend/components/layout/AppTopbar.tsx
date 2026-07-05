@@ -119,7 +119,7 @@ export function AppTopbar() {
               <Avatar
                 name={email}
                 size="md"
-                className="!bg-white !text-[#6366F1] font-bold"
+                className="!bg-white !text-[var(--app-accent)] font-bold"
               />
             </button>
           }
