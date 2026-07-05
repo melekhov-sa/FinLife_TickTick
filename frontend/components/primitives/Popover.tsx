@@ -5,6 +5,7 @@ import {
   isValidElement,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactElement,
@@ -80,6 +81,27 @@ export function Popover({
   const wrapRef = useRef<HTMLSpanElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
   const triggerElRef = useRef<HTMLElement | null>(null);
+
+  // Keep the popover inside the viewport horizontally (mobile edge clamping).
+  // marginLeft composes with the CSS transforms used for alignment.
+  const [shiftX, setShiftX] = useState(0);
+  useLayoutEffect(() => {
+    if (!open) {
+      setShiftX(0);
+      return;
+    }
+    const el = popRef.current;
+    if (!el || typeof window === "undefined") return;
+    const rect = el.getBoundingClientRect();
+    const pad = 8;
+    let shift = 0;
+    if (rect.right > window.innerWidth - pad) {
+      shift = window.innerWidth - pad - rect.right; // negative → move left
+    } else if (rect.left < pad) {
+      shift = pad - rect.left; // positive → move right
+    }
+    if (shift !== 0) setShiftX(shift);
+  }, [open]);
 
   // Outside click + Escape
   useEffect(() => {
@@ -160,8 +182,11 @@ export function Popover({
           ref={popRef}
           role="dialog"
           onClick={closeOnClickInside ? () => setOpen(false) : undefined}
+          style={{ marginLeft: shiftX || undefined }}
           className={cn(
             "absolute z-[110] min-w-[180px] rounded-xl border shadow-lg p-1.5",
+            // never exceed the viewport; scroll if the menu is tall
+            "max-w-[calc(100vw-16px)] max-h-[80vh] overflow-y-auto overscroll-contain",
             "animate-in fade-in zoom-in-95 duration-150",
             "bg-white border-slate-200 dark:bg-[#1a1d23] dark:border-white/[0.08]",
             positionMap[side][align],
