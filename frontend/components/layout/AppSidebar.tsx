@@ -112,7 +112,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
           <span
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{
-              background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+              background: "var(--app-accent-gradient)",
               boxShadow:
                 "0 1px 2px rgba(99,102,241,.3), 0 4px 12px -4px rgba(99,102,241,.4)",
             }}

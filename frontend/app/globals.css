@@ -158,6 +158,7 @@
   --app-accent-light: rgba(99,102,241,0.08);
   --app-accent-weak:  #EEF2FF;
   --app-accent-ink:   #4338CA;
+  --app-accent-gradient: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
 
   /* Sidebar border */
   --app-sidebar-border: #EEF0F4;
@@ -247,6 +248,7 @@
   --app-accent-light: rgba(129,140,248,0.12);
   --app-accent-weak:  rgba(129,140,248,0.14);
   --app-accent-ink:   #C7D2FE;
+  --app-accent-gradient: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
 
   --app-sidebar-border: rgba(255, 255, 255, 0.06);
 
@@ -566,6 +568,7 @@ html:not(.dark)[data-color-theme="claude"] {
   --app-accent-light: rgba(217,119,86,0.10);
   --app-accent-weak:  #FEF0E8;
   --app-accent-ink:   #9A4E30;
+  --app-accent-gradient: linear-gradient(135deg, #D97756 0%, #E8916F 100%);
 
   --app-sidebar-border: rgba(28,25,23,0.07);
 
@@ -609,6 +612,7 @@ html.dark[data-color-theme="claude"] {
   --app-accent-light: rgba(232,145,111,0.14);
   --app-accent-weak:  rgba(232,145,111,0.16);
   --app-accent-ink:   #F5C4A8;
+  --app-accent-gradient: linear-gradient(135deg, #E8916F 0%, #D97756 100%);
 
   --app-sidebar-border: rgba(255,255,255,0.06);
 
@@ -639,6 +643,7 @@ html.dark[data-color-theme="emerald"] {
   --app-sidebar-bg: #0A1510;
   --app-topbar-bg: #0A1510;
   --app-border: rgba(16,185,129,0.1);
+  --app-accent-gradient: linear-gradient(135deg, #10B981 0%, #34D399 100%);
   --background: oklch(0.08 0.02 155);
   --card: oklch(0.12 0.02 155);
   --primary: oklch(0.65 0.19 160);
@@ -671,6 +676,7 @@ html:not(.dark)[data-color-theme="vivid"] {
   --app-accent-light: rgba(124,58,237,0.10);
   --app-accent-weak:  #F3E8FF;
   --app-accent-ink:   #6D28D9;
+  --app-accent-gradient: linear-gradient(135deg, #7C3AED 0%, #DB2777 100%);
 
   --app-sidebar-border: rgba(88,28,135,0.08);
 
@@ -720,6 +726,7 @@ html.dark[data-color-theme="vivid"] {
   --app-accent-light: rgba(192,132,252,0.14);
   --app-accent-weak:  rgba(192,132,252,0.16);
   --app-accent-ink:   #E9D5FF;
+  --app-accent-gradient: linear-gradient(135deg, #6D28D9 0%, #BE185D 100%);
 
   --app-sidebar-border: rgba(255,255,255,0.07);
 

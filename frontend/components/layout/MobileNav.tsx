@@ -86,7 +86,7 @@ export function MobileNav({
             width: 44,
             height: 44,
             marginTop: -14,
-            background: "linear-gradient(135deg, #6366F1 0%, #7C3AED 100%)",
+            background: "var(--app-accent-gradient)",
             boxShadow: "var(--shadow-fab)",
             color: "#FFF",
           }}
@@ -175,8 +175,7 @@ export function MobileNav({
               <span
                 className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
-                  background:
-                    "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
+                  background: "var(--app-accent-gradient)",
                 }}
               >
                 <span className="text-[#fff] text-[11px] font-bold tracking-tight">

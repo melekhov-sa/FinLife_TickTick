@@ -74,7 +74,7 @@ export function AppTopbar() {
           <div className="md:hidden flex items-center gap-2">
             <span
               className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)" }}
+              style={{ background: "var(--app-accent-gradient)" }}
             >
               <span className="text-[#fff] text-[10px] font-bold tracking-tight">FL</span>
             </span>
