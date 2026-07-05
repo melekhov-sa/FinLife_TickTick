@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Fraunces } from "next/font/google";
+import { Inter, JetBrains_Mono, Rubik } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
@@ -17,10 +17,10 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["700", "900"],
+const rubik = Rubik({
+  variable: "--font-display",
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -51,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} ${fraunces.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} ${rubik.variable} antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

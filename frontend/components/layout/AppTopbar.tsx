@@ -52,7 +52,7 @@ export function AppTopbar() {
                 {pageMeta.eyebrow}
               </span>
             )}
-            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
+            <span className="font-display text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
               {pageMeta.title}
             </span>
           </div>
@@ -66,7 +66,7 @@ export function AppTopbar() {
                 {pageMeta.eyebrow}
               </span>
             )}
-            <span className="text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
+            <span className="font-display text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--app-topbar-text)" }}>
               {pageMeta.title}
             </span>
           </div>

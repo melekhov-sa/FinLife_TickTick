@@ -141,13 +141,13 @@ export function PageHeader({
               </div>
             )}
             <h1
-              className="flex items-center min-w-0 gap-2.5"
+              className="font-display flex items-center min-w-0 gap-2.5"
               style={{
                 fontSize: tok.titleFz,
                 lineHeight: 1.2,
                 fontWeight: 700,
                 color: "var(--t-primary)",
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.015em",
               }}
             >
               <span className="truncate">{title}</span>

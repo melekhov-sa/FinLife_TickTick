@@ -683,12 +683,17 @@ html:not(.dark)[data-color-theme="vivid"] {
   --c-neutral-fg:  #6D28D9;
   --c-neutral-ink: #5B21B6;
 
-  --bgt-totals-bg:  #F3E8FF;
-  --bgt-hover-bg:   #FAF5FF;
-  --bgt-row-bg:     #FFFFFF;
-  --bgt-row-group:  #F6F0FD;
-  --bgt-head-bg:    #F0E7FB;
-  --bgt-subhead-bg: #E9DDF7;
+  --bgt-cell-border:        #E7DEF5;
+  --bgt-cell-border-strong: #D3C4EC;
+  --bgt-sticky-border:      #C3B0E2;
+  --bgt-row-bg:             #FFFFFF;
+  --bgt-row-group:          #F6F0FD;
+  --bgt-section-bg:         #ECE2F8;
+  --bgt-head-bg:            #F0E7FB;
+  --bgt-subhead-bg:         #E7DBF6;
+  --bgt-totals-bg:          #F3E8FF;
+  --bgt-hover-bg:           #FAF5FF;
+  --bgt-dash:               #DACFEF;
 }
 
 html.dark[data-color-theme="vivid"] {
@@ -727,6 +732,9 @@ html.dark[data-color-theme="vivid"] {
   --c-neutral-fg:  #DDD0F5;
   --c-neutral-ink: #C084FC;
 
+  --bgt-cell-border:        rgba(192,132,252,0.12);
+  --bgt-cell-border-strong: rgba(192,132,252,0.22);
+  --bgt-sticky-border:      rgba(192,132,252,0.30);
   --bgt-row-bg:     #1F1636;
   --bgt-row-group:  #17102A;
   --bgt-section-bg: rgba(255,255,255,0.04);
@@ -796,6 +804,13 @@ html.dark[data-color-theme="vivid"] {
     opacity: 0.6;
     margin-bottom: 12px;
     display: block;
+  }
+
+  /* Display typeface (Rubik) for headings & large numbers — signature look */
+  .font-display {
+    font-family: var(--font-display), var(--font-geist-sans), -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: -0.015em;
   }
   html:not(.dark) .block-title {
     color: #6B7280;
