@@ -42,7 +42,7 @@ export default function DashboardPage() {
         )}
 
         {data && (
-          <div className="max-w-[1400px]">
+          <div className="max-w-[1400px] animate-rise">
             {/* xl+: three-column grid */}
             <div className="hidden xl:grid xl:grid-cols-[260px_1fr_290px] gap-4">
               {/* Left */}
