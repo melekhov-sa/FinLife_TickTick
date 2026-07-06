@@ -47,12 +47,12 @@ export function MobileNav({
         aria-label="Основная навигация"
         className="md:hidden shrink-0 flex items-stretch justify-between px-2 transition-transform duration-200"
         style={{
-          background: "red" /* DEBUG: nav extent */,
+          background: "var(--app-sidebar-bg)",
           boxShadow: "var(--shadow-mobile)",
           borderTop: "1px solid var(--app-border)",
-          minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
-          paddingTop: "6px",
-          paddingBottom: "calc(4px + env(safe-area-inset-bottom, 8px))",
+          minHeight: "56px",
+          paddingTop: "8px",
+          paddingBottom: "calc(6px + min(env(safe-area-inset-bottom, 8px), 24px))",
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
