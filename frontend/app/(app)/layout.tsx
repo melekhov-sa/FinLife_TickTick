@@ -63,7 +63,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     <AuthGuard>
       <div
         className="fixed inset-0 flex"
-        style={{ background: "var(--app-bg)" }}
+        style={{ background: "lime" /* DEBUG: shell extent */ }}
       >
         {/* Desktop sidebar */}
         <div className="hidden md:flex">
