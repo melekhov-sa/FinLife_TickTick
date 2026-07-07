@@ -9,14 +9,16 @@
  * POST /api/v2/ai-ops/{id}/resolve (история + самообучение).
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles, Trash2, AlertTriangle, HelpCircle, CheckCircle2,
-  Loader2, CreditCard, Plus, X, ChevronDown, ChevronRight,
+  Loader2, CreditCard, Plus, X, ChevronDown, ChevronRight, Copy,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { Tabs } from "@/components/primitives/Tabs";
 import { Button } from "@/components/primitives/Button";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 
@@ -37,6 +39,7 @@ interface AiProposal {
   merchant: string | null;
   confidence: "high" | "medium" | "low";
   reason: string;
+  duplicate_hint?: string | null;
 }
 
 interface ParseResponse {
@@ -73,8 +76,19 @@ const OP_TYPE_LABELS: Record<string, string> = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function QuickAddPage() {
-  const qc = useQueryClient();
+  // useSearchParams требует Suspense-границу в app router
+  return (
+    <Suspense fallback={null}>
+      <QuickAddInner />
+    </Suspense>
+  );
+}
 
+function QuickAddInner() {
+  const qc = useQueryClient();
+  const searchParams = useSearchParams();
+
+  const [tab, setTab] = useState<"input" | "history" | "rules">("input");
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -99,8 +113,20 @@ export default function QuickAddPage() {
   const activeWallets = (wallets ?? []).filter((w) => !w.is_archived);
   const savingsWallets = activeWallets.filter((w) => w.wallet_type === "SAVINGS");
 
-  async function handleParse() {
-    const t = text.trim();
+  // iOS-шорткат / share: /quick-add?text=... — подставить и сразу разобрать
+  const autoRan = useRef(false);
+  useEffect(() => {
+    const qp = searchParams.get("text");
+    if (qp && !autoRan.current) {
+      autoRan.current = true;
+      setText(qp);
+      void handleParse(qp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleParse(overrideText?: string) {
+    const t = (overrideText ?? text).trim();
     if (!t || parsing) return;
     setParsing(true);
     setParseError(null);
@@ -218,8 +244,24 @@ export default function QuickAddPage() {
         title="Быстрый ввод"
         subtitle="Опиши операции текстом или вставь банковскую SMS — ИИ разберёт"
         density="compact"
+        tabs={
+          <Tabs
+            items={[
+              { id: "input", label: "Ввод" },
+              { id: "history", label: "История" },
+              { id: "rules", label: "Правила" },
+            ]}
+            active={tab}
+            onChange={(id: string) => setTab(id as "input" | "history" | "rules")}
+            variant="underline"
+          />
+        }
       />
       <main className="flex-1 p-4 md:p-6 max-w-2xl w-full mx-auto space-y-4">
+        {tab === "history" && <HistoryTab />}
+        {tab === "rules" && <RulesTab cats={cats ?? []} />}
+        {tab === "input" && (
+        <>
 
         {/* Ввод */}
         <div
@@ -242,7 +284,7 @@ export default function QuickAddPage() {
             <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
               Ничего не сохраняется без твоего подтверждения
             </p>
-            <Button onClick={handleParse} disabled={!text.trim() || parsing} size="md">
+            <Button onClick={() => handleParse()} disabled={!text.trim() || parsing} size="md">
               {parsing ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               {parsing ? "Разбираю…" : "Разобрать"}
             </Button>
@@ -292,6 +334,8 @@ export default function QuickAddPage() {
 
         {/* Привязки счетов/карт */}
         <BankRefsBlock wallets={activeWallets} />
+        </>
+        )}
       </main>
     </>
   );
@@ -471,6 +515,17 @@ function ProposalCard({
         />
       </div>
 
+      {/* Возможный дубль */}
+      {op.duplicate_hint && (
+        <p
+          className="flex items-start gap-1.5 text-[11px] leading-snug rounded-lg px-2.5 py-1.5"
+          style={{ color: "#B45309", background: "rgba(245,158,11,0.10)" }}
+        >
+          <Copy size={12} className="mt-0.5 shrink-0" />
+          {op.duplicate_hint}
+        </p>
+      )}
+
       {/* Почему так */}
       {op.reason && (
         <p className="text-[11px] leading-snug" style={{ color: "var(--t-faint)" }}>
@@ -482,6 +537,150 @@ function ProposalCard({
           Не сохранилось: {op.save_error}
         </p>
       )}
+    </div>
+  );
+}
+
+// ── History tab ───────────────────────────────────────────────────────────────
+
+interface HistoryItem {
+  id: number;
+  created_at: string;
+  status: string;
+  engine: string;
+  source_text: string;
+  proposed_count: number;
+  saved_count: number;
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  PENDING:   { label: "не завершено", color: "var(--t-faint)" },
+  RESOLVED:  { label: "сохранено",    color: "#059669" },
+  DISCARDED: { label: "отменено",     color: "var(--t-faint)" },
+};
+
+function HistoryTab() {
+  const { data: items, isLoading } = useQuery<HistoryItem[]>({
+    queryKey: ["ai-history"],
+    queryFn: () => api.get<HistoryItem[]>("/api/v2/ai-ops/history"),
+  });
+
+  if (isLoading) return <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>Загрузка…</p>;
+  if (!items?.length) {
+    return (
+      <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>
+        Пока нет распознаваний — начни со вкладки «Ввод»
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {items.map((h) => {
+        const st = STATUS_LABELS[h.status] ?? STATUS_LABELS.PENDING;
+        return (
+          <div
+            key={h.id}
+            className="rounded-xl border p-3 space-y-1"
+            style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}
+          >
+            <div className="flex items-center gap-2 text-[11px]">
+              <span style={{ color: "var(--t-faint)" }}>
+                {new Date(h.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span className="px-1.5 py-0.5 rounded font-semibold"
+                style={{ color: st.color, background: "var(--app-border-subtle)" }}>
+                {st.label}
+              </span>
+              <span className="ml-auto tabular-nums" style={{ color: "var(--t-muted)" }}>
+                {h.saved_count}/{h.proposed_count} сохранено
+              </span>
+            </div>
+            <p className="text-[12.5px] line-clamp-2" style={{ color: "var(--t-secondary)" }}>
+              {h.source_text}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Rules tab ─────────────────────────────────────────────────────────────────
+
+interface RuleItem {
+  id: number;
+  merchant_key: string;
+  category_id: number | null;
+  category_title: string | null;
+  wallet_title: string | null;
+  hits: number;
+}
+
+function RulesTab({ cats }: { cats: FinCategoryItem[] }) {
+  const qc = useQueryClient();
+  const { data: rules, isLoading } = useQuery<RuleItem[]>({
+    queryKey: ["ai-rules"],
+    queryFn: () => api.get<RuleItem[]>("/api/v2/ai-ops/rules"),
+  });
+  const expenseCats = cats.filter((c) => c.category_type === "EXPENSE" && !c.is_archived);
+
+  async function changeCategory(id: number, categoryId: number) {
+    await api.patch(`/api/v2/ai-ops/rules/${id}`, { category_id: categoryId });
+    qc.invalidateQueries({ queryKey: ["ai-rules"] });
+  }
+  async function removeRule(id: number) {
+    await api.delete(`/api/v2/ai-ops/rules/${id}`);
+    qc.invalidateQueries({ queryKey: ["ai-rules"] });
+  }
+
+  if (isLoading) return <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>Загрузка…</p>;
+  if (!rules?.length) {
+    return (
+      <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>
+        Правила появятся после первых подтверждённых операций
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+        Выученные соответствия «продавец → категория». Чем больше подтверждений — тем увереннее ИИ.
+      </p>
+      {rules.map((r) => (
+        <div
+          key={r.id}
+          className="rounded-xl border p-3 flex flex-wrap items-center gap-2"
+          style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}
+        >
+          <span className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            {r.merchant_key}
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold tabular-nums"
+            style={{ background: "var(--app-accent-weak)", color: "var(--app-accent-ink)" }}>
+            ×{r.hits}
+          </span>
+          <select
+            value={r.category_id ?? ""}
+            onChange={(e) => e.target.value && changeCategory(r.id, Number(e.target.value))}
+            className="ml-auto rounded-lg border px-2 py-1 text-[12px] max-w-[45%]"
+            style={{ background: "var(--app-bg)", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
+          >
+            <option value="">Категория…</option>
+            {expenseCats.map((c) => (
+              <option key={c.category_id} value={c.category_id}>{c.title}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => removeRule(r.id)}
+            aria-label="Удалить правило"
+            className="w-6 h-6 rounded-md flex items-center justify-center nav-hover"
+            style={{ color: "var(--t-faint)" }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

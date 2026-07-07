@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, ClipboardList, Plus, Wallet, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./AppSidebar";
@@ -20,6 +20,7 @@ export function MobileNav({
   onCreateOperation,
 }: MobileNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const keyboardOpen = useKeyboardVisible();
@@ -152,6 +153,17 @@ export function MobileNav({
               }}
             >
               Новая операция
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-3 rounded-xl nav-hover text-[14px] font-medium"
+              style={{ color: "var(--app-accent-ink)" }}
+              onClick={() => {
+                setCreateMenuOpen(false);
+                router.push("/quick-add");
+              }}
+            >
+              ⚡ ИИ-ввод текстом
             </button>
           </div>
         </div>
