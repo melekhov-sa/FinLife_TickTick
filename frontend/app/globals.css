@@ -764,6 +764,12 @@ html.dark[data-color-theme="vivid"] {
     overscroll-behavior: none;
   }
 
+  /* Canvas (beyond the layout viewport — e.g. iOS PWA bottom band, overscroll)
+     matches the bottom nav so any OS letterboxing blends into the UI. */
+  html {
+    background: var(--app-sidebar-bg);
+  }
+
   body {
     background: var(--app-bg);
     @apply text-foreground;
