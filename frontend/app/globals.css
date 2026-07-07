@@ -989,8 +989,11 @@ html.dark[data-color-theme="vivid"] {
   60%  { transform: scale(1.06); }
   100% { transform: scale(1); }
 }
-.animate-rise { animation: rise-in 320ms cubic-bezier(0.22,1,0.36,1) both; }
-.animate-pop  { animation: pop-in 300ms cubic-bezier(0.34,1.56,0.64,1) both; }
+/* fill "backwards" (не "both"!): застывший transform у fill:forwards делает
+   элемент containing block для position:fixed потомков — модалки внутри
+   перестают прибиваться к вьюпорту. */
+.animate-rise { animation: rise-in 320ms cubic-bezier(0.22,1,0.36,1) backwards; }
+.animate-pop  { animation: pop-in 300ms cubic-bezier(0.34,1.56,0.64,1) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise, .animate-pop { animation: none; opacity: 1; transform: none; }

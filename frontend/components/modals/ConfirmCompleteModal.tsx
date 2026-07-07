@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -61,7 +62,11 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
     }
   }
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  // Портал в body: fixed-оверлей не должен зависеть от transform/filter
+  // у предков (см. баг с animate-rise на дашборде).
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
@@ -102,6 +107,7 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
