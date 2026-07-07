@@ -52,7 +52,7 @@ export function MobileNav({
           borderTop: "1px solid var(--app-border)",
           minHeight: "56px",
           paddingTop: "8px",
-          paddingBottom: "calc(6px + min(env(safe-area-inset-bottom, 8px), 24px))",
+          paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
