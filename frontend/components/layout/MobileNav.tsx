@@ -52,7 +52,10 @@ export function MobileNav({
           borderTop: "1px solid var(--app-border)",
           minHeight: "56px",
           paddingTop: "8px",
-          paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
+          // env(sab) minus the dead band below the viewport (iOS 26 PWA bug):
+          // when the home indicator lies outside the viewport, skip its padding.
+          paddingBottom:
+            "calc(6px + max(0px, env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px)))",
           transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
         }}
       >
