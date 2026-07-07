@@ -2194,3 +2194,64 @@ class MandatoryCategory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+# ── AI operations assistant (quick input) ────────────────────────────────────
+
+class MerchantRule(Base):
+    """Self-learning rules for the AI operations parser: normalized merchant
+    key → preferred category/wallet. Confirmed choices bump `hits`; the parser
+    trusts high-hit rules over LLM guesses. Not an operation field — a service
+    table (counterparty is intentionally NOT stored on transactions)."""
+    __tablename__ = "merchant_rules"
+    __table_args__ = (
+        UniqueConstraint("account_id", "merchant_key", name="uq_merchant_rule"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    merchant_key: Mapped[str] = mapped_column(String(128), nullable=False)  # lowercase, normalized
+    category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hits: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    last_used_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AiParseLog(Base):
+    """History of AI parse sessions: source text, proposed operations, and the
+    final user-confirmed result — for quality analysis and explanations."""
+    __tablename__ = "ai_parse_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    source_text: Mapped[str] = mapped_column(Text, nullable=False)
+    proposals_json: Mapped[str] = mapped_column(Text, nullable=False)  # JSON array as proposed
+    final_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array as saved
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="PENDING")  # PENDING/RESOLVED/DISCARDED
+    engine: Mapped[str] = mapped_column(String(16), nullable=False, server_default="llm")  # llm/rules/mixed
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    resolved_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class WalletBankRef(Base):
+    """Bank account / card number references attached to a wallet so SMS text
+    («СЧЁТ2670», карта *4212) can be matched to the right wallet. A wallet may
+    have several refs. Separate table — wallet read model is projector-rebuilt."""
+    __tablename__ = "wallet_bank_refs"
+    __table_args__ = (
+        UniqueConstraint("account_id", "ref_digits", name="uq_wallet_bank_ref"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    wallet_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    ref_type: Mapped[str] = mapped_column(String(8), nullable=False)  # ACCOUNT | CARD
+    ref_digits: Mapped[str] = mapped_column(String(8), nullable=False)  # last digits as in SMS
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
