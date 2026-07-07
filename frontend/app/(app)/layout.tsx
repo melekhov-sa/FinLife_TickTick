@@ -109,7 +109,65 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         <LevelUpOverlay level={celebrateLevel} onDismiss={dismiss} />
       )}
       <CompletionFeedbackLayer />
+      <ViewportDebug />
     </AuthGuard>
+  );
+}
+
+/** TEMPORARY: on-screen viewport metrics to diagnose the bottom gap on iOS PWA. */
+function ViewportDebug() {
+  const [info, setInfo] = useState("");
+  useEffect(() => {
+    const probeBottom = document.createElement("div");
+    probeBottom.style.cssText =
+      "position:fixed;height:env(safe-area-inset-bottom,0px);width:0;visibility:hidden;";
+    const probeTop = document.createElement("div");
+    probeTop.style.cssText =
+      "position:fixed;height:env(safe-area-inset-top,0px);width:0;visibility:hidden;";
+    document.body.append(probeBottom, probeTop);
+    const upd = () => {
+      const vv = window.visualViewport;
+      const ua = navigator.userAgent;
+      const os = (ua.match(/OS (\d+[_.]\d+)/) || [])[1] || "?";
+      const standalone =
+        (navigator as unknown as { standalone?: boolean }).standalone ? 1 : 0;
+      setInfo(
+        `scr ${screen.width}x${screen.height}  in ${window.innerWidth}x${window.innerHeight}  ` +
+          `doc ${document.documentElement.clientHeight}\n` +
+          `vv ${vv ? Math.round(vv.height) : "-"} top ${vv ? Math.round(vv.offsetTop) : "-"} scale ${vv ? vv.scale.toFixed(2) : "-"}  ` +
+          `sat ${probeTop.offsetHeight} sab ${probeBottom.offsetHeight}  ` +
+          `standalone ${standalone}  iOS ${os}`
+      );
+    };
+    upd();
+    window.addEventListener("resize", upd);
+    window.visualViewport?.addEventListener("resize", upd);
+    return () => {
+      probeBottom.remove();
+      probeTop.remove();
+      window.removeEventListener("resize", upd);
+      window.visualViewport?.removeEventListener("resize", upd);
+    };
+  }, []);
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: 4,
+        right: 4,
+        bottom: 2,
+        zIndex: 9999,
+        background: "rgba(0,0,0,0.78)",
+        color: "#4ade80",
+        font: "10px/1.5 monospace",
+        padding: "4px 6px",
+        borderRadius: 6,
+        pointerEvents: "none",
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      {info}
+    </div>
   );
 }
 
