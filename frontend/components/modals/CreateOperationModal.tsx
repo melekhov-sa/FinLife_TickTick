@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WalletItem, FinCategoryItem, SubscriptionItem, BudgetRow } from "@/types/api";
 import { Select } from "@/components/ui/Select";
@@ -76,6 +78,7 @@ const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
 
 export function CreateOperationModal({ onClose, initialValues, occurrenceId, initialListId }: Props) {
   const qc = useQueryClient();
+  const router = useRouter();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement | null>(null);
 
@@ -487,6 +490,23 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
           }
         }}
       >
+        {/* ИИ-ввод: текст/SMS → готовые операции */}
+        {!occurrenceId && (
+          <button
+            type="button"
+            onClick={() => { onClose(); router.push("/quick-add"); }}
+            className="w-full flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12.5px] font-medium transition-colors nav-hover"
+            style={{
+              borderColor: "var(--app-accent-weak)",
+              background: "var(--app-accent-light, var(--app-accent-weak))",
+              color: "var(--app-accent-ink)",
+            }}
+          >
+            <Sparkles size={14} style={{ color: "var(--app-accent)" }} />
+            Быстрый ввод текстом — ИИ разберёт фразу или SMS банка
+          </button>
+        )}
+
         {/* Type picker */}
         <FormRow label="Тип">
           <div className="flex gap-1.5">
