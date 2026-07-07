@@ -17,7 +17,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.v2.deps import get_user_id
-from app.infrastructure.db.models import AiParseLog, WalletBankRef, WalletBalance
+from app.infrastructure.db.models import (
+    AiParseLog, WalletBankRef, WalletBalance, MerchantRule, CategoryInfo,
+)
 from app.infrastructure.db.session import get_db
 from app.application.app_config import get_openai_key
 from app.application.ai_ops_parser import parse_operations, learn_from_confirmation
@@ -44,6 +46,7 @@ class ProposalOut(BaseModel):
     merchant: str | None
     confidence: str
     reason: str
+    duplicate_hint: str | None = None
 
 
 class ParseResponse(BaseModel):
@@ -152,6 +155,148 @@ def resolve_parse(
 
     db.commit()
     return {"ok": True, "learned_rules": learned}
+
+
+# ── History (журнал распознаваний) ───────────────────────────────────────────
+
+class HistoryItem(BaseModel):
+    id: int
+    created_at: str
+    status: str
+    engine: str
+    source_text: str
+    proposed_count: int
+    saved_count: int
+
+
+@router.get("/ai-ops/history", response_model=list[HistoryItem])
+def list_history(
+    account_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(AiParseLog)
+        .filter(AiParseLog.account_id == account_id)
+        .order_by(AiParseLog.id.desc())
+        .limit(50)
+        .all()
+    )
+    out: list[HistoryItem] = []
+    for r in rows:
+        try:
+            proposed = len(json.loads(r.proposals_json))
+        except (ValueError, TypeError):
+            proposed = 0
+        saved = 0
+        if r.final_json:
+            try:
+                saved = sum(1 for op in json.loads(r.final_json) if op.get("saved"))
+            except (ValueError, TypeError):
+                saved = 0
+        out.append(HistoryItem(
+            id=r.id,
+            created_at=r.created_at.isoformat(),
+            status=r.status,
+            engine=r.engine,
+            source_text=r.source_text[:200],
+            proposed_count=proposed,
+            saved_count=saved,
+        ))
+    return out
+
+
+# ── Rules (выученные правила) ────────────────────────────────────────────────
+
+class RuleItem(BaseModel):
+    id: int
+    merchant_key: str
+    category_id: int | None
+    category_title: str | None
+    wallet_id: int | None
+    wallet_title: str | None
+    hits: int
+    last_used_at: str | None
+
+
+class RulePatch(BaseModel):
+    category_id: int | None = None
+
+
+@router.get("/ai-ops/rules", response_model=list[RuleItem])
+def list_rules(
+    account_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    rows = (
+        db.query(MerchantRule, CategoryInfo, WalletBalance)
+        .outerjoin(CategoryInfo, CategoryInfo.category_id == MerchantRule.category_id)
+        .outerjoin(WalletBalance, WalletBalance.wallet_id == MerchantRule.wallet_id)
+        .filter(MerchantRule.account_id == account_id)
+        .order_by(MerchantRule.hits.desc(), MerchantRule.id.desc())
+        .limit(300)
+        .all()
+    )
+    return [
+        RuleItem(
+            id=r.id,
+            merchant_key=r.merchant_key,
+            category_id=r.category_id,
+            category_title=c.title if c else None,
+            wallet_id=r.wallet_id,
+            wallet_title=w.title if w else None,
+            hits=r.hits,
+            last_used_at=r.last_used_at.isoformat() if r.last_used_at else None,
+        )
+        for r, c, w in rows
+    ]
+
+
+@router.patch("/ai-ops/rules/{rule_id}")
+def patch_rule(
+    rule_id: int,
+    body: RulePatch,
+    account_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    rule = (
+        db.query(MerchantRule)
+        .filter(MerchantRule.id == rule_id, MerchantRule.account_id == account_id)
+        .first()
+    )
+    if not rule:
+        raise HTTPException(status_code=404, detail="Правило не найдено")
+    if body.category_id is not None:
+        cat = (
+            db.query(CategoryInfo)
+            .filter(
+                CategoryInfo.account_id == account_id,
+                CategoryInfo.category_id == body.category_id,
+            )
+            .first()
+        )
+        if not cat:
+            raise HTTPException(status_code=404, detail="Категория не найдена")
+        rule.category_id = body.category_id
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/ai-ops/rules/{rule_id}")
+def delete_rule(
+    rule_id: int,
+    account_id: int = Depends(get_user_id),
+    db: Session = Depends(get_db),
+):
+    rule = (
+        db.query(MerchantRule)
+        .filter(MerchantRule.id == rule_id, MerchantRule.account_id == account_id)
+        .first()
+    )
+    if not rule:
+        raise HTTPException(status_code=404, detail="Правило не найдено")
+    db.delete(rule)
+    db.commit()
+    return {"ok": True}
 
 
 # ── Bank refs (привязки счетов/карт) ─────────────────────────────────────────

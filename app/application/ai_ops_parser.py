@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.infrastructure.db.models import (
     WalletBalance, CategoryInfo, GoalInfo, SubscriptionModel,
-    MerchantRule, WalletBankRef,
+    MerchantRule, WalletBankRef, TransactionFeed,
 )
 
 logger = logging.getLogger(__name__)
@@ -285,6 +285,48 @@ def _match_wallet_by_refs(
     return None, None
 
 
+def _flag_duplicates(
+    db: Session, account_id: int, proposals: list[dict], today
+) -> None:
+    """Пометить предложения, похожие на уже существующие операции
+    (та же сумма, тот же тип, дата в пределах ±3 дней)."""
+    for op in proposals:
+        amount = _to_decimal(op.get("amount") or "")
+        if amount is None:
+            continue
+        try:
+            op_date = (
+                datetime.fromisoformat(op["occurred_at"]).date()
+                if op.get("occurred_at") else today
+            )
+        except (ValueError, TypeError):
+            op_date = today
+        existing = (
+            db.query(TransactionFeed)
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type == op["operation_type"],
+                TransactionFeed.amount == amount,
+                TransactionFeed.occurred_at >= datetime.combine(
+                    op_date - timedelta(days=3), datetime.min.time()
+                ),
+                TransactionFeed.occurred_at <= datetime.combine(
+                    op_date + timedelta(days=3), datetime.max.time()
+                ),
+            )
+            .order_by(TransactionFeed.occurred_at.desc())
+            .first()
+        )
+        if existing:
+            desc = (existing.description or "").strip() or "без описания"
+            op["duplicate_hint"] = (
+                f"Похожая операция уже есть: {existing.occurred_at.date().isoformat()}, "
+                f"{amount} — «{desc[:60]}»"
+            )
+        else:
+            op["duplicate_hint"] = None
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def parse_operations(
@@ -342,6 +384,7 @@ def parse_operations(
         llm_ops = _llm_parse(text, refs, api_key, today.isoformat())
         proposals = _validate_and_enrich(llm_ops, refs)
 
+    _flag_duplicates(db, account_id, proposals, today)
     return {"engine": engine, "proposals": proposals, "error": None}
 
 
