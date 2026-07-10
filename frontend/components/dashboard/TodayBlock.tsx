@@ -115,7 +115,7 @@ function Item({
     <div
       {...(dragHandleProps ?? {})}
       className={clsx(
-        "flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
+        "flex items-center gap-2.5 py-[6px] hover:bg-[var(--app-accent-light)] transition-colors rounded-md -mx-1 px-1",
         isOverdue && !isDone && "bg-red-50/60 dark:bg-red-500/[0.06]",
         isCompleting && "task-row-completing",
         isClickable && "cursor-pointer"
@@ -133,7 +133,7 @@ function Item({
           >
             {isDone
               ? <CheckCircle2 size={16} className="text-emerald-500" />
-              : <Circle size={16} className="text-slate-400 hover:text-indigo-500 transition-colors" />
+              : <Circle size={16} className="text-slate-400 hover:text-[var(--app-accent)] transition-colors" />
             }
           </button>
         ) : kind === "event" ? (
@@ -148,7 +148,7 @@ function Item({
           >
             <span className={clsx(
               "w-[16px] h-[16px] rounded-[5px] border-[1.5px] flex items-center justify-center transition-all",
-              kind === "habit" ? "border-violet-400" : isOverdue ? "border-red-400" : "border-indigo-400/60 dark:border-slate-500",
+              kind === "habit" ? "border-violet-400" : isOverdue ? "border-red-400" : "border-[var(--app-accent)] dark:border-slate-500",
               (isCompleting && kind !== "habit") && "task-check-completing"
             )}>
               {(isCompleting && kind !== "habit") && <span className="task-check-mark" aria-hidden="true">✓</span>}
@@ -198,7 +198,7 @@ function Item({
         )}
         {reminders.length > 0 && !isDone && (
           <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 dark:bg-indigo-400/10 tabular-nums shrink-0"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--app-accent-light)] tabular-nums shrink-0"
             style={{ fontSize: "11px", color: "var(--t-muted)" }}
             title={`Напоминания: ${reminders.join(", ")}`}
           >
@@ -270,12 +270,12 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
   const isOverdue = op.days_until < 0;
   return (
     <div className={clsx(
-      "group/fi flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1",
+      "group/fi flex items-center gap-2.5 py-[6px] hover:bg-[var(--app-accent-light)] transition-colors rounded-md -mx-1 px-1",
       isOverdue && "bg-red-50/60 dark:bg-red-500/[0.06]"
     )}>
       <div className={clsx(
         "w-[16px] h-[16px] rounded-[5px] border-[1.5px] shrink-0",
-        isOverdue ? "border-red-400" : "border-indigo-300/60 dark:border-white/20"
+        isOverdue ? "border-red-400" : "border-[var(--app-accent)] dark:border-white/20"
       )} />
       <button
         onClick={onClick}
@@ -291,7 +291,7 @@ function FinanceItem({ op, onClick, onSkip }: { op: UpcomingPayment; onClick: ()
       <Tooltip content="Выполнить">
         <button
           onClick={onClick}
-          className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-0.5 px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-600/20 hover:bg-indigo-200 dark:hover:bg-indigo-600/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold transition-all shrink-0 touch-manipulation"
+          className="md:opacity-0 md:group-hover/fi:opacity-100 flex items-center gap-0.5 px-2 py-1 rounded-md bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] hover:brightness-95 text-[10px] font-semibold transition-all shrink-0 touch-manipulation"
         >
           <Play size={9} className="fill-current" />
         </button>
@@ -393,7 +393,7 @@ function QuickAddTaskRow() {
   return (
     <div className="mt-2.5">
       <div
-        className="flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors focus-within:border-indigo-400/70"
+        className="flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors focus-within:border-[var(--app-accent)]"
         style={{
           borderColor: "rgba(99,102,241,0.22)",
           background: "rgba(255,255,255,0.06)",
@@ -906,7 +906,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 if (isCounter && habitId) {
                   return (
                     <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
-                      <div className="flex items-center gap-2.5 py-[6px] hover:bg-indigo-50/50 dark:hover:bg-white/[0.04] transition-colors rounded-md -mx-1 px-1 group/ch">
+                      <div className="flex items-center gap-2.5 py-[6px] hover:bg-[var(--app-accent-light)] transition-colors rounded-md -mx-1 px-1 group/ch">
                         {/* +1 button or done check */}
                         <div className="shrink-0">
                           {item.is_done ? (
@@ -1005,7 +1005,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               {!showDone && hiddenDoneCount > 0 && (
                 <button
                   onClick={() => setShowDone(true)}
-                  className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 touch-manipulation"
+                  className="w-full text-center py-1.5 text-[11px] font-medium transition-colors hover:text-[var(--app-accent)] touch-manipulation"
                   style={{ color: "var(--t-faint)" }}
                 >
                   + ещё {hiddenDoneCount} выполненных
@@ -1014,7 +1014,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               {showDone && doneItems.length > 0 && (
                 <button
                   onClick={() => setShowDone(false)}
-                  className="w-full text-center py-1 text-[10px] font-medium transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
+                  className="w-full text-center py-1 text-[10px] font-medium transition-colors hover:text-[var(--app-accent)]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   Скрыть выполненные
@@ -1078,7 +1078,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
         {/* Empty state */}
         {isEmpty && (
           <div className="flex flex-col items-center gap-1.5 py-5 text-center">
-            <CheckCircle2 size={24} className="text-indigo-400/30" />
+            <CheckCircle2 size={24} className="text-[var(--app-accent)] opacity-30" />
             <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>На сегодня ничего не запланировано</p>
           </div>
         )}

@@ -1190,7 +1190,7 @@ html.dark[data-color-theme="vivid"] {
   background: var(--app-accent-weak);
   color: var(--app-accent-ink);
 }
-.dark .nav-active { color: #DDD6FE; }
+.dark .nav-active { color: var(--app-accent-ink); }
 
 .nav-hover:hover {
   background: rgba(15, 23, 42, .04);
