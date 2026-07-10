@@ -1191,3 +1191,205 @@ def budget_stats(
             "free_money": free_money,
         },
     }
+
+
+# ── Savings report (накопления: взносы vs доход, доходность) ────────────────
+
+@router.get("/savings")
+def savings_report(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Отчёт по накопительным кошелькам.
+
+    Семантика: TRANSFER на кошелёк — взнос своих денег, INCOME — доход
+    (проценты). Доходность = доход за окно / средний баланс (по остаткам
+    на конец месяца), в годовых.
+    """
+    from decimal import Decimal
+
+    user_id = get_user_id(request, db)
+    months_window = 12
+
+    wallets = (
+        db.query(WalletBalance)
+        .filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.wallet_type == "SAVINGS",
+            WalletBalance.is_archived == False,  # noqa: E712
+        )
+        .all()
+    )
+    if not wallets:
+        return {"totals": None, "wallets": [], "months": []}
+
+    wallet_ids = [w.wallet_id for w in wallets]
+    ops = (
+        db.query(TransactionFeed)
+        .filter(
+            TransactionFeed.account_id == user_id,
+            or_(
+                TransactionFeed.wallet_id.in_(wallet_ids),
+                TransactionFeed.from_wallet_id.in_(wallet_ids),
+                TransactionFeed.to_wallet_id.in_(wallet_ids),
+            ),
+        )
+        .order_by(TransactionFeed.occurred_at.desc())
+        .all()
+    )
+
+    # Метки последних 12 месяцев (старые -> новые) + границы (конец месяца)
+    now = datetime.now(timezone.utc)
+    month_labels: list[str] = []
+    boundaries: list[datetime] = []  # начало СЛЕДУЮЩЕГО месяца = конец текущего
+    y, m = now.year, now.month
+    for _ in range(months_window):
+        month_labels.append(f"{y:04d}-{m:02d}")
+        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+        boundaries.append(datetime(ny, nm, 1, tzinfo=timezone.utc))
+        y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+    month_labels.reverse()
+    boundaries.reverse()
+
+    def wallet_delta(op, wid: int) -> Decimal:
+        """Влияние операции на баланс кошелька wid."""
+        amt = Decimal(str(op.amount))
+        d = Decimal("0")
+        if op.operation_type == "INCOME" and op.wallet_id == wid:
+            d += amt
+        elif op.operation_type == "EXPENSE" and op.wallet_id == wid:
+            d -= amt
+        elif op.operation_type == "TRANSFER":
+            if op.to_wallet_id == wid:
+                d += amt
+            if op.from_wallet_id == wid:
+                d -= amt
+        return d
+
+    out_wallets = []
+    total_balance = Decimal("0")
+    total_income_all = Decimal("0")
+    total_income_12m = Decimal("0")
+    monthly_income_total = {lbl: Decimal("0") for lbl in month_labels}
+    window_start = boundaries[0] - timedelta(days=1)  # приблизит. старт окна
+    window_start = datetime(
+        int(month_labels[0][:4]), int(month_labels[0][5:7]), 1, tzinfo=timezone.utc
+    )
+
+    for w in wallets:
+        wid = w.wallet_id
+        w_ops = [
+            op for op in ops
+            if op.wallet_id == wid or op.from_wallet_id == wid or op.to_wallet_id == wid
+        ]
+
+        income_all = Decimal("0")
+        expense_all = Decimal("0")
+        contrib_in = Decimal("0")
+        contrib_out = Decimal("0")
+        monthly = {lbl: {"income": Decimal("0"), "contrib": Decimal("0")} for lbl in month_labels}
+
+        for op in w_ops:
+            amt = Decimal(str(op.amount))
+            occ = op.occurred_at
+            lbl = f"{occ.year:04d}-{occ.month:02d}"
+            if op.operation_type == "INCOME" and op.wallet_id == wid:
+                income_all += amt
+                if lbl in monthly:
+                    monthly[lbl]["income"] += amt
+                    monthly_income_total[lbl] += amt
+            elif op.operation_type == "EXPENSE" and op.wallet_id == wid:
+                expense_all += amt
+            elif op.operation_type == "TRANSFER":
+                if op.to_wallet_id == wid:
+                    contrib_in += amt
+                    if lbl in monthly:
+                        monthly[lbl]["contrib"] += amt
+                if op.from_wallet_id == wid:
+                    contrib_out += amt
+                    if lbl in monthly:
+                        monthly[lbl]["contrib"] -= amt
+
+        # Баланс на конец каждого месяца: обратный проход от текущего баланса
+        balance_now = Decimal(str(w.balance))
+        month_end_balances: list[Decimal] = []
+        running = balance_now
+        ops_iter = iter(w_ops)  # уже отсортированы по occurred_at desc
+        op_cur = next(ops_iter, None)
+        for boundary in reversed(boundaries):  # от новых к старым
+            while op_cur is not None and op_cur.occurred_at >= boundary:
+                running -= wallet_delta(op_cur, wid)
+                op_cur = next(ops_iter, None)
+            month_end_balances.append(running)
+        month_end_balances.reverse()
+
+        income_12m = sum(
+            (v["income"] for v in monthly.values()), Decimal("0")
+        )
+        active_balances = [b for b in month_end_balances if b > 0]
+        avg_balance = (
+            sum(active_balances, Decimal("0")) / len(active_balances)
+            if active_balances else Decimal("0")
+        )
+        months_active = len(active_balances)
+        apy = None
+        if avg_balance > 0 and months_active > 0:
+            apy = float(
+                income_12m / avg_balance * Decimal(12) / Decimal(months_active) * 100
+            )
+
+        net_income = income_all - expense_all
+        own_money = balance_now - net_income
+
+        total_balance += balance_now
+        total_income_all += net_income
+        total_income_12m += income_12m
+
+        out_wallets.append({
+            "wallet_id": wid,
+            "title": w.title,
+            "currency": w.currency,
+            "balance": float(balance_now),
+            "own_money": float(own_money),
+            "income_total": float(net_income),
+            "income_12m": float(income_12m),
+            "contrib_in": float(contrib_in),
+            "contrib_out": float(contrib_out),
+            "apy": round(apy, 2) if apy is not None else None,
+            "monthly": [
+                {
+                    "month": lbl,
+                    "income": float(monthly[lbl]["income"]),
+                    "contrib": float(monthly[lbl]["contrib"]),
+                }
+                for lbl in month_labels
+            ],
+        })
+
+    # Средневзвешенная доходность портфеля (по балансам)
+    weighted = [
+        (Decimal(str(w["balance"])), Decimal(str(w["apy"])))
+        for w in out_wallets if w["apy"] is not None and w["balance"] > 0
+    ]
+    portfolio_apy = None
+    if weighted:
+        total_w = sum((b for b, _ in weighted), Decimal("0"))
+        if total_w > 0:
+            portfolio_apy = round(float(
+                sum((b * r for b, r in weighted), Decimal("0")) / total_w
+            ), 2)
+
+    out_wallets.sort(key=lambda x: -x["balance"])
+    return {
+        "totals": {
+            "balance": float(total_balance),
+            "income_total": float(total_income_all),
+            "income_12m": float(total_income_12m),
+            "portfolio_apy": portfolio_apy,
+        },
+        "months": [
+            {"month": lbl, "income": float(monthly_income_total[lbl])}
+            for lbl in month_labels
+        ],
+        "wallets": out_wallets,
+    }
