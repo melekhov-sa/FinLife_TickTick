@@ -752,7 +752,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
               <div
                 className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-xl border shadow-xl overflow-hidden"
                 style={{
-                  background: "var(--t-card-bg, #ffffff)",
+                  background: "var(--app-card-bg)",
                   borderColor: "rgba(0,0,0,0.08)",
                 }}
               >

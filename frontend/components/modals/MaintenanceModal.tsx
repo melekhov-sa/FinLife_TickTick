@@ -59,8 +59,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
-        className="relative w-full max-w-md rounded-2xl shadow-2xl p-5"
-        style={{ background: "var(--t-card-bg, #ffffff)" }}
+        className="relative w-full max-w-md rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"
+        style={{ background: "var(--app-card-bg)" }}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[17px] font-bold" style={{ color: "var(--t-primary)" }}>

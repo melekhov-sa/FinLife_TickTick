@@ -67,7 +67,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-6">
+      <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-6 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
         <h2 className="text-[15px] font-semibold text-white/90 mb-5">Добавить участника</h2>
 
         <div className="space-y-4">

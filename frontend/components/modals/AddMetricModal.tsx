@@ -49,7 +49,7 @@ export function AddMetricModal({ defaultType, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5" style={{ background: "var(--t-card-bg, #ffffff)" }}>
+      <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain" style={{ background: "var(--app-card-bg)" }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[17px] font-bold" style={{ color: "var(--t-primary)" }}>Добавить замер</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.08]">

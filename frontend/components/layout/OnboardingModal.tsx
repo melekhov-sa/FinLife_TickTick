@@ -194,7 +194,7 @@ export function OnboardingModal({ onComplete }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div
-        className="w-full max-w-md rounded-2xl border overflow-hidden"
+        className="w-full max-w-md rounded-2xl border max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"
         style={{
           background: "var(--app-bg, #0B0F1A)",
           borderColor: "rgba(255,255,255,0.08)",
