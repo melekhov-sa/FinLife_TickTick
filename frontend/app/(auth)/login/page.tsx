@@ -44,14 +44,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg)" }}>
-      <div className="w-full max-w-sm">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        // Самодостаточный брендовый фон — не зависит от темы приложения
+        background:
+          "radial-gradient(ellipse 70% 50% at 15% 0%, rgba(124,58,237,0.35) 0%, transparent 55%)," +
+          "radial-gradient(ellipse 60% 45% at 90% 100%, rgba(219,39,119,0.28) 0%, transparent 55%)," +
+          "#140E26",
+      }}
+    >
+      <div className="w-full max-w-sm animate-rise">
         {/* Logo */}
         <div className="flex items-center gap-2.5 justify-center mb-10">
-          <div className="w-9 h-9 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-            <span className="text-indigo-400 text-sm font-bold">FL</span>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)" }}
+          >
+            <span className="text-white text-sm font-bold tracking-tight">FL</span>
           </div>
-          <span className="text-white/80 font-semibold text-lg">FinLife</span>
+          <span className="font-display text-white/90 font-semibold text-lg">FinLife</span>
         </div>
 
         {resetSent ? (
@@ -59,7 +71,7 @@ export default function LoginPage() {
             <p className="text-white/80 text-sm">Письмо со ссылкой для сброса пароля отправлено на {email}</p>
             <button
               onClick={() => setResetSent(false)}
-              className="text-indigo-400 text-xs hover:underline"
+              className="text-fuchsia-300 text-xs hover:underline"
             >
               Вернуться ко входу
             </button>
@@ -74,7 +86,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
+                className="w-full bg-white/[0.05] border border-white/[0.10] rounded-lg px-4 py-2.5 text-sm text-white/85 outline-none focus:border-fuchsia-400/60 focus:bg-white/[0.07] transition-colors placeholder:text-white/40"
                 placeholder="you@example.com"
               />
             </div>
@@ -86,7 +98,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white/80 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-colors placeholder:text-white/50"
+                className="w-full bg-white/[0.05] border border-white/[0.10] rounded-lg px-4 py-2.5 text-sm text-white/85 outline-none focus:border-fuchsia-400/60 focus:bg-white/[0.07] transition-colors placeholder:text-white/40"
                 placeholder="••••••••"
               />
             </div>
@@ -98,7 +110,8 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-[#fff] font-medium text-sm rounded-lg py-2.5 transition-colors mt-2"
+              className="w-full disabled:opacity-50 text-[#fff] font-semibold text-sm rounded-lg py-2.5 transition-all hover:brightness-110 active:scale-[0.98] motion-reduce:transform-none mt-2"
+              style={{ background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)" }}
             >
               {loading ? "Вход…" : "Войти"}
             </button>
