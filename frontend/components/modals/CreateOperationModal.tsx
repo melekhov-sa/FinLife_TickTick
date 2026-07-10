@@ -32,6 +32,7 @@ interface GoalItem {
   goal_id: number;
   title: string;
   currency: string;
+  is_system?: boolean;
   wallets: GoalWalletItem[];
 }
 
@@ -136,7 +137,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     queryKey: ["goals"],
     queryFn: () => api.get<GoalItem[]>("/api/v2/goals"),
     staleTime: 5 * 60_000,
-    enabled: opType === "TRANSFER",
+    enabled: opType === "TRANSFER" || opType === "INCOME",
   });
 
   const { data: tripLists } = useQuery<TripListOption[]>({
@@ -168,6 +169,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const selectedToWallet = (wallets ?? []).find((w) => w.wallet_id === toWalletId);
   const showFromGoal = selectedFromWallet?.wallet_type === "SAVINGS";
   const showToGoal = selectedToWallet?.wallet_type === "SAVINGS";
+
+  // INCOME на накопительный кошелёк — доход обязан попадать в цель
+  const selectedIncomeWallet = (wallets ?? []).find((w) => w.wallet_id === walletId);
+  const showIncomeGoal = opType === "INCOME" && selectedIncomeWallet?.wallet_type === "SAVINGS";
 
   const fromGoalBalance = useMemo(() => {
     if (!fromGoalId || !fromWalletId || !goals) return null;
@@ -252,6 +257,19 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     ...(goals ?? []).map((g) => ({ value: String(g.goal_id), label: g.title })),
   ], [goals]);
 
+  const incomeGoalOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "Без цели (по умолчанию)" },
+    ...(goals ?? [])
+      .filter((g) => !g.is_system)
+      .filter((g) => !selectedIncomeWallet || g.currency === selectedIncomeWallet.currency)
+      .map((g) => ({ value: String(g.goal_id), label: g.title })),
+  ], [goals, selectedIncomeWallet]);
+
+  // Сбрасывать цель при смене кошелька/типа для дохода (валюта может не совпасть)
+  useEffect(() => {
+    if (opType === "INCOME") setToGoalId("");
+  }, [opType, walletId]);
+
   useEffect(() => {
     if (!initialValues?.categoryId) setCategoryId("");
   }, [opType, initialValues?.categoryId]);
@@ -329,6 +347,9 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     } else {
       body.wallet_id = walletId || null;
       body.category_id = categoryId || null;
+      if (opType === "INCOME" && showIncomeGoal) {
+        body.to_goal_id = toGoalId || null;
+      }
     }
     if (opType === "EXPENSE" && subSubscriptionId) {
       body.sub_subscription_id = subSubscriptionId;
@@ -573,6 +594,22 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   />
                 </FormRow>
               </>
+            )}
+
+            {/* Goal for INCOME onto a SAVINGS wallet */}
+            {showIncomeGoal && (
+              <FormRow label="Цель накопления">
+                <Select
+                  value={toGoalId}
+                  onChange={(v) => setToGoalId(v ? Number(v) : "")}
+                  options={incomeGoalOptions}
+                  placeholder="Без цели (по умолчанию)"
+                />
+                <p className="mt-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>
+                  Доход на накопительный кошелёк попадает в выбранную цель,
+                  без выбора — в «Без цели».
+                </p>
+              </FormRow>
             )}
 
             {/* Goal selectors for TRANSFER — only shown when the wallet is SAVINGS */}

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
-import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus } from "lucide-react";
+import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/primitives/Badge";
 import { Card } from "@/components/primitives/Card";
@@ -334,6 +334,7 @@ export default function GoalsPage() {
               label="Архивные"
               size="sm"
             />
+            <RebuildAllocationsButton />
             {!showArchived && (
               <Button
                 variant="primary"
@@ -423,5 +424,35 @@ export default function GoalsPage() {
         />
       )}
     </>
+  );
+}
+
+// ── Пересчёт распределения по целям ──────────────────────────────────────────
+// Реплей событий: исторические доходы на накопительные кошельки падают
+// в «Без цели» (фикс зависших денег). Идемпотентно.
+function RebuildAllocationsButton() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function rebuild() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.post("/api/v2/goals/rebuild-allocations", {});
+      qc.invalidateQueries({ queryKey: ["goals"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      setDone(true);
+      setTimeout(() => setDone(false), 3000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button variant="secondary" size="sm" onClick={rebuild} loading={busy}>
+      <RotateCcw size={13} className="mr-1" />
+      {done ? "Готово ✓" : "Пересчитать"}
+    </Button>
   );
 }
