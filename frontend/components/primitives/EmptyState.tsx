@@ -104,17 +104,30 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function E
       className={cn("flex flex-col items-center text-center", className)}
       style={{ padding: `${tok.padY}px ${tok.padX}px` }}
     >
-      <span
-        aria-hidden
-        className="inline-flex items-center justify-center shrink-0"
-        style={{
-          width: tok.plate,
-          height: tok.plate,
-          borderRadius: tok.plateRad,
-          background: plate.bg,
-        }}
-      >
-        {illustration}
+      <span aria-hidden className="relative inline-flex shrink-0 animate-pop">
+        {/* Фирменный ореол-свечение за плашкой */}
+        {variant === "empty" && (
+          <span
+            className="absolute -inset-3 rounded-full"
+            style={{
+              background: "var(--app-accent-gradient)",
+              opacity: 0.16,
+              filter: "blur(14px)",
+            }}
+          />
+        )}
+        <span
+          className="relative inline-flex items-center justify-center"
+          style={{
+            width: tok.plate,
+            height: tok.plate,
+            borderRadius: tok.plateRad,
+            background: plate.bg,
+            transform: variant === "empty" ? "rotate(-4deg)" : undefined,
+          }}
+        >
+          {illustration}
+        </span>
       </span>
 
       <h3
@@ -155,7 +168,7 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function E
             <button
               type="button"
               onClick={action!.onClick}
-              className="inline-flex items-center font-medium transition-colors"
+              className="inline-flex items-center font-medium transition-[transform,background-color,filter] duration-150 hover:brightness-110 active:scale-[0.97] motion-reduce:transform-none"
               style={{
                 height: tok.btnH,
                 padding: `0 ${tok.btnPx}px`,

@@ -129,7 +129,7 @@ function Item({
           <button
             onClick={(e) => { e.stopPropagation(); onCompleteEvent(item); }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-5 h-5 flex items-center justify-center touch-manipulation"
+            className="w-5 h-5 flex items-center justify-center touch-manipulation transition-transform active:scale-[0.8] motion-reduce:transform-none"
           >
             {isDone
               ? <CheckCircle2 size={16} className="text-emerald-500" />
@@ -144,7 +144,7 @@ function Item({
           <button
             onClick={(e) => { e.stopPropagation(); if (!isCompleting) onComplete(item); }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="relative w-5 h-5 flex items-center justify-center touch-manipulation"
+            className="relative w-5 h-5 flex items-center justify-center touch-manipulation transition-transform active:scale-[0.8] motion-reduce:transform-none"
           >
             <span className={clsx(
               "w-[16px] h-[16px] rounded-[5px] border-[1.5px] flex items-center justify-center transition-all",
@@ -994,8 +994,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
           return (
             <>
-              {groups.map((g) => (
-                <div key={g.key}>
+              {groups.map((g, gi) => (
+                <div key={g.key} className="animate-rise" style={{ animationDelay: `${gi * 70}ms` }}>
                   <GroupHeader label={g.label} groupKey={g.key} />
                   {g.content}
                 </div>
