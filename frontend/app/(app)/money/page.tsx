@@ -236,6 +236,7 @@ const MONEY_TABS = [
   { id: "/wallets",    label: "Кошельки" },
   { id: "/categories", label: "Категории" },
   { id: "/goals",      label: "Цели" },
+  { id: "/savings",    label: "Накопления" },
 ];
 
 function getMoneyTab(pathname: string | null): string {
@@ -243,6 +244,7 @@ function getMoneyTab(pathname: string | null): string {
   if (pathname.startsWith("/wallets"))    return "/wallets";
   if (pathname.startsWith("/categories")) return "/categories";
   if (pathname.startsWith("/goals"))      return "/goals";
+  if (pathname.startsWith("/savings"))    return "/savings";
   return "/money";
 }
 
