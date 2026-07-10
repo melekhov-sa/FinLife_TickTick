@@ -252,10 +252,43 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     ...(selectedSub?.members ?? []).map((m) => ({ value: String(m.member_id), label: m.contact_name })),
   ], [selectedSub]);
 
-  const goalOptions: SelectOption[] = useMemo(() => [
-    { value: "", label: "— без цели —" },
-    ...(goals ?? []).map((g) => ({ value: String(g.goal_id), label: g.title })),
-  ], [goals]);
+  // Цели для перевода: обязательны для SAVINGS-кошельков. Системная «Без
+  // цели» — первая в списке и подставляется по умолчанию (см. эффекты ниже).
+  const makeGoalOptions = (wallet?: WalletItem): SelectOption[] => [
+    { value: "", label: "— выберите цель —" },
+    ...(goals ?? [])
+      .filter((g) => !wallet || g.currency === wallet.currency)
+      .sort((a, b) => Number(b.is_system ?? false) - Number(a.is_system ?? false))
+      .map((g) => ({ value: String(g.goal_id), label: g.title })),
+  ];
+  const fromGoalOptions: SelectOption[] = useMemo(
+    () => makeGoalOptions(selectedFromWallet),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [goals, selectedFromWallet]
+  );
+  const toGoalOptions: SelectOption[] = useMemo(
+    () => makeGoalOptions(selectedToWallet),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [goals, selectedToWallet]
+  );
+
+  // Дефолт: выбран SAVINGS-кошелёк, цель не выбрана → системная «Без цели»
+  useEffect(() => {
+    if (opType !== "TRANSFER" || !showFromGoal || fromGoalId) return;
+    const sys = (goals ?? []).find(
+      (g) => g.is_system && g.currency === selectedFromWallet?.currency
+    );
+    if (sys) setFromGoalId(sys.goal_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opType, showFromGoal, selectedFromWallet?.wallet_id, goals]);
+  useEffect(() => {
+    if (opType !== "TRANSFER" || !showToGoal || toGoalId) return;
+    const sys = (goals ?? []).find(
+      (g) => g.is_system && g.currency === selectedToWallet?.currency
+    );
+    if (sys) setToGoalId(sys.goal_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opType, showToGoal, selectedToWallet?.wallet_id, goals]);
 
   const incomeGoalOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "Без цели (по умолчанию)" },
@@ -614,12 +647,12 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
             {/* Goal selectors for TRANSFER — only shown when the wallet is SAVINGS */}
             {opType === "TRANSFER" && showFromGoal && (
-              <FormRow label="Цель (откуда)">
+              <FormRow label="Цель (откуда)" required>
                 <Select
                   value={fromGoalId}
                   onChange={(v) => setFromGoalId(v ? Number(v) : "")}
-                  options={goalOptions}
-                  placeholder="— без цели —"
+                  options={fromGoalOptions}
+                  placeholder="— выберите цель —"
                 />
                 {fromGoalBalance && (
                   <p className="mt-1.5 text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
@@ -632,12 +665,12 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
               </FormRow>
             )}
             {opType === "TRANSFER" && showToGoal && (
-              <FormRow label="Цель (куда)">
+              <FormRow label="Цель (куда)" required>
                 <Select
                   value={toGoalId}
                   onChange={(v) => setToGoalId(v ? Number(v) : "")}
-                  options={goalOptions}
-                  placeholder="— без цели —"
+                  options={toGoalOptions}
+                  placeholder="— выберите цель —"
                 />
                 {toGoalBalance && (
                   <p className="mt-1.5 text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>
