@@ -72,21 +72,24 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className="w-full max-w-sm mx-4 bg-[#1a1d23] border border-white/[0.09] rounded-2xl shadow-2xl p-6">
+      <div
+        className="w-full max-w-sm mx-4 rounded-2xl shadow-2xl p-6 animate-pop"
+        style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
+      >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/[0.15] border border-emerald-500/20 flex items-center justify-center text-lg">
             ✓
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-white/90">
+            <p className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
               Отметить {KIND_LABELS[kind]} как выполненную?
             </p>
-            <p className="text-xs text-white/55 mt-0.5 line-clamp-2">{title}</p>
+            <p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--t-muted)" }}>{title}</p>
           </div>
         </div>
 
         {error && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 mb-4">
+          <p className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 mb-4">
             {error}
           </p>
         )}
@@ -95,13 +98,17 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-[#fff] disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-emerald-600 hover:bg-emerald-500 text-[#fff] disabled:opacity-50 transition-all active:scale-[0.97] motion-reduce:transform-none"
           >
             {loading ? "Сохраняем…" : "Выполнено ✓"}
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:bg-white/[0.08] transition-colors"
+            className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors nav-hover"
+            style={{
+              border: "1px solid var(--app-border)",
+              color: "var(--t-secondary)",
+            }}
           >
             Отмена
           </button>

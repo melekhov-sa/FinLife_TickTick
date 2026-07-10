@@ -44,12 +44,16 @@ function QuickMenu({
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[170px]" onMouseLeave={() => setTimeout(() => setOpen(false), 150)}>
+        <div
+          className="absolute right-0 top-8 z-50 rounded-xl shadow-xl py-1 min-w-[170px]"
+          style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
+          onMouseLeave={() => setTimeout(() => setOpen(false), 150)}
+        >
           {items.map((item) => (
             <button
               key={item.label}
               onClick={item.action}
-              className={clsx("w-full text-left block px-4 py-2 font-medium transition-colors hover:bg-white/[0.05]", item.danger ? "text-red-400/80 hover:text-red-400" : "hover:text-white/90")}
+              className={clsx("w-full text-left block px-4 py-2 font-medium transition-colors nav-hover", item.danger && "text-red-500/90 hover:text-red-500")}
               style={{ fontSize: "var(--fs-secondary)", color: item.danger ? undefined : "var(--t-secondary)" }}
             >
               {item.label}
