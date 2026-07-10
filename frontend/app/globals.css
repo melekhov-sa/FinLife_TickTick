@@ -125,6 +125,7 @@
 /* ── Light mode (DEFAULT) — clean white, vivid accents ─────────────────── */
 :root {
   --app-bg:            #F7F8FC;
+  --app-canvas:        #F7F8FC;
   --app-sidebar-bg:    #FFFFFF;
   --app-topbar-bg:     linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%);
   --app-topbar-text:   #FFFFFF;
@@ -229,6 +230,7 @@
                        radial-gradient(ellipse 55% 45% at 88% 94%, rgba(139,92,246,0.05) 0%, transparent 55%),
                        #070b16;
   --app-sidebar-bg:    #0c1122;
+  --app-canvas:        #070b16;
   --app-topbar-bg:     #0c1122;
   --app-topbar-text:   rgba(255,255,255,0.85);
   --app-border:        rgba(255,255,255,0.07);
@@ -511,6 +513,7 @@ html:not(.dark) .bg-indigo-600\/80  { background-color: #4F46E5 !important; }
 /* ── 2. Graphite — warm neutral gray, no blue tint ─────────────────────── */
 html.dark[data-color-theme="graphite"] {
   --app-bg: radial-gradient(ellipse 60% 40% at 15% 5%, rgba(120,120,120,0.06) 0%, transparent 50%), #111111;
+  --app-canvas:        #111111;
   --app-sidebar-bg: #161616;
   --app-topbar-bg: #161616;
   --app-border: rgba(255,255,255,0.08);
@@ -523,6 +526,7 @@ html.dark[data-color-theme="graphite"] {
 /* ── 3. Midnight — pure OLED black ─────────────────────────────────────── */
 html.dark[data-color-theme="midnight"] {
   --app-bg: #000000;
+  --app-canvas:        #000000;
   --app-sidebar-bg: #000000;
   --app-topbar-bg: #050505;
   --app-border: rgba(255,255,255,0.06);
@@ -536,6 +540,7 @@ html.dark[data-color-theme="midnight"] {
 /* Snow is activated by switching to light mode, so no dark override */
 html:not(.dark)[data-color-theme="snow"] {
   --app-bg: #FAFAF9;
+  --app-canvas:        #FAFAF9;
   --app-sidebar-bg: #FFFFFF;
   --app-topbar-bg: #FFFFFF;
   --app-border: #E7E5E4;
@@ -548,6 +553,7 @@ html:not(.dark)[data-color-theme="snow"] {
 /* ── 5. Claude — warm cream light + coral accent (also works in dark) ───── */
 html:not(.dark)[data-color-theme="claude"] {
   --app-bg:            #FAF9F6;
+  --app-canvas:        #FAF9F6;
   --app-sidebar-bg:    #F4F2EE;
   --app-topbar-bg:     #FAF9F6;
   --app-topbar-text:   #1C1917;
@@ -593,6 +599,7 @@ html.dark[data-color-theme="claude"] {
   --app-bg:            radial-gradient(ellipse 55% 40% at 12% 6%, rgba(217,119,86,0.07) 0%, transparent 55%),
                        #1C1917;
   --app-sidebar-bg:    #211F1D;
+  --app-canvas:        #1C1917;
   --app-topbar-bg:     #211F1D;
   --app-topbar-text:   rgba(250,249,246,0.85);
   --app-border:        rgba(255,255,255,0.08);
@@ -640,6 +647,7 @@ html.dark[data-color-theme="emerald"] {
   --app-bg: radial-gradient(ellipse 60% 40% at 15% 5%, rgba(16,185,129,0.06) 0%, transparent 50%),
             radial-gradient(ellipse 50% 40% at 85% 90%, rgba(5,150,105,0.04) 0%, transparent 50%),
             #070F0B;
+  --app-canvas:        #070F0B;
   --app-sidebar-bg: #0A1510;
   --app-topbar-bg: #0A1510;
   --app-border: rgba(16,185,129,0.1);
@@ -656,6 +664,7 @@ html:not(.dark)[data-color-theme="vivid"] {
   --app-bg:            radial-gradient(ellipse 60% 45% at 12% 4%, rgba(124,58,237,0.09) 0%, transparent 55%),
                        radial-gradient(ellipse 55% 40% at 92% 8%, rgba(219,39,119,0.06) 0%, transparent 55%),
                        #FAF7FF;
+  --app-canvas:        #FAF7FF;
   --app-sidebar-bg:    #F6F0FD;
   --app-topbar-bg:     linear-gradient(120deg, #7C3AED 0%, #DB2777 55%, #FB7185 100%);
   --app-topbar-text:   rgba(255,255,255,0.96);
@@ -706,6 +715,7 @@ html.dark[data-color-theme="vivid"] {
   --app-bg:            radial-gradient(ellipse 60% 45% at 12% 5%, rgba(124,58,237,0.15) 0%, transparent 55%),
                        radial-gradient(ellipse 55% 45% at 88% 92%, rgba(219,39,119,0.10) 0%, transparent 55%),
                        #120C20;
+  --app-canvas:        #120C20;
   --app-sidebar-bg:    #1A1130;
   --app-topbar-bg:     linear-gradient(120deg, #6D28D9 0%, #BE185D 55%, #E11D48 100%);
   --app-topbar-text:   rgba(255,255,255,0.94);
@@ -767,7 +777,7 @@ html.dark[data-color-theme="vivid"] {
   /* Canvas (beyond the layout viewport — e.g. iOS PWA bottom band, overscroll)
      matches the bottom nav so any OS letterboxing blends into the UI. */
   html {
-    background: var(--app-sidebar-bg);
+    background: var(--app-canvas, var(--app-sidebar-bg));
   }
 
   body {

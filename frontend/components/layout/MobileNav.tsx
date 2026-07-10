@@ -46,18 +46,21 @@ export function MobileNav({
       {/* Нижняя плашка */}
       <nav
         aria-label="Основная навигация"
-        className="md:hidden shrink-0 flex items-stretch justify-between px-2 transition-transform duration-200"
+        className="md:hidden shrink-0 flex items-stretch justify-between px-2 transition-transform duration-200 rounded-2xl border"
         style={{
+          // Плавающий островок: пространство под ним (включая мёртвую полосу
+          // iOS-вьюпорта, см. --vp-bottom-gap) читается как фон страницы,
+          // а не как обрыв интерфейса.
           background: "var(--app-sidebar-bg)",
-          boxShadow: "var(--shadow-mobile)",
-          borderTop: "1px solid var(--app-border)",
+          borderColor: "var(--app-border)",
+          boxShadow:
+            "0 10px 28px -10px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.08)",
           minHeight: "56px",
-          paddingTop: "8px",
-          // env(sab) minus the dead band below the viewport (iOS 26 PWA bug):
-          // when the home indicator lies outside the viewport, skip its padding.
-          paddingBottom:
-            "calc(6px + max(0px, env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px)))",
-          transform: keyboardOpen ? "translateY(calc(100% + env(safe-area-inset-bottom, 0px)))" : "translateY(0)",
+          margin:
+            "6px 10px calc(8px + max(0px, env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px)))",
+          paddingTop: "6px",
+          paddingBottom: "6px",
+          transform: keyboardOpen ? "translateY(200%)" : "translateY(0)",
         }}
       >
         <BottomItem
