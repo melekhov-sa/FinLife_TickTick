@@ -147,9 +147,9 @@ export default function NetWorthPage() {
                       width={44}
                     />
                     <Tooltip
-                      formatter={(value: number | string, name: string) => [
-                        `${fmt(Number(value))} ₽`,
-                        name,
+                      formatter={(value, name) => [
+                        `${fmt(Number(value ?? 0))} ₽`,
+                        String(name ?? ""),
                       ]}
                       contentStyle={{
                         background: "var(--app-card-bg)",
