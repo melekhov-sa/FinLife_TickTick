@@ -1,6 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
+import { TrendingUp } from "lucide-react";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
 
 function fmt(n: number) {
@@ -110,6 +111,15 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             </a>
             <a href="/budget" className="text-[11px] md:text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
               Бюджет →
+            </a>
+            <a
+              href="/net-worth"
+              className="ml-auto inline-flex items-center gap-1 text-[11px] md:text-[12px] font-semibold transition-opacity hover:opacity-80"
+              style={{ color: "var(--app-accent)" }}
+              title="График капитала"
+            >
+              <TrendingUp size={13} />
+              Капитал
             </a>
       </div>
     </div>

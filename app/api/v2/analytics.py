@@ -1393,3 +1393,130 @@ def savings_report(
         ],
         "wallets": out_wallets,
     }
+
+
+# ── Net worth (капитал: деньги vs кредиты по месяцам) ────────────────────────
+
+@router.get("/net-worth")
+def net_worth_report(
+    request: Request,
+    db: Session = Depends(get_db),
+    months: int = Query(24, ge=6, le=60),
+):
+    """Динамика капитала по месяцам (RUB-кошельки).
+
+    money   — REGULAR + SAVINGS,
+    debt    — |CREDIT| (кредитные балансы хранятся отрицательными),
+    capital — money − debt.
+    Балансы на конец месяца восстанавливаются обратным проходом по ленте
+    (включая архивные кошельки — для честной истории).
+    """
+    from decimal import Decimal
+
+    user_id = get_user_id(request, db)
+
+    wallets = (
+        db.query(WalletBalance)
+        .filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.currency == "RUB",
+        )
+        .all()
+    )
+    if not wallets:
+        return {"months": [], "current": None}
+
+    wallet_ids = [w.wallet_id for w in wallets]
+    wtype = {w.wallet_id: w.wallet_type for w in wallets}
+    ops = (
+        db.query(TransactionFeed)
+        .filter(
+            TransactionFeed.account_id == user_id,
+            or_(
+                TransactionFeed.wallet_id.in_(wallet_ids),
+                TransactionFeed.from_wallet_id.in_(wallet_ids),
+                TransactionFeed.to_wallet_id.in_(wallet_ids),
+            ),
+        )
+        .order_by(TransactionFeed.occurred_at.desc())
+        .all()
+    )
+
+    now = datetime.now(timezone.utc)
+    month_labels: list[str] = []
+    boundaries: list[datetime] = []
+    y, m = now.year, now.month
+    for _ in range(months):
+        month_labels.append(f"{y:04d}-{m:02d}")
+        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+        boundaries.append(datetime(ny, nm, 1, tzinfo=timezone.utc))
+        y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+    month_labels.reverse()
+    boundaries.reverse()
+
+    def wallet_delta(op, wid: int) -> Decimal:
+        amt = Decimal(str(op.amount))
+        d = Decimal("0")
+        if op.operation_type == "INCOME" and op.wallet_id == wid:
+            d += amt
+        elif op.operation_type == "EXPENSE" and op.wallet_id == wid:
+            d -= amt
+        elif op.operation_type == "TRANSFER":
+            if op.to_wallet_id == wid:
+                d += amt
+            if op.from_wallet_id == wid:
+                d -= amt
+        return d
+
+    # month-end балансы по каждому кошельку
+    per_wallet_series: dict[int, list[Decimal]] = {}
+    for w in wallets:
+        wid = w.wallet_id
+        w_ops = [
+            op for op in ops
+            if op.wallet_id == wid or op.from_wallet_id == wid or op.to_wallet_id == wid
+        ]
+        running = Decimal(str(w.balance))
+        series: list[Decimal] = []
+        ops_iter = iter(w_ops)
+        op_cur = next(ops_iter, None)
+        for boundary in reversed(boundaries):
+            while op_cur is not None and op_cur.occurred_at >= boundary:
+                running -= wallet_delta(op_cur, wid)
+                op_cur = next(ops_iter, None)
+            series.append(running)
+        series.reverse()
+        per_wallet_series[wid] = series
+
+    out_months = []
+    for i, lbl in enumerate(month_labels):
+        money = Decimal("0")
+        credit = Decimal("0")
+        for wid, series in per_wallet_series.items():
+            if wtype[wid] == "CREDIT":
+                credit += series[i]
+            else:
+                money += series[i]
+        out_months.append({
+            "month": lbl,
+            "money": float(money),
+            "debt": float(-credit),
+            "capital": float(money + credit),
+        })
+
+    money_now = sum(
+        (Decimal(str(w.balance)) for w in wallets if w.wallet_type != "CREDIT"),
+        Decimal("0"),
+    )
+    credit_now = sum(
+        (Decimal(str(w.balance)) for w in wallets if w.wallet_type == "CREDIT"),
+        Decimal("0"),
+    )
+    return {
+        "months": out_months,
+        "current": {
+            "money": float(money_now),
+            "debt": float(-credit_now),
+            "capital": float(money_now + credit_now),
+        },
+    }
