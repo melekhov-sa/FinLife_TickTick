@@ -902,6 +902,7 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
                 description=body.description,
                 occurred_at=tx_occurred_at,
                 actor_user_id=user_id,
+                to_goal_id=body.to_goal_id,
             )
         elif body.operation_type == "EXPENSE":
             if not body.wallet_id:

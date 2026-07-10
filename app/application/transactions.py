@@ -44,7 +44,8 @@ class CreateTransactionUseCase:
         category_id: int | None,
         description: str,
         occurred_at: datetime | None = None,
-        actor_user_id: int | None = None
+        actor_user_id: int | None = None,
+        to_goal_id: int | None = None
     ) -> int:
         """
         Создать INCOME (доход)
@@ -78,6 +79,34 @@ class CreateTransactionUseCase:
         if wallet.is_archived:
             raise TransactionValidationError("Нельзя создавать операции с архивированным кошельком")
 
+        # --- SAVINGS: доход обязан попадать в цель (иначе деньги «зависают»
+        # на кошельке вне распределения). Без явной цели — системная «Без цели».
+        if wallet.wallet_type == WALLET_TYPE_SAVINGS:
+            if to_goal_id is not None:
+                goal = self.db.query(GoalInfo).filter(
+                    GoalInfo.goal_id == to_goal_id,
+                    GoalInfo.account_id == account_id
+                ).first()
+                if not goal:
+                    raise TransactionValidationError(f"Цель #{to_goal_id} не найдена")
+                if goal.is_archived:
+                    raise TransactionValidationError(f"Цель «{goal.title}» архивирована")
+                if goal.currency != wallet.currency:
+                    raise TransactionValidationError(
+                        f"Валюта цели ({goal.currency}) не совпадает с валютой кошелька ({wallet.currency})"
+                    )
+            else:
+                system_goal = self.db.query(GoalInfo).filter(
+                    GoalInfo.account_id == account_id,
+                    GoalInfo.is_system == True,  # noqa: E712
+                    GoalInfo.currency == wallet.currency
+                ).first()
+                to_goal_id = system_goal.goal_id if system_goal else None
+        elif to_goal_id is not None:
+            raise TransactionValidationError(
+                "to_goal_id можно указать только для накопительного кошелька"
+            )
+
         transaction_id = self._generate_transaction_id()
         occurred_at = occurred_at or datetime.now(MSK)
 
@@ -89,7 +118,8 @@ class CreateTransactionUseCase:
             currency=currency,
             category_id=category_id,
             description=description,
-            occurred_at=occurred_at
+            occurred_at=occurred_at,
+            to_goal_id=to_goal_id
         )
 
         self.event_repo.append_event(
@@ -415,7 +445,7 @@ class CreateTransactionUseCase:
         )
         GoalWalletBalancesProjector(self.db).run(
             account_id,
-            event_types=_TX_EVENTS + ["wallet_created"],
+            event_types=_TX_EVENTS + ["transaction_cancelled", "wallet_created"],
         )
         XpProjector(self.db).run(
             account_id,
@@ -533,7 +563,7 @@ class UpdateTransactionUseCase:
         WalletBalancesProjector(self.db).run(account_id, event_types=_TX_EVENTS)
         TransactionsFeedProjector(self.db).run(account_id, event_types=_TX_EVENTS)
         GoalWalletBalancesProjector(self.db).run(
-            account_id, event_types=_TX_EVENTS + ["wallet_created"],
+            account_id, event_types=_TX_EVENTS + ["transaction_cancelled", "wallet_created"],
         )
 
 
@@ -561,6 +591,8 @@ class CancelTransactionUseCase:
             "wallet_id": tx.wallet_id,
             "from_wallet_id": tx.from_wallet_id,
             "to_wallet_id": tx.to_wallet_id,
+            "from_goal_id": tx.from_goal_id,
+            "to_goal_id": tx.to_goal_id,
         }
 
         self.event_repo.append_event(

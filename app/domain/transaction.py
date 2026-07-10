@@ -41,7 +41,8 @@ class Transaction:
         currency: str,
         category_id: Optional[int],
         description: str,
-        occurred_at: datetime
+        occurred_at: datetime,
+        to_goal_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Создать событие transaction_created (INCOME)
@@ -68,7 +69,8 @@ class Transaction:
             "currency": currency,
             "category_id": category_id,
             "description": description,
-            "occurred_at": occurred_at.isoformat()
+            "occurred_at": occurred_at.isoformat(),
+            "to_goal_id": to_goal_id
         }
 
     @staticmethod

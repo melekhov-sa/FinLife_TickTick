@@ -224,3 +224,63 @@ def unarchive_goal(
     except GoalValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
+
+
+@router.post("/goals/rebuild-allocations")
+def rebuild_goal_allocations(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Пересобрать распределение денег по целям с нуля (реплей событий).
+
+    Ремонт для «зависших» денег: исторические доходы на SAVINGS-кошельки,
+    созданные до появления to_goal_id у INCOME, при реплее падают в системную
+    цель «Без цели» (фолбэк в проекторе). Идемпотентно.
+    """
+    from app.readmodels.projectors.goal_wallet_balances import GoalWalletBalancesProjector
+
+    user_id = get_user_id(request, db)
+    projector = GoalWalletBalancesProjector(db)
+    projector.reset(user_id)
+    db.commit()
+    processed = projector.run(
+        user_id,
+        event_types=[
+            "transaction_created",
+            "transaction_updated",
+            "transaction_cancelled",
+            "wallet_created",
+        ],
+    )
+
+    # Итог: сколько по целям на SAVINGS-кошельках и остаток вне целей
+    totals = (
+        db.query(
+            WalletBalance.wallet_id,
+            WalletBalance.title,
+            WalletBalance.balance,
+            func.coalesce(func.sum(GoalWalletBalance.amount), 0).label("by_goals"),
+        )
+        .outerjoin(GoalWalletBalance, GoalWalletBalance.wallet_id == WalletBalance.wallet_id)
+        .filter(
+            WalletBalance.account_id == user_id,
+            WalletBalance.wallet_type == "SAVINGS",
+            WalletBalance.is_archived == False,  # noqa: E712
+        )
+        .group_by(WalletBalance.wallet_id, WalletBalance.title, WalletBalance.balance)
+        .all()
+    )
+    return {
+        "ok": True,
+        "processed_events": processed,
+        "wallets": [
+            {
+                "wallet_id": t.wallet_id,
+                "title": t.title,
+                "balance": str(t.balance),
+                "by_goals": str(t.by_goals),
+                "hung": str(Decimal(str(t.balance)) - Decimal(str(t.by_goals))),
+            }
+            for t in totals
+        ],
+    }

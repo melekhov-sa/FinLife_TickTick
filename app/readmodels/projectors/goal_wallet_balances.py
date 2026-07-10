@@ -6,7 +6,7 @@ Tracks how much money each goal has in each wallet.
 from decimal import Decimal
 
 from app.readmodels.projectors.base import BaseProjector
-from app.infrastructure.db.models import GoalWalletBalance, GoalInfo, EventLog
+from app.infrastructure.db.models import GoalWalletBalance, GoalInfo, EventLog, WalletBalance
 
 
 class GoalWalletBalancesProjector(BaseProjector):
@@ -14,7 +14,13 @@ class GoalWalletBalancesProjector(BaseProjector):
     Builds goal_wallet_balances read model from events
 
     Обрабатывает события:
-    - transaction_created (TRANSFER): обновить goal x wallet балансы
+    - transaction_created:
+        TRANSFER — по from/to_goal_id;
+        INCOME на SAVINGS — в to_goal_id, а без него (исторические события) —
+        в системную цель 'Без цели';
+        EXPENSE с SAVINGS (легаси) — вычесть из 'Без цели'.
+    - transaction_updated: развернуть старые распределения, применить новые
+    - transaction_cancelled: развернуть распределения отменённой операции
     - wallet_created (SAVINGS с initial_balance > 0): зачислить initial_balance
       в системную цель 'Без цели'
     """
@@ -24,65 +30,117 @@ class GoalWalletBalancesProjector(BaseProjector):
 
     def handle_event(self, event: EventLog) -> None:
         if event.event_type == "transaction_created":
-            self._handle_transaction_created(event)
+            self._apply_transaction(event.payload_json, sign=1)
         elif event.event_type == "transaction_updated":
             self._handle_transaction_updated(event)
+        elif event.event_type == "transaction_cancelled":
+            self._handle_transaction_cancelled(event)
         elif event.event_type == "wallet_created":
             self._handle_wallet_created(event)
 
-    def _handle_transaction_created(self, event: EventLog) -> None:
-        payload = event.payload_json
-        if payload["operation_type"] != "TRANSFER":
-            return
+    # ── helpers ──────────────────────────────────────────────────────────────
 
-        amount = Decimal(payload["amount"])
+    def _wallet_is_savings(self, wallet_id) -> bool:
+        if wallet_id is None:
+            return False
+        self.db.flush()
+        w = self.db.query(WalletBalance).filter(
+            WalletBalance.wallet_id == wallet_id
+        ).first()
+        return bool(w and w.wallet_type == "SAVINGS")
+
+    def _system_goal_id(self, account_id: int, currency: str) -> int | None:
+        self.db.flush()
+        goal = self.db.query(GoalInfo).filter(
+            GoalInfo.account_id == account_id,
+            GoalInfo.is_system == True,  # noqa: E712
+            GoalInfo.currency == currency
+        ).first()
+        return goal.goal_id if goal else None
+
+    def _apply_transaction(self, payload: dict, sign: int) -> None:
+        """Применить (sign=1) или развернуть (sign=-1) распределения операции."""
+        amount = Decimal(payload["amount"]) * sign
         account_id = payload["account_id"]
+        op_type = payload["operation_type"]
+        currency = payload.get("currency", "RUB")
 
-        from_goal_id = payload.get("from_goal_id")
-        to_goal_id = payload.get("to_goal_id")
+        if op_type == "TRANSFER":
+            from_goal_id = payload.get("from_goal_id")
+            to_goal_id = payload.get("to_goal_id")
+            # Фолбэк для исторических событий без цели на SAVINGS-стороне
+            if from_goal_id is None and self._wallet_is_savings(payload.get("from_wallet_id")):
+                from_goal_id = self._system_goal_id(account_id, currency)
+            if to_goal_id is None and self._wallet_is_savings(payload.get("to_wallet_id")):
+                to_goal_id = self._system_goal_id(account_id, currency)
 
-        if from_goal_id is not None:
-            self._adjust_balance(
-                account_id=account_id,
-                goal_id=from_goal_id,
-                wallet_id=payload["from_wallet_id"],
-                delta=-amount
-            )
+            if from_goal_id is not None:
+                self._adjust_balance(account_id, from_goal_id, payload["from_wallet_id"], -amount)
+            if to_goal_id is not None:
+                self._adjust_balance(account_id, to_goal_id, payload["to_wallet_id"], amount)
 
-        if to_goal_id is not None:
-            self._adjust_balance(
-                account_id=account_id,
-                goal_id=to_goal_id,
-                wallet_id=payload["to_wallet_id"],
-                delta=amount
-            )
+        elif op_type == "INCOME":
+            wallet_id = payload.get("wallet_id")
+            goal_id = payload.get("to_goal_id")
+            if goal_id is None and self._wallet_is_savings(wallet_id):
+                goal_id = self._system_goal_id(account_id, currency)
+            if goal_id is not None:
+                self._adjust_balance(account_id, goal_id, wallet_id, amount)
+
+        elif op_type == "EXPENSE":
+            # Расход из SAVINGS сейчас запрещён use case'ом, но исторические/
+            # легаси события должны уменьшать распределение, а не ломать инвариант
+            wallet_id = payload.get("wallet_id")
+            if self._wallet_is_savings(wallet_id):
+                goal_id = payload.get("from_goal_id") or self._system_goal_id(account_id, currency)
+                if goal_id is not None:
+                    self._adjust_balance(account_id, goal_id, wallet_id, -amount)
+
+    def _handle_transaction_cancelled(self, event: EventLog) -> None:
+        """Отмена: развернуть распределения. Если в payload отмены нет goal-полей
+        (старые события) — взять их из исходного transaction_created."""
+        payload = dict(event.payload_json)
+        if payload.get("from_goal_id") is None and payload.get("to_goal_id") is None:
+            orig = self.db.query(EventLog).filter(
+                EventLog.account_id == payload["account_id"],
+                EventLog.event_type == "transaction_created",
+                EventLog.payload_json["transaction_id"].astext == str(payload["transaction_id"]),
+            ).first()
+            if orig:
+                payload["from_goal_id"] = orig.payload_json.get("from_goal_id")
+                payload["to_goal_id"] = orig.payload_json.get("to_goal_id")
+        self._apply_transaction(payload, sign=-1)
 
     def _handle_transaction_updated(self, event: EventLog) -> None:
-        """Reverse old goal allocations, apply new ones (TRANSFER only)."""
+        """Развернуть старые распределения, применить новые (все типы операций)."""
         p = event.payload_json
         account_id = p["account_id"]
-        old_amount = Decimal(p["old_amount"])
 
-        # Reverse old allocations
-        if p["old_operation_type"] == "TRANSFER":
-            old_from_goal = p.get("old_from_goal_id")
-            old_to_goal = p.get("old_to_goal_id")
-            if old_from_goal is not None:
-                self._adjust_balance(account_id, old_from_goal, p["old_from_wallet_id"], old_amount)
-            if old_to_goal is not None:
-                self._adjust_balance(account_id, old_to_goal, p["old_to_wallet_id"], -old_amount)
+        old_payload = {
+            "account_id": account_id,
+            "operation_type": p["old_operation_type"],
+            "amount": p["old_amount"],
+            "currency": p.get("old_currency", p.get("currency", "RUB")),
+            "wallet_id": p.get("old_wallet_id"),
+            "from_wallet_id": p.get("old_from_wallet_id"),
+            "to_wallet_id": p.get("old_to_wallet_id"),
+            "from_goal_id": p.get("old_from_goal_id"),
+            "to_goal_id": p.get("old_to_goal_id"),
+        }
+        self._apply_transaction(old_payload, sign=-1)
 
-        # Apply new allocations
-        if p["operation_type"] == "TRANSFER":
-            new_amount = Decimal(p["amount"]) if "amount" in p else old_amount
-            new_from_goal = p.get("from_goal_id", p.get("old_from_goal_id"))
-            new_to_goal = p.get("to_goal_id", p.get("old_to_goal_id"))
-            new_from_wallet = p.get("from_wallet_id", p.get("old_from_wallet_id"))
-            new_to_wallet = p.get("to_wallet_id", p.get("old_to_wallet_id"))
-            if new_from_goal is not None:
-                self._adjust_balance(account_id, new_from_goal, new_from_wallet, -new_amount)
-            if new_to_goal is not None:
-                self._adjust_balance(account_id, new_to_goal, new_to_wallet, new_amount)
+        new_payload = {
+            "account_id": account_id,
+            "operation_type": p.get("operation_type", p["old_operation_type"]),
+            "amount": p["amount"] if "amount" in p else p["old_amount"],
+            "currency": p.get("currency", old_payload["currency"]),
+            "wallet_id": p.get("wallet_id", old_payload["wallet_id"]),
+            "from_wallet_id": p.get("from_wallet_id", old_payload["from_wallet_id"]),
+            "to_wallet_id": p.get("to_wallet_id", old_payload["to_wallet_id"]),
+            "from_goal_id": p.get("from_goal_id", old_payload["from_goal_id"]),
+            "to_goal_id": p.get("to_goal_id", old_payload["to_goal_id"]),
+        }
+        self._apply_transaction(new_payload, sign=1)
 
     def _handle_wallet_created(self, event: EventLog) -> None:
         """При создании SAVINGS с initial_balance > 0 — зачислить в 'Без цели'"""
