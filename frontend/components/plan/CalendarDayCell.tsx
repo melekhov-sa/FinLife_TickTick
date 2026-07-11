@@ -68,7 +68,7 @@ function kindPillCls(kind: string, isDone: boolean): string {
   switch (kind) {
     case "event": return "bg-purple-50 dark:bg-purple-500/[0.12] text-purple-700 dark:text-purple-300";
     case "task":
-    case "task_occ": return "bg-indigo-50 dark:bg-indigo-500/[0.12] text-indigo-700 dark:text-indigo-300";
+    case "task_occ": return "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]";
     case "planned_op": return "bg-amber-50 dark:bg-amber-500/[0.12] text-amber-700 dark:text-amber-300";
     case "habit": return "bg-violet-50 dark:bg-violet-500/[0.12] text-violet-700 dark:text-violet-300";
     default: return "bg-slate-50 dark:bg-white/[0.06] text-slate-600 dark:text-white/60";
@@ -159,8 +159,8 @@ export function CalendarDayCell({
       className={clsx(
         "relative flex flex-col min-h-[72px] md:min-h-[100px] p-0.5 md:p-1 cursor-pointer transition-colors",
         "bg-white dark:bg-[#0f1221]",
-        isOver && "ring-2 ring-inset ring-indigo-400/60 bg-indigo-50/40 dark:bg-indigo-500/[0.07]",
-        isToday && !isOver && "ring-2 ring-inset ring-indigo-400/50",
+        isOver && "ring-2 ring-inset ring-[var(--app-accent)] bg-[var(--app-accent-weak)]",
+        isToday && !isOver && "ring-2 ring-inset ring-[var(--app-accent)]",
         isVacation && !isOver && "bg-cyan-50 dark:bg-cyan-500/[0.07]",
         isHoliday && !isVacation && !isToday && !isOver && "bg-rose-50 dark:bg-rose-500/[0.05]",
         isWeekend && !isVacation && !isHoliday && !isToday && !isOver && "bg-slate-50/80 dark:bg-white/[0.02]",
@@ -188,7 +188,7 @@ export function CalendarDayCell({
           className={clsx(
             "text-[11px] md:text-[12px] font-semibold leading-none px-0.5",
             isToday
-              ? "text-indigo-600 dark:text-indigo-400"
+              ? "text-[var(--app-accent)]"
               : isVacation
               ? "text-cyan-600 dark:text-cyan-400"
               : isHoliday
@@ -221,7 +221,7 @@ export function CalendarDayCell({
         ))}
         {overflowCount > 0 && (
           <button
-            className="text-left text-[9px] md:text-[10px] text-indigo-500 dark:text-indigo-400/70 font-medium px-1 hover:underline truncate"
+            className="text-left text-[9px] md:text-[10px] text-[var(--app-accent)]/70 font-medium px-1 hover:underline truncate"
             onClick={(ev) => {
               ev.stopPropagation();
               onDayClick(dateISO);

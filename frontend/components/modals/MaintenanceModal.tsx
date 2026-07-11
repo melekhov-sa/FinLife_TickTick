@@ -82,8 +82,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Например: Замена масла"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
               required
             />
           </div>
@@ -96,8 +96,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Уточнение или заметка"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
             />
           </div>
 
@@ -113,7 +113,7 @@ export function MaintenanceModal({ item, onClose }: Props) {
                   onClick={() => setIntervalDays(String(p.days))}
                   className={`px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors ${
                     intervalDays === String(p.days)
-                      ? "bg-indigo-500 border-indigo-500 text-white"
+                      ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
                       : "border-slate-200 dark:border-white/[0.12]"
                   }`}
                   style={intervalDays !== String(p.days) ? { color: "var(--t-muted)" } : undefined}
@@ -129,8 +129,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
                 value={intervalDays}
                 onChange={(e) => setIntervalDays(e.target.value)}
                 placeholder="Дней"
-                className="w-24 rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-                style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+                className="w-24 rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+                style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
                 required
               />
               <span className="text-[13px]" style={{ color: "var(--t-faint)" }}>дней</span>
@@ -145,8 +145,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
               type="date"
               value={lastDoneDate}
               onChange={(e) => setLastDoneDate(e.target.value)}
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
             />
           </div>
 
@@ -162,7 +162,7 @@ export function MaintenanceModal({ item, onClose }: Props) {
                   onClick={() => setNotifyDays(notifyDays === d ? "" : d)}
                   className={`flex-1 py-1.5 rounded-lg text-[13px] font-medium border transition-colors ${
                     notifyDays === d
-                      ? "bg-indigo-500 border-indigo-500 text-white"
+                      ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
                       : "border-slate-200 dark:border-white/[0.12]"
                   }`}
                   style={notifyDays !== d ? { color: "var(--t-muted)" } : undefined}
@@ -176,8 +176,8 @@ export function MaintenanceModal({ item, onClose }: Props) {
                 value={notifyDays}
                 onChange={(e) => setNotifyDays(e.target.value)}
                 placeholder="—"
-                className="w-16 rounded-xl border px-2 py-1.5 text-[13px] outline-none focus:border-indigo-400 text-center"
-                style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+                className="w-16 rounded-xl border px-2 py-1.5 text-[13px] outline-none focus:border-[var(--app-accent)] text-center"
+                style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
               />
             </div>
           </div>
@@ -187,14 +187,14 @@ export function MaintenanceModal({ item, onClose }: Props) {
               type="button"
               onClick={onClose}
               className="flex-1 py-2 rounded-xl border text-[14px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-              style={{ borderColor: "rgba(99,102,241,0.2)", color: "var(--t-muted)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 20%, transparent)", color: "var(--t-muted)" }}
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={isPending || !title.trim() || !intervalDays}
-              className="flex-1 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-[14px] font-medium transition-colors disabled:opacity-50"
+              className="flex-1 py-2 rounded-xl bg-[var(--app-accent)] hover:bg-[var(--app-accent)] text-white text-[14px] font-medium transition-colors disabled:opacity-50"
             >
               {isPending ? "Сохранение…" : isEdit ? "Сохранить" : "Добавить"}
             </button>

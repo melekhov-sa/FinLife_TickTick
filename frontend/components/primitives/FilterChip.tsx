@@ -41,7 +41,7 @@ export function FilterChip({
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1.5 shrink-0 transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
         className,
       )}
       style={{

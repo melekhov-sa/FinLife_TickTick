@@ -48,11 +48,11 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip(
   // resolve color tokens
   const stateClasses = selected
     ? variant === "accent"
-      ? "bg-indigo-600 text-[#fff] border-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:border-indigo-500"
+      ? "bg-[var(--app-accent)] text-[#fff] border-[var(--app-accent)] hover:brightness-110"
       : "bg-slate-900 text-[#fff] border-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:border-white"
     : variant === "accent"
-      ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 " +
-        "dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30 dark:hover:bg-indigo-500/15"
+      ? "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] border-[var(--app-accent)] hover:bg-[var(--app-accent-weak)] " +
+        "dark:bg-[var(--app-accent-light)]"
       : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 " +
         "dark:bg-white/[0.03] dark:text-slate-300 dark:border-white/10 dark:hover:bg-white/[0.06] dark:hover:border-white/20";
 
@@ -65,7 +65,7 @@ export const Chip = forwardRef<HTMLButtonElement, ChipProps>(function Chip(
       aria-pressed={onClick ? selected : undefined}
       className={cn(
         "inline-flex items-center border font-medium select-none transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-1",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)] focus-visible:ring-offset-1",
         "disabled:opacity-50 disabled:pointer-events-none",
         !isInteractive && "cursor-default",
         sizeClasses[size],

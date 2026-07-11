@@ -88,7 +88,7 @@ export const GoalCard = forwardRef<HTMLElement, GoalCardProps>(function GoalCard
       onClick={onClick}
       className={cn(
         "group/goal w-full flex items-center gap-3 text-left transition-colors",
-        onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40",
+        onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
         className,
       )}
       style={{

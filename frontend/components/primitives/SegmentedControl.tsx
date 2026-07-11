@@ -79,7 +79,7 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlProps
               className={cn(
                 "inline-flex items-center justify-center transition-colors font-medium",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
                 fullWidth && "flex-1",
               )}
               style={{

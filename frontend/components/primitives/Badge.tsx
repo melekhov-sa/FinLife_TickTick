@@ -24,7 +24,7 @@ const variantClasses: Record<Variant, string> = {
   neutral:
     "bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-slate-300",
   accent:
-    "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+    "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]",
 };
 
 const sizeClasses: Record<Size, string> = {

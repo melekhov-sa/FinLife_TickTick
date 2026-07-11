@@ -184,7 +184,7 @@ export function DateInput({
             <button
               type="button"
               onClick={() => { onChange(toISO(new Date())); setOpen(false); }}
-              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors"
+              className="text-[var(--app-accent)] hover:text-[var(--app-accent)] font-semibold transition-colors"
             >
               Сегодня
             </button>
@@ -220,9 +220,9 @@ export function DateInput({
             "text-slate-700 dark:text-slate-200",
             "hover:bg-slate-100 dark:hover:bg-white/[0.08]",
           ),
-          today: "[&>button]:font-bold [&>button]:text-indigo-600 dark:[&>button]:text-indigo-400",
+          today: "[&>button]:font-bold [&>button]:text-[var(--app-accent)] dark:[&>button]:text-[var(--app-accent)]",
           selected:
-            "[&>button]:!bg-indigo-600 [&>button]:!text-[#fff] [&>button]:hover:!bg-indigo-500",
+            "[&>button]:!bg-[var(--app-accent)] [&>button]:!text-[#fff] [&>button]:hover:!bg-[var(--app-accent)]",
           outside: "[&>button]:text-slate-300 dark:[&>button]:text-slate-600",
           disabled: "opacity-40 pointer-events-none",
           hidden: "invisible",
@@ -241,7 +241,7 @@ export function DateInput({
         className={cn(
           "flex items-center w-full gap-2 rounded-lg border bg-white text-left transition-colors",
           "border-slate-300 dark:border-white/15 dark:bg-white/[0.03]",
-          "focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
+          "focus:outline-none focus:border-[var(--app-accent)] focus:ring-2 focus:ring-[var(--app-accent)] dark:focus:border-[var(--app-accent)]",
           "disabled:opacity-50 disabled:pointer-events-none",
           sizeClasses[size]
         )}

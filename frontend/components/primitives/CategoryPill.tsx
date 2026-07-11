@@ -82,7 +82,7 @@ export const CategoryPill = forwardRef<HTMLButtonElement, CategoryPillProps>(fun
       title={title}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full select-none transition-colors",
-        isInteractive && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+        isInteractive && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
         onClick && !disabled && "hover:opacity-90 active:scale-[.97]",
         disabled && "opacity-50 pointer-events-none",
         className,

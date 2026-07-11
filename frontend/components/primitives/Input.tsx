@@ -80,7 +80,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       className={cn(
         "inline-flex items-center justify-center rounded-md text-slate-500 hover:text-slate-700",
         "dark:text-slate-400 dark:hover:text-slate-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
       )}
     >
       {showPwd ? <EyeOff size={size === "lg" ? 16 : 14} /> : <Eye size={size === "lg" ? 16 : 14} />}
@@ -112,8 +112,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           sizeAffixGap[size],
           hasError
             ? "border-red-500 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/30"
-            : "border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/30 " +
-                "dark:border-white/15 dark:focus-within:border-indigo-400",
+            : "border-slate-300 focus-within:border-[var(--app-accent)] focus-within:ring-2 focus-within:ring-[var(--app-accent)] " +
+                "dark:border-white/15 dark:focus-within:border-[var(--app-accent)]",
           disabled && "opacity-50 pointer-events-none bg-slate-50 dark:bg-white/[0.02]",
           readOnly && "bg-slate-50 dark:bg-white/[0.02]",
         )}

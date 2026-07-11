@@ -134,8 +134,8 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
 
   const showSuggestions = !selected && query.length >= 2 && suggestions && suggestions.length > 0;
 
-  const inputCls = "w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400";
-  const inputStyle = { borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
+  const inputCls = "w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]";
+  const inputStyle = { borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
@@ -159,7 +159,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
                   type="button"
                   onClick={() => setType(t)}
                   className={`py-1.5 rounded-xl text-[12px] font-medium border transition-colors ${
-                    type === t ? "bg-indigo-500 border-indigo-500 text-white" : "border-slate-200 dark:border-white/[0.12]"
+                    type === t ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white" : "border-slate-200 dark:border-white/[0.12]"
                   }`}
                   style={type !== t ? { color: "var(--t-muted)" } : undefined}
                 >
@@ -183,7 +183,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
                 required={!selected}
               />
               {isFetching && (
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 border-2 border-[var(--app-accent)] border-t-transparent rounded-full animate-spin" />
               )}
               {!isFetching && <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--t-faint)" }} />}
             </div>
@@ -237,7 +237,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
                   type="button"
                   onClick={() => setStatus(s)}
                   className={`flex-1 py-1.5 rounded-xl text-[12px] font-medium border transition-colors ${
-                    status === s ? "bg-indigo-500 border-indigo-500 text-white" : "border-slate-200 dark:border-white/[0.12]"
+                    status === s ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white" : "border-slate-200 dark:border-white/[0.12]"
                   }`}
                   style={status !== s ? { color: "var(--t-muted)" } : undefined}
                 >
@@ -252,10 +252,10 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
               <label className="block text-[12px] font-medium mb-1" style={{ color: "var(--t-muted)" }}>
                 Дата выхода
                 {kpLoading && selected?.kp_id && (
-                  <span className="ml-1.5 text-indigo-400">загружаем с КП…</span>
+                  <span className="ml-1.5 text-[var(--app-accent)]">загружаем с КП…</span>
                 )}
                 {!kpLoading && releaseDate && releaseDateSource === "ru" && (
-                  <span className="ml-1.5 text-indigo-400">РФ · с Кинопоиска</span>
+                  <span className="ml-1.5 text-[var(--app-accent)]">РФ · с Кинопоиска</span>
                 )}
                 {!kpLoading && releaseDate && releaseDateSource === "world" && (
                   <span className="ml-1.5 text-amber-400">мировой прокат · даты в РФ пока нет</span>
@@ -288,7 +288,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Впечатления, цитата…"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400 resize-none"
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)] resize-none"
               style={inputStyle}
             />
           </div>
@@ -297,14 +297,14 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
             <button
               type="button" onClick={onClose}
               className="flex-1 py-2 rounded-xl border text-[14px] font-medium"
-              style={{ borderColor: "rgba(99,102,241,0.2)", color: "var(--t-muted)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 20%, transparent)", color: "var(--t-muted)" }}
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={isPending || (!selected && !query.trim())}
-              className="flex-1 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-[14px] font-medium disabled:opacity-50"
+              className="flex-1 py-2 rounded-xl bg-[var(--app-accent)] hover:bg-[var(--app-accent)] text-white text-[14px] font-medium disabled:opacity-50"
             >
               {isPending ? "Сохранение…" : isEdit ? "Сохранить" : "Добавить"}
             </button>

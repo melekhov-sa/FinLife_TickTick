@@ -52,8 +52,8 @@ export function MarkDoneModal({ itemId, itemTitle, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Что сделали, где, у кого…"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400 resize-none"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)] resize-none"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
             />
           </div>
 
@@ -62,7 +62,7 @@ export function MarkDoneModal({ itemId, itemTitle, onClose }: Props) {
               type="button"
               onClick={onClose}
               className="flex-1 py-2 rounded-xl border text-[14px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-              style={{ borderColor: "rgba(99,102,241,0.2)", color: "var(--t-muted)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 20%, transparent)", color: "var(--t-muted)" }}
             >
               Отмена
             </button>

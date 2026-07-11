@@ -200,8 +200,8 @@ export function DateTimeInput({
             "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
             "transition-colors",
           ),
-          day_today: "font-semibold text-indigo-600 dark:text-indigo-400",
-          day_selected: "!bg-indigo-600 !text-[#fff] hover:!bg-indigo-500",
+          day_today: "font-semibold text-[var(--app-accent)]",
+          day_selected: "!bg-[var(--app-accent)] !text-[#fff] hover:!bg-[var(--app-accent)]",
           day_outside: "text-slate-300 dark:text-slate-600",
           day_disabled: "opacity-40 pointer-events-none",
         }}
@@ -222,7 +222,7 @@ export function DateTimeInput({
                 className={cn(
                   "h-7 px-2.5 rounded-md text-[12px] tabular-nums transition-colors",
                   active
-                    ? "bg-indigo-600 text-[#fff] dark:bg-indigo-500"
+                    ? "bg-[var(--app-accent)] text-[#fff]"
                     : "bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]",
                 )}
               >
@@ -248,7 +248,7 @@ export function DateTimeInput({
               "flex-1 h-8 px-2.5 rounded-md border text-[13px] tabular-nums outline-none",
               "bg-white border-slate-300 text-slate-900",
               "dark:bg-white/[0.03] dark:border-white/15 dark:text-slate-100",
-              "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
+              "focus:border-[var(--app-accent)] focus:ring-2 focus:ring-[var(--app-accent)] dark:focus:border-[var(--app-accent)]",
               manualTime && !isValidTime(manualTime) && "border-red-500 focus:border-red-500 focus:ring-red-500/30",
             )}
           />
@@ -258,7 +258,7 @@ export function DateTimeInput({
             disabled={!isValidTime(manualTime)}
             className={cn(
               "h-8 px-3 rounded-md text-[13px] font-medium transition-colors",
-              "bg-indigo-600 text-[#fff] hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
+              "bg-[var(--app-accent)] text-[#fff] hover:brightness-110",
               "disabled:opacity-50 disabled:pointer-events-none",
             )}
           >
@@ -279,7 +279,7 @@ export function DateTimeInput({
         className={cn(
           "flex items-center w-full gap-2 rounded-lg border bg-white text-left transition-colors",
           "border-slate-300 dark:border-white/15 dark:bg-white/[0.03]",
-          "focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
+          "focus:outline-none focus:border-[var(--app-accent)] focus:ring-2 focus:ring-[var(--app-accent)] dark:focus:border-[var(--app-accent)]",
           "disabled:opacity-50 disabled:pointer-events-none",
           sizeClasses[size],
         )}

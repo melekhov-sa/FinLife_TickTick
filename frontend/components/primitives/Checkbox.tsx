@@ -95,9 +95,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
             "inline-flex items-center justify-center rounded border transition-colors",
             boxSizeClasses[size],
             isChecked
-              ? "bg-indigo-600 border-indigo-600 text-[#fff] dark:bg-indigo-500 dark:border-indigo-500"
+              ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
               : "bg-white border-slate-300 dark:bg-white/[0.03] dark:border-white/20",
-            "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/60 peer-focus-visible:ring-offset-1",
+            "peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-accent)] peer-focus-visible:ring-offset-1",
           )}
         >
           {indeterminate ? (

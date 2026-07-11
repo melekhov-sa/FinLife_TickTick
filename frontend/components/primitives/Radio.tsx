@@ -130,9 +130,9 @@ export function RadioGroup<T extends string | number>({
                   "inline-flex items-center justify-center rounded-full border transition-colors",
                   dotSize[size],
                   isChecked
-                    ? "bg-indigo-600 border-indigo-600 dark:bg-indigo-500 dark:border-indigo-500"
+                    ? "bg-[var(--app-accent)] border-[var(--app-accent)]"
                     : "bg-white border-slate-300 dark:bg-white/[0.03] dark:border-white/20",
-                  "peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500/60 peer-focus-visible:ring-offset-1",
+                  "peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--app-accent)] peer-focus-visible:ring-offset-1",
                 )}
               >
                 {isChecked && (

@@ -176,7 +176,7 @@ export function Select({
         className={cn(
           "flex items-center w-full gap-2 rounded-lg border bg-white text-left transition-colors",
           "border-slate-300 dark:border-white/15 dark:bg-white/[0.03]",
-          "focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:focus:border-indigo-400",
+          "focus:outline-none focus:border-[var(--app-accent)] focus:ring-2 focus:ring-[var(--app-accent)] dark:focus:border-[var(--app-accent)]",
           "disabled:opacity-50 disabled:pointer-events-none",
           sizeClasses[size],
         )}
@@ -269,7 +269,7 @@ export function Select({
                         opt.disabled && "opacity-50 pointer-events-none",
                         isActive && !isSelected && "bg-slate-100 dark:bg-white/[0.06]",
                         isSelected
-                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                          ? "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]"
                           : "text-slate-700 dark:text-slate-200",
                       )}
                     >
