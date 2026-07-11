@@ -1005,8 +1005,63 @@ html.dark[data-color-theme="vivid"] {
 .animate-rise { animation: rise-in 320ms cubic-bezier(0.22,1,0.36,1) backwards; }
 .animate-pop  { animation: pop-in 300ms cubic-bezier(0.34,1.56,0.64,1) backwards; }
 
+/* Sheet / overlay entrances */
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-sheet-up     { animation: sheet-up 280ms cubic-bezier(0.22,1,0.36,1) backwards; }
+.animate-overlay-fade { animation: overlay-fade 180ms ease-out backwards; }
+
+/* Staggered list entrance: повесить на контейнер списка */
+.stagger-rise > * { animation: rise-in 300ms cubic-bezier(0.22,1,0.36,1) backwards; }
+.stagger-rise > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-rise > *:nth-child(2)  { animation-delay: 30ms; }
+.stagger-rise > *:nth-child(3)  { animation-delay: 60ms; }
+.stagger-rise > *:nth-child(4)  { animation-delay: 90ms; }
+.stagger-rise > *:nth-child(5)  { animation-delay: 120ms; }
+.stagger-rise > *:nth-child(6)  { animation-delay: 150ms; }
+.stagger-rise > *:nth-child(7)  { animation-delay: 180ms; }
+.stagger-rise > *:nth-child(8)  { animation-delay: 210ms; }
+.stagger-rise > *:nth-child(9)  { animation-delay: 240ms; }
+.stagger-rise > *:nth-child(10) { animation-delay: 270ms; }
+.stagger-rise > *:nth-child(11) { animation-delay: 300ms; }
+.stagger-rise > *:nth-child(12) { animation-delay: 330ms; }
+
+/* FAB: мягкое «дыхание» свечения в цвет акцента темы */
+@keyframes fab-breathe {
+  0%, 100% { box-shadow: var(--shadow-fab); }
+  50% {
+    box-shadow:
+      0 6px 26px color-mix(in srgb, var(--app-accent) 60%, transparent),
+      0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+.fab-breathe { animation: fab-breathe 3.2s ease-in-out infinite; }
+
+/* Зерно-текстура для темы «Живой» — убирает «пластиковую» гладкость */
+html[data-color-theme="vivid"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise, .animate-pop { animation: none; opacity: 1; transform: none; }
+  .animate-rise, .animate-pop, .animate-sheet-up, .animate-overlay-fade,
+  .stagger-rise > *, .fab-breathe {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Hide "Esc" hint on touch devices (no physical keyboard) */

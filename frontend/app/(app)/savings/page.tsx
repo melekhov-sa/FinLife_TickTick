@@ -131,7 +131,7 @@ export default function SavingsPage() {
             </Block>
 
             {/* Вклады */}
-            <div className="space-y-3">
+            <div className="space-y-3 stagger-rise">
               {data.wallets.map((w) => (
                 <WalletCard key={w.wallet_id} w={w} />
               ))}

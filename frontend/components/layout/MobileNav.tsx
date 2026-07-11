@@ -87,7 +87,7 @@ export function MobileNav({
           type="button"
           onClick={handleCreate}
           aria-label="Создать"
-          className="flex flex-col items-center justify-center rounded-full select-none transition-transform active:scale-95"
+          className="flex flex-col items-center justify-center rounded-full select-none transition-transform active:scale-95 fab-breathe motion-reduce:animate-none"
           style={{
             width: 44,
             height: 44,

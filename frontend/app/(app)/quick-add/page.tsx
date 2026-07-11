@@ -306,7 +306,7 @@ function QuickAddInner() {
         {/* Предложенные операции */}
         {ops.length > 0 && (
           <>
-            <div className="space-y-3">
+            <div className="space-y-3 stagger-rise">
               {ops.map((op, idx) => (
                 <ProposalCard
                   key={idx}

@@ -88,7 +88,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   const modal = (
     <div
       ref={overlayRef}
-      className="modal-overlay fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="modal-overlay fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm animate-overlay-fade"
       style={{ paddingTop: overlayPaddingTop, paddingBottom: kbInset }}
       onClick={handleOverlayClick}
     >
@@ -96,7 +96,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {...wrapperProps}
         ref={sheetRef as React.Ref<HTMLFormElement & HTMLDivElement>}
         className={clsx(
-          "flex flex-col border shadow-2xl overflow-hidden",
+          "flex flex-col border shadow-2xl overflow-hidden animate-sheet-up",
           "bg-white dark:bg-[#1a1d23] border-slate-200 dark:border-white/[0.09]",
           // Mobile: bottom sheet, full width
           "w-full rounded-t-2xl",

@@ -31,8 +31,9 @@ export function Card({ children, hover, padding = "md", className, onClick }: Ca
         "block w-full text-left rounded-xl border bg-white border-slate-200 shadow-sm",
         "dark:bg-white/[0.03] dark:border-white/[0.07]",
         cardPad[padding],
-        (hover || interactive) && "transition-shadow hover:shadow-md",
-        interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+        (hover || interactive) &&
+          "transition-[box-shadow,transform] duration-200 hover:shadow-md md:hover:-translate-y-[1px]",
+        interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
         className,
       )}
     >
