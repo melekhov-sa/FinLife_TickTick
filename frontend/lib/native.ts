@@ -69,7 +69,12 @@ export interface NativeReminder {
   title: string;
   body?: string;
   at: Date;
+  /** Если задано — уведомление получает кнопку «✅ Выполнить». */
+  completeKind?: "task" | "task_occ" | "habit";
+  completeId?: number;
 }
+
+const ACTION_TYPE_COMPLETABLE = "FINLIFE_COMPLETABLE";
 
 // ── Биометрия (Face ID / Touch ID) ──────────────────────────────────────────
 
@@ -183,13 +188,58 @@ export async function syncLocalReminders(items: NativeReminder[]): Promise<void>
       .slice(0, 60);
     if (!future.length) return;
 
+    // Категория с кнопкой «Выполнить» (идемпотентно)
+    try {
+      await ln.registerActionTypes({
+        types: [{
+          id: ACTION_TYPE_COMPLETABLE,
+          actions: [{ id: "complete", title: "✅ Выполнить" }],
+        }],
+      });
+    } catch { /* необязательно */ }
+
     await ln.schedule({
       notifications: future.map((i) => ({
         id: hash32(i.key),
         title: i.title,
         body: i.body ?? "",
         schedule: { at: i.at },
+        ...(i.completeKind && i.completeId
+          ? {
+              actionTypeId: ACTION_TYPE_COMPLETABLE,
+              extra: { kind: i.completeKind, id: i.completeId },
+            }
+          : {}),
       })),
     });
   } catch { /* no-op */ }
+}
+
+export interface NotificationActionInfo {
+  actionId: string; // "complete" | "tap"
+  kind?: "task" | "task_occ" | "habit";
+  id?: number;
+}
+
+/** Слушатель нажатий по уведомлению (тап по телу — actionId "tap"). */
+export async function onNotificationAction(
+  cb: (info: NotificationActionInfo) => void
+): Promise<() => void> {
+  const ln = plugin("LocalNotifications");
+  if (!ln) return () => undefined;
+  try {
+    const handle = await ln.addListener(
+      "localNotificationActionPerformed",
+      (ev: { actionId?: string; notification?: { extra?: { kind?: NotificationActionInfo["kind"]; id?: number } } }) => {
+        cb({
+          actionId: ev?.actionId ?? "tap",
+          kind: ev?.notification?.extra?.kind,
+          id: ev?.notification?.extra?.id,
+        });
+      }
+    );
+    return () => { try { handle?.remove?.(); } catch { /* no-op */ } };
+  } catch {
+    return () => undefined;
+  }
 }

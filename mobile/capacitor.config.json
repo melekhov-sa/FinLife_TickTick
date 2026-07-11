@@ -11,6 +11,9 @@
     "contentInset": "never"
   },
   "plugins": {
+    "Keyboard": {
+      "resize": "native"
+    },
     "SplashScreen": {
       "launchShowDuration": 1200,
       "launchAutoHide": true,

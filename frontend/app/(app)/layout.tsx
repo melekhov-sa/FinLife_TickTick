@@ -21,6 +21,7 @@ import { useViewportHeight } from "@/lib/useViewportHeight";
 import {
   isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder,
   setAppShortcuts, onAppShortcut, bioLockEnabled, biometricVerify, setAppBadge,
+  onNotificationAction, hapticSuccess,
 } from "@/lib/native";
 import { useRouter } from "next/navigation";
 import type { DashboardItem, TodayBlock as TodayBlockData } from "@/types/api";
@@ -75,6 +76,26 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     return () => mo.disconnect();
   }, []);
 
+  // ── Нативная оболочка: «✅ Выполнить» из уведомления ──────────────────────
+  useEffect(() => {
+    if (!isNative()) return;
+    let dispose: (() => void) | undefined;
+    void onNotificationAction(async ({ actionId, kind, id }) => {
+      if (actionId === "complete" && kind && id) {
+        try {
+          if (kind === "task") await api.post(`/api/v2/tasks/${id}/complete`);
+          else if (kind === "task_occ") await api.post(`/api/v2/task-occurrences/${id}/complete`);
+          else if (kind === "habit") await api.post(`/api/v2/habits/occurrences/${id}/complete`);
+          void hapticSuccess();
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+          qc.invalidateQueries({ queryKey: ["plan"] });
+        } catch { /* элемент мог быть уже выполнен/удалён */ }
+      }
+    }).then((d) => { dispose = d; });
+    return () => dispose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Нативная оболочка: Quick Actions на иконке ────────────────────────────
   useEffect(() => {
     if (!isNative()) return;
@@ -117,6 +138,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       if (it.time) times.add(String(it.time).slice(0, 5));
       const metaRem = (it.meta?.reminders as string[] | undefined) ?? [];
       for (const r of metaRem) times.add(String(r).slice(0, 5));
+      const completable =
+        it.kind === "task" || it.kind === "task_occ" || it.kind === "habit";
       for (const t of times) {
         if (!/^\d{2}:\d{2}$/.test(t)) continue;
         reminders.push({
@@ -124,6 +147,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           title: it.title,
           body: t === String(it.time ?? "").slice(0, 5) ? "Запланировано на это время" : "Напоминание",
           at: new Date(`${iso}T${t}:00`),
+          ...(completable
+            ? { completeKind: it.kind as "task" | "task_occ" | "habit", completeId: it.id }
+            : {}),
         });
       }
     }
