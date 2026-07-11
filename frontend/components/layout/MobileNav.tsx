@@ -48,16 +48,15 @@ export function MobileNav({
         aria-label="Основная навигация"
         className="md:hidden shrink-0 flex items-stretch justify-between px-2 transition-transform duration-200 rounded-2xl border"
         style={{
-          // Плавающий островок: пространство под ним (включая мёртвую полосу
-          // iOS-вьюпорта, см. --vp-bottom-gap) читается как фон страницы,
-          // а не как обрыв интерфейса.
+          // Плавающий островок над home-индикатором (минимум 14px подъёма,
+          // если safe-area не сообщается).
           background: "var(--app-sidebar-bg)",
           borderColor: "var(--app-border)",
           boxShadow:
             "0 10px 28px -10px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.08)",
           minHeight: "56px",
           margin:
-            "6px 10px calc(8px + max(0px, env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px)))",
+            "6px 10px calc(8px + max(env(safe-area-inset-bottom, 0px), 14px))",
           paddingTop: "6px",
           paddingBottom: "6px",
           transform: keyboardOpen ? "translateY(200%)" : "translateY(0)",

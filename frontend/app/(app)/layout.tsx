@@ -45,19 +45,8 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // iOS 26 PWA bug: layout viewport is shorter than the screen (screen minus
-  // status bar) while safe-area insets report fullscreen values. Expose the
-  // real gap so MobileNav can cancel the phantom home-indicator padding.
-  useEffect(() => {
-    const upd = () =>
-      document.documentElement.style.setProperty(
-        "--vp-bottom-gap",
-        `${Math.max(0, screen.height - window.innerHeight)}px`
-      );
-    upd();
-    window.addEventListener("resize", upd);
-    return () => window.removeEventListener("resize", upd);
-  }, []);
+  // Примечание: костыль --vp-bottom-gap (мёртвая зона легаси-режима iOS PWA)
+  // удалён — после перехода на manifest-установку вьюпорт занимает весь экран.
 
   // Create modals — triggered from MobileNav FAB
   const [showTaskModal, setShowTaskModal] = useState(false);
