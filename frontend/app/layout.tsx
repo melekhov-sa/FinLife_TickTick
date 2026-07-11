@@ -41,9 +41,10 @@ export const metadata: Metadata = {
     icon: "/icon-192.png",
     apple: "/apple-touch-icon.png",
   },
+  // Эксперимент: убран легаси apple-mobile-web-app-capable — iOS 26 должна
+  // ставить PWA по манифесту (display: standalone). Легаси-режим — главный
+  // подозреваемый в укороченном вьюпорте (812 vs 874).
   appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
     title: "FinLife",
   },
 };

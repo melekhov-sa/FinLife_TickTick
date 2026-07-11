@@ -147,7 +147,12 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {footer && (
           <div
             className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-slate-200 dark:border-white/[0.06]"
-            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+            style={{
+              // safe-area минус мёртвая зона iOS-вьюпорта (--vp-bottom-gap):
+              // если home-индикатор за пределами вьюпорта — не резервируем 34pt
+              paddingBottom:
+                "max(12px, calc(env(safe-area-inset-bottom, 0px) - var(--vp-bottom-gap, 0px)))",
+            }}
           >
             {footer}
           </div>
