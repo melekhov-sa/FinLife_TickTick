@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 export interface BottomSheetProps {
   open: boolean;
@@ -24,7 +25,9 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [viewportH, setViewportH] = useState<number | null>(null);
+  // Шит, прибитый к низу layout viewport, уезжает под iOS-клавиатуру —
+  // поднимаем на kbInset (см. useKeyboardInset).
+  const { inset: kbInset, vvHeight: viewportH } = useKeyboardInset(open);
 
   // ── Close on Escape ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -45,20 +48,6 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
     return () => {
       html.style.overflow = prevOverflow;
     };
-  }, [open]);
-
-  // ── Visual Viewport tracking (iOS keyboard) ─────────────────────────────
-  useEffect(() => {
-    if (!open) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    function onResize() {
-      if (!vv) return;
-      setViewportH(vv.height);
-    }
-    onResize();
-    vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
   }, [open]);
 
   // ── Auto-scroll focused input into view (iOS keyboard) ──────────────────
@@ -89,17 +78,18 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   const Wrapper = onSubmit ? "form" : "div";
   const wrapperProps = onSubmit ? { onSubmit } : {};
 
-  // On mobile: paddingTop leaves 80px of dark overlay visible at the top so the
-  // user sees modal context. When keyboard opens (viewportH shrinks), remove it
-  // to give the sheet maximum space.
+  // On mobile: paddingTop leaves 56px of dark overlay visible at the top so the
+  // user sees modal context. When keyboard opens (kbInset > 0), remove it to
+  // give the sheet maximum space; paddingBottom lifts the sheet above the
+  // keyboard (layout viewport doesn't shrink on iOS — visualViewport does).
   const isMobile = window.innerWidth < 768;
-  const overlayPaddingTop = viewportH ? 0 : isMobile ? 80 : 0;
+  const overlayPaddingTop = kbInset > 0 ? 0 : isMobile ? 56 : 0;
 
   const modal = (
     <div
       ref={overlayRef}
       className="modal-overlay fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm"
-      style={{ paddingTop: overlayPaddingTop }}
+      style={{ paddingTop: overlayPaddingTop, paddingBottom: kbInset }}
       onClick={handleOverlayClick}
     >
       <Wrapper
@@ -113,7 +103,12 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           // Desktop: centered modal
           "md:max-w-xl md:mx-4 md:rounded-2xl md:max-h-[85vh]",
         )}
-        style={{ maxHeight: viewportH ? `${viewportH - 20}px` : "calc(100dvh - 24px)" }}
+        style={{
+          maxHeight:
+            kbInset > 0 && viewportH
+              ? `${viewportH - 12}px`
+              : "calc(100dvh - 24px)",
+        }}
       >
         {/* Handle bar — mobile only, slightly darker for visibility */}
         <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
@@ -147,7 +142,10 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         {footer && (
           <div
             className="shrink-0 px-5 md:px-6 py-3 md:py-4 border-t border-slate-200 dark:border-white/[0.06]"
-            style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom, 0px))" }}
+            style={{
+              // при открытой клавиатуре safe-area не нужен — индикатор скрыт
+              paddingBottom: kbInset > 0 ? "12px" : "max(16px, env(safe-area-inset-bottom, 0px))",
+            }}
           >
             {footer}
           </div>

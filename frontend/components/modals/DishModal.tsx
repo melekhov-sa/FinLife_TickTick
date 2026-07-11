@@ -12,6 +12,7 @@ import {
   Link as LinkIcon, ImageIcon, Heading2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import {
   type Dish, type DishIngredient,
   useCreateDish, useUpdateDish, useReplaceIngredients, useUploadDishImage,
@@ -43,6 +44,7 @@ function parseMealTypes(s: string | null | undefined): string[] {
 }
 
 export function DishModal({ dish, onClose, onSaved }: Props) {
+  const { inset: kbInset, vvHeight } = useKeyboardInset();
   const isEdit = !!dish;
 
   const [name, setName] = useState(dish?.name ?? "");
@@ -164,14 +166,18 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ paddingBottom: kbInset }}
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/50" />
       <div
         className="relative w-full sm:max-w-2xl sm:mx-4 sm:rounded-2xl flex flex-col overflow-hidden"
         style={{
           background: "var(--app-card-bg)",
           border: "1px solid var(--app-border)",
-          maxHeight: "92dvh",
+          maxHeight: kbInset > 0 && vvHeight ? `${vvHeight - 12}px` : "92dvh",
         }}
         onClick={(e) => e.stopPropagation()}
       >
