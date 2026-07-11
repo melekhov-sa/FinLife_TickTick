@@ -8,6 +8,7 @@ import {
   ArrowRight, X, Check, Plus, Trash2, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/primitives/Button";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 interface Props {
   onComplete: () => void;
@@ -74,6 +75,7 @@ function SuccessHint({ text }: { text: string }) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export function OnboardingModal({ onComplete }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const [step, setStep] = useState(-1); // -1 = welcome screen
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -192,7 +194,7 @@ export function OnboardingModal({ onComplete }: Props) {
   const StepIcon = stepInfo?.icon ?? Sparkles;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" style={{ paddingBottom: kbInset }}>
       <div
         className="w-full max-w-md rounded-2xl border max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"
         style={{

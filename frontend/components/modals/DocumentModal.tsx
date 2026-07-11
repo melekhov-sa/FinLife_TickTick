@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useCreateDocument, useUpdateDocument } from "@/hooks/useDocuments";
 import type { Document } from "@/types/api";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 const DOC_TYPE_PRESETS = [
   "Загранпаспорт", "Внутренний паспорт", "Водительские права",
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function DocumentModal({ doc, onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const isEdit = !!doc;
 
   const [title, setTitle] = useState(doc?.title ?? "");
@@ -53,7 +55,7 @@ export function DocumentModal({ doc, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative w-full max-w-md rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"

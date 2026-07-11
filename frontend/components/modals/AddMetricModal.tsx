@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useCreateBodyMetric } from "@/hooks/useBodyMetrics";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 type MetricType = "weight" | "pressure" | "pulse";
 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function AddMetricModal({ defaultType, onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const [type, setType] = useState<MetricType>(defaultType);
   const [dateVal, setDateVal] = useState(() => new Date().toISOString().slice(0, 10));
   const [value, setValue] = useState("");
@@ -47,7 +49,7 @@ export function AddMetricModal({ defaultType, onClose }: Props) {
   const inputStyle = { borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain" style={{ background: "var(--app-card-bg)" }}>
         <div className="flex items-center justify-between mb-4">

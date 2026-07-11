@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Search, Star } from "lucide-react";
 import { useCreateMedia, useUpdateMedia, useLookupMedia, type MediaEntry, type LookupResult } from "@/hooks/useMedia";
 import { api } from "@/lib/api";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 type MediaType = "book" | "movie" | "series" | "game";
 type Status = "want" | "in_progress" | "done";
@@ -52,6 +53,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const isEdit = !!entry;
   const [type, setType] = useState<MediaType>((entry?.media_type as MediaType) ?? defaultType);
   const [query, setQuery] = useState(entry?.title ?? "");
@@ -136,7 +138,7 @@ export function MediaModal({ entry, defaultType = "movie", onClose }: Props) {
   const inputStyle = { borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain" style={{ background: "var(--app-card-bg)" }}>
         <div className="flex items-center justify-between mb-4">

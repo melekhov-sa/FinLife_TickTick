@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useCreateMaintenance, useUpdateMaintenance, type MaintenanceItem } from "@/hooks/useMaintenance";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 const INTERVAL_PRESETS = [
   { label: "1 нед.",   days: 7 },
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function MaintenanceModal({ item, onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const isEdit = !!item;
 
   const [title, setTitle] = useState(item?.title ?? "");
@@ -56,7 +58,7 @@ export function MaintenanceModal({ item, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative w-full max-w-md rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"

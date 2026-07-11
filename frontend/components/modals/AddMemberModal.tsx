@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { DateInput } from "@/components/primitives/DateInput";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 interface ContactItem {
   id: number;
@@ -22,6 +23,7 @@ const labelCls =
   "block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/72";
 
 export function AddMemberModal({ subId, onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const qc = useQueryClient();
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +67,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
+      style={{ paddingBottom: kbInset }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-6 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">

@@ -12,6 +12,7 @@ import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, 
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,7 @@ function PlanEditModal({
   onSave: (amount: string, note: string, copyForward: boolean) => Promise<void>;
   onClose: () => void;
 }) {
+  const { inset: kbInset } = useKeyboardInset();
   const [amount, setAmount] = useState(target.currentAmount ? String(Math.round(target.currentAmount)) : "");
   const [note, setNote] = useState(target.currentNote);
   const [copyForward, setCopyForward] = useState(false);
@@ -171,6 +173,7 @@ function PlanEditModal({
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      style={{ paddingBottom: kbInset }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
@@ -268,6 +271,7 @@ interface TransactionRow {
 }
 
 function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClose: () => void }) {
+  const { inset: kbInset } = useKeyboardInset();
   const overlayRef = useRef<HTMLDivElement>(null);
   const { data, isPending } = useQuery<{ items: TransactionRow[]; total: number }>({
     queryKey: ["budget-fact-detail", target.categoryId, target.dateFrom, target.dateTo, target.kind, target.excludeCategoryIds?.join(",")],
@@ -287,6 +291,7 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      style={{ paddingBottom: kbInset }}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div className="w-full max-w-md mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "80vh" }}>

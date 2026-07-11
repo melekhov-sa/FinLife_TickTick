@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 import { useMarkMaintenanceDone } from "@/hooks/useMaintenance";
+import { useKeyboardInset } from "@/lib/useKeyboardInset";
 
 interface Props {
   itemId: number;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function MarkDoneModal({ itemId, itemTitle, onClose }: Props) {
+  const { inset: kbInset } = useKeyboardInset();
   const [note, setNote] = useState("");
   const { mutate, isPending } = useMarkMaintenanceDone();
 
@@ -20,7 +22,7 @@ export function MarkDoneModal({ itemId, itemTitle, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div
         className="relative w-full max-w-sm rounded-2xl shadow-2xl p-5 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain"
