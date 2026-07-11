@@ -8,9 +8,10 @@ import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
   ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap, Sparkles,
-} from "lucide-react";
+  ScanFace } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
 import { Switch } from "@/components/primitives/Switch";
+import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
 import { Card } from "@/components/primitives/Card";
 
@@ -176,6 +177,51 @@ function AiDigestToggle() {
   );
 }
 
+function FaceIdToggle() {
+  const [available, setAvailable] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!isNative()) return;
+    setEnabled(bioLockEnabled());
+    void biometryAvailable().then(setAvailable);
+  }, []);
+
+  if (!isNative()) return null;
+
+  return (
+    <Card padding="md" className="flex items-start gap-4">
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500/10">
+        <ScanFace size={18} className="text-emerald-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Face ID при входе
+        </p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          {available
+            ? "Блокировать приложение при запуске и после 3 минут в фоне — разблокировка по Face ID."
+            : "Биометрия недоступна на этом устройстве."}
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <Switch
+            checked={enabled}
+            onChange={(v) => {
+              if (!available) return;
+              setBioLockEnabled(v);
+              setEnabled(v);
+            }}
+            disabled={!available}
+          />
+          <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
+            {enabled ? "Включено" : "Выключено"}
+          </span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const pwa = usePwaInstall();
   const { data: me } = useMe();
@@ -284,6 +330,9 @@ export default function SettingsPage() {
               </div>
             </Card>
           </Card>
+
+          {/* ── Face ID (только нативное приложение) ── */}
+          <FaceIdToggle />
 
           {/* ── AI Digest Toggle ── */}
           <Card padding="lg">

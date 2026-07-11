@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppTopbar } from "@/components/layout/AppTopbar";
@@ -18,11 +18,16 @@ import type { UserMe } from "@/types/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OfflineBanner } from "@/components/primitives/OfflineBanner";
 import { useViewportHeight } from "@/lib/useViewportHeight";
-import { isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder } from "@/lib/native";
+import {
+  isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder,
+  setAppShortcuts, onAppShortcut, bioLockEnabled, biometricVerify,
+} from "@/lib/native";
+import { useRouter } from "next/navigation";
 import type { DashboardItem, TodayBlock as TodayBlockData } from "@/types/api";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
+  const router = useRouter();
 
   const { data: me } = useQuery<UserMe>({
     queryKey: ["me"],
@@ -67,6 +72,24 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       attributeFilter: ["data-color-theme", "class"],
     });
     return () => mo.disconnect();
+  }, []);
+
+  // ── Нативная оболочка: Quick Actions на иконке ────────────────────────────
+  useEffect(() => {
+    if (!isNative()) return;
+    void setAppShortcuts([
+      { id: "new-task", title: "Новая задача" },
+      { id: "new-operation", title: "Новая операция" },
+      { id: "quick-add", title: "⚡ ИИ-ввод" },
+    ]);
+    let dispose: (() => void) | undefined;
+    void onAppShortcut((id) => {
+      if (id === "new-task") setShowTaskModal(true);
+      else if (id === "new-operation") setShowOpModal(true);
+      else if (id === "quick-add") router.push("/quick-add");
+    }).then((d) => { dispose = d; });
+    return () => dispose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Нативная оболочка: локальные напоминания из данных дашборда ──────────
@@ -170,7 +193,79 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
         <LevelUpOverlay level={celebrateLevel} onDismiss={dismiss} />
       )}
       <CompletionFeedbackLayer />
+      <NativeBioLock />
     </AuthGuard>
+  );
+}
+
+/** Face ID-замок нативной оболочки. Вне Capacitor или при выключенном
+ *  тумблере (Настройки) не рендерится вовсе. Блокирует при холодном старте
+ *  и при возврате из фона после 3+ минут. */
+function NativeBioLock() {
+  const [locked, setLocked] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const hiddenAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isNative() || !bioLockEnabled()) return;
+    setLocked(true);
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+      } else if (
+        hiddenAtRef.current !== null &&
+        Date.now() - hiddenAtRef.current > 3 * 60_000 &&
+        bioLockEnabled()
+      ) {
+        setLocked(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  const unlock = useCallback(async () => {
+    if (checking) return;
+    setChecking(true);
+    const ok = await biometricVerify("Разблокировать FinLife");
+    setChecking(false);
+    if (ok) setLocked(false);
+  }, [checking]);
+
+  // Автозапрос Face ID при появлении замка
+  useEffect(() => {
+    if (locked) void unlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
+
+  if (!locked) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[100000] flex flex-col items-center justify-center gap-6"
+      style={{
+        background:
+          "radial-gradient(ellipse 70% 50% at 15% 0%, rgba(124,58,237,0.35) 0%, transparent 55%)," +
+          "radial-gradient(ellipse 60% 45% at 90% 100%, rgba(219,39,119,0.28) 0%, transparent 55%)," +
+          "#140E26",
+      }}
+    >
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
+        style={{ background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)" }}
+      >
+        <span className="text-white text-xl font-bold tracking-tight">FL</span>
+      </div>
+      <p className="text-white/80 text-[14px]">Приложение заблокировано</p>
+      <button
+        type="button"
+        onClick={unlock}
+        disabled={checking}
+        className="px-6 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
+        style={{ background: "linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)" }}
+      >
+        {checking ? "Проверка…" : "Разблокировать (Face ID)"}
+      </button>
+    </div>
   );
 }
 
