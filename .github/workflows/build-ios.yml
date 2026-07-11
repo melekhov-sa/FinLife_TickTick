@@ -38,6 +38,15 @@ jobs:
       - name: Generate app icons
         run: npx --yes @capacitor/assets generate --ios --assetPath assets
 
+      - name: Status bar — light content over the app (как black-translucent в PWA)
+        run: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :UIViewControllerBasedStatusBarAppearance false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UIStatusBarStyle string UIStatusBarStyleLightContent" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :UIStatusBarStyle UIStatusBarStyleLightContent" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print" "$PLIST" | head -30
+
       - name: Build (unsigned)
         run: |
           xcodebuild \
