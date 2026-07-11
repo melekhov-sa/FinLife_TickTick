@@ -51,7 +51,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (session === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg)" }}>
-        <div className="w-6 h-6 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] border-t-[var(--app-accent)] rounded-full animate-spin" />
       </div>
     );
   }

@@ -88,7 +88,7 @@ const WEEKDAYS = [
 // ── Style constants ────────────────────────────────────────────────────────
 
 const chipActiveCls =
-  "bg-indigo-600 border-indigo-500 text-[#fff]";
+  "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]";
 const chipInactiveCls =
   "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/72 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 const chipBaseCls =
@@ -640,7 +640,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
                         type="button"
                         onClick={addMultiDate}
                         disabled={!multiDateInput}
-                        className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
+                        className="px-3 py-1 text-xs font-medium rounded-xl bg-[var(--app-accent-light)] hover:bg-[var(--app-accent-weak)]0/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
                       >
                         Добавить
                       </button>
@@ -650,13 +650,13 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
                         {multiDates.map((d) => (
                           <span
                             key={d}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-[11px] text-indigo-700 dark:text-indigo-300"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--app-accent-light)] border border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] text-[11px] text-[var(--app-accent-ink)]"
                           >
                             {d}
                             <button
                               type="button"
                               onClick={() => removeMultiDate(d)}
-                              className="text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-white transition-colors leading-none"
+                              className="text-[var(--app-accent)] hover:text-[var(--app-accent)] dark:hover:text-white transition-colors leading-none"
                               aria-label="Удалить дату"
                             >
                               ×
@@ -702,7 +702,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
                             type="button"
                             onClick={addReminder}
                             disabled={!selectedReminderPreset}
-                            className="px-3 py-1 text-xs font-medium rounded-xl bg-indigo-600/80 hover:bg-indigo-500/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
+                            className="px-3 py-1 text-xs font-medium rounded-xl bg-[var(--app-accent-light)] hover:bg-[var(--app-accent-weak)]0/80 text-[#fff] disabled:opacity-40 transition-colors whitespace-nowrap"
                           >
                             Добавить
                           </button>

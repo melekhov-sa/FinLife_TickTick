@@ -25,7 +25,7 @@ interface Props {
 }
 
 const inputCls =
-  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
+  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-[var(--app-accent)] transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const labelCls =
   "block text-[11px] md:text-xs font-medium uppercase tracking-wider mb-1 text-slate-500 dark:text-white/50";
 
@@ -292,7 +292,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
       <button
         type="submit"
         disabled={saving}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
+        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors"
       >
         {saving ? "Создаём…" : "Создать"}
       </button>
@@ -344,7 +344,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
             <button
               type="button"
               onClick={() => { setShowCatCreate(true); setTimeout(() => newCatTitleRef.current?.focus(), 50); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors"
             >
               <Plus size={13} />
               Создать категорию
@@ -355,13 +355,13 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
 
         {/* Inline-форма создания */}
         {showCatCreate && (
-          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5">
+          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-xl border border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] bg-[var(--app-accent-light)]">
             <input
               value={newCatEmoji}
               onChange={(e) => setNewCatEmoji(e.target.value)}
               placeholder="🎯"
               maxLength={2}
-              className="w-10 h-9 text-center text-base rounded-lg border border-slate-300 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              className="w-10 h-9 text-center text-base rounded-lg border border-slate-300 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-slate-800 dark:text-white focus:outline-none focus:border-[var(--app-accent)]"
             />
             <input
               ref={newCatTitleRef}
@@ -378,7 +378,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
               type="button"
               onClick={handleCreateCategory}
               disabled={catCreating || !newCatTitle.trim()}
-              className="h-9 w-9 flex items-center justify-center rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+              className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--app-accent)] text-[#fff] hover:brightness-110 disabled:opacity-50 transition-colors shrink-0"
             >
               <Check size={14} />
             </button>
@@ -541,7 +541,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                         className={clsx(
                           "px-2.5 py-1 rounded-lg text-[12px] font-medium border transition-colors",
                           active
-                            ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                            ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                             : "bg-white/[0.05] border-white/[0.08] text-white/50 hover:bg-white/[0.08]",
                           fieldErrors.rec_weekdays && !active && "border-red-500/50",
                         )}
@@ -615,7 +615,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                               setStagedReminders([...stagedReminders, { mode: "offset", offset_minutes: p.minutes, label: p.label }]);
                               setShowReminderPicker(false);
                             }}
-                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 transition-colors"
+                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] hover:brightness-95 transition-colors"
                           >
                             {p.label}
                           </button>
@@ -631,7 +631,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                               setStagedReminders([...stagedReminders, { mode: "fixed_time", fixed_time: t, label: `в ${t}` }]);
                               setShowReminderPicker(false);
                             }}
-                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 transition-colors"
+                            className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] hover:brightness-95 transition-colors"
                           >
                             {t}
                           </button>
@@ -651,7 +651,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                     <button
                       type="button"
                       onClick={() => setShowReminderPicker(true)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.12] hover:border-indigo-400 text-[12px] font-medium transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.12] hover:border-[var(--app-accent)] text-[12px] font-medium transition-colors"
                       style={{ color: "var(--t-muted)" }}
                     >
                       + Добавить
@@ -673,7 +673,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Необязательно"
                 rows={2}
-                className="w-full px-3 py-2.5 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
+                className="w-full px-3 py-2.5 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
                 style={{ minHeight: 56, maxHeight: 160 }}
               />
             </div>
@@ -711,13 +711,13 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                 ))}
 
                 {showTemplateAdd ? (
-                  <div className="p-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.05] space-y-2">
+                  <div className="p-3 rounded-xl border border-[color-mix(in_srgb,var(--app-accent)_25%,transparent)] bg-[var(--app-accent-light)] space-y-2">
                     <input
                       autoFocus
                       value={tplTitle}
                       onChange={(e) => setTplTitle(e.target.value)}
                       placeholder="Название задачи"
-                      className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60"
+                      className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
                       onKeyDown={(e) => { if (e.key === "Escape") setShowTemplateAdd(false); }}
                     />
                     <div className="flex items-center gap-1.5">
@@ -728,7 +728,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                         max={365}
                         value={tplDays}
                         onChange={(e) => setTplDays(e.target.value)}
-                        className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-indigo-500/60"
+                        className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
                       />
                       <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>дней до события</span>
                     </div>
@@ -741,7 +741,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                           className={clsx(
                             "px-2 py-1 rounded-lg text-[11px] font-medium border transition-colors",
                             tplReminder === v
-                              ? "bg-indigo-600 border-indigo-500 text-white"
+                              ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
                               : "bg-white/[0.04] border-white/[0.08] text-white/55 hover:bg-white/[0.07]"
                           )}
                         >
@@ -760,7 +760,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                           setTplTitle(""); setTplDays("7"); setTplReminder(null); setShowTemplateAdd(false);
                         }}
                         disabled={!tplTitle.trim()}
-                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-[var(--app-accent)] text-white hover:brightness-110 disabled:opacity-40 transition-colors"
                       >
                         Добавить
                       </button>
@@ -777,7 +777,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                   <button
                     type="button"
                     onClick={() => setShowTemplateAdd(true)}
-                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-indigo-500/30 hover:bg-indigo-500/[0.04] transition-colors"
+                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
                     style={{ color: "var(--t-faint)" }}
                   >
                     <Plus size={12} />

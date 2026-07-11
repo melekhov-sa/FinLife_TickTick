@@ -45,8 +45,8 @@ export function AddMetricModal({ defaultType, onClose }: Props) {
     );
   }
 
-  const inputCls = "w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400";
-  const inputStyle = { borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
+  const inputCls = "w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]";
+  const inputStyle = { borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: kbInset }}>
@@ -68,7 +68,7 @@ export function AddMetricModal({ defaultType, onClose }: Props) {
                 onClick={() => setType(t)}
                 className={`py-2 rounded-xl text-[13px] font-medium border transition-colors ${
                   type === t
-                    ? "bg-indigo-500 border-indigo-500 text-white"
+                    ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
                     : "border-slate-200 dark:border-white/[0.12]"
                 }`}
                 style={type !== t ? { color: "var(--t-muted)" } : undefined}
@@ -132,14 +132,14 @@ export function AddMetricModal({ defaultType, onClose }: Props) {
             <button
               type="button" onClick={onClose}
               className="flex-1 py-2 rounded-xl border text-[14px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-              style={{ borderColor: "rgba(99,102,241,0.2)", color: "var(--t-muted)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 20%, transparent)", color: "var(--t-muted)" }}
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={isPending || !value.trim()}
-              className="flex-1 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-[14px] font-medium transition-colors disabled:opacity-50"
+              className="flex-1 py-2 rounded-xl bg-[var(--app-accent)] hover:bg-[var(--app-accent)] text-white text-[14px] font-medium transition-colors disabled:opacity-50"
             >
               {isPending ? "Сохранение…" : "Добавить"}
             </button>

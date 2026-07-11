@@ -95,7 +95,7 @@ const KIND_LABELS: Record<ResultKind, string> = {
 };
 
 const KIND_BADGE: Record<ResultKind, { label: string; className: string }> = {
-  task: { label: "Задача", className: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300" },
+  task: { label: "Задача", className: "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]" },
   event: { label: "Событие", className: "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300" },
   operation: { label: "Операция", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
   transaction: { label: "Транзакция", className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },

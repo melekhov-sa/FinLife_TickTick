@@ -151,7 +151,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
           }}
           className={clsx(
             "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug border-b transition-colors pb-1",
-            titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
+            titleFocused ? "border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]" : "border-transparent hover:border-white/[0.08]"
           )}
           style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
         />
@@ -160,7 +160,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
         <div className="grid grid-cols-3 gap-3">
           {[
             { icon: <Flame size={14} />, value: habit.current_streak, label: "Серия", color: habit.current_streak >= 7 ? "text-amber-400" : "" },
-            { icon: <Trophy size={14} />, value: habit.best_streak, label: "Рекорд", color: "text-indigo-400" },
+            { icon: <Trophy size={14} />, value: habit.best_streak, label: "Рекорд", color: "text-[var(--app-accent)]" },
             { value: `${habit.done_count_30d}/30`, label: "За 30 дней", color: "text-emerald-400" },
           ].map((stat, i) => (
             <div key={i} className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
@@ -213,7 +213,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
                 className={clsx(
                   "flex-1 py-2 rounded-xl text-[12px] font-semibold transition-colors border",
                   level === l.value
-                    ? "bg-indigo-600 border-indigo-600 text-[#fff]"
+                    ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                     : "bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.08]"
                 )}
                 style={{ color: level === l.value ? undefined : "var(--t-muted)" }}
@@ -274,7 +274,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
               onChange={(e) => { setNote(e.target.value); debounceSave("note", e.target.value); }}
               placeholder="Добавить заметку..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

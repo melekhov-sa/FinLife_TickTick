@@ -196,7 +196,7 @@ export function EntryDetailModal({ entry, onClose }: Props) {
               value={title}
               onChange={e => setTitle(e.target.value)}
               rows={1}
-              className="w-full px-3 py-2 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 resize-none overflow-hidden leading-snug"
+              className="w-full px-3 py-2 text-base rounded-xl border focus:outline-none focus:border-[var(--app-accent)] transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 resize-none overflow-hidden leading-snug"
             />
           ) : (
             <p className="text-[15px] font-medium pt-1.5" style={{ color: "var(--t-primary)" }}>

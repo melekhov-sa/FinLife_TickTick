@@ -24,8 +24,8 @@ function getNotifMeta(n: NotificationItem) {
   else if (rule_code.startsWith("EVENT"))               Icon = Calendar;
   else if (severity === "error" || severity === "warning") Icon = AlertTriangle;
 
-  let iconColor = "text-indigo-400";
-  let iconBg    = "bg-indigo-500/10";
+  let iconColor = "text-[var(--app-accent)]";
+  let iconBg    = "bg-[var(--app-accent-light)]";
   if (severity === "error")   { iconColor = "text-red-400";   iconBg = "bg-red-500/10"; }
   if (severity === "warning") { iconColor = "text-amber-400"; iconBg = "bg-amber-500/10"; }
 
@@ -179,7 +179,7 @@ function NotificationPopover({ anchorRect, onClose }: PopoverProps) {
                     {timeAgo(n.created_at)}
                   </span>
                   {!n.is_read && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]" />
                   )}
                 </div>
               </button>

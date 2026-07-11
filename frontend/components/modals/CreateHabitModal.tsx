@@ -19,7 +19,7 @@ interface Props {
   onClose: () => void;
 }
 
-const inputCls = "w-full px-3 h-9 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors [color-scheme:dark]";
+const inputCls = "w-full px-3 h-9 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]";
 const labelCls = "block text-[11px] md:text-xs font-medium text-white/72 uppercase tracking-wider mb-1.5";
 
 const FREQ_OPTIONS = [
@@ -159,7 +159,7 @@ export function CreateHabitModal({ onClose }: Props) {
       <button
         type="submit"
         disabled={saving}
-        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
+        className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors"
       >
         {saving ? "Создаём…" : "Создать привычку"}
       </button>
@@ -209,7 +209,7 @@ export function CreateHabitModal({ onClose }: Props) {
               onClick={() => setHabitType(t.value as "binary" | "counter")}
               className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                 habitType === t.value
-                  ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                  ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                   : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
               }`}
             >
@@ -273,7 +273,7 @@ export function CreateHabitModal({ onClose }: Props) {
               onClick={() => { setFreq(f.value); clearFieldError("by_weekday"); clearFieldError("by_monthday"); }}
               className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                 freq === f.value
-                  ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                  ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                   : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
               }`}
             >
@@ -308,7 +308,7 @@ export function CreateHabitModal({ onClose }: Props) {
                 onClick={() => toggleWeekday(d.value)}
                 className={`px-3 py-1.5 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                   weekdays.includes(d.value)
-                    ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                    ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                     : `bg-white/[0.03] ${fieldErrors.by_weekday ? "border-red-500/50" : "border-white/[0.08]"} text-white/72 hover:text-white/65 hover:bg-white/[0.05]`
                 }`}
               >
@@ -366,7 +366,7 @@ export function CreateHabitModal({ onClose }: Props) {
               onClick={() => setLevel(l.value)}
               className={`flex-1 py-2 text-[11px] md:text-xs font-medium rounded-xl border transition-colors ${
                 level === l.value
-                  ? "bg-indigo-600 border-indigo-500 text-[#fff]"
+                  ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]"
                   : "bg-white/[0.03] border-white/[0.08] text-white/72 hover:text-white/65 hover:bg-white/[0.05]"
               }`}
             >
@@ -393,7 +393,7 @@ export function CreateHabitModal({ onClose }: Props) {
           onChange={(e) => setNote(e.target.value)}
           placeholder="Необязательно"
           rows={2}
-          className="w-full px-3 py-2 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60 transition-colors resize-none"
+          className="w-full px-3 py-2 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
         />
       </div>
 

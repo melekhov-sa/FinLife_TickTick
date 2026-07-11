@@ -48,7 +48,7 @@ function kindBadgeCls(kind: string): string {
   switch (kind) {
     case "event": return "text-purple-500 dark:text-purple-400";
     case "task":
-    case "task_occ": return "text-indigo-500 dark:text-indigo-400";
+    case "task_occ": return "text-[var(--app-accent)]";
     case "planned_op": return "text-amber-500 dark:text-amber-400";
     case "habit": return "text-violet-500 dark:text-violet-400";
     default: return "text-slate-400 dark:text-white/40";
@@ -103,7 +103,7 @@ export function DayListModal({ dateISO, entries, holiday, vacation, onClose, onE
           </p>
           <button
             onClick={() => { onClose(); onAddTask(); }}
-            className="text-[13px] font-medium text-indigo-500 hover:text-indigo-400 transition-colors"
+            className="text-[13px] font-medium text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors"
           >
             + Добавить задачу
           </button>

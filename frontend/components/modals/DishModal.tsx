@@ -75,7 +75,7 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
       Underline,
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { class: "underline text-indigo-600 dark:text-indigo-400", rel: "noopener noreferrer", target: "_blank" },
+        HTMLAttributes: { class: "underline text-[var(--app-accent)]", rel: "noopener noreferrer", target: "_blank" },
       }),
       Image.configure({ inline: false, allowBase64: false }),
     ],
@@ -206,7 +206,7 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Название блюда…"
-              className="w-full rounded-xl px-3 py-2 text-[14px] outline-none border focus:border-indigo-400"
+              className="w-full rounded-xl px-3 py-2 text-[14px] outline-none border focus:border-[var(--app-accent)]"
               style={{ background: "var(--app-input-bg, var(--app-card-bg))", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
             />
           </div>
@@ -225,8 +225,8 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
                   className={cn(
                     "px-3 py-1 rounded-full text-[13px] font-medium border transition-colors",
                     selectedTypes.includes(key)
-                      ? "bg-indigo-500 border-indigo-500 text-white"
-                      : "border-[var(--app-border)] hover:border-indigo-300"
+                      ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
+                      : "border-[var(--app-border)] hover:border-[var(--app-accent)]"
                   )}
                   style={!selectedTypes.includes(key) ? { color: "var(--t-secondary)" } : undefined}
                 >
@@ -248,21 +248,21 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
                     value={ing.ingredient_name}
                     onChange={(e) => updateIngredient(idx, "ingredient_name", e.target.value)}
                     placeholder="Ингредиент"
-                    className="flex-1 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-indigo-400 min-w-0"
+                    className="flex-1 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-[var(--app-accent)] min-w-0"
                     style={{ background: "var(--app-input-bg, var(--app-card-bg))", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
                   />
                   <input
                     value={ing.quantity}
                     onChange={(e) => updateIngredient(idx, "quantity", e.target.value)}
                     placeholder="Кол-во"
-                    className="w-20 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-indigo-400"
+                    className="w-20 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-[var(--app-accent)]"
                     style={{ background: "var(--app-input-bg, var(--app-card-bg))", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
                   />
                   <input
                     value={ing.unit}
                     onChange={(e) => updateIngredient(idx, "unit", e.target.value)}
                     placeholder="ед."
-                    className="w-16 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-indigo-400"
+                    className="w-16 rounded-lg px-2.5 py-1.5 text-[13px] outline-none border focus:border-[var(--app-accent)]"
                     style={{ background: "var(--app-input-bg, var(--app-card-bg))", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
                   />
                   <button type="button" onClick={() => removeIngredient(idx)} className="w-7 h-7 flex items-center justify-center rounded-lg nav-hover shrink-0" style={{ color: "var(--t-faint)" }}>
@@ -288,7 +288,7 @@ export function DishModal({ dish, onClose, onSaved }: Props) {
               Способ приготовления
             </label>
             <div
-              className="rounded-xl border focus-within:border-indigo-400 transition-colors overflow-hidden"
+              className="rounded-xl border focus-within:border-[var(--app-accent)] transition-colors overflow-hidden"
               style={{ borderColor: "var(--app-border)", background: "var(--app-card-bg)" }}
             >
               {/* Toolbar */}
@@ -363,7 +363,7 @@ function TipBtn({ onClick, active, title, children }: { onClick: () => void; act
       className={cn(
         "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
         active
-          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"
+          ? "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]"
           : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.06]"
       )}
     >

@@ -79,8 +79,8 @@ export function DocumentModal({ doc, onClose }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Например: Загранпаспорт"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
               required
             />
           </div>
@@ -94,8 +94,8 @@ export function DocumentModal({ doc, onClose }: Props) {
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
               placeholder="Выберите или введите"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
             />
             <datalist id="doc-type-list">
               {DOC_TYPE_PRESETS.map((t) => <option key={t} value={t} />)}
@@ -111,8 +111,8 @@ export function DocumentModal({ doc, onClose }: Props) {
                 type="date"
                 value={issuedDate}
                 onChange={(e) => setIssuedDate(e.target.value)}
-                className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-                style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+                className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+                style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
               />
             </div>
             <div>
@@ -123,8 +123,8 @@ export function DocumentModal({ doc, onClose }: Props) {
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400"
-                style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+                className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)]"
+                style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
                 required
               />
             </div>
@@ -142,7 +142,7 @@ export function DocumentModal({ doc, onClose }: Props) {
                   onClick={() => setNotifyDays(d)}
                   className={`flex-1 py-1.5 rounded-lg text-[13px] font-medium border transition-colors ${
                     notifyDays === d
-                      ? "bg-indigo-500 border-indigo-500 text-white"
+                      ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
                       : "border-slate-200 dark:border-white/[0.12]"
                   }`}
                   style={notifyDays !== d ? { color: "var(--t-muted)" } : undefined}
@@ -162,8 +162,8 @@ export function DocumentModal({ doc, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Серия, номер, кем выдан…"
-              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-indigo-400 resize-none"
-              style={{ borderColor: "rgba(99,102,241,0.25)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
+              className="w-full rounded-xl border px-3 py-2 text-[14px] outline-none focus:border-[var(--app-accent)] resize-none"
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 25%, transparent)", background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
             />
           </div>
 
@@ -172,14 +172,14 @@ export function DocumentModal({ doc, onClose }: Props) {
               type="button"
               onClick={onClose}
               className="flex-1 py-2 rounded-xl border text-[14px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-              style={{ borderColor: "rgba(99,102,241,0.2)", color: "var(--t-muted)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--app-accent) 20%, transparent)", color: "var(--t-muted)" }}
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={isPending || !title.trim() || !expiryDate}
-              className="flex-1 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-[14px] font-medium transition-colors disabled:opacity-50"
+              className="flex-1 py-2 rounded-xl bg-[var(--app-accent)] hover:bg-[var(--app-accent)] text-white text-[14px] font-medium transition-colors disabled:opacity-50"
             >
               {isPending ? "Сохранение…" : isEdit ? "Сохранить" : "Добавить"}
             </button>

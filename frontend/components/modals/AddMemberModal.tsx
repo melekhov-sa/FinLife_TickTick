@@ -18,7 +18,7 @@ interface Props {
 }
 
 const inputCls =
-  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
+  "w-full px-3 h-10 text-base rounded-xl border focus:outline-none focus:border-[var(--app-accent)] transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const labelCls =
   "block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/72";
 
@@ -115,7 +115,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
           <button
             onClick={handleSave}
             disabled={saving || !contactId}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors"
           >
             {saving ? "Сохраняем…" : "Добавить"}
           </button>

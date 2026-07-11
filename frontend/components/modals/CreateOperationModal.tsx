@@ -68,7 +68,7 @@ function fmtBalance(balance: string, currency: string): string {
 }
 
 const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer";
-const chipActiveCls = "bg-indigo-600 border-indigo-500 text-[#fff]";
+const chipActiveCls = "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]";
 const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 
 const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
@@ -704,9 +704,9 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                         type="button"
                         onClick={() => setCategoryId(suggestion.category_id)}
                         className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
-                        style={{ background: "rgba(99,102,241,0.12)", color: "rgb(129,140,248)" }}
-                        onMouseEnter={(e) => { (e.currentTarget.style.background = "rgba(99,102,241,0.22)"); }}
-                        onMouseLeave={(e) => { (e.currentTarget.style.background = "rgba(99,102,241,0.12)"); }}
+                        style={{ background: "color-mix(in srgb, var(--app-accent) 12%, transparent)", color: "rgb(129,140,248)" }}
+                        onMouseEnter={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 22%, transparent)"); }}
+                        onMouseLeave={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 12%, transparent)"); }}
                       >
                         {sugCat.title}
                       </button>
