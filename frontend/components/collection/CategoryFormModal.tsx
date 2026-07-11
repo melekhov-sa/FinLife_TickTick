@@ -13,7 +13,7 @@ const TRACKING_TYPES: { value: TrackingType; label: string }[] = [
   { value: "pokemon", label: "Покемон-карточки" },
 ];
 
-const inputCls = "w-full px-3 h-10 text-sm rounded-xl border focus:outline-none focus:border-indigo-500/60 transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
+const inputCls = "w-full px-3 h-10 text-sm rounded-xl border focus:outline-none focus:border-[var(--app-accent)] transition-colors bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-slate-400 dark:placeholder-white/25";
 const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/60";
 
 interface Props {
@@ -96,7 +96,7 @@ export function CategoryFormModal({ category, onClose, onSaved }: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="w-full h-11 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-semibold text-sm transition-colors"
+          className="w-full h-11 rounded-xl bg-[var(--app-accent)] hover:bg-[var(--app-accent)] disabled:opacity-50 text-white font-semibold text-sm transition-colors"
         >
           {saving ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
         </button>

@@ -146,7 +146,7 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
       </h3>
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         {!showArchived && (
-          <button onClick={onCreateNew} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] font-semibold rounded-xl px-3 py-1.5 transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
+          <button onClick={onCreateNew} className="flex items-center gap-1.5 bg-[var(--app-accent)] hover:brightness-110 text-[#fff] font-semibold rounded-xl px-3 py-1.5 transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
             <Plus size={12} strokeWidth={2.5} />
             Создать привычку
           </button>
@@ -178,7 +178,7 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
             {showArchived ? "Нет архивных привычек" : filter === "done" ? "Ничего не выполнено сегодня" : filter === "pending" ? "Все привычки выполнены!" : "Нет активных привычек"}
           </p>
           {!showArchived && filter === "all" && (
-            <button onClick={onCreateNew} className="mt-2 font-medium text-indigo-400/60 hover:text-indigo-400 transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
+            <button onClick={onCreateNew} className="mt-2 font-medium text-[var(--app-accent)]/60 hover:text-[var(--app-accent)] transition-colors" style={{ fontSize: "var(--fs-caption)" }}>
               + Создать первую привычку
             </button>
           )}

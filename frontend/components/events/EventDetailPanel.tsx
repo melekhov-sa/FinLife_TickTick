@@ -45,7 +45,7 @@ function formatDateRange(start: string, end: string | null): string {
 }
 
 const CAT_PALETTES = [
-  { icon: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/30" },
+  { icon: "text-[var(--app-accent)]", bg: "bg-[var(--app-accent-light)]", border: "border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)]" },
   { icon: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
   { icon: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" },
   { icon: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/30" },
@@ -221,7 +221,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
             className={clsx(
               "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug",
               "border-b transition-colors pb-1",
-              titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
+              titleFocused ? "border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]" : "border-transparent hover:border-white/[0.08]"
             )}
             style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
           />
@@ -239,7 +239,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); saveField("start_date", e.target.value); }}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
                 style={{ color: "var(--t-secondary)" }}
               />
               <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>–</span>
@@ -247,7 +247,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); saveField("end_date", e.target.value); }}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
                 style={{ color: "var(--t-secondary)" }}
               />
             </div>
@@ -315,7 +315,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                   update({ occurrenceId: event.occurrence_id, data: { birth_year: valid ? y : null } });
                 }}
                 placeholder="напр. 1985"
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors w-32"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors w-32"
                 style={{ color: "var(--t-secondary)" }}
               />
               {birthYear && (() => {
@@ -360,7 +360,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
               onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
               placeholder="Добавить описание..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

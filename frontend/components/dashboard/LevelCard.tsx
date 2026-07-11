@@ -44,7 +44,7 @@ export function LevelCard({ level }: Props) {
           style={{
             width: `${pct}%`,
             background: "var(--app-accent-gradient)",
-            boxShadow: pct > 5 ? "0 0 8px rgba(99,102,241,0.6)" : "none",
+            boxShadow: pct > 5 ? "0 0 8px color-mix(in srgb, var(--app-accent) 60%, transparent)" : "none",
           }}
         />
       </div>
@@ -52,7 +52,7 @@ export function LevelCard({ level }: Props) {
       <div className="flex justify-between text-xs">
         <span className="t-secondary" style={{ color: "var(--t-secondary)" }}>
           Этот месяц:{" "}
-          <span className="text-indigo-400 font-semibold tabular-nums">
+          <span className="text-[var(--app-accent)] font-semibold tabular-nums">
             {fmt(level.xp_this_month)} XP
           </span>
         </span>

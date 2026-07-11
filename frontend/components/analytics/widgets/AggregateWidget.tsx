@@ -101,7 +101,7 @@ function SetupForm({
   }
 
   const chipBase = "px-2 py-0.5 rounded-md font-medium transition-colors text-[11px]";
-  const chipOn = "bg-indigo-500/20 text-indigo-400";
+  const chipOn = "bg-[var(--app-accent-light)] text-[var(--app-accent)]";
   const chipOff = "bg-white/[0.04] hover:bg-white/[0.07]";
 
   return (
@@ -112,7 +112,7 @@ function SetupForm({
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Название, напр. «Теннис»"
         autoFocus
-        className="w-full px-2.5 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-indigo-500/50 text-[13px]"
+        className="w-full px-2.5 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] text-[13px]"
         style={{ color: "var(--t-primary)" }}
       />
 
@@ -200,14 +200,14 @@ function SetupForm({
           type="checkbox"
           checked={showComparison}
           onChange={(e) => setShowComparison(e.target.checked)}
-          className="w-3.5 h-3.5 accent-indigo-500"
+          className="w-3.5 h-3.5 accent-[var(--app-accent)]"
         />
         Сравнение с прошлым периодом
       </label>
 
       <button
         type="submit"
-        className="mt-auto w-full py-2 rounded-xl text-[13px] font-semibold bg-indigo-500 hover:bg-indigo-600 text-white transition-colors"
+        className="mt-auto w-full py-2 rounded-xl text-[13px] font-semibold bg-[var(--app-accent)] hover:bg-[var(--app-accent)] text-white transition-colors"
       >
         Готово
       </button>

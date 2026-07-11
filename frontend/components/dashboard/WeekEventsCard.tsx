@@ -46,7 +46,7 @@ export function WeekEventsCard({ events }: Props) {
                   className={clsx(
                     "w-0.5 self-stretch min-h-[32px] rounded-full shrink-0 mt-0.5",
                     ev.is_today
-                      ? "bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]"
+                      ? "bg-[var(--app-accent)] shadow-[0_0_6px_color-mix(in srgb, var(--app-accent) 50%, transparent)]"
                       : "bg-white/[0.10]"
                   )}
                 />
@@ -100,7 +100,7 @@ export function WeekEventsCard({ events }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/events" className="text-xs font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/events" className="text-xs font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
           Все события →
         </a>
       </div>

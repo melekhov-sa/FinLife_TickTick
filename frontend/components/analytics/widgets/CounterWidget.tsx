@@ -87,7 +87,7 @@ function SetupForm({
           <button
             onClick={() => setTab("pick")}
             className={clsx("flex-1 py-1 rounded-lg font-medium transition-colors",
-              tab === "pick" ? "bg-indigo-500/20 text-indigo-400" : "hover:bg-white/[0.05]"
+              tab === "pick" ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]" : "hover:bg-white/[0.05]"
             )}
             style={{ color: tab === "pick" ? undefined : "var(--t-faint)" }}
           >
@@ -96,7 +96,7 @@ function SetupForm({
           <button
             onClick={() => setTab("create")}
             className={clsx("flex-1 py-1 rounded-lg font-medium transition-colors",
-              tab === "create" ? "bg-indigo-500/20 text-indigo-400" : "hover:bg-white/[0.05]"
+              tab === "create" ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]" : "hover:bg-white/[0.05]"
             )}
             style={{ color: tab === "create" ? undefined : "var(--t-faint)" }}
           >
@@ -133,14 +133,14 @@ function SetupForm({
               value={emoji}
               onChange={(e) => setEmoji(e.target.value)}
               placeholder="🔢"
-              className="w-10 text-center text-lg bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-indigo-500/50"
+              className="w-10 text-center text-lg bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
             />
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Название счётчика"
               autoFocus
-              className="flex-1 px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-indigo-500/50"
+              className="flex-1 px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
               style={{ color: "var(--t-primary)" }}
             />
           </div>
@@ -154,7 +154,7 @@ function SetupForm({
                 onClick={() => setMode(m)}
                 className={clsx(
                   "flex-1 py-1 rounded-lg text-[11px] font-medium transition-colors",
-                  mode === m ? "bg-indigo-500/20 text-indigo-400" : "bg-white/[0.04] hover:bg-white/[0.07]"
+                  mode === m ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]" : "bg-white/[0.04] hover:bg-white/[0.07]"
                 )}
                 style={{ color: mode === m ? undefined : "var(--t-faint)" }}
               >
@@ -167,7 +167,7 @@ function SetupForm({
             <select
               value={sourceCatId}
               onChange={(e) => setSourceCatId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-indigo-500/50 [color-scheme:dark]"
+              className="w-full px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             >
               <option value="">— Категория —</option>
@@ -188,7 +188,7 @@ function SetupForm({
                 onClick={() => setPeriodType(p)}
                 className={clsx(
                   "flex-1 py-1 rounded-lg text-[11px] font-medium transition-colors",
-                  periodType === p ? "bg-indigo-500/20 text-indigo-400" : "bg-white/[0.04] hover:bg-white/[0.07]"
+                  periodType === p ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]" : "bg-white/[0.04] hover:bg-white/[0.07]"
                 )}
                 style={{ color: periodType === p ? undefined : "var(--t-faint)" }}
               >
@@ -200,7 +200,7 @@ function SetupForm({
           <button
             type="submit"
             disabled={isPending || !title.trim() || (mode !== "manual" && !sourceCatId)}
-            className="w-full py-2 rounded-xl text-[13px] font-semibold bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 transition-colors text-white"
+            className="w-full py-2 rounded-xl text-[13px] font-semibold bg-[var(--app-accent)] hover:bg-[var(--app-accent)] disabled:opacity-40 transition-colors text-white"
           >
             {isPending ? "Создаю..." : "Создать"}
           </button>
@@ -304,7 +304,7 @@ function CounterDisplay({
         {/* Auto badge */}
         {!isManual && (
           <span className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-0.5"
-            style={{ background: "rgba(99,102,241,0.12)", color: "var(--t-muted)" }}>
+            style={{ background: "color-mix(in srgb, var(--app-accent) 12%, transparent)", color: "var(--t-muted)" }}>
             <Zap size={9} />
             {counter.mode === "auto_event" ? "Авто: события" : "Авто: задачи"}
           </span>
@@ -325,7 +325,7 @@ function CounterDisplay({
           <button
             onClick={() => increment(counter.id)}
             disabled={incPending}
-            className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 transition-all shadow-lg shadow-indigo-500/20"
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--app-accent)] hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-[color-mix(in_srgb,var(--app-accent)_20%,transparent)]"
           >
             <Plus size={18} className="text-white" />
           </button>

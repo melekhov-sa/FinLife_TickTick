@@ -124,7 +124,7 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
                         key={t}
                         onClick={() => addReminder({ mode: "fixed_time", fixed_time: t })}
                         disabled={adding_}
-                        className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-500/25 transition-colors"
+                        className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] hover:brightness-95 transition-colors"
                       >
                         {t}
                       </button>
@@ -137,7 +137,7 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
                         key={p.id}
                         onClick={() => addReminder({ mode: "offset", offset_minutes: p.offset_minutes })}
                         disabled={adding_}
-                        className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-500/25 transition-colors"
+                        className="px-2.5 py-1 text-[12px] font-medium rounded-lg bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)] hover:brightness-95 transition-colors"
                       >
                         {p.label}
                       </button>
@@ -154,7 +154,7 @@ export function EventReminders({ eventId, startTime, disabled }: Props) {
             ) : (
               <button
                 onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.12] hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/[0.06] text-[12px] font-medium transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.12] hover:border-[var(--app-accent)] hover:bg-[var(--app-accent-weak)]/[0.06] text-[12px] font-medium transition-colors"
                 style={{ color: "var(--t-muted)" }}
               >
                 <Plus size={11} /> Добавить

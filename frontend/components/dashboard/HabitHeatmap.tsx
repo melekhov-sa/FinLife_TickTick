@@ -9,18 +9,18 @@ interface Props {
 
 const LEVEL_CLASS = [
   "bg-white/[0.05]",
-  "bg-indigo-500/[0.22]",
-  "bg-indigo-500/[0.38]",
-  "bg-indigo-500/[0.58]",
-  "bg-indigo-500/[0.82]",
+  "bg-[var(--app-accent-light)]",
+  "bg-[var(--app-accent-light)]",
+  "bg-[var(--app-accent-light)]",
+  "bg-[var(--app-accent-light)]",
 ];
 
 const LEVEL_GLOW = [
   "none",
   "none",
-  "0 0 4px rgba(99,102,241,0.3)",
-  "0 0 6px rgba(99,102,241,0.45)",
-  "0 0 8px rgba(99,102,241,0.6)",
+  "0 0 4px color-mix(in srgb, var(--app-accent) 30%, transparent)",
+  "0 0 6px color-mix(in srgb, var(--app-accent) 45%, transparent)",
+  "0 0 8px color-mix(in srgb, var(--app-accent) 60%, transparent)",
 ];
 
 export function HabitHeatmap({ cells }: Props) {

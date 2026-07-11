@@ -19,7 +19,7 @@ function Skeleton() {
 
 const STREAK_COLOR = (n: number) => {
   if (n >= 30) return "#F59E0B";
-  if (n >= 14) return "#6366F1";
+  if (n >= 14) return "var(--app-accent)";
   if (n >= 7)  return "#10B981";
   return "var(--t-muted)";
 };

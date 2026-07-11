@@ -160,7 +160,7 @@ function InnerGroupSection({ group }: { group: InnerGroup }) {
       {!showAll && hiddenCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="text-[12px] font-medium pt-0.5 pl-6 transition-colors hover:text-indigo-500 touch-manipulation"
+          className="text-[12px] font-medium pt-0.5 pl-6 transition-colors hover:text-[var(--app-accent)] touch-manipulation"
           style={{ color: "var(--t-faint)" }}
         >
           Показать ещё {hiddenCount} →
@@ -212,7 +212,7 @@ export function ActivityFeed({ feed }: Props) {
       {!showAll && hiddenDayCount > 0 && (
         <button
           onClick={() => setShowAll(true)}
-          className="w-full text-center py-1.5 mt-2 text-[13px] font-medium transition-colors hover:text-indigo-500 touch-manipulation"
+          className="w-full text-center py-1.5 mt-2 text-[13px] font-medium transition-colors hover:text-[var(--app-accent)] touch-manipulation"
           style={{ color: "var(--t-faint)" }}
         >
           Показать всю историю →
@@ -221,7 +221,7 @@ export function ActivityFeed({ feed }: Props) {
       {showAll && feed.length > 1 && (
         <button
           onClick={() => setShowAll(false)}
-          className="w-full text-center py-1 mt-1.5 text-[12px] font-medium transition-colors hover:text-indigo-500"
+          className="w-full text-center py-1 mt-1.5 text-[12px] font-medium transition-colors hover:text-[var(--app-accent)]"
           style={{ color: "var(--t-faint)" }}
         >
           Скрыть

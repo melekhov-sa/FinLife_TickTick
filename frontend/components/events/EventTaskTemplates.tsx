@@ -83,7 +83,7 @@ function Chips<T>({
           className={clsx(
             "px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors",
             opt.value === value
-              ? "bg-indigo-600 border-indigo-500 text-white"
+              ? "bg-[var(--app-accent)] border-[var(--app-accent)] text-white"
               : "bg-white/[0.04] border-white/[0.08] text-white/55 hover:bg-white/[0.07]",
           )}
         >
@@ -166,7 +166,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-2 p-3 rounded-xl border border-indigo-500/25 bg-indigo-500/[0.05] space-y-2.5"
+      className="mt-2 p-3 rounded-xl border border-[color-mix(in_srgb,var(--app-accent)_25%,transparent)] bg-[var(--app-accent-light)] space-y-2.5"
     >
       {/* Title */}
       <input
@@ -174,7 +174,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Название задачи"
-        className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-indigo-500/60"
+        className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
         onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
       />
 
@@ -186,7 +186,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
           className={clsx(
             "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors",
             direction === "before"
-              ? "bg-indigo-600 text-white"
+              ? "bg-[var(--app-accent)] text-white"
               : "bg-white/[0.03] text-white/45 hover:bg-white/[0.06]",
           )}
         >
@@ -199,7 +199,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
           className={clsx(
             "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium transition-colors",
             direction === "after"
-              ? "bg-indigo-600 text-white"
+              ? "bg-[var(--app-accent)] text-white"
               : "bg-white/[0.03] text-white/45 hover:bg-white/[0.06]",
           )}
         >
@@ -219,7 +219,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
               max={365}
               value={daysBefore}
               onChange={(e) => setDaysBefore(e.target.value)}
-              className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-indigo-500/60"
+              className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
             />
             <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>дней до события</span>
           </div>
@@ -247,7 +247,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
               className={clsx(
                 "flex-1 py-1.5 text-[11px] font-medium transition-colors",
                 afterMode === "minutes"
-                  ? "bg-indigo-600/40 text-indigo-300"
+                  ? "bg-[var(--app-accent-light)] text-[var(--app-accent-ink)]"
                   : "bg-white/[0.03] text-white/45 hover:bg-white/[0.06]",
               )}
             >
@@ -259,7 +259,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
               className={clsx(
                 "flex-1 py-1.5 text-[11px] font-medium transition-colors",
                 afterMode === "days"
-                  ? "bg-indigo-600/40 text-indigo-300"
+                  ? "bg-[var(--app-accent-light)] text-[var(--app-accent-ink)]"
                   : "bg-white/[0.03] text-white/45 hover:bg-white/[0.06]",
               )}
             >
@@ -276,7 +276,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
                 max={1440}
                 value={minutesAfter}
                 onChange={(e) => setMinutesAfter(e.target.value)}
-                className="w-16 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-indigo-500/60"
+                className="w-16 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
               />
               <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>
                 мин после окончания
@@ -291,7 +291,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
                 max={365}
                 value={daysAfter}
                 onChange={(e) => setDaysAfter(e.target.value)}
-                className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-indigo-500/60"
+                className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
               />
               <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>дней после события</span>
             </div>
@@ -459,7 +459,7 @@ export function EventTaskTemplates({ eventId }: Props) {
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-indigo-500/30 hover:bg-indigo-500/[0.04] transition-colors"
+          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
           style={{ color: "var(--t-faint)" }}
         >
           <Plus size={12} />

@@ -17,8 +17,8 @@ const KIND_GROUP: Record<string, string> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
-  TRANSFER: "text-indigo-400",
-  transfer: "text-indigo-400",
+  TRANSFER: "text-[var(--app-accent)]",
+  transfer: "text-[var(--app-accent)]",
   INCOME:   "money-income",
   income:   "money-income",
   EXPENSE:  "money-expense",
@@ -89,7 +89,7 @@ export function UpcomingPayments({ payments }: Props) {
       )}
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
-        <a href="/planned-ops" className="text-[12px] font-medium hover:text-indigo-400 transition-colors" style={{ color: "var(--t-muted)" }}>
+        <a href="/planned-ops" className="text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
           Все плановые →
         </a>
       </div>

@@ -140,7 +140,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
               "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug",
               "border-b transition-colors pb-1",
               titleFocused
-                ? "border-indigo-500/50"
+                ? "border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]"
                 : "border-transparent hover:border-white/[0.08]",
             )}
             style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
@@ -248,7 +248,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
                   className={clsx(
                     "flex items-start gap-2.5 px-3 py-2 rounded-xl border text-left transition-colors",
                     completionMode === opt.value
-                      ? "bg-indigo-500/10 border-indigo-500/30"
+                      ? "bg-[var(--app-accent-light)] border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)]"
                       : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]",
                   )}
                 >
@@ -256,7 +256,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
                     className={clsx(
                       "w-3.5 h-3.5 rounded-full border-2 mt-0.5 shrink-0 transition-colors",
                       completionMode === opt.value
-                        ? "border-indigo-400 bg-indigo-400"
+                        ? "border-[var(--app-accent)] bg-[var(--app-accent)]"
                         : "border-white/20",
                     )}
                   />
@@ -300,7 +300,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
               onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
               placeholder="Добавить описание..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-indigo-500/40 transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

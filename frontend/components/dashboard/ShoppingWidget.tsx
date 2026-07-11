@@ -60,7 +60,7 @@ export function ShoppingWidget({ listId, items }: Props) {
           type="button"
           onClick={openAdd}
           aria-label="Добавить покупку"
-          className="w-6 h-6 flex items-center justify-center rounded-md transition-colors hover:bg-indigo-500/10"
+          className="w-6 h-6 flex items-center justify-center rounded-md transition-colors hover:bg-[var(--app-accent-weak)]0/10"
           style={{ color: "var(--t-muted)" }}
         >
           <Plus size={15} strokeWidth={2.2} />
@@ -87,7 +87,7 @@ export function ShoppingWidget({ listId, items }: Props) {
                   onChange={() =>
                     toggle.mutate({ id: item.id, status: isDone ? "open" : "done" })
                   }
-                  className="w-4 h-4 rounded accent-indigo-500 shrink-0 cursor-pointer"
+                  className="w-4 h-4 rounded accent-[var(--app-accent)] shrink-0 cursor-pointer"
                 />
                 <span
                   className={clsx(
@@ -108,8 +108,8 @@ export function ShoppingWidget({ listId, items }: Props) {
 
       {adding && (
         <div
-          className="flex items-center gap-2 mt-2 rounded-lg border px-2.5 py-1.5 transition-colors focus-within:border-indigo-400/70"
-          style={{ borderColor: "rgba(99,102,241,0.22)", background: "rgba(255,255,255,0.04)" }}
+          className="flex items-center gap-2 mt-2 rounded-lg border px-2.5 py-1.5 transition-colors focus-within:border-[color-mix(in_srgb,var(--app-accent)_70%,transparent)]"
+          style={{ borderColor: "color-mix(in srgb, var(--app-accent) 22%, transparent)", background: "rgba(255,255,255,0.04)" }}
         >
           <input
             ref={inputRef}
@@ -136,7 +136,7 @@ export function ShoppingWidget({ listId, items }: Props) {
       <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
         <a
           href={`/lists/${listId}`}
-          className="text-xs font-medium hover:text-indigo-400 transition-colors"
+          className="text-xs font-medium hover:text-[var(--app-accent)] transition-colors"
           style={{ color: "var(--t-muted)" }}
         >
           Открыть список →
