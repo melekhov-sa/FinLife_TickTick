@@ -34,7 +34,7 @@ function DocCard({ doc, onEdit }: { doc: Document; onEdit: (doc: Document) => vo
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <FileBadge2 size={16} className="shrink-0 text-indigo-400" />
+          <FileBadge2 size={16} className="shrink-0 text-[var(--app-accent)]" />
           <div className="min-w-0">
             <p className="font-semibold text-[15px] truncate" style={{ color: "var(--t-primary)" }}>{doc.title}</p>
             {doc.doc_type && <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>{doc.doc_type}</p>}

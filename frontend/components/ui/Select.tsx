@@ -200,8 +200,8 @@ export function Select({
     searchBg: "#F8FAFC",
     searchBorder: "#D1D5DB",
     itemHover: "#F1F5F9",
-    itemSelected: "rgba(99,102,241,0.08)",
-    itemSelectedText: "#4F46E5",
+    itemSelected: "color-mix(in srgb, var(--app-accent) 8%, transparent)",
+    itemSelectedText: "var(--app-accent)",
   };
 
   const panel = (
@@ -264,7 +264,7 @@ export function Select({
                 >
                   {opt.emoji && <span className="shrink-0 text-[15px] leading-none w-5 text-center">{opt.emoji}</span>}
                   <span className="flex-1 truncate text-[14px] font-[500]">{opt.label}</span>
-                  {isSelected && <Check size={13} className="shrink-0" style={{ color: isDark ? "#818CF8" : "#4F46E5" }} />}
+                  {isSelected && <Check size={13} className="shrink-0" style={{ color: isDark ? "var(--app-accent)" : "var(--app-accent)" }} />}
                 </button>
               );
             })}

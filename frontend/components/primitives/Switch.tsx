@@ -75,9 +75,9 @@ export function Switch({
         "relative inline-flex shrink-0 items-center rounded-full transition-colors p-[2px]",
         trackSize[size],
         checked
-          ? "bg-indigo-600 dark:bg-indigo-500"
+          ? "bg-[var(--app-accent)]"
           : "bg-slate-300 dark:bg-white/15",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 focus-visible:ring-offset-1",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)] focus-visible:ring-offset-1",
         disabled && "opacity-50 pointer-events-none cursor-not-allowed",
       )}
     >

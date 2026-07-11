@@ -252,7 +252,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
             className={clsx(
               "w-full text-[18px] font-semibold bg-transparent outline-none resize-none leading-snug",
               "border-b transition-colors pb-1",
-              titleFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]",
+              titleFocused ? "border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]" : "border-transparent hover:border-white/[0.08]",
               isDone || isArchived ? "line-through opacity-50" : ""
             )}
             style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
@@ -270,7 +270,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
                 value={dueDate}
                 onChange={(e) => saveDueDate(e.target.value)}
                 disabled={isDone || isArchived}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark] disabled:opacity-50"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark] disabled:opacity-50"
                 style={{ color: "var(--t-secondary)" }}
               />
               {dateLabel && (

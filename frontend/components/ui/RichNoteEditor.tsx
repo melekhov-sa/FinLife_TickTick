@@ -69,7 +69,7 @@ export function RichNoteEditor({
         autolink: true,
         linkOnPaste: true,
         HTMLAttributes: {
-          class: "underline text-indigo-600 dark:text-indigo-400",
+          class: "underline text-[var(--app-accent)]",
           rel: "noopener noreferrer nofollow",
           target: "_blank",
         },
@@ -137,7 +137,7 @@ export function RichNoteEditor({
   return (
     <div
       className={cn(
-        "rne-wrap rounded-xl border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] focus-within:border-indigo-500/40 transition-colors",
+        "rne-wrap rounded-xl border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] focus-within:border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] transition-colors",
         disabled && "opacity-60",
         className
       )}
@@ -171,7 +171,7 @@ function ToolButton({ onClick, active, disabled, title, children }: ToolButtonPr
       className={cn(
         "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
         active
-          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"
+          ? "bg-[var(--app-accent-weak)] text-[var(--app-accent-ink)]"
           : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.06]",
         disabled && "opacity-40 cursor-not-allowed"
       )}

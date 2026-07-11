@@ -100,8 +100,8 @@ function SubCard({ sub, onOpen, onAddMember }: { sub: SubscriptionItem; onOpen: 
       className="relative group rounded-[12px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] overflow-hidden transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.05] hover:border-slate-400 dark:hover:border-white/[0.12] cursor-pointer p-3.5"
     >
       <div className="flex items-start gap-2.5 mb-2">
-        <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0">
-          <CreditCard size={14} className="text-indigo-400/80" />
+        <div className="w-8 h-8 rounded-lg bg-[var(--app-accent-light)] flex items-center justify-center shrink-0">
+          <CreditCard size={14} className="text-[var(--app-accent)]/80" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold leading-tight truncate pr-6" style={{ color: "var(--t-primary)" }}>
@@ -257,7 +257,7 @@ export function SubscriptionsTab() {
                     <button
                       key={f.value}
                       onClick={() => setFilter(f.value)}
-                      className={clsx("px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all", filter === f.value ? "bg-indigo-600 text-[#fff] shadow-sm" : "hover:bg-white/[0.05]")}
+                      className={clsx("px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all", filter === f.value ? "bg-[var(--app-accent)] text-[#fff] shadow-sm" : "hover:bg-white/[0.05]")}
                       style={{ color: filter === f.value ? undefined : "var(--t-secondary)" }}
                     >
                       {f.label}
@@ -278,7 +278,7 @@ export function SubscriptionsTab() {
                 icon={<CreditCard size={24} />}
                 title={showArchived ? "Нет архивных подписок" : filter === "all" ? "Нет активных подписок" : "Нет подписок в этой категории"}
                 actions={!showArchived && filter === "all" ? (
-                  <Button variant="link" size="sm" onClick={() => setShowCreate(true)} className="text-indigo-400/70 hover:text-indigo-400 px-0">
+                  <Button variant="link" size="sm" onClick={() => setShowCreate(true)} className="text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] px-0">
                     + Добавить подписку
                   </Button>
                 ) : undefined}

@@ -68,7 +68,7 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] last:border-0">
-      <div className="w-9 h-9 rounded-full bg-indigo-500/15 flex items-center justify-center text-[11px] font-bold text-indigo-300/80 shrink-0">
+      <div className="w-9 h-9 rounded-full bg-[var(--app-accent-light)] flex items-center justify-center text-[11px] font-bold text-[var(--app-accent-ink)]/80 shrink-0">
         {getInitials(member.contact_name)}
       </div>
 
@@ -85,7 +85,7 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
               onBlur={saveDateVal}
               onKeyDown={(e) => { if (e.key === "Enter") saveDateVal(); if (e.key === "Escape") setEditDate(false); }}
               autoFocus
-              className="text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-indigo-500/40 outline-none [color-scheme:dark]"
+              className="text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             />
           ) : (
@@ -109,7 +109,7 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
               onBlur={savePayVal}
               onKeyDown={(e) => { if (e.key === "Enter") savePayVal(); if (e.key === "Escape") setEditPay(false); }}
               autoFocus
-              className="w-24 text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-indigo-500/40 outline-none"
+              className="w-24 text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none"
               style={{ color: "var(--t-secondary)" }}
               placeholder="сумма/мес"
             />
@@ -217,8 +217,8 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
       header={
         <>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
-              <span className="text-indigo-400 text-sm">💳</span>
+            <div className="w-8 h-8 rounded-xl bg-[var(--app-accent-light)] flex items-center justify-center shrink-0">
+              <span className="text-[var(--app-accent)] text-sm">💳</span>
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
               Подписка
@@ -278,7 +278,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           }}
           className={clsx(
             "w-full text-[18px] font-semibold bg-transparent outline-none leading-snug border-b transition-colors pb-1",
-            nameFocused ? "border-indigo-500/50" : "border-transparent hover:border-white/[0.08]"
+            nameFocused ? "border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]" : "border-transparent hover:border-white/[0.08]"
           )}
           style={{ color: "var(--t-primary)", letterSpacing: "-0.02em" }}
         />
@@ -314,7 +314,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
                 setPaidUntil(e.target.value);
                 debounceSavePaidUntil(e.target.value);
               }}
-              className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+              className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             />
             {paidUntil && sub.days_left_self !== null && (
@@ -341,7 +341,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
               </p>
               <button
                 onClick={() => setShowAddMember(true)}
-                className="text-[11px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors flex items-center gap-1"
+                className="text-[11px] font-medium text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors flex items-center gap-1"
               >
                 <UserPlus size={11} /> Добавить
               </button>

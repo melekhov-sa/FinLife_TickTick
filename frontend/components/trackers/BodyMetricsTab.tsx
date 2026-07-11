@@ -25,7 +25,7 @@ const METRIC_CONFIGS: MetricConfig[] = [
     type: "weight",
     label: "Вес",
     unit: "кг",
-    color: "#6366F1",
+    color: "var(--app-accent)",
     Icon: Scale,
     formatValue: (m) =>
       `${parseFloat(String(m.value)).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг`,
@@ -90,7 +90,7 @@ function MetricCard({
       className={clsx(
         "rounded-2xl border p-3 flex flex-col gap-1.5 text-left transition-all",
         selected
-          ? "border-indigo-400/60 bg-indigo-50 dark:bg-indigo-500/[0.08]"
+          ? "border-[color-mix(in_srgb,var(--app-accent)_60%,transparent)] bg-[var(--app-accent-weak)]"
           : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.09] hover:border-slate-300 dark:hover:border-white/[0.15]",
       )}
     >
@@ -211,7 +211,7 @@ export function BodyMetricsTab() {
                       className={clsx(
                         "px-2.5 py-1 rounded-lg text-[12px] font-semibold transition-colors",
                         period === p.days
-                          ? "bg-indigo-500 text-white"
+                          ? "bg-[var(--app-accent)] text-white"
                           : "hover:bg-slate-100 dark:hover:bg-white/[0.08]",
                       )}
                       style={period !== p.days ? { color: "var(--t-muted)" } : undefined}

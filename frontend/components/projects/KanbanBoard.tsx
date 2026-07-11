@@ -223,7 +223,7 @@ function KanbanColumn({
       className={clsx(
         "flex flex-col w-[280px] shrink-0 rounded-2xl border transition-colors",
         isOver
-          ? "bg-indigo-500/[0.06] border-indigo-500/25"
+          ? "bg-[var(--app-accent-light)] border-[color-mix(in_srgb,var(--app-accent)_25%,transparent)]"
           : "bg-white/[0.03] border-white/[0.07]"
       )}
     >
@@ -238,7 +238,7 @@ function KanbanColumn({
             isDone
               ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
               : tasks.length > 0
-              ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20"
+              ? "bg-[var(--app-accent-light)] text-[var(--app-accent)] border border-[color-mix(in_srgb,var(--app-accent)_20%,transparent)]"
               : "bg-white/[0.06] text-white/55 border border-white/[0.08]"
           )}
         >
@@ -256,7 +256,7 @@ function KanbanColumn({
             if (e.key === "Enter") handleCreate();
           }}
           placeholder="+ Добавить задачу..."
-          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-indigo-500/50 focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
+          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-[var(--app-accent)] focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
           style={{ color: "var(--t-primary)" }}
         />
       </div>

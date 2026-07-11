@@ -174,7 +174,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastInternal; onDismiss: () =
               toast.action?.onClick();
               onDismiss();
             }}
-            className="mt-1.5 text-[12px] font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="mt-1.5 text-[12px] font-semibold text-[var(--app-accent)] hover:text-[var(--app-accent)]"
           >
             {toast.action.label}
           </button>
@@ -187,7 +187,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastInternal; onDismiss: () =
         className={cn(
           "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100",
           "dark:hover:text-slate-200 dark:hover:bg-white/10",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]",
         )}
       >
         <X size={14} />

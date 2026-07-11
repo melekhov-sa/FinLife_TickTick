@@ -47,7 +47,7 @@ function MaintenanceCard({ item, onEdit }: { item: MaintenanceItem; onEdit: (ite
       )}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Wrench size={16} className="shrink-0 text-indigo-400" />
+            <Wrench size={16} className="shrink-0 text-[var(--app-accent)]" />
             <div className="min-w-0">
               <p className="font-semibold text-[15px] truncate" style={{ color: "var(--t-primary)" }}>{item.title}</p>
               {item.description && <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>{item.description}</p>}

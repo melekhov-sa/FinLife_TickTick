@@ -125,7 +125,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
       className={clsx(
         "group flex items-center gap-2 md:gap-2.5 px-3 py-2 md:py-2.5 transition-colors cursor-pointer",
         isDragging
-          ? "bg-white/[0.06] border border-indigo-500/30 rounded-xl opacity-80"
+          ? "bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] rounded-xl opacity-80"
           : isDone || isArchived
           ? "opacity-45"
           : "hover:bg-white/[0.03]"
@@ -150,7 +150,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
           "shrink-0 w-4 h-4 md:w-[18px] md:h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all",
           isDone
             ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.3)]"
-            : "border-white/25 text-transparent hover:border-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-400/50"
+            : "border-white/25 text-transparent hover:border-[color-mix(in_srgb,var(--app-accent)_60%,transparent)] hover:bg-[var(--app-accent-weak)]0/10 hover:text-[var(--app-accent)]/50"
         )}
       >
         <Check size={9} strokeWidth={2.5} />
@@ -158,7 +158,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
 
       {/* Recurring indicator */}
       {task.is_recurring && (
-        <Repeat2 size={12} className="shrink-0 text-indigo-400/60" />
+        <Repeat2 size={12} className="shrink-0 text-[var(--app-accent)]/60" />
       )}
 
       {/* Category emoji */}
@@ -179,7 +179,7 @@ export function TaskRow({ task, onComplete, onOpen, isDragging, dragHandleProps 
               if (e.key === "Escape") { setEditing(false); setEditVal(task.title); }
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full bg-transparent outline-none text-[13px] md:text-[14px] font-medium border-b border-indigo-500/50"
+            className="w-full bg-transparent outline-none text-[13px] md:text-[14px] font-medium border-b border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)]"
             style={{ color: "var(--t-primary)" }}
           />
         ) : (

@@ -56,7 +56,7 @@ export function KanbanTaskCard({ task, allTags, onCardClick }: Props) {
         onCardClick();
       }}
       className={clsx(
-        "bg-white/[0.05] border rounded-xl p-3.5 cursor-grab active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-indigo-500/25",
+        "bg-white/[0.05] border rounded-xl p-3.5 cursor-grab active:cursor-grabbing transition-all hover:bg-white/[0.07] hover:border-[color-mix(in_srgb,var(--app-accent)_25%,transparent)]",
         isDragging && "opacity-40",
         task.is_overdue ? "border-red-500/25" : "border-white/[0.08]"
       )}

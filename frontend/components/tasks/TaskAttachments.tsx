@@ -18,7 +18,7 @@ function fileIcon(mime: string) {
   if (mime.startsWith("image/")) return <Image size={14} className="text-emerald-400/70" />;
   if (mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return <FileSpreadsheet size={14} className="text-green-400/70" />;
   if (mime === "application/zip" || mime === "application/x-zip-compressed") return <Archive size={14} className="text-amber-400/70" />;
-  return <FileText size={14} className="text-indigo-400/70" />;
+  return <FileText size={14} className="text-[var(--app-accent)]/70" />;
 }
 
 export function TaskAttachments({ taskId, disabled }: { taskId: number; disabled?: boolean }) {
@@ -56,7 +56,7 @@ export function TaskAttachments({ taskId, disabled }: { taskId: number; disabled
           <button
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1 text-[12px] font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 text-[12px] font-medium text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors disabled:opacity-50"
           >
             <Paperclip size={12} />
             {uploading ? "Загрузка..." : "Прикрепить"}
