@@ -138,7 +138,7 @@ export default function EfficiencyPage() {
       <main className="flex-1 p-3 md:p-6 w-full">
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            <div className="w-7 h-7 border-2 border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] border-t-[var(--app-accent)] rounded-full animate-spin" />
           </div>
         )}
 

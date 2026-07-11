@@ -87,7 +87,7 @@ function KpiCard({
   const colors = {
     green: "text-emerald-600 dark:text-emerald-400",
     red: "text-red-600 dark:text-red-400",
-    indigo: "text-indigo-600 dark:text-indigo-400",
+    indigo: "text-[var(--app-accent)]",
     neutral: "",
   };
   return (
@@ -435,7 +435,7 @@ function MandatoryBlock({ data }: { data: BudgetStatsData["mandatory"] }) {
         </h3>
         <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
           Пометь обязательные статьи (ипотека, коммуналка, абонементы…) в разделе{" "}
-          <Link href="/categories" className="text-indigo-500 hover:text-indigo-600 font-medium">Категории</Link>{" "}
+          <Link href="/categories" className="text-[var(--app-accent)] hover:text-[var(--app-accent)] font-medium">Категории</Link>{" "}
           — и здесь появится разбивка обязательных/необязательных расходов и «свободные деньги».
         </p>
       </div>

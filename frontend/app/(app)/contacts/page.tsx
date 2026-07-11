@@ -84,7 +84,7 @@ export default function ContactsPage() {
                 className="flex items-center gap-3 py-3 px-4 rounded-xl border transition-all"
                 style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}
               >
-                <Avatar name={c.name} size="md" className="bg-indigo-500/15 text-indigo-300/80" />
+                <Avatar name={c.name} size="md" className="bg-[var(--app-accent-light)] text-[var(--app-accent-ink)]/80" />
                 <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--t-primary)" }}>
                   {c.name}
                 </span>

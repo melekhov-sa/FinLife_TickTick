@@ -119,7 +119,7 @@ function QuickAdd({ listId, onAdded }: { listId: number; onAdded: () => void }) 
 
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] px-3 py-2 focus-within:border-indigo-400 transition-colors">
+      <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] px-3 py-2 focus-within:border-[var(--app-accent)] transition-colors">
         <Plus size={15} className="shrink-0" style={{ color: "var(--t-faint)" }} />
         <input
           value={value}
@@ -134,7 +134,7 @@ function QuickAdd({ listId, onAdded }: { listId: number; onAdded: () => void }) 
         <button
           onClick={submit}
           disabled={saving}
-          className="px-3 py-2 text-[13px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors shadow-sm shrink-0"
+          className="px-3 py-2 text-[13px] font-semibold rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors shadow-sm shrink-0"
         >
           {saving ? "..." : "Добавить"}
         </button>
@@ -370,7 +370,7 @@ export default function ListDetailPage() {
   });
 
   const isWishOrGift = list?.list_type === "wishlist" || list?.list_type === "giftlist";
-  const inputCls = "w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
+  const inputCls = "w-full px-3 h-10 text-[15px] rounded-xl border focus:outline-none focus:border-[var(--app-accent)] bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85";
   const labelCls = "block text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500";
 
   // ── Render helpers ───────────────────────────────────────────────────
@@ -431,7 +431,7 @@ export default function ListDetailPage() {
         </div>
 
         {item.price && <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>{parseFloat(item.price).toLocaleString("ru-RU")} ₽</span>}
-        {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-indigo-50 dark:hover:bg-indigo-500/10" style={{ color: "var(--t-faint)" }}><ExternalLink size={13} /></a>}
+        {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--app-accent-weak)]" style={{ color: "var(--t-faint)" }}><ExternalLink size={13} /></a>}
         <Tooltip content="Редактировать"><button onClick={() => openEdit(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.06]" style={{ color: "var(--t-faint)" }}><Pencil size={13} /></button></Tooltip>
         <Tooltip content="Удалить"><button onClick={() => setDeleteTarget(item)} className="shrink-0 w-7 h-7 flex items-center justify-center rounded md:opacity-0 md:group-hover/item:opacity-100 transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500" style={{ color: "var(--t-faint)" }}><Trash2 size={13} /></button></Tooltip>
       </div>
@@ -682,13 +682,13 @@ export default function ListDetailPage() {
               onChange={(e) => setColTitle(e.target.value)}
               onBlur={saveTitle}
               onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); if (e.key === "Escape") { setColTitle(group.title); setEditingTitle(false); } }}
-              className="text-[14px] font-bold bg-transparent outline-none border-b-2 border-indigo-400 w-full"
+              className="text-[14px] font-bold bg-transparent outline-none border-b-2 border-[var(--app-accent)] w-full"
               style={{ color: "var(--t-primary)" }}
               autoFocus
             />
           ) : (
             <h3
-              className={clsx("text-[14px] font-bold", group.id !== 0 && "cursor-pointer hover:text-indigo-500 transition-colors")}
+              className={clsx("text-[14px] font-bold", group.id !== 0 && "cursor-pointer hover:text-[var(--app-accent)] transition-colors")}
               style={{ color: "var(--t-primary)" }}
               onDoubleClick={() => { if (group.id !== 0) { setColTitle(group.title); setEditingTitle(true); } }}
             >
@@ -729,7 +729,7 @@ export default function ListDetailPage() {
           className={clsx(
             "flex-1 min-h-0 overflow-y-auto space-y-2 rounded-xl border p-2 min-h-[120px] transition-colors",
             isOver
-              ? "bg-indigo-50/60 dark:bg-indigo-500/[0.06] border-indigo-200 dark:border-indigo-500/25"
+              ? "bg-[var(--app-accent-weak)] border-[var(--app-accent)]"
               : "bg-slate-50/80 dark:bg-white/[0.02] border-slate-100 dark:border-white/[0.04]"
           )}
         >
@@ -743,7 +743,7 @@ export default function ListDetailPage() {
 
           {/* Inline add */}
           {isAdding && (
-            <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-white/[0.04] p-2">
+            <div className="rounded-lg border border-[var(--app-accent)] bg-white dark:bg-white/[0.04] p-2">
               <input
                 value={inlineAddTitle}
                 onChange={(e) => setInlineAddTitle(e.target.value)}
@@ -754,7 +754,7 @@ export default function ListDetailPage() {
                 autoFocus
               />
               <div className="flex gap-1.5 mt-1.5">
-                <button onClick={() => handleInlineAdd(group.id)} disabled={!inlineAddTitle.trim()} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                <button onClick={() => handleInlineAdd(group.id)} disabled={!inlineAddTitle.trim()} className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-[var(--app-accent)] text-[#fff] hover:brightness-110 disabled:opacity-40 transition-colors">
                   Добавить
                 </button>
                 <button onClick={() => setInlineAddGroupId(null)} className="text-[11px] font-medium px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors" style={{ color: "var(--t-faint)" }}>
@@ -802,7 +802,7 @@ export default function ListDetailPage() {
           {/* Add column button */}
           <div className="w-[270px] md:w-[290px] shrink-0">
             {addingColumn ? (
-              <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-white/[0.04] p-3">
+              <div className="rounded-xl border border-[var(--app-accent)] bg-white dark:bg-white/[0.04] p-3">
                 <input
                   value={newColTitle}
                   onChange={(e) => setNewColTitle(e.target.value)}
@@ -837,7 +837,7 @@ export default function ListDetailPage() {
                 fullWidth
                 leftIcon={<Plus size={16} />}
                 onClick={() => { setAddingColumn(true); setNewColTitle(""); }}
-                className="border-2 border-dashed border-slate-200 dark:border-white/[0.08] hover:border-indigo-300 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/[0.04] py-4 h-auto"
+                className="border-2 border-dashed border-slate-200 dark:border-white/[0.08] hover:border-[var(--app-accent)] hover:bg-[var(--app-accent-weak)]/[0.04] py-4 h-auto"
               >
                 Колонка
               </Button>
@@ -846,7 +846,7 @@ export default function ListDetailPage() {
         </div>
         <DragOverlay>
           {dragItem && (
-            <div className="rounded-lg border border-indigo-300 bg-white dark:bg-[#0f1221] p-2.5 shadow-xl w-[260px] opacity-90">
+            <div className="rounded-lg border border-[var(--app-accent)] bg-white dark:bg-[#0f1221] p-2.5 shadow-xl w-[260px] opacity-90">
               <p className="text-[13px] font-medium" style={{ color: "var(--t-primary)" }}>{dragItem.title}</p>
             </div>
           )}
@@ -865,7 +865,7 @@ export default function ListDetailPage() {
       {/* Add item modal */}
       {showAddItem && (
         <BottomSheet open onClose={() => setShowAddItem(false)} title="Добавить элемент" footer={
-          <button onClick={handleAddItem} disabled={creatingItem || !itemTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
+          <button onClick={handleAddItem} disabled={creatingItem || !itemTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors">
             {creatingItem ? "..." : "Добавить"}
           </button>
         }>
@@ -894,7 +894,7 @@ export default function ListDetailPage() {
               ) : (
                 <button
                   onClick={() => createFileRef.current?.click()}
-                  className="w-full py-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex flex-col items-center gap-1 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex flex-col items-center gap-1 transition-colors hover:border-[var(--app-accent)] hover:bg-[var(--app-accent-weak)]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <ImagePlus size={18} />
@@ -910,7 +910,7 @@ export default function ListDetailPage() {
       {/* Edit item modal */}
       {editingItem && (
         <BottomSheet open onClose={() => setEditingItem(null)} title="Редактировать" footer={
-          <button onClick={handleEditSave} disabled={!editTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
+          <button onClick={handleEditSave} disabled={!editTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors">
             Сохранить
           </button>
         }>
@@ -944,7 +944,7 @@ export default function ListDetailPage() {
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex flex-col items-center gap-1.5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+                  className="w-full py-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/[0.08] flex flex-col items-center gap-1.5 transition-colors hover:border-[var(--app-accent)] hover:bg-[var(--app-accent-weak)]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <ImagePlus size={20} />
@@ -984,7 +984,7 @@ export default function ListDetailPage() {
       {/* Add group modal */}
       {showAddGroup && (
         <BottomSheet open onClose={() => setShowAddGroup(false)} title="Новая группа" footer={
-          <button onClick={handleAddGroup} disabled={creatingGroup || !groupTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors">
+          <button onClick={handleAddGroup} disabled={creatingGroup || !groupTitle.trim()} className="w-full py-2.5 text-[14px] font-semibold rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors">
             {creatingGroup ? "..." : "Создать"}
           </button>
         }>
@@ -1025,9 +1025,9 @@ export default function ListDetailPage() {
                   onChange={(e) => setNewStatusLabel(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addStatus(); }}
                   placeholder="Название"
-                  className="flex-1 px-3 h-9 text-[14px] rounded-lg border focus:outline-none focus:border-indigo-500/60 bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
+                  className="flex-1 px-3 h-9 text-[14px] rounded-lg border focus:outline-none focus:border-[var(--app-accent)] bg-white dark:bg-white/[0.05] border-slate-300 dark:border-white/[0.08] text-slate-800 dark:text-white/85"
                 />
-                <button onClick={addStatus} disabled={!newStatusLabel.trim()} className="px-3 h-9 text-[12px] font-semibold rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 disabled:opacity-40 transition-colors">
+                <button onClick={addStatus} disabled={!newStatusLabel.trim()} className="px-3 h-9 text-[12px] font-semibold rounded-lg bg-[var(--app-accent)] text-[#fff] hover:brightness-110 disabled:opacity-40 transition-colors">
                   +
                 </button>
               </div>
@@ -1040,7 +1040,7 @@ export default function ListDetailPage() {
                     <button
                       key={c}
                       onClick={() => setNewStatusColor(c)}
-                      className={clsx("w-6 h-6 rounded-full transition-all", sc.dot, newStatusColor === c && "ring-2 ring-offset-2 ring-indigo-500")}
+                      className={clsx("w-6 h-6 rounded-full transition-all", sc.dot, newStatusColor === c && "ring-2 ring-offset-2 ring-[var(--app-accent)]")}
                     />
                   );
                 })}
@@ -1106,7 +1106,7 @@ export default function ListDetailPage() {
                   <button onClick={() => setShowAddGroup(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] hover:bg-slate-50" style={{ color: "var(--t-secondary)" }}>
                     <FolderPlus size={13} /><span className="hidden md:inline">Группа</span>
                   </button>
-                  <button onClick={() => setShowAddItem(true)} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-[12px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm">
+                  <button onClick={() => setShowAddItem(true)} className="flex items-center gap-1.5 bg-[var(--app-accent)] hover:brightness-110 text-[#fff] text-[12px] font-semibold rounded-lg px-3 py-1.5 transition-colors shadow-sm">
                     <Plus size={14} /><span className="hidden md:inline">Добавить</span>
                   </button>
                 </div>
@@ -1117,7 +1117,7 @@ export default function ListDetailPage() {
               {grouped.length === 0 && (
                 <div className={clsx("text-center py-16", viewMode === "kanban" && "px-3 md:px-6")}>
                   <p className="text-[14px]" style={{ color: "var(--t-muted)" }}>Список пуст</p>
-                  <button onClick={() => setShowAddItem(true)} className="mt-3 text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">+ Добавить первый элемент</button>
+                  <button onClick={() => setShowAddItem(true)} className="mt-3 text-[13px] font-medium text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors">+ Добавить первый элемент</button>
                 </div>
               )}
 

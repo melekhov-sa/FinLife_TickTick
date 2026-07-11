@@ -21,7 +21,7 @@ function statusBadge(status: string) {
   if (LIVE.has(status))     return { label: "Идёт",       cls: "bg-emerald-100 dark:bg-emerald-500/[0.15] text-emerald-600 dark:text-emerald-400 animate-pulse" };
   if (POSTPONED.has(status))return { label: "Перенесён",  cls: "bg-amber-100 dark:bg-amber-500/[0.15] text-amber-700 dark:text-amber-400" };
   if (CANCELLED.has(status))return { label: "Отменён",    cls: "bg-red-100 dark:bg-red-500/[0.15] text-red-600 dark:text-red-400" };
-  return { label: "Запланирован", cls: "bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400" };
+  return { label: "Запланирован", cls: "bg-[var(--app-accent-weak)] text-[var(--app-accent)]" };
 }
 
 function fmtDate(dateStr: string) {
@@ -54,7 +54,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
     <div className={clsx(
       "flex gap-4 p-4 rounded-2xl border transition-colors",
       today
-        ? "bg-indigo-50 dark:bg-indigo-500/[0.08] border-indigo-200 dark:border-indigo-500/30"
+        ? "bg-[var(--app-accent-weak)] border-[var(--app-accent)]"
         : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.09] hover:border-slate-300 dark:hover:border-white/[0.15]",
     )}>
       {/* Date column */}
@@ -74,7 +74,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
       <div className="flex-1 min-w-0">
         {/* Teams */}
         <div className="flex items-center gap-2 mb-2">
-          <span className={clsx("text-[15px] font-bold leading-tight", isZenitHome ? "text-indigo-600 dark:text-indigo-400" : "")} style={!isZenitHome ? { color: "var(--t-primary)" } : undefined}>
+          <span className={clsx("text-[15px] font-bold leading-tight", isZenitHome ? "text-[var(--app-accent)]" : "")} style={!isZenitHome ? { color: "var(--t-primary)" } : undefined}>
             {match.home_team}
           </span>
           <span className="text-[13px] font-medium shrink-0" style={{ color: "var(--t-faint)" }}>
@@ -82,7 +82,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
               ? `${match.score_home} : ${match.score_away}`
               : "vs"}
           </span>
-          <span className={clsx("text-[15px] font-bold leading-tight", !isZenitHome ? "text-indigo-600 dark:text-indigo-400" : "")} style={isZenitHome ? { color: "var(--t-primary)" } : undefined}>
+          <span className={clsx("text-[15px] font-bold leading-tight", !isZenitHome ? "text-[var(--app-accent)]" : "")} style={isZenitHome ? { color: "var(--t-primary)" } : undefined}>
             {match.away_team}
           </span>
         </div>
@@ -116,7 +116,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
         <button
           onClick={onCreateEvent}
           title="Добавить в события"
-          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors self-center"
+          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-[var(--app-accent-weak)] transition-colors self-center"
           style={{ color: "var(--t-faint)" }}
         >
           <CalendarPlus size={15} />

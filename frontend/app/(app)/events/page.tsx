@@ -28,7 +28,7 @@ const RU_MONTHS_FULL    = ["Январь","Февраль","Март","Апре�
 
 
 const CAT_PALETTES = [
-  { border: "border-l-indigo-500",  icon: "text-indigo-400",  bg: "bg-indigo-500/10" },
+  { border: "border-l-[var(--app-accent)]",  icon: "text-[var(--app-accent)]",  bg: "bg-[var(--app-accent-light)]" },
   { border: "border-l-emerald-500", icon: "text-emerald-400", bg: "bg-emerald-500/10" },
   { border: "border-l-amber-500",   icon: "text-amber-400",   bg: "bg-amber-500/10" },
   { border: "border-l-rose-500",    icon: "text-rose-400",    bg: "bg-rose-500/10" },
@@ -271,8 +271,8 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
               onClick={() => onSelectDate(isSelected ? null : iso)}
               className={clsx(
                 "relative flex flex-col items-center justify-center h-7 w-full rounded-lg text-[12px] font-medium transition-colors",
-                isSelected ? "bg-indigo-600 text-[#fff]"
-                : isToday  ? "bg-indigo-500/15 text-indigo-400"
+                isSelected ? "bg-[var(--app-accent)] text-[#fff]"
+                : isToday  ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]"
                 : "hover:bg-white/[0.06]"
               )}
               style={{
@@ -283,7 +283,7 @@ function MiniCalendar({ year, month, eventDates, selectedDate, onSelectDate, onP
             >
               {day}
               {hasEvents && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400/60" />
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--app-accent-light)]" />
               )}
             </button>
           );
@@ -530,7 +530,7 @@ export default function EventsPage() {
                     onClick={() => setDays(d)}
                     className={clsx(
                       "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                      days === d ? "bg-indigo-600 text-[#fff]" : "text-white/55 hover:text-white/80 hover:bg-white/[0.05]"
+                      days === d ? "bg-[var(--app-accent)] text-[#fff]" : "text-white/55 hover:text-white/80 hover:bg-white/[0.05]"
                     )}
                   >
                     {d}д
@@ -603,14 +603,14 @@ export default function EventsPage() {
                         <div className={clsx(
                           "flex items-center gap-1.5 px-2.5 py-1 rounded-full border",
                           isToday
-                            ? "bg-indigo-500/10 border-indigo-500/25"
+                            ? "bg-[var(--app-accent-light)] border-[color-mix(in_srgb,var(--app-accent)_25%,transparent)]"
                             : vacation
                             ? "bg-cyan-500/10 border-cyan-500/20"
                             : holiday
                             ? "bg-rose-500/10 border-rose-500/20"
                             : "bg-white/[0.03] border-white/[0.06]"
                         )}>
-                          {isToday && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                          {isToday && <span className="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]" />}
                           <span className="text-[11px] font-semibold uppercase tracking-widest" style={{
                             color: isToday ? "rgb(129,140,248)"
                               : vacation ? "rgb(8,145,178)"

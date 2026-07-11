@@ -195,7 +195,7 @@ function PlanEditModal({
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,\-]/g, ""))}
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
           placeholder="0"
-          className="w-full px-3 h-10 text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-colors tabular-nums"
+          className="w-full px-3 h-10 text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] transition-colors tabular-nums"
           style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
 
@@ -207,7 +207,7 @@ function PlanEditModal({
           onChange={(e) => setNote(e.target.value)}
           placeholder="Необязательно"
           rows={2}
-          className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-colors resize-none"
+          className="w-full px-3 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] transition-colors resize-none"
           style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
 
@@ -232,7 +232,7 @@ function PlanEditModal({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[#fff] disabled:opacity-50 transition-colors"
+            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[var(--app-accent)] hover:brightness-110 text-[#fff] disabled:opacity-50 transition-colors"
           >
             {saving ? "Сохраняем…" : "Сохранить"}
           </button>
@@ -434,7 +434,7 @@ function EditablePlanTd({
       {canEdit && (
         <button
           type="button"
-          className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-400"
+          className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--app-accent)]"
           style={{ color: "var(--t-faint)", padding: 2 }}
           title="Изменить с комментарием"
           onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
@@ -448,7 +448,7 @@ function EditablePlanTd({
           editing.onInlineStart(key, cell.plan);
         }}
         className={clsx(
-          canEdit && "cursor-pointer hover:text-indigo-400 transition-colors",
+          canEdit && "cursor-pointer hover:text-[var(--app-accent)] transition-colors",
           hasNote && "border-b border-dotted border-amber-400/60"
         )}
         title={cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · N — с комментарием" : undefined)}
@@ -502,7 +502,7 @@ function FactCell({
       style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
     >
       {hasFact && onClick ? (
-        <span onClick={onClick} className="cursor-pointer hover:underline hover:text-indigo-600">
+        <span onClick={onClick} className="cursor-pointer hover:underline hover:text-[var(--app-accent)]">
           {fmt(cell.fact)}
         </span>
       ) : (
@@ -529,7 +529,7 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
             colSpan={periodColCount(kind)}
             className={clsx(
               "text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center",
-              kind === "current" ? "bg-indigo-50 dark:bg-indigo-500/[0.06]" : ""
+              kind === "current" ? "bg-[var(--app-accent-weak)]" : ""
             )}
             style={{
               color: kind === "current" ? "var(--t-primary)" : "var(--t-muted)",
@@ -563,9 +563,9 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
         );
         if (kind === "current") return (
           <React.Fragment key={p.index}>
-            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>П</th>
-            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ф</th>
-            <th className={clsx(subHdrCls, "bg-indigo-500/[0.06]")} style={subHdrStyle}>Ост</th>
+            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>П</th>
+            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>Ф</th>
+            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>Ост</th>
           </React.Fragment>
         );
         // future
@@ -650,7 +650,7 @@ function TotalsRow({
             <React.Fragment key={i}>
               <PlanTd cell={cell} isMuted />
               <FactCell cell={cell} kind={kind} isBold />
-              <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-indigo-500/[0.03]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+              <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-[var(--app-accent-light)]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -716,9 +716,9 @@ function CategoryDataRow({
       )}
       style={
         dragOverState?.pos === "before"
-          ? { boxShadow: "inset 0 3px 0 #6366F1" }
+          ? { boxShadow: "inset 0 3px 0 var(--app-accent)" }
           : dragOverState?.pos === "after"
-          ? { boxShadow: "inset 0 -3px 0 #6366F1" }
+          ? { boxShadow: "inset 0 -3px 0 var(--app-accent)" }
           : undefined
       }
       onDragOver={canReceiveDrop ? (e) => dragHandlers.onDragOver(e, row.category_id!, row.parent_id) : undefined}
@@ -801,7 +801,7 @@ function CategoryDataRow({
             <React.Fragment key={i}>
               <EditablePlanTd cell={cell} period={p} row={row} editing={editing} heatBg={heatBg} extraStyle={periodBorder} />
               <FactCell cell={cell} kind={kind} onClick={factClick} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-indigo-500/[0.03]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -858,9 +858,9 @@ function GoalDataRow({
       className="transition-colors"
       style={
         dragOverPos === "before"
-          ? { boxShadow: "inset 0 3px 0 #6366F1" }
+          ? { boxShadow: "inset 0 3px 0 var(--app-accent)" }
           : dragOverPos === "after"
-          ? { boxShadow: "inset 0 -3px 0 #6366F1" }
+          ? { boxShadow: "inset 0 -3px 0 var(--app-accent)" }
           : undefined
       }
       onDragOver={onDragOver}
@@ -940,7 +940,7 @@ function GoalDataRow({
             {canEdit && editing && target && (
               <button
                 type="button"
-                className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-400"
+                className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--app-accent)]"
                 style={{ color: "var(--t-faint)", padding: 2 }}
                 title="Изменить с комментарием"
                 onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
@@ -953,7 +953,7 @@ function GoalDataRow({
                 if (!canEdit || !editing || !target) return;
                 editing.onInlineStart(key, cell.plan);
               }}
-              className={canEdit ? "cursor-pointer hover:text-indigo-400 transition-colors" : ""}
+              className={canEdit ? "cursor-pointer hover:text-[var(--app-accent)] transition-colors" : ""}
             >
               {cell.plan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
               {cell.note && (
@@ -1024,7 +1024,7 @@ function ResultRow({
           <React.Fragment key={i}>
             <td className={tdCls} style={{ color: planColor }}>{fmtSigned(cell.plan)}</td>
             <td className={tdCls} style={{ color: factColor }}>{fmtSigned(cell.fact)}</td>
-            <td className={clsx(tdCls, "bg-indigo-500/[0.03]")} style={{ color: (cell.plan - cell.fact) >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>{fmtSigned(cell.plan - cell.fact)}</td>
+            <td className={clsx(tdCls, "bg-[var(--app-accent-light)]")} style={{ color: (cell.plan - cell.fact) >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>{fmtSigned(cell.plan - cell.fact)}</td>
           </React.Fragment>
         );
         // future
@@ -1318,7 +1318,7 @@ function PeriodPicker({ value, onChange, label }: {
             {[1,2,3,4,6,12].map(n => (
               <button key={n} onClick={() => setCCount(n)}
                 className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                  cCount === n ? "bg-indigo-600 text-[#fff]" : "hover:bg-[var(--app-accent-light)]")}
+                  cCount === n ? "bg-[var(--app-accent)] text-[#fff]" : "hover:bg-[var(--app-accent-light)]")}
                 style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
                 {n}
               </button>
@@ -1327,7 +1327,7 @@ function PeriodPicker({ value, onChange, label }: {
         </div>
         <button
           onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
-          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-indigo-600 text-[#fff] hover:bg-indigo-500 transition-colors"
+          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-[var(--app-accent)] text-[#fff] hover:brightness-110 transition-colors"
         >
           Применить
         </button>
@@ -1388,7 +1388,7 @@ function OtherRow({
         const p = periods[i];
         const pBorder = { borderLeft: "2px solid var(--bgt-cell-border-strong)" } as React.CSSProperties;
         const factEl = cell.fact
-          ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact, excludeCategoryIds: shownCategoryIds })} className="cursor-pointer hover:underline hover:text-indigo-600" style={{ color: factColor }}>{fmt(cell.fact)}</span>
+          ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact, excludeCategoryIds: shownCategoryIds })} className="cursor-pointer hover:underline hover:text-[var(--app-accent)]" style={{ color: factColor }}>{fmt(cell.fact)}</span>
           : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
 
         if (pk === "past") return (
@@ -1505,7 +1505,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
         {canEdit && (
           <button
             type="button"
-            className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
+            className="opacity-40 hover:opacity-100 transition-opacity hover:text-[var(--app-accent)] shrink-0"
             style={{ color: "var(--t-faint)", visibility: isEditing ? "hidden" : "visible" }}
             title="С комментарием"
             onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(planTarget); }}
@@ -1606,7 +1606,7 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
         {canEdit && (
           <button
             type="button"
-            className="opacity-40 hover:opacity-100 transition-opacity hover:text-indigo-400 shrink-0"
+            className="opacity-40 hover:opacity-100 transition-opacity hover:text-[var(--app-accent)] shrink-0"
             style={{ color: "var(--t-faint)", visibility: isEditing ? "hidden" : "visible" }}
             title="С комментарием"
             onClick={(e) => { e.stopPropagation(); editing.openPlanEdit(target); }}
@@ -2239,7 +2239,7 @@ export default function BudgetMatrixPage() {
               className={clsx(
                 "text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5",
                 showHidden
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  ? "bg-[var(--app-accent-weak)] border-[var(--app-accent)] text-[var(--app-accent-ink)]"
                   : "border-slate-200 text-slate-500 hover:bg-slate-50"
               )}
             >
@@ -2460,7 +2460,7 @@ export default function BudgetMatrixPage() {
                       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
                       onDrop={(e) => { e.preventDefault(); handleDropEnd(data.income_rows); }}
                     >
-                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "color-mix(in srgb, var(--app-accent) 15%, transparent)" : undefined, transition: "background 0.15s" }} />
                     </tr>
                   )}
                   {/* Прочие доходы — always visible */}
@@ -2518,7 +2518,7 @@ export default function BudgetMatrixPage() {
                           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverGoal(null); }}
                           onDrop={(e) => { e.preventDefault(); handleGoalDropEnd(data.withdrawal_rows); }}
                         >
-                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -1 ? "color-mix(in srgb, var(--app-accent) 15%, transparent)" : undefined, transition: "background 0.15s" }} />
                         </tr>
                       )}
                       <TotalsRow
@@ -2555,7 +2555,7 @@ export default function BudgetMatrixPage() {
                       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null); }}
                       onDrop={(e) => { e.preventDefault(); handleDropEnd(data.expense_rows); }}
                     >
-                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                      <td colSpan={totalCols} style={{ height: 10, background: dragOver?.id === -1 ? "color-mix(in srgb, var(--app-accent) 15%, transparent)" : undefined, transition: "background 0.15s" }} />
                     </tr>
                   )}
                   {/* Прочие расходы — always visible, clickable */}
@@ -2613,7 +2613,7 @@ export default function BudgetMatrixPage() {
                           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverGoal(null); }}
                           onDrop={(e) => { e.preventDefault(); handleGoalDropEnd(data.goal_rows); }}
                         >
-                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -2 ? "rgba(99,102,241,0.15)" : undefined, transition: "background 0.15s" }} />
+                          <td colSpan={totalCols} style={{ height: 10, background: dragOverGoal?.id === -2 ? "color-mix(in srgb, var(--app-accent) 15%, transparent)" : undefined, transition: "background 0.15s" }} />
                         </tr>
                       )}
                       <TotalsRow

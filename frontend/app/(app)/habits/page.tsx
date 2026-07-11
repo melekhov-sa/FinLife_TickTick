@@ -288,7 +288,7 @@ export default function HabitsPage() {
                 </Button>
                 <Link
                   href="/habits/all"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 hover:text-indigo-400 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 hover:text-[var(--app-accent)] transition-colors"
                   style={{ fontSize: "var(--fs-secondary)", color: "var(--t-muted)" }}
                 >
                   <Settings2 size={14} /> Все привычки
@@ -306,5 +306,5 @@ export default function HabitsPage() {
 function clsx_progress(allDone: boolean): string {
   return allDone
     ? "h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-    : "h-full bg-gradient-to-r from-indigo-500 to-indigo-400";
+    : "h-full bg-gradient-to-r from-[var(--app-accent)] to-[var(--app-accent)]";
 }

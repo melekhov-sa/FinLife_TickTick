@@ -58,7 +58,7 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
           <Badge variant={statusVariant} size="sm">{article.status_label}</Badge>
           <span className="text-[10px] font-semibold text-white/55 uppercase tracking-widest">{article.type_label}</span>
           {article.tags.map((t) => (
-            <span key={t.id} className="text-[10px] font-medium text-indigo-400/80 bg-indigo-500/10 border border-indigo-500/15 px-1.5 py-0.5 rounded-full">
+            <span key={t.id} className="text-[10px] font-medium text-[var(--app-accent)]/80 bg-[var(--app-accent-light)] border border-[color-mix(in_srgb,var(--app-accent)_15%,transparent)] px-1.5 py-0.5 rounded-full">
               #{t.name}
             </span>
           ))}
@@ -108,7 +108,7 @@ export default function KnowledgePage() {
           </div>
           <a
             href="/legacy/knowledge/create"
-            className="bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-xs font-medium rounded-xl px-4 py-2 transition-colors whitespace-nowrap"
+            className="bg-[var(--app-accent)] hover:brightness-110 text-[#fff] text-xs font-medium rounded-xl px-4 py-2 transition-colors whitespace-nowrap"
           >
             + Статья
           </a>
@@ -116,7 +116,7 @@ export default function KnowledgePage() {
 
         {isLoading && (
           <div className="flex items-center justify-center h-48">
-            <div className="w-7 h-7 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            <div className="w-7 h-7 border-2 border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] border-t-[var(--app-accent)] rounded-full animate-spin" />
           </div>
         )}
         {isError && (
@@ -129,7 +129,7 @@ export default function KnowledgePage() {
             actions={!debouncedSearch && !typeFilter ? (
               <a
                 href="/legacy/knowledge/create"
-                className="text-xs font-medium text-indigo-400/70 hover:text-indigo-400 transition-colors"
+                className="text-xs font-medium text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors"
               >
                 Создать первую статью →
               </a>

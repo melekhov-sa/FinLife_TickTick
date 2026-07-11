@@ -135,7 +135,7 @@ function AnimatedSection({
       }}
     >
       <div className="flex items-center gap-2 mb-3">
-        <Icon className="w-4 h-4 text-indigo-400 shrink-0" />
+        <Icon className="w-4 h-4 text-[var(--app-accent)] shrink-0" />
         <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
           {title}
         </h2>
@@ -208,7 +208,7 @@ function AiSection({ digest, index }: { digest: DigestDetail; index: number }) {
         </p>
       ) : (
         <div className="flex items-start gap-2">
-          <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-indigo-400/50" />
+          <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-[var(--app-accent)]/50" />
           <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>
             AI-комментарий не сформирован.{" "}
             <Link
@@ -242,8 +242,8 @@ function DigestHero({ digest }: { digest: DigestDetail }) {
     <div
       className="relative rounded-2xl overflow-hidden p-5 mb-4"
       style={{
-        background: "linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.15) 100%)",
-        border: "1px solid rgba(99,102,241,0.25)",
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 15%, transparent) 0%, color-mix(in srgb, var(--app-accent) 15%, transparent) 100%)",
+        border: "1px solid color-mix(in srgb, var(--app-accent) 25%, transparent)",
         opacity: reduced ? 1 : 0,
         animation: reduced ? undefined : "digest-fade-up 500ms cubic-bezier(0.4,0,0.2,1) 0ms forwards",
       }}
@@ -252,12 +252,12 @@ function DigestHero({ digest }: { digest: DigestDetail }) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.18) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--app-accent) 18%, transparent) 0%, transparent 70%)",
         }}
       />
       <div className="relative flex items-center gap-3">
         <Sparkles
-          className="w-6 h-6 text-indigo-400 shrink-0"
+          className="w-6 h-6 text-[var(--app-accent)] shrink-0"
           style={{
             animation: reduced ? undefined : "digest-glow-pulse 2s ease-in-out infinite",
           }}

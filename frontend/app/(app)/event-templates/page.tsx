@@ -129,7 +129,7 @@ function TemplateRow({
               onClick={onRestore}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
             >
-              <RotateCcw size={13} className="text-indigo-400/60" />
+              <RotateCcw size={13} className="text-[var(--app-accent)]/60" />
             </button>
           </Tooltip>
         ) : (

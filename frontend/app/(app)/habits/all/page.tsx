@@ -33,7 +33,7 @@ export default function HabitsAllPage() {
         {/* Back link */}
         <Link
           href="/habits"
-          className="inline-flex items-center gap-1.5 mb-4 hover:text-indigo-400 transition-colors"
+          className="inline-flex items-center gap-1.5 mb-4 hover:text-[var(--app-accent)] transition-colors"
           style={{ fontSize: "var(--fs-secondary)", color: "var(--t-muted)" }}
         >
           <ArrowLeft size={14} /> Сегодня

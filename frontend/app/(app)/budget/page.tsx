@@ -52,10 +52,10 @@ function Bar({ plan, fact, kind }: { plan: number; fact: number; kind: "income" 
   const factPct = Math.min(100, (fact / max) * 100);
   const over = fact > plan && plan > 0;
 
-  const planColor = kind === "income" ? "bg-emerald-500/30" : "bg-indigo-500/30";
+  const planColor = kind === "income" ? "bg-emerald-500/30" : "bg-[var(--app-accent-light)]";
   const factColor = kind === "income"
     ? "bg-emerald-500"
-    : over ? "bg-red-500" : "bg-indigo-500";
+    : over ? "bg-red-500" : "bg-[var(--app-accent)]";
 
   return (
     <div className="relative h-1 w-full bg-slate-200 dark:bg-white/[0.05] rounded-full overflow-hidden mt-1">
@@ -310,7 +310,7 @@ export default function BudgetPage() {
               {data?.period_label ?? `${month} / ${year}`}
             </h1>
             {isCurrentMonth && (
-              <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400/60">
+              <span className="text-[11px] font-medium text-[var(--app-accent)]/60">
                 текущий месяц
               </span>
             )}

@@ -22,12 +22,12 @@ function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: 
       padding="md"
       className={clsx(
         "transition-opacity hover:opacity-80",
-        isNew && "border-indigo-400 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-500/[0.07] to-violet-500/[0.05]"
+        isNew && "border-[var(--app-accent)] bg-gradient-to-br from-[var(--app-accent)]/[0.07] to-violet-500/[0.05]"
       )}
     >
       <div className="flex items-center gap-2 mb-2">
         <Sparkles
-          className={clsx("w-4 h-4 shrink-0", isNew ? "text-indigo-400" : "text-slate-300 dark:text-white/30")}
+          className={clsx("w-4 h-4 shrink-0", isNew ? "text-[var(--app-accent)]" : "text-slate-300 dark:text-white/30")}
         />
         <span
           className="text-[14px] font-semibold"
@@ -36,7 +36,7 @@ function DigestListCard({ digest, onClick }: { digest: DigestListItem; onClick: 
           Неделя {digest.period_key}
         </span>
         {isNew && (
-          <span className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+          <span className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--app-accent-weak)] text-[var(--app-accent)]">
             Новый
           </span>
         )}
@@ -86,7 +86,7 @@ export default function DigestListPage() {
             loading={backfilling}
             leftIcon={<RefreshCw size={14} className={clsx(backfilling && "animate-spin")} />}
             onClick={handleBackfill}
-            className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+            className="text-[var(--app-accent)] hover:bg-[var(--app-accent-weak)]"
           >
             Восстановить
           </Button>

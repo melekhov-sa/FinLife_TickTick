@@ -31,7 +31,7 @@ interface SharedListSummary {
 
 const TYPE_META: Record<string, { icon: typeof ShoppingBag; label: string; color: string }> = {
   shopping:  { icon: ShoppingCart, label: "Покупки",  color: "text-orange-500" },
-  wishlist:  { icon: ShoppingBag,  label: "Вишлист",  color: "text-indigo-500" },
+  wishlist:  { icon: ShoppingBag,  label: "Вишлист",  color: "text-[var(--app-accent)]" },
   personal:  { icon: ListTodo,     label: "Личное",   color: "text-slate-500" },
   roadmap:   { icon: Map,          label: "Роадмап",  color: "text-emerald-500" },
   trip:      { icon: Plane,        label: "Поездка",  color: "text-sky-500" },
@@ -141,7 +141,7 @@ export default function ListsPage() {
                     className={clsx(
                       "flex flex-col items-center gap-1 py-3 rounded-xl border transition-all text-[12px] font-medium",
                       newType === t
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+                        ? "border-[var(--app-accent)] bg-[var(--app-accent-weak)] text-[var(--app-accent)]"
                         : "border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"
                     )}
                     style={{ color: newType === t ? undefined : "var(--t-secondary)" }}
@@ -234,7 +234,7 @@ export default function ListsPage() {
               icon={<ShoppingBag size={24} />}
               title="Пока нет списков"
               actions={
-                <button onClick={() => setShowCreate(true)} className="text-[13px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors">
+                <button onClick={() => setShowCreate(true)} className="text-[13px] font-medium text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors">
                   + Создать первый список
                 </button>
               }

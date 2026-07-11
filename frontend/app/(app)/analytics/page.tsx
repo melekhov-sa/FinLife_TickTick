@@ -91,7 +91,7 @@ export default function AnalyticsPage() {
                   if (e.key === "Enter") e.currentTarget.blur();
                   if (e.key === "Escape") setRenamingTabId(null);
                 }}
-                className="text-[13px] font-medium px-3 py-1.5 rounded-lg border border-indigo-500/50 bg-transparent focus:outline-none"
+                className="text-[13px] font-medium px-3 py-1.5 rounded-lg border border-[color-mix(in_srgb,var(--app-accent)_50%,transparent)] bg-transparent focus:outline-none"
                 style={{ color: "var(--t-primary)", minWidth: 80, maxWidth: 160 }}
               />
             ) : (
@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
                 className={clsx(
                   "text-[13px] font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap",
                   tab.tabId === activeTabId
-                    ? "bg-indigo-500/20 text-indigo-400"
+                    ? "bg-[var(--app-accent-light)] text-[var(--app-accent)]"
                     : "hover:bg-white/[0.05]",
                 )}
                 style={{ color: tab.tabId === activeTabId ? undefined : "var(--t-faint)" }}

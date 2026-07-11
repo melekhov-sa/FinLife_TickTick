@@ -43,10 +43,10 @@ function renderMarkdown(md: string): string {
     .replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-white/90 mt-6 mb-2.5 tracking-tight">$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white/85">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em class="text-white/70 italic">$1</em>')
-    .replace(/`(.+?)`/g, '<code class="bg-indigo-500/[0.12] border border-indigo-500/20 px-1.5 py-0.5 rounded-md text-indigo-300/90 text-[0.82em] font-mono">$1</code>')
+    .replace(/`(.+?)`/g, '<code class="bg-[var(--app-accent-light)] border border-[color-mix(in_srgb,var(--app-accent)_20%,transparent)] px-1.5 py-0.5 rounded-md text-[var(--app-accent-ink)]/90 text-[0.82em] font-mono">$1</code>')
     .replace(/^- (.+)$/gm, '<li class="ml-5 text-white/62 list-disc marker:text-white/50 mb-0.5">$1</li>')
     .replace(/^\d+\. (.+)$/gm, '<li class="ml-5 text-white/62 list-decimal marker:text-white/60 mb-0.5">$1</li>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-500/30 transition-colors" target="_blank">$1</a>')
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-[var(--app-accent)] hover:text-[var(--app-accent)] underline underline-offset-2 decoration-[var(--app-accent)]/30 transition-colors" target="_blank">$1</a>')
     .replace(/\n\n/g, '</p><p class="text-white/60 text-sm leading-relaxed mb-3 mt-0">')
     .replace(/\n/g, "<br />");
 }
@@ -81,7 +81,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               <p className="text-white/65 text-sm mb-5">Статья не найдена</p>
               <Link
                 href="/knowledge"
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-400/70 hover:text-indigo-400 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors"
               >
                 <ArrowLeft size={12} /> К списку статей
               </Link>
@@ -134,7 +134,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                     {data.tags.map((t) => (
                       <span
                         key={t.id}
-                        className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/[0.08] border border-indigo-500/20 text-indigo-400/70"
+                        className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--app-accent-light)] border border-[color-mix(in_srgb,var(--app-accent)_20%,transparent)] text-[var(--app-accent)]/70"
                       >
                         #{t.name}
                       </span>
