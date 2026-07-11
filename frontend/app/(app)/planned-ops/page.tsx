@@ -250,7 +250,7 @@ function OccurrenceRow({
         </span>
         <button
           onClick={() => onExecute(occ)}
-          className="opacity-0 group-hover/occ:opacity-100 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-[11px] font-semibold transition-all"
+          className="opacity-0 group-hover/occ:opacity-100 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[var(--app-accent-light)] hover:bg-[var(--app-accent-light)] text-[var(--app-accent-ink)] text-[11px] font-semibold transition-all"
           title="Выполнить операцию"
         >
           <Play size={10} className="fill-current" />
@@ -281,7 +281,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
             className={clsx(
               "px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
               archived === opt.value
-                ? "bg-indigo-600 text-[#fff] shadow-sm"
+                ? "bg-[var(--app-accent)] text-[#fff] shadow-sm"
                 : "hover:bg-white/[0.05]"
             )}
             style={{ color: archived === opt.value ? undefined : "var(--t-secondary)" }}
@@ -314,7 +314,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
             {archived ? "Архив пуст" : "Нет плановых операций"}
           </p>
           {!archived && (
-            <Button variant="link" size="sm" onClick={onCreateOp} className="text-indigo-400/70 hover:text-indigo-400 px-0">
+            <Button variant="link" size="sm" onClick={onCreateOp} className="text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] px-0">
               + Добавить операцию
             </Button>
           )}
@@ -497,7 +497,7 @@ export default function PlannedOpsPage() {
                 className={clsx(
                   "px-4 py-1.5 rounded-lg text-[13px] font-semibold transition-all",
                   tab === t.value
-                    ? "bg-indigo-600 text-[#fff] shadow-sm"
+                    ? "bg-[var(--app-accent)] text-[#fff] shadow-sm"
                     : "hover:bg-white/[0.05]"
                 )}
                 style={{ color: tab === t.value ? undefined : "var(--t-secondary)" }}

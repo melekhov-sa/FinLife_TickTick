@@ -49,7 +49,7 @@ export default function NewProjectPage() {
   }
 
   const inputCls =
-    "w-full px-3.5 py-2.5 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all";
+    "w-full px-3.5 py-2.5 text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/20 focus:outline-none focus:border-[var(--app-accent)] focus:bg-white/[0.07] transition-all";
 
   return (
     <>
@@ -60,8 +60,8 @@ export default function NewProjectPage() {
           <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 px-6 py-5 border-b border-white/[0.06]">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
-                <FolderPlus size={16} className="text-indigo-400" />
+              <div className="w-9 h-9 rounded-xl bg-[var(--app-accent-light)] flex items-center justify-center shrink-0">
+                <FolderPlus size={16} className="text-[var(--app-accent)]" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>

@@ -116,7 +116,7 @@ function MealCell({
             if (e.key === "Enter") { e.preventDefault(); commit(); }
             if (e.key === "Escape") { setText(entry?.dish_name ?? ""); setEditing(false); setShowCatalog(false); }
           }}
-          className="w-full rounded-lg px-2 py-1.5 text-[12px] outline-none border border-indigo-400"
+          className="w-full rounded-lg px-2 py-1.5 text-[12px] outline-none border border-[var(--app-accent)]"
           style={{ background: "var(--t-input-bg, transparent)", color: "var(--t-primary)" }}
           placeholder="Блюдо или выберите из каталога…"
         />
@@ -132,7 +132,7 @@ function MealCell({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => { commit(d.name, d.id); }}
-                className="w-full text-left px-3 py-2 text-[12px] hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                className="w-full text-left px-3 py-2 text-[12px] hover:bg-[var(--app-accent-weak)] transition-colors"
                 style={{ color: "var(--t-primary)" }}
               >
                 <span className="font-medium">{d.name}</span>
@@ -155,7 +155,7 @@ function MealCell({
       className={clsx(
         "group w-full min-h-[36px] rounded-lg px-2 py-1.5 text-left text-[12px] transition-colors relative",
         entry
-          ? "bg-indigo-50 dark:bg-indigo-500/[0.08] hover:bg-indigo-100 dark:hover:bg-indigo-500/[0.14]"
+          ? "bg-[var(--app-accent-weak)] hover:bg-[var(--app-accent-weak)]/[0.14]"
           : "hover:bg-slate-100 dark:hover:bg-white/[0.06] border border-dashed border-slate-200 dark:border-white/[0.08]",
       )}
     >
@@ -196,7 +196,7 @@ function DishCard({ dish, onEdit, onDelete }: { dish: Dish; onEdit: () => void; 
                 <span
                   key={t}
                   className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                  style={{ background: "var(--app-accent-light, #EEF2FF)", color: "var(--app-accent, #6366F1)" }}
+                  style={{ background: "var(--app-accent-light, #EEF2FF)", color: "var(--app-accent, var(--app-accent))" }}
                 >
                   {t}
                 </span>
@@ -358,13 +358,13 @@ export default function MealPlanPage() {
                   {DAYS.map((day, i) => (
                     <th key={i} className="pb-2 px-1 text-center">
                       <span
-                        className={clsx("text-[12px] font-bold", isCurrentWeek && i === todayIndex ? "text-indigo-500" : "")}
+                        className={clsx("text-[12px] font-bold", isCurrentWeek && i === todayIndex ? "text-[var(--app-accent)]" : "")}
                         style={!(isCurrentWeek && i === todayIndex) ? { color: "var(--t-muted)" } : undefined}
                       >
                         {day}
                       </span>
                       {isCurrentWeek && i === todayIndex && (
-                        <div className="w-1 h-1 rounded-full bg-indigo-500 mx-auto mt-0.5" />
+                        <div className="w-1 h-1 rounded-full bg-[var(--app-accent)] mx-auto mt-0.5" />
                       )}
                     </th>
                   ))}
@@ -405,7 +405,7 @@ export default function MealPlanPage() {
               value={catalogSearch}
               onChange={(e) => setCatalogSearch(e.target.value)}
               placeholder="Поиск по блюдам…"
-              className="w-full rounded-xl pl-9 pr-3 py-2 text-[13px] outline-none border focus:border-indigo-400"
+              className="w-full rounded-xl pl-9 pr-3 py-2 text-[13px] outline-none border focus:border-[var(--app-accent)]"
               style={{ background: "var(--app-card-bg)", borderColor: "var(--app-border)", color: "var(--t-primary)" }}
             />
           </div>

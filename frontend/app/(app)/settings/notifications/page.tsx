@@ -132,8 +132,8 @@ function PushSection({ pwa, setSaved }: {
   return (
     <Card padding="lg" className="space-y-3">
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-500/10">
-          <Smartphone size={16} className="text-indigo-400" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--app-accent-light)]">
+          <Smartphone size={16} className="text-[var(--app-accent)]" />
         </div>
         <div className="flex-1">
           <h2 className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>Push-уведомления</h2>

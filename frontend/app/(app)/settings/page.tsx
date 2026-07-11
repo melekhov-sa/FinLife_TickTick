@@ -50,9 +50,9 @@ function usePwaInstall() {
 // ── Settings Items ───────────────────────────────────────────────────────────
 
 const SETTINGS_ITEMS = [
-  { href: "/profile",            icon: User,       label: "Профиль",           desc: "Аккаунт, XP, активность",                          color: "#6366f1" },
+  { href: "/profile",            icon: User,       label: "Профиль",           desc: "Аккаунт, XP, активность",                          color: "var(--app-accent)" },
   { href: "/notifications",      icon: Bell,       label: "Уведомления",       desc: "Список уведомлений",                               color: "#f59e0b" },
-  { href: "/work-categories",    icon: Database,   label: "Категории дел",     desc: "Типы задач и привычек",                            color: "#8b5cf6" },
+  { href: "/work-categories",    icon: Database,   label: "Категории дел",     desc: "Типы задач и привычек",                            color: "var(--app-accent)" },
   { href: "/task-presets",       icon: Shield,     label: "Шаблоны задач",     desc: "Быстрое создание из шаблонов",                     color: "#06b6d4" },
   { href: "/settings/theme",     icon: Palette,    label: "Тема оформления",   desc: "Obsidian, Graphite, Midnight, Snow, Emerald",      color: "#ec4899" },
   { href: "/settings/caldav",    icon: Smartphone, label: "iPhone Reminders",  desc: "CalDAV-синхронизация задач с Напоминаниями",        color: "#10b981" },
@@ -207,8 +207,8 @@ export default function SettingsPage() {
 
             {/* PWA Install */}
             <Card padding="md" className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-indigo-500/10">
-                <Smartphone size={18} className="text-indigo-400" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[var(--app-accent-light)]">
+                <Smartphone size={18} className="text-[var(--app-accent)]" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -342,8 +342,8 @@ export default function SettingsPage() {
                 href="/settings/ai"
                 className="flex items-center gap-4 p-4 rounded-xl border transition-all hover:scale-[1.01] border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]"
               >
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#8b5cf612" }}>
-                  <Sparkles size={18} style={{ color: "#8b5cf6" }} />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "color-mix(in srgb, var(--app-accent) 7%, transparent)" }}>
+                  <Sparkles size={18} style={{ color: "var(--app-accent)" }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>API ключи</p>

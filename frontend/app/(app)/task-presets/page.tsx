@@ -213,7 +213,7 @@ function PresetRow({
           onChange={(e) => setEditDesc(e.target.value)}
           placeholder="Описание (необязательно)"
           rows={2}
-          className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-500/40 resize-none"
+          className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
           style={{ color: "var(--t-secondary)" }}
         />
         <Select
@@ -405,7 +405,7 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setDesc(e.target.value)}
         placeholder="Описание (необязательно)"
         rows={2}
-        className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500/50 resize-none"
+        className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
         style={{ color: "var(--t-secondary)" }}
       />
       <Select
@@ -448,7 +448,7 @@ export default function TaskPresetsPage() {
       className={clsx(
         "px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors",
         tab === key
-          ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+          ? "bg-[var(--app-accent-light)] text-[var(--app-accent)] border border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)]"
           : "border border-transparent hover:bg-white/[0.05]"
       )}
       style={{ color: tab === key ? undefined : "var(--t-secondary)" }}

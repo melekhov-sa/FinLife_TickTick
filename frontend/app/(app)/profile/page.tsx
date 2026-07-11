@@ -40,7 +40,7 @@ interface ProfileData {
 const LEVEL_GRADIENTS = [
   "from-slate-400 to-slate-500",
   "from-blue-500 to-blue-600",
-  "from-indigo-500 to-indigo-600",
+  "from-[var(--app-accent)] to-[var(--app-accent)]",
   "from-violet-500 to-purple-600",
   "from-pink-500 to-rose-600",
   "from-amber-500 to-orange-600",
@@ -135,7 +135,7 @@ export default function ProfilePage() {
               {/* KPI row */}
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { icon: Star,       value: data.xp.level,          label: "Уровень",          valueClass: "text-indigo-600 dark:text-indigo-400" },
+                  { icon: Star,       value: data.xp.level,          label: "Уровень",          valueClass: "text-[var(--app-accent)]" },
                   { icon: Zap,        value: data.xp.xp_total,       label: "Всего XP",         valueClass: "text-amber-600 dark:text-amber-400" },
                   { icon: TrendingUp, value: data.daily_xp_total,    label: "XP в этом месяце", valueClass: "text-emerald-600 dark:text-emerald-400" },
                 ].map((kpi) => (
@@ -161,7 +161,7 @@ export default function ProfilePage() {
                       size="sm"
                       actions={
                         <span className="text-xs text-slate-500 dark:text-white/72 tabular-nums font-medium">
-                          {data.current_month_label}: <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{data.daily_xp_total} XP</span>
+                          {data.current_month_label}: <span className="text-[var(--app-accent)] font-semibold">{data.daily_xp_total} XP</span>
                         </span>
                       }
                     />
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                             className={clsx(
                               "w-full rounded-md transition-all",
                               isCurrent
-                                ? "bg-gradient-to-t from-indigo-600 to-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.4)]"
+                                ? "bg-gradient-to-t from-[var(--app-accent)] to-[var(--app-accent)] shadow-[0_0_8px_color-mix(in srgb, var(--app-accent) 40%, transparent)]"
                                 : "bg-slate-200 dark:bg-white/[0.08]"
                             )}
                             style={{ height: `${h}px` }}
@@ -226,8 +226,8 @@ export default function ProfilePage() {
                       href={link.href}
                       className="flex items-center gap-3 bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all group"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
-                        <link.icon size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-7 h-7 rounded-lg bg-[var(--app-accent-weak)] flex items-center justify-center shrink-0">
+                        <link.icon size={13} className="text-[var(--app-accent)]" />
                       </div>
                       <span className="text-sm text-slate-600 dark:text-white/55 group-hover:text-slate-900 dark:group-hover:text-white/80 transition-colors font-medium flex-1">
                         {link.label}
@@ -240,8 +240,8 @@ export default function ProfilePage() {
                     onClick={() => setShowPasswordModal(true)}
                     className="flex items-center gap-3 bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-3.5 hover:bg-slate-50 dark:hover:bg-white/[0.07] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all group text-left"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center shrink-0">
-                      <Lock size={13} className="text-indigo-600 dark:text-indigo-400" />
+                    <div className="w-7 h-7 rounded-lg bg-[var(--app-accent-weak)] flex items-center justify-center shrink-0">
+                      <Lock size={13} className="text-[var(--app-accent)]" />
                     </div>
                     <span className="text-sm text-slate-600 dark:text-white/55 group-hover:text-slate-900 dark:group-hover:text-white/80 transition-colors font-medium flex-1">
                       Смена пароля

@@ -371,7 +371,7 @@ export default function MoneyPage() {
           </div>
           <button
             onClick={() => setShowOpModal(true)}
-            className="bg-indigo-600 text-[#fff] text-[12px] font-semibold rounded-lg px-3 py-2 shrink-0"
+            className="bg-[var(--app-accent)] text-[#fff] text-[12px] font-semibold rounded-lg px-3 py-2 shrink-0"
           >
             +
           </button>
@@ -387,7 +387,7 @@ export default function MoneyPage() {
           </a>
           <button
             onClick={() => setShowOpModal(true)}
-            className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-xs font-medium rounded-xl px-4 py-2 transition-colors"
+            className="ml-auto bg-[var(--app-accent)] hover:brightness-110 text-[#fff] text-xs font-medium rounded-xl px-4 py-2 transition-colors"
           >
             + Операция
           </button>

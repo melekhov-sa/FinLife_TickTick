@@ -247,12 +247,12 @@ export default function TasksPage() {
 
             {/* Quick-add row (active tab only) */}
             {status === "ACTIVE" && (
-              <div className="flex items-center gap-2 px-3 py-2 md:py-2.5 border-b border-slate-100 dark:border-white/[0.05] bg-indigo-500/[0.03]">
+              <div className="flex items-center gap-2 px-3 py-2 md:py-2.5 border-b border-slate-100 dark:border-white/[0.05] bg-[var(--app-accent-light)]">
                 <button
                   onClick={submitQuickAdd}
-                  className="shrink-0 w-5 h-5 rounded-full border-[1.5px] border-indigo-400/30 flex items-center justify-center hover:border-indigo-400/60 hover:bg-indigo-500/10 transition-all"
+                  className="shrink-0 w-5 h-5 rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] flex items-center justify-center hover:border-[color-mix(in_srgb,var(--app-accent)_60%,transparent)] hover:bg-[var(--app-accent-weak)]0/10 transition-all"
                 >
-                  <Plus size={11} strokeWidth={2.5} className="text-indigo-400/60" />
+                  <Plus size={11} strokeWidth={2.5} className="text-[var(--app-accent)]/60" />
                 </button>
                 <input
                   ref={quickInputRef}
@@ -263,7 +263,7 @@ export default function TasksPage() {
                     if (e.key === "Escape") { setQuickTitle(""); quickInputRef.current?.blur(); }
                   }}
                   placeholder="Новая задача..."
-                  className="flex-1 bg-transparent outline-none text-base md:text-[14px] placeholder-slate-300 dark:placeholder-indigo-300/25 font-medium"
+                  className="flex-1 bg-transparent outline-none text-base md:text-[14px] placeholder-slate-300/25 font-medium"
                   style={{ color: "var(--t-secondary)" }}
                 />
               </div>
@@ -280,7 +280,7 @@ export default function TasksPage() {
                 }
                 size="sm"
                 actions={!searchTrimmed && status === "ACTIVE" ? (
-                  <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="text-indigo-400/60 hover:text-indigo-400 px-0">
+                  <Button variant="link" size="sm" onClick={() => quickInputRef.current?.focus()} className="text-[var(--app-accent)]/60 hover:text-[var(--app-accent)] px-0">
                     Напишите задачу выше
                   </Button>
                 ) : undefined}

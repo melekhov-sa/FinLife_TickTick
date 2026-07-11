@@ -103,16 +103,16 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 64 }}>
         <defs>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--app-accent)" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="var(--app-accent)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#areaGrad)" />
-        <path d={path} fill="none" stroke="#6366f1" strokeWidth="2" />
+        <path d={path} fill="none" stroke="var(--app-accent)" strokeWidth="2" />
         {last && (
           <>
-            <circle cx={last.x} cy={last.y} r="5" fill="#6366f1" opacity="0.25" />
-            <circle cx={last.x} cy={last.y} r="3" fill="#6366f1" />
+            <circle cx={last.x} cy={last.y} r="5" fill="var(--app-accent)" opacity="0.25" />
+            <circle cx={last.x} cy={last.y} r="3" fill="var(--app-accent)" />
           </>
         )}
       </svg>
@@ -126,7 +126,7 @@ function MiniChart({ history }: { history: StrategyHistoryPoint[] }) {
 
 function TargetRow({ target }: { target: StrategyTarget }) {
   const pct = target.progress_pct ?? 0;
-  const barColor = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-indigo-500";
+  const barColor = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-[var(--app-accent)]";
   return (
     <div className="py-3 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
       <div className="flex items-center justify-between mb-1.5">

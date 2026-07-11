@@ -57,7 +57,7 @@ function footballStatusBadge(status: string) {
   if (LIVE.has(status))      return { label: "Идёт",        cls: "bg-emerald-100 dark:bg-emerald-500/[0.15] text-emerald-600 dark:text-emerald-400 animate-pulse" };
   if (POSTPONED.has(status)) return { label: "Перенесён",   cls: "bg-amber-100 dark:bg-amber-500/[0.15] text-amber-700 dark:text-amber-400" };
   if (CANCELLED.has(status)) return { label: "Отменён",     cls: "bg-red-100 dark:bg-red-500/[0.15] text-red-600 dark:text-red-400" };
-  return { label: "Запланирован", cls: "bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400" };
+  return { label: "Запланирован", cls: "bg-[var(--app-accent-weak)] text-[var(--app-accent)]" };
 }
 
 function fmtMatchDate(dateStr: string) {
@@ -92,7 +92,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
     <div className={clsx(
       "flex gap-4 p-4 rounded-2xl border transition-colors",
       today
-        ? "bg-indigo-50 dark:bg-indigo-500/[0.08] border-indigo-200 dark:border-indigo-500/30"
+        ? "bg-[var(--app-accent-weak)] border-[var(--app-accent)]"
         : "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.09] hover:border-slate-300 dark:hover:border-white/[0.15]",
     )}>
       {/* Date column */}
@@ -112,7 +112,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
           <span
-            className={clsx("text-[15px] font-bold leading-tight", isZenitHome ? "text-indigo-600 dark:text-indigo-400" : "")}
+            className={clsx("text-[15px] font-bold leading-tight", isZenitHome ? "text-[var(--app-accent)]" : "")}
             style={!isZenitHome ? { color: "var(--t-primary)" } : undefined}
           >
             {match.home_team}
@@ -123,7 +123,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
               : "vs"}
           </span>
           <span
-            className={clsx("text-[15px] font-bold leading-tight", !isZenitHome ? "text-indigo-600 dark:text-indigo-400" : "")}
+            className={clsx("text-[15px] font-bold leading-tight", !isZenitHome ? "text-[var(--app-accent)]" : "")}
             style={isZenitHome ? { color: "var(--t-primary)" } : undefined}
           >
             {match.away_team}
@@ -155,7 +155,7 @@ function MatchCard({ match, onCreateEvent }: { match: FootballMatch; onCreateEve
         <button
           onClick={onCreateEvent}
           title="Добавить в события"
-          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors self-center"
+          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl hover:bg-[var(--app-accent-weak)] transition-colors self-center"
           style={{ color: "var(--t-faint)" }}
         >
           <CalendarPlus size={15} />
@@ -179,7 +179,7 @@ function ReleaseBadge({ dateStr, source }: { dateStr: string; source?: string | 
       "text-[11px] font-semibold px-2 py-0.5 rounded-full",
       isWorld
         ? "bg-amber-100 dark:bg-amber-500/[0.15] text-amber-600 dark:text-amber-400"
-        : "bg-indigo-100 dark:bg-indigo-500/[0.15] text-indigo-600 dark:text-indigo-400",
+        : "bg-[var(--app-accent-weak)] text-[var(--app-accent)]",
     )}>
       {isWorld ? `Мировая ${label}` : `Выйдет ${label}`}
     </span>
@@ -298,7 +298,7 @@ function MediaCard({
             <button
               onClick={onCreateEvent}
               title="Идём в кино"
-              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-500 transition-colors"
+              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-[var(--app-accent-weak)] hover:text-[var(--app-accent)] transition-colors"
               style={{ color: "var(--t-faint)" }}
             >
               <CalendarPlus size={11} />
@@ -553,7 +553,7 @@ export default function MediaPage() {
                   className={clsx(
                     "px-3 py-1 rounded-lg text-[12px] font-semibold transition-colors",
                     activeStatus === value
-                      ? "bg-indigo-500 text-white"
+                      ? "bg-[var(--app-accent)] text-white"
                       : "hover:bg-slate-100 dark:hover:bg-white/[0.08]",
                   )}
                   style={activeStatus !== value ? { color: "var(--t-muted)" } : undefined}

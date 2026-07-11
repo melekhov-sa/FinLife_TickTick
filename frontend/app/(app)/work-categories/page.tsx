@@ -307,7 +307,7 @@ export default function WorkCategoriesPage() {
               onClick={() => setIncludeArchived((v) => !v)}
               className={clsx(
                 "w-8 h-4 rounded-full transition-colors relative cursor-pointer",
-                includeArchived ? "bg-indigo-600" : "bg-white/[0.12]"
+                includeArchived ? "bg-[var(--app-accent)]" : "bg-white/[0.12]"
               )}
             >
               <div

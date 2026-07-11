@@ -29,9 +29,9 @@ function getNotifMeta(n: NotificationItem) {
   else if (rule_code.startsWith("EVENT"))         Icon = Calendar;
   else if (severity === "error" || severity === "warning") Icon = AlertTriangle;
 
-  let iconColor = "text-indigo-600 dark:text-indigo-400";
-  let iconBg    = "bg-indigo-100 dark:bg-indigo-500/10";
-  let leftBar   = "bg-indigo-500/40";
+  let iconColor = "text-[var(--app-accent)]";
+  let iconBg    = "bg-[var(--app-accent-weak)]";
+  let leftBar   = "bg-[var(--app-accent-light)]";
   if (severity === "error")   { iconColor = "text-red-600 dark:text-red-400";     iconBg = "bg-red-100 dark:bg-red-500/10";     leftBar = "bg-red-500/50"; }
   if (severity === "warning") { iconColor = "text-amber-600 dark:text-amber-400"; iconBg = "bg-amber-100 dark:bg-amber-500/10"; leftBar = "bg-amber-500/40"; }
 
@@ -127,7 +127,7 @@ function NotificationRow({
           {timeAgo(n.created_at)}
         </span>
         {!n.is_read && (
-          <div className="w-2 h-2 rounded-full bg-indigo-500" />
+          <div className="w-2 h-2 rounded-full bg-[var(--app-accent)]" />
         )}
       </div>
 

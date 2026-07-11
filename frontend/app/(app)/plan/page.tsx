@@ -79,7 +79,7 @@ const HOLIDAY_THEME_CLS: Record<string, { bg: string; border: string; badgeBg: s
   rose:      { bg: "bg-rose-50 dark:bg-rose-500/[0.07]",     border: "border-rose-300/60 dark:border-rose-500/25",     badgeBg: "bg-rose-100 dark:bg-rose-500/15",     badgeText: "text-rose-700 dark:text-rose-300" },
   spring:    { bg: "bg-lime-50 dark:bg-lime-500/[0.07]",     border: "border-lime-300/60 dark:border-lime-500/25",     badgeBg: "bg-lime-100 dark:bg-lime-500/15",     badgeText: "text-lime-700 dark:text-lime-300" },
   victory:   { bg: "bg-orange-50 dark:bg-orange-500/[0.07]", border: "border-orange-300/60 dark:border-orange-500/25", badgeBg: "bg-orange-100 dark:bg-orange-500/15", badgeText: "text-orange-700 dark:text-orange-300" },
-  tricolor:  { bg: "bg-indigo-50 dark:bg-indigo-500/[0.07]", border: "border-indigo-300/60 dark:border-indigo-500/25", badgeBg: "bg-indigo-100 dark:bg-indigo-500/15", badgeText: "text-indigo-700 dark:text-indigo-300" },
+  tricolor:  { bg: "bg-[var(--app-accent-weak)]", border: "border-[color-mix(in_srgb,var(--app-accent)_60%,transparent)]", badgeBg: "bg-[var(--app-accent-weak)]", badgeText: "text-[var(--app-accent-ink)]" },
   unity:     { bg: "bg-blue-50 dark:bg-blue-500/[0.07]",     border: "border-blue-300/60 dark:border-blue-500/25",     badgeBg: "bg-blue-100 dark:bg-blue-500/15",     badgeText: "text-blue-700 dark:text-blue-300" },
 };
 
@@ -602,7 +602,7 @@ function DayGroupCard({
         ref={setDropRef}
         className={clsx(
           "rounded-xl border-[1.5px] px-3 py-3.5 transition-all",
-          isOver && "ring-2 ring-indigo-400/50 bg-indigo-50/60 dark:bg-indigo-500/[0.08]",
+          isOver && "ring-2 ring-[var(--app-accent)] bg-[var(--app-accent-weak)]",
           !isOver && (hTheme
             ? `${hTheme.bg} ${hTheme.border}`
             : vTheme
@@ -635,7 +635,7 @@ function DayGroupCard({
           </span>
           <button
             onClick={onAddTask}
-            className="ml-auto text-[12px] font-medium text-indigo-500 hover:text-indigo-600 transition-colors touch-manipulation"
+            className="ml-auto text-[12px] font-medium text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors touch-manipulation"
           >
             + добавить
           </button>
@@ -651,11 +651,11 @@ function DayGroupCard({
       ref={setDropRef}
       className={clsx(
         "rounded-xl border-[1.5px] px-3 py-2.5 transition-all",
-        isOver && !group.is_overdue_group && "ring-2 ring-indigo-400/50",
+        isOver && !group.is_overdue_group && "ring-2 ring-[var(--app-accent)]",
         group.is_overdue_group
           ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
           : group.is_today
-          ? "bg-indigo-50/40 dark:bg-indigo-500/[0.04] border-indigo-200 dark:border-indigo-500/35"
+          ? "bg-[var(--app-accent-weak)] border-[var(--app-accent)]"
           : hTheme
           ? `${hTheme.bg} ${hTheme.border}`
           : vTheme
@@ -674,13 +674,13 @@ function DayGroupCard({
         <h3 className={clsx(
           "text-[14px] font-semibold leading-none",
           group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
-            : group.is_today ? "text-indigo-600 dark:text-indigo-300/90"
+            : group.is_today ? "text-[var(--app-accent)]/90"
             : "text-slate-800 dark:text-white/90"
         )}>
           {label}
         </h3>
         {group.is_today && (
-          <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400/60 bg-indigo-100 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-semibold text-[var(--app-accent)]/60 bg-[var(--app-accent-weak)] px-1.5 py-0.5 rounded">
             сегодня
           </span>
         )}
@@ -1239,7 +1239,7 @@ export default function PlanPage() {
                   className={clsx(
                     "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
                     tab === t.value
-                      ? "bg-white dark:bg-indigo-600 text-slate-800 dark:text-white shadow-sm"
+                      ? "bg-white text-slate-800 dark:text-white shadow-sm"
                       : "text-slate-500 dark:text-white/50 hover:text-slate-700"
                   )}
                 >
@@ -1306,7 +1306,7 @@ export default function PlanPage() {
                 closeOnClickInside
                 className="!p-0 w-40 overflow-hidden"
                 trigger={
-                  <button className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#fff] text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm">
+                  <button className="flex items-center gap-1.5 bg-[var(--app-accent)] hover:brightness-110 text-[#fff] text-[13px] font-semibold rounded-lg px-2.5 py-1.5 transition-colors shadow-sm">
                     <Plus size={14} />
                     <span className="hidden md:inline">Добавить</span>
                     <ChevronDown size={12} className={clsx("transition-transform hidden md:block", showAddMenu && "rotate-180")} />
@@ -1388,7 +1388,7 @@ export default function PlanPage() {
               </p>
               <button
                 onClick={() => setCreateTaskDate("")}
-                className="mt-4 text-[13px] font-medium text-indigo-600 dark:text-indigo-400/70 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                className="mt-4 text-[13px] font-medium text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors"
               >
                 + Создать задачу
               </button>
@@ -1465,7 +1465,7 @@ export default function PlanPage() {
 
             <DragOverlay>
               {activeEntry && (
-                <div className="px-3 py-2 rounded-xl border shadow-lg bg-white dark:bg-[#0f1221] border-indigo-300 dark:border-indigo-500/40 max-w-xs">
+                <div className="px-3 py-2 rounded-xl border shadow-lg bg-white dark:bg-[#0f1221] border-[var(--app-accent)] max-w-xs">
                   <span className="text-[13px] font-medium truncate block" style={{ color: "var(--t-primary)" }}>
                     {activeEntry.category_emoji && <span className="mr-1">{activeEntry.category_emoji}</span>}
                     {activeEntry.title}

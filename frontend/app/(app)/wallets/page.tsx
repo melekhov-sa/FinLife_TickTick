@@ -344,7 +344,7 @@ export default function WalletsPage() {
             icon={<Wallet size={24} />}
             title={showArchived ? "Нет архивных кошельков" : "Нет активных кошельков"}
             actions={!showArchived ? (
-              <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-indigo-600 dark:text-indigo-400/60 hover:text-indigo-500 dark:hover:text-indigo-400 px-0">
+              <Button variant="link" size="sm" onClick={() => setShowCreateModal(true)} className="text-[var(--app-accent)]/60 hover:text-[var(--app-accent)] px-0">
                 + Создать первый кошелёк
               </Button>
             ) : undefined}

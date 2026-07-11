@@ -114,7 +114,7 @@ function ProjectSettingsPopover({
               </div>
               <div
                 onClick={() => updateSettings(!hideFromPlan)}
-                className={clsx("w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0", hideFromPlan ? "bg-indigo-500" : "bg-white/[0.12]")}
+                className={clsx("w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0", hideFromPlan ? "bg-[var(--app-accent)]" : "bg-white/[0.12]")}
               >
                 <div className={clsx("w-4 h-4 rounded-full bg-white shadow mt-0.5 transition-transform", hideFromPlan ? "translate-x-4" : "translate-x-0.5")} />
               </div>
@@ -134,7 +134,7 @@ function ProjectSettingsPopover({
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 text-[12px] bg-white/[0.06] border border-indigo-500/40 rounded-lg px-2 py-1 outline-none"
+                      className="flex-1 text-[12px] bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] rounded-lg px-2 py-1 outline-none"
                       style={{ color: "var(--t-primary)" }}
                       autoFocus
                     />
@@ -147,7 +147,7 @@ function ProjectSettingsPopover({
                         />
                       ))}
                     </div>
-                    <button onClick={() => updateTag({ id: tag.id, name: editName, color: editColor })} className="text-indigo-400 hover:text-indigo-300">
+                    <button onClick={() => updateTag({ id: tag.id, name: editName, color: editColor })} className="text-[var(--app-accent)] hover:text-[var(--app-accent)]">
                       <Check size={12} />
                     </button>
                     <button onClick={() => setEditingTagId(null)} className="text-white/40 hover:text-white/60">
@@ -182,7 +182,7 @@ function ProjectSettingsPopover({
                 onChange={(e) => setNewTagName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && newTagName.trim()) createTag({ name: newTagName.trim(), color: newTagColor }); }}
                 placeholder="Новый тег..."
-                className="flex-1 text-[12px] bg-white/[0.05] border border-white/[0.08] rounded-lg px-2 py-1 outline-none focus:border-indigo-500/40 placeholder-white/25"
+                className="flex-1 text-[12px] bg-white/[0.05] border border-white/[0.08] rounded-lg px-2 py-1 outline-none focus:border-[var(--app-accent)] placeholder-white/25"
                 style={{ color: "var(--t-primary)" }}
               />
               <div className="flex gap-0.5">
@@ -197,7 +197,7 @@ function ProjectSettingsPopover({
               <button
                 onClick={() => { if (newTagName.trim()) createTag({ name: newTagName.trim(), color: newTagColor }); }}
                 disabled={!newTagName.trim()}
-                className="w-6 h-6 flex items-center justify-center rounded-md bg-indigo-600/80 hover:bg-indigo-600 text-[#fff] disabled:opacity-40 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-[var(--app-accent-light)] hover:bg-[var(--app-accent)] text-[#fff] disabled:opacity-40 transition-colors"
               >
                 <Plus size={10} />
               </button>

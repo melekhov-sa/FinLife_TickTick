@@ -129,7 +129,7 @@ export default function SharedListPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-10 h-10 rounded-xl bg-indigo-100 animate-pulse" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--app-accent-weak)] animate-pulse" />
       </div>
     );
   }
@@ -151,8 +151,8 @@ export default function SharedListPage() {
       <div className="bg-white border-b border-slate-200 px-4 py-6 md:py-8">
         <div className="max-w-[600px] mx-auto">
           <div className="flex items-center gap-3 mb-2">
-            <Icon size={24} className="text-indigo-500" />
-            <span className="text-[12px] font-semibold uppercase tracking-wider text-indigo-500">{meta.label}</span>
+            <Icon size={24} className="text-[var(--app-accent)]" />
+            <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--app-accent)]">{meta.label}</span>
           </div>
           <h1 className="text-[22px] md:text-[26px] font-bold text-slate-900 tracking-tight">{list.title}</h1>
           {list.description && (
@@ -236,7 +236,7 @@ export default function SharedListPage() {
                       )}
                       {/* URL link */}
                       {item.url && (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 w-6 h-6 rounded-md bg-white/80 flex items-center justify-center shadow text-indigo-500 hover:text-indigo-700 transition-colors">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 w-6 h-6 rounded-md bg-white/80 flex items-center justify-center shadow text-[var(--app-accent)] hover:text-[var(--app-accent)] transition-colors">
                           <ExternalLink size={12} />
                         </a>
                       )}
@@ -286,7 +286,7 @@ export default function SharedListPage() {
                 value={reserveName}
                 onChange={(e) => { setReserveName(e.target.value); setReserveError(""); }}
                 placeholder="Ваше имя"
-                className="w-full px-3 h-10 text-[15px] rounded-xl border border-slate-300 focus:outline-none focus:border-indigo-500 mb-3"
+                className="w-full px-3 h-10 text-[15px] rounded-xl border border-slate-300 focus:outline-none focus:border-[var(--app-accent)] mb-3"
                 autoFocus
               />
               {reserveError && (
