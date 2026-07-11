@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, ClipboardList, Plus, Wallet, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./AppSidebar";
 import { useKeyboardVisible } from "@/lib/useKeyboardVisible";
+import { hapticTick } from "@/lib/native";
 
 interface MobileNavProps {
   /** Открыть создание задачи (короткий тап по FAB / default) */
@@ -24,6 +25,49 @@ export function MobileNav({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const keyboardOpen = useKeyboardVisible();
+
+  // Свайп от левой кромки экрана открывает меню «Ещё» (как в TickTick)
+  const drawerOpenRef = useRef(drawerOpen);
+  const drawerTouchRef = useRef<{ x: number; y: number } | null>(null);
+  drawerOpenRef.current = drawerOpen;
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t) return;
+      // только от кромки, только когда меню закрыто и нет открытых шитов
+      if (t.clientX > 24 || drawerOpenRef.current) return;
+      if (document.querySelector(".modal-overlay")) return;
+      tracking = true;
+      startX = t.clientX;
+      startY = t.clientY;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      if (dx > 56 && dx > dy * 1.5) {
+        tracking = false;
+        setDrawerOpen(true);
+        void hapticTick();
+      } else if (dy > 44) {
+        tracking = false; // это вертикальный скролл
+      }
+    };
+    const onEnd = () => { tracking = false; };
+    document.addEventListener("touchstart", onStart, { passive: true });
+    document.addEventListener("touchmove", onMove, { passive: true });
+    document.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onStart);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onEnd);
+    };
+  }, []);
 
   const isActive = (href: string) => {
     if (href === "/events") return !!(pathname?.startsWith("/events") || pathname?.startsWith("/event-templates"));
@@ -174,12 +218,28 @@ export function MobileNav({
       {/* Drawer */}
       {drawerOpen && (
         <div
-          className="md:hidden fixed inset-0 z-40"
+          className="md:hidden fixed inset-0 z-40 animate-overlay-fade"
           onClick={() => setDrawerOpen(false)}
         >
           <div className="absolute inset-0 bg-black/40" />
           <aside
-            className="absolute left-0 top-0 bottom-0 w-[260px] flex flex-col"
+            className="absolute left-0 top-0 bottom-0 w-[260px] flex flex-col animate-drawer-in"
+            onTouchStart={(e) => {
+              const t = e.touches[0];
+              if (t) drawerTouchRef.current = { x: t.clientX, y: t.clientY };
+            }}
+            onTouchMove={(e) => {
+              const start = drawerTouchRef.current;
+              const t = e.touches[0];
+              if (!start || !t) return;
+              const dx = t.clientX - start.x;
+              const dy = Math.abs(t.clientY - start.y);
+              if (dx < -48 && Math.abs(dx) > dy * 1.5) {
+                drawerTouchRef.current = null;
+                setDrawerOpen(false);
+              }
+            }}
+            onTouchEnd={() => { drawerTouchRef.current = null; }}
             style={{
               background: "var(--app-sidebar-bg)",
               borderRight: "1px solid var(--app-sidebar-border)",
