@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { subscribeToCompletions, type CompletionEvent } from "@/lib/completionFeedback";
+import { hapticSuccess } from "@/lib/native";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,9 @@ export function CompletionFeedbackLayer() {
 
   useEffect(() => {
     return subscribeToCompletions((event: CompletionEvent) => {
+      // ── Нативная хаптика (Capacitor; в браузере — no-op) ────────────────────
+      void hapticSuccess();
+
       // ── XP float ────────────────────────────────────────────────────────────
       if (event.xp_gained > 0) {
         const id = nextId();

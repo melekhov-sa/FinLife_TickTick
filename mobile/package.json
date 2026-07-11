@@ -5,7 +5,11 @@
   "description": "Capacitor shell for FinLife — loads the production site, built as unsigned ipa in CI",
   "dependencies": {
     "@capacitor/core": "^7.0.0",
-    "@capacitor/ios": "^7.0.0"
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0"

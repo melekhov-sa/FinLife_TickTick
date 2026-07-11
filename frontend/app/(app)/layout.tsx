@@ -18,6 +18,8 @@ import type { UserMe } from "@/types/api";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OfflineBanner } from "@/components/primitives/OfflineBanner";
 import { useViewportHeight } from "@/lib/useViewportHeight";
+import { isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder } from "@/lib/native";
+import type { DashboardItem, TodayBlock as TodayBlockData } from "@/types/api";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
@@ -47,6 +49,62 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   // Примечание: костыль --vp-bottom-gap (мёртвая зона легаси-режима iOS PWA)
   // удалён — после перехода на manifest-установку вьюпорт занимает весь экран.
+
+  // ── Нативная оболочка (Capacitor): статус-бар под тему ────────────────────
+  useEffect(() => {
+    if (!isNative()) return;
+    const apply = () => {
+      const theme = document.documentElement.getAttribute("data-color-theme");
+      const isDark = document.documentElement.classList.contains("dark");
+      // светлые часы везде, кроме светлых шапок Snow/Claude в light-режиме
+      const lightText = isDark || !(theme === "snow" || theme === "claude");
+      void setStatusBarLightText(lightText);
+    };
+    apply();
+    const mo = new MutationObserver(apply);
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-color-theme", "class"],
+    });
+    return () => mo.disconnect();
+  }, []);
+
+  // ── Нативная оболочка: локальные напоминания из данных дашборда ──────────
+  // Пуши в бесплатной подписи недоступны; вместо них при каждом открытии
+  // планируем локальные уведомления на сегодняшние дела со временем.
+  const { data: nativeDash } = useQuery<{ today: TodayBlockData }>({
+    queryKey: ["dashboard"],
+    queryFn: () => api.get("/api/v2/dashboard"),
+    enabled: typeof window !== "undefined" && isNative(),
+    staleTime: 5 * 60_000,
+  });
+  useEffect(() => {
+    if (!isNative() || !nativeDash?.today) return;
+    const today = new Date();
+    const iso = today.toISOString().slice(0, 10);
+    const items: DashboardItem[] = [
+      ...(nativeDash.today.active ?? []),
+      ...(nativeDash.today.events ?? []),
+    ];
+    const reminders: NativeReminder[] = [];
+    for (const it of items) {
+      if (it.is_done) continue;
+      const times = new Set<string>();
+      if (it.time) times.add(String(it.time).slice(0, 5));
+      const metaRem = (it.meta?.reminders as string[] | undefined) ?? [];
+      for (const r of metaRem) times.add(String(r).slice(0, 5));
+      for (const t of times) {
+        if (!/^\d{2}:\d{2}$/.test(t)) continue;
+        reminders.push({
+          key: `${it.kind}-${it.id}-${t}`,
+          title: it.title,
+          body: t === String(it.time ?? "").slice(0, 5) ? "Запланировано на это время" : "Напоминание",
+          at: new Date(`${iso}T${t}:00`),
+        });
+      }
+    }
+    void syncLocalReminders(reminders);
+  }, [nativeDash]);
 
   // Create modals — triggered from MobileNav FAB
   const [showTaskModal, setShowTaskModal] = useState(false);
