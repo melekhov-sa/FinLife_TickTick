@@ -11,7 +11,8 @@
     "@capacitor/splash-screen": "^7.0.0",
     "@capacitor/status-bar": "^7.0.0",
     "@capgo/capacitor-native-biometric": "latest",
-    "@capawesome/capacitor-app-shortcuts": "latest"
+    "@capawesome/capacitor-app-shortcuts": "latest",
+    "@capawesome/capacitor-badge": "latest"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0"

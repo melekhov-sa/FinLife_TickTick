@@ -112,6 +112,18 @@ export async function biometricVerify(reason: string): Promise<boolean> {
   }
 }
 
+// ── Бейдж на иконке приложения ───────────────────────────────────────────────
+
+/** Число на иконке (0 — убрать). Требует разрешения на уведомления. */
+export async function setAppBadge(count: number): Promise<void> {
+  const b = plugin("Badge");
+  if (!b) return;
+  try {
+    if (count > 0) await b.set({ count });
+    else await b.clear();
+  } catch { /* no-op */ }
+}
+
 // ── Quick Actions (меню долгого тапа по иконке) ──────────────────────────────
 
 export interface AppShortcut {

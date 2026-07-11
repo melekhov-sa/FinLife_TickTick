@@ -1064,6 +1064,31 @@ html[data-color-theme="vivid"] body::after {
   }
 }
 
+/* ── Нативная оболочка (Capacitor): app-like поведение ────────────────────── */
+/* Убираем длинный-тап каллаут и серую вспышку тапа на хроме приложения;
+   в полях ввода и rich-заметках выделение/каллаут остаются. */
+.cap-native {
+  -webkit-tap-highlight-color: transparent;
+}
+.cap-native button,
+.cap-native a,
+.cap-native nav,
+.cap-native header,
+.cap-native img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cap-native input,
+.cap-native textarea,
+.cap-native [contenteditable],
+.cap-native .rne-content,
+.cap-native .dish-instructions-editor {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Hide "Esc" hint on touch devices (no physical keyboard) */
 .hint-esc-only {
   display: inline;

@@ -12,9 +12,12 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
 import { FlashcardsWidget } from "@/components/dashboard/FlashcardsWidget";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { PullToRefresh } from "@/components/primitives/PullToRefresh";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
+  const qc = useQueryClient();
 
   const todayLabel = new Date().toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -26,7 +29,15 @@ export default function DashboardPage() {
 
   return (
     <>
-      <main className="flex-1 p-3 md:p-6">
+      <main className="flex-1 p-3 md:p-6 relative">
+        <PullToRefresh
+          onRefresh={() =>
+            Promise.all([
+              qc.invalidateQueries({ queryKey: ["dashboard"] }),
+              qc.invalidateQueries({ queryKey: ["wallets"] }),
+            ])
+          }
+        >
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить дашборд
@@ -97,6 +108,7 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+        </PullToRefresh>
       </main>
     </>
   );

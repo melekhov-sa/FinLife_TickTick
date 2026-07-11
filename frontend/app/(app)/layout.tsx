@@ -20,7 +20,7 @@ import { OfflineBanner } from "@/components/primitives/OfflineBanner";
 import { useViewportHeight } from "@/lib/useViewportHeight";
 import {
   isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder,
-  setAppShortcuts, onAppShortcut, bioLockEnabled, biometricVerify,
+  setAppShortcuts, onAppShortcut, bioLockEnabled, biometricVerify, setAppBadge,
 } from "@/lib/native";
 import { useRouter } from "next/navigation";
 import type { DashboardItem, TodayBlock as TodayBlockData } from "@/types/api";
@@ -58,6 +58,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   // ── Нативная оболочка (Capacitor): статус-бар под тему ────────────────────
   useEffect(() => {
     if (!isNative()) return;
+    document.documentElement.classList.add("cap-native");
     const apply = () => {
       const theme = document.documentElement.getAttribute("data-color-theme");
       const isDark = document.documentElement.classList.contains("dark");
@@ -127,6 +128,12 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       }
     }
     void syncLocalReminders(reminders);
+
+    // Бейдж на иконке: сколько дел осталось на сегодня
+    const pending =
+      (nativeDash.today.active ?? []).filter((i) => !i.is_done).length +
+      (nativeDash.today.overdue ?? []).filter((i) => !i.is_done).length;
+    void setAppBadge(pending);
   }, [nativeDash]);
 
   // Create modals — triggered from MobileNav FAB
