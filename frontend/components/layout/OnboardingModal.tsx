@@ -318,7 +318,7 @@ export function OnboardingModal({ onComplete }: Props) {
                 <p className="text-[10px] font-semibold uppercase tracking-widest pt-1" style={{ color: "var(--t-faint, #6B7280)" }}>Доходы</p>
                 {cats.map((c, i) => c.type === "INCOME" && (
                   <div key={i} className="flex items-center gap-2 group">
-                    <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-indigo-500 border-indigo-500" : "border-white/15 bg-transparent")}>
+                    <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-[var(--app-accent)] border-[var(--app-accent)]" : "border-white/15 bg-transparent")}>
                       {c.enabled && <Check size={12} className="text-[#fff]" />}
                     </button>
                     <span className="flex-1 text-[13px]" style={{ color: c.enabled ? "var(--t-primary, #E6EAF2)" : "var(--t-faint, #6B7280)" }}>{c.title}</span>
@@ -329,7 +329,7 @@ export function OnboardingModal({ onComplete }: Props) {
                 <p className="text-[10px] font-semibold uppercase tracking-widest pt-3" style={{ color: "var(--t-faint, #6B7280)" }}>Расходы</p>
                 {cats.map((c, i) => c.type === "EXPENSE" && (
                   <div key={i} className="flex items-center gap-2 group">
-                    <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-indigo-500 border-indigo-500" : "border-white/15 bg-transparent")}>
+                    <button onClick={() => toggleCat(i)} className={clsx("w-5 h-5 rounded flex items-center justify-center border transition-all shrink-0", c.enabled ? "bg-[var(--app-accent)] border-[var(--app-accent)]" : "border-white/15 bg-transparent")}>
                       {c.enabled && <Check size={12} className="text-[#fff]" />}
                     </button>
                     <span className="flex-1 text-[13px]" style={{ color: c.enabled ? "var(--t-primary, #E6EAF2)" : "var(--t-faint, #6B7280)" }}>{c.title}</span>
@@ -356,8 +356,8 @@ export function OnboardingModal({ onComplete }: Props) {
                     <option value="EXPENSE">Расход</option>
                     <option value="INCOME">Доход</option>
                   </select>
-                  <button onClick={addCat} disabled={!newCatTitle.trim()} className="p-1.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/30 disabled:opacity-30 transition-colors">
-                    <Plus size={14} className="text-indigo-400" />
+                  <button onClick={addCat} disabled={!newCatTitle.trim()} className="p-1.5 rounded-md bg-[var(--app-accent-light)] hover:brightness-110 disabled:opacity-30 transition-all">
+                    <Plus size={14} className="text-[var(--app-accent)]" />
                   </button>
                 </div>
               </div>
@@ -391,7 +391,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     <button
                       key={t}
                       onClick={() => setOpType(t)}
-                      className={clsx("flex-1 py-2 rounded-md text-[13px] font-semibold transition-all", opType === t ? "bg-indigo-600 text-[#fff] shadow-sm" : "hover:bg-white/[0.05]")}
+                      className={clsx("flex-1 py-2 rounded-md text-[13px] font-semibold transition-all", opType === t ? "bg-[var(--app-accent)] text-[#fff] shadow-sm" : "hover:bg-white/[0.05]")}
                       style={{ color: opType === t ? undefined : "var(--t-secondary, #9AA3B2)" }}
                     >
                       {t === "INCOME" ? "Доход" : "Расход"}
