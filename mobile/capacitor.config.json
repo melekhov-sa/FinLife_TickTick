@@ -3,8 +3,8 @@
   "appName": "FinLife",
   "webDir": "www",
   "server": {
-    "url": "https://REPLACE-WITH-DOMAIN",
-    "allowNavigation": ["REPLACE-WITH-DOMAIN"]
+    "url": "https://centricore.ru",
+    "allowNavigation": ["centricore.ru", "*.centricore.ru"]
   },
   "ios": {
     "contentInset": "automatic"
