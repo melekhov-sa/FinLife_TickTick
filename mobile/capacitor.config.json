@@ -1,0 +1,12 @@
+{
+  "appId": "com.melekhov.finlife",
+  "appName": "FinLife",
+  "webDir": "www",
+  "server": {
+    "url": "https://REPLACE-WITH-DOMAIN",
+    "allowNavigation": ["REPLACE-WITH-DOMAIN"]
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

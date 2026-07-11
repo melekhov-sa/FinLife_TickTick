@@ -1,0 +1,64 @@
+name: Build iOS ipa (unsigned, for AltStore)
+
+# Ручной запуск: Actions → Build iOS ipa → Run workflow.
+# macOS-минуты на приватном репо считаются x10 — собираем только вручную.
+# Оболочка грузит прод-сайт (server.url в mobile/capacitor.config.json),
+# поэтому пересборка нужна только при смене конфига/иконки, не при деплоях.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — домен должен быть настроен
+        run: |
+          if grep -q "REPLACE-WITH-DOMAIN" capacitor.config.json; then
+            echo "::error::mobile/capacitor.config.json всё ещё содержит REPLACE-WITH-DOMAIN"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Generate app icons
+        run: npx --yes @capacitor/assets generate --ios --assetPath assets
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package ipa
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry FinLife-unsigned.ipa Payload
+          ls -la FinLife-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FinLife-ipa
+          path: mobile/FinLife-unsigned.ipa
+          retention-days: 30
