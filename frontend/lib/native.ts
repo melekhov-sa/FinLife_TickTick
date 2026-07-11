@@ -127,6 +127,30 @@ export async function biometricVerify(reason: string): Promise<boolean> {
   }
 }
 
+// ── Сеть ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Точный статус сети из нативного слоя (navigator.onLine в WKWebView врёт).
+ * Возвращает cleanup; колбэк вызывается сразу с текущим статусом.
+ */
+export async function onNetworkChange(
+  cb: (connected: boolean) => void
+): Promise<() => void> {
+  const net = plugin("Network");
+  if (!net) return () => undefined;
+  try {
+    const status = await net.getStatus();
+    cb(!!status?.connected);
+    const handle = await net.addListener(
+      "networkStatusChange",
+      (s: { connected?: boolean }) => cb(!!s?.connected)
+    );
+    return () => { try { handle?.remove?.(); } catch { /* no-op */ } };
+  } catch {
+    return () => undefined;
+  }
+}
+
 // ── Буфер обмена ─────────────────────────────────────────────────────────────
 
 /** Текст из буфера (или пустая строка). iOS покажет системный баннер вставки. */

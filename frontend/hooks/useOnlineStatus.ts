@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isNative, onNetworkChange } from "@/lib/native";
 
 /**
  * useOnlineStatus
@@ -26,6 +27,24 @@ export function useOnlineStatus(): OnlineStatus {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Нативная оболочка: точный статус из Capacitor Network
+    // (navigator.onLine в WKWebView ненадёжен)
+    if (isNative()) {
+      let dispose: (() => void) | undefined;
+      let first = true;
+      void onNetworkChange((connected) => {
+        setStatus((prev) => {
+          if (!connected) return "offline";
+          const wasFirst = first;
+          first = false;
+          if (wasFirst) return prev; // стартовый «онлайн» — не показывать «восстановлено»
+          return prev === "offline" ? "restored" : prev;
+        });
+        first = false;
+      }).then((d) => { dispose = d; });
+      return () => dispose?.();
+    }
 
     const onOffline = () => setStatus("offline");
     const onOnline = () => setStatus("restored");

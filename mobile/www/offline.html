@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>FinLife — нет соединения</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: -apple-system, "Segoe UI", sans-serif;
+        color: rgba(255, 255, 255, 0.85);
+        background:
+          radial-gradient(ellipse 70% 50% at 15% 0%, rgba(124, 58, 237, 0.35) 0%, transparent 55%),
+          radial-gradient(ellipse 60% 45% at 90% 100%, rgba(219, 39, 119, 0.28) 0%, transparent 55%),
+          #140e26;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+      .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+        color: #fff;
+        font-weight: 800;
+        font-size: 20px;
+        letter-spacing: -0.5px;
+        box-shadow: 0 12px 32px rgba(124, 58, 237, 0.4);
+      }
+      h1 { font-size: 17px; margin: 0; font-weight: 700; }
+      p  { font-size: 13px; margin: 0; color: rgba(255, 255, 255, 0.55); max-width: 260px; line-height: 1.5; }
+      button {
+        margin-top: 6px;
+        padding: 12px 28px;
+        border: none;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
+      }
+      button:active { transform: scale(0.97); }
+      .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #f59e0b;
+        display: inline-block;
+        margin-right: 6px;
+        animation: blink 1.4s ease-in-out infinite;
+      }
+      @keyframes blink { 50% { opacity: 0.25; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="logo">FL</div>
+      <h1><span class="dot"></span>Нет соединения</h1>
+      <p>FinLife не может достучаться до сервера. Проверь интернет — я сам вернусь, как только сеть появится.</p>
+      <button onclick="tryReconnect()">Повторить сейчас</button>
+    </div>
+    <script>
+      var APP_URL = "https://centricore.ru/dashboard";
+      function tryReconnect() {
+        fetch("https://centricore.ru/manifest.json", { mode: "no-cors", cache: "no-store" })
+          .then(function () { location.replace(APP_URL); })
+          .catch(function () { /* всё ещё оффлайн */ });
+      }
+      setInterval(tryReconnect, 4000);
+      window.addEventListener("online", tryReconnect);
+    </script>
+  </body>
+</html>

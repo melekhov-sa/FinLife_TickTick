@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/primitives/PageHeader";
 import { ConfirmDeleteModal } from "@/components/modals/ConfirmDeleteModal";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
-import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditorLazy";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";

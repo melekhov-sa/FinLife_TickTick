@@ -4,7 +4,8 @@
   "webDir": "www",
   "server": {
     "url": "https://centricore.ru",
-    "allowNavigation": ["centricore.ru", "*.centricore.ru"]
+    "allowNavigation": ["centricore.ru", "*.centricore.ru"],
+    "errorPath": "offline.html"
   },
   "backgroundColor": "#FAF7FF",
   "ios": {

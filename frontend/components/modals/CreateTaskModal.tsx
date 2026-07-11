@@ -6,7 +6,7 @@ import type { WorkCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditorLazy";
 import { FormRow } from "@/components/ui/FormRow";
 import { ChevronRight } from "lucide-react";
 import { clsx } from "clsx";

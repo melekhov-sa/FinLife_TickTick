@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Select } from "@/components/ui/Select";
-import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditorLazy";
 import { TaskReminders } from "@/components/tasks/TaskReminders";
 import { EventReminders } from "@/components/events/EventReminders";
 import type { WorkCategoryItem, TaskItem } from "@/types/api";

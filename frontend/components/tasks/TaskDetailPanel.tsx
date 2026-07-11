@@ -8,7 +8,7 @@ import { TaskReminders } from "./TaskReminders";
 import { clsx } from "clsx";
 import type { TaskItem, WorkCategoryItem, ProjectTag } from "@/types/api";
 import { Select } from "@/components/ui/Select";
-import { RichNoteEditor } from "@/components/ui/RichNoteEditor";
+import { RichNoteEditor } from "@/components/ui/RichNoteEditorLazy";
 import { api } from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompleteTask, useCompleteTaskOccurrence, useArchiveTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
