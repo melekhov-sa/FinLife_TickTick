@@ -33,10 +33,20 @@ function plugin(name: string): any | null {
 
 // ── Хаптика ──────────────────────────────────────────────────────────────────
 
-/** Виброотклик «успех» — выполнение задачи/привычки. */
+/** Виброотклик «успех» — выполнение задачи/привычки (с fallback-цепочкой). */
 export async function hapticSuccess(): Promise<void> {
+  const h = plugin("Haptics");
+  if (!h) return;
   try {
-    await plugin("Haptics")?.notification({ type: "SUCCESS" });
+    await h.notification({ type: "SUCCESS" });
+    return;
+  } catch { /* пробуем дальше */ }
+  try {
+    await h.impact({ style: "MEDIUM" });
+    return;
+  } catch { /* пробуем дальше */ }
+  try {
+    await h.vibrate();
   } catch { /* no-op */ }
 }
 
@@ -115,6 +125,30 @@ export async function biometricVerify(reason: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ── Буфер обмена ─────────────────────────────────────────────────────────────
+
+/** Текст из буфера (или пустая строка). iOS покажет системный баннер вставки. */
+export async function readClipboardText(): Promise<string> {
+  const c = plugin("Clipboard");
+  if (!c) return "";
+  try {
+    const res = await c.read();
+    return typeof res?.value === "string" && (res?.type ?? "").includes("text")
+      ? res.value
+      : (typeof res?.value === "string" ? res.value : "");
+  } catch {
+    return "";
+  }
+}
+
+/** Похоже ли на банковскую SMS (для предложения ИИ-разбора). */
+export function looksLikeBankSms(text: string): boolean {
+  if (!text || text.length < 15 || text.length > 600) return false;
+  const hasAmount = /\d[\d\s]*[.,]?\d*\s*(р|руб|₽|RUB)\b/i.test(text);
+  const hasKeyword = /(покупк|оплат|списан|перевод|зачислен|поступлен|пополнен|счёт|счет|карт[аы]|баланс)/i.test(text);
+  return hasAmount && hasKeyword;
 }
 
 // ── Бейдж на иконке приложения ───────────────────────────────────────────────

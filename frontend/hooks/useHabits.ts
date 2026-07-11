@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { hapticTick } from "@/lib/native";
 import type { HabitItem } from "@/types/api";
 import { emitCompletion } from "@/lib/completionFeedback";
 
@@ -89,6 +90,7 @@ export function useIncrementHabitToday() {
   return useMutation({
     mutationFn: (habitId: number) => api.post(`/api/v2/habits/${habitId}/increment-today`),
     onSuccess: () => {
+      void hapticTick();
       qc.invalidateQueries({ queryKey: ["habits"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["plan"] });

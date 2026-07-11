@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { hapticSuccess } from "@/lib/native";
 
 interface Props {
   kind: "task" | "habit" | "task_occ";
@@ -38,7 +39,8 @@ export function ConfirmCompleteModal({ kind, id, title, onClose, onCompleted }: 
     setError(null);
     try {
       await completeItem(kind, id);
-      // Haptic feedback for mobile
+      // Haptic feedback: нативный (Capacitor) + web vibrate как fallback
+      void hapticSuccess();
       try {
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate(10);

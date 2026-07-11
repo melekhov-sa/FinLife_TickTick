@@ -11,7 +11,7 @@ import {
   ScanFace } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
 import { Switch } from "@/components/primitives/Switch";
-import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled } from "@/lib/native";
+import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
 import { Card } from "@/components/primitives/Card";
 
@@ -203,7 +203,7 @@ function FaceIdToggle() {
             ? "Блокировать приложение при запуске и после 3 минут в фоне — разблокировка по Face ID."
             : "Биометрия недоступна на этом устройстве."}
         </p>
-        <div className="mt-3 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
           <Switch
             checked={enabled}
             onChange={(v) => {
@@ -216,6 +216,9 @@ function FaceIdToggle() {
           <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
             {enabled ? "Включено" : "Выключено"}
           </span>
+          <Button size="sm" variant="secondary" onClick={() => void hapticSuccess()}>
+            Тест вибро
+          </Button>
         </div>
       </div>
     </Card>

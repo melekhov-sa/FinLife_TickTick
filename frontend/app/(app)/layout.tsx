@@ -21,10 +21,10 @@ import { useViewportHeight } from "@/lib/useViewportHeight";
 import {
   isNative, setStatusBarLightText, syncLocalReminders, type NativeReminder,
   setAppShortcuts, onAppShortcut, bioLockEnabled, biometricVerify, setAppBadge,
-  onNotificationAction, hapticSuccess,
+  onNotificationAction, hapticSuccess, readClipboardText, looksLikeBankSms, hapticTick,
 } from "@/lib/native";
 import { useRouter } from "next/navigation";
-import type { DashboardItem, TodayBlock as TodayBlockData } from "@/types/api";
+import type { DashboardItem } from "@/types/api";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
@@ -114,53 +114,91 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Нативная оболочка: локальные напоминания из данных дашборда ──────────
-  // Пуши в бесплатной подписи недоступны; вместо них при каждом открытии
-  // планируем локальные уведомления на сегодняшние дела со временем.
-  const { data: nativeDash } = useQuery<{ today: TodayBlockData }>({
-    queryKey: ["dashboard"],
-    queryFn: () => api.get("/api/v2/dashboard"),
+  // ── Нативная оболочка: локальные напоминания на 3 дня вперёд ─────────────
+  // Пуши в бесплатной подписи недоступны; вместо них планируем локальные
+  // уведомления по плану на сегодня+2 дня — сработают, даже если приложение
+  // не открывали с утра. Пересинк: на каждый refetch (открытие/фокус).
+  const { data: nativePlan } = useQuery<{
+    day_groups: {
+      date: string | null;
+      is_today: boolean;
+      is_overdue_group: boolean;
+      entries: DashboardItem[];
+    }[];
+  }>({
+    queryKey: ["native-plan-reminders"],
+    queryFn: () => {
+      const iso = new Date().toISOString().slice(0, 10);
+      return api.get(`/api/v2/plan?start_date=${iso}&range=3`);
+    },
     enabled: typeof window !== "undefined" && isNative(),
-    staleTime: 5 * 60_000,
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: true,
   });
   useEffect(() => {
-    if (!isNative() || !nativeDash?.today) return;
-    const today = new Date();
-    const iso = today.toISOString().slice(0, 10);
-    const items: DashboardItem[] = [
-      ...(nativeDash.today.active ?? []),
-      ...(nativeDash.today.events ?? []),
-    ];
+    if (!isNative() || !nativePlan?.day_groups) return;
     const reminders: NativeReminder[] = [];
-    for (const it of items) {
-      if (it.is_done) continue;
-      const times = new Set<string>();
-      if (it.time) times.add(String(it.time).slice(0, 5));
-      const metaRem = (it.meta?.reminders as string[] | undefined) ?? [];
-      for (const r of metaRem) times.add(String(r).slice(0, 5));
-      const completable =
-        it.kind === "task" || it.kind === "task_occ" || it.kind === "habit";
-      for (const t of times) {
-        if (!/^\d{2}:\d{2}$/.test(t)) continue;
-        reminders.push({
-          key: `${it.kind}-${it.id}-${t}`,
-          title: it.title,
-          body: t === String(it.time ?? "").slice(0, 5) ? "Запланировано на это время" : "Напоминание",
-          at: new Date(`${iso}T${t}:00`),
-          ...(completable
-            ? { completeKind: it.kind as "task" | "task_occ" | "habit", completeId: it.id }
-            : {}),
-        });
+    let pendingToday = 0;
+    for (const g of nativePlan.day_groups) {
+      const isTodayGroup = g.is_today || g.is_overdue_group;
+      for (const it of g.entries ?? []) {
+        if (it.is_done) continue;
+        if (isTodayGroup) pendingToday += 1;
+        const dateIso = g.date ?? it.date;
+        if (!dateIso) continue;
+        const times = new Set<string>();
+        if (it.time) times.add(String(it.time).slice(0, 5));
+        const metaRem = (it.meta?.reminders as string[] | undefined) ?? [];
+        for (const r of metaRem) times.add(String(r).slice(0, 5));
+        const completable =
+          it.kind === "task" || it.kind === "task_occ" || it.kind === "habit";
+        for (const t of times) {
+          if (!/^\d{2}:\d{2}$/.test(t)) continue;
+          reminders.push({
+            key: `${it.kind}-${it.id}-${dateIso}-${t}`,
+            title: it.title,
+            body: t === String(it.time ?? "").slice(0, 5) ? "Запланировано на это время" : "Напоминание",
+            at: new Date(`${dateIso}T${t}:00`),
+            ...(completable
+              ? { completeKind: it.kind as "task" | "task_occ" | "habit", completeId: it.id }
+              : {}),
+          });
+        }
       }
     }
     void syncLocalReminders(reminders);
+    void setAppBadge(pendingToday);
+  }, [nativePlan]);
 
-    // Бейдж на иконке: сколько дел осталось на сегодня
-    const pending =
-      (nativeDash.today.active ?? []).filter((i) => !i.is_done).length +
-      (nativeDash.today.overdue ?? []).filter((i) => !i.is_done).length;
-    void setAppBadge(pending);
-  }, [nativeDash]);
+  // ── Нативная оболочка: банковская SMS в буфере → предложить ИИ-разбор ────
+  const [smsFromClipboard, setSmsFromClipboard] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isNative()) return;
+    const SEEN_KEY = "finlife_sms_seen";
+    const check = async () => {
+      const text = (await readClipboardText()).trim();
+      if (!looksLikeBankSms(text)) return;
+      const sig = text.slice(0, 80);
+      if (localStorage.getItem(SEEN_KEY) === sig) return;
+      setSmsFromClipboard(text);
+    };
+    void check();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  const dismissSms = (parse: boolean) => {
+    if (!smsFromClipboard) return;
+    localStorage.setItem("finlife_sms_seen", smsFromClipboard.slice(0, 80));
+    const text = smsFromClipboard;
+    setSmsFromClipboard(null);
+    if (parse) {
+      void hapticTick();
+      router.push(`/quick-add?text=${encodeURIComponent(text)}`);
+    }
+  };
 
   // Create modals — triggered from MobileNav FAB
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -227,6 +265,43 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
       )}
       <CompletionFeedbackLayer />
       <NativeBioLock />
+
+      {/* Баннер: банковская SMS в буфере */}
+      {smsFromClipboard && (
+        <div
+          className="fixed left-3 right-3 z-[95] rounded-2xl border p-3 shadow-xl animate-rise"
+          style={{
+            bottom: "calc(96px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--app-card-bg)",
+            borderColor: "var(--app-accent-weak)",
+          }}
+        >
+          <p className="text-[12px] font-semibold mb-0.5" style={{ color: "var(--t-primary)" }}>
+            💳 В буфере — похоже, банковская SMS
+          </p>
+          <p className="text-[11px] line-clamp-2 mb-2" style={{ color: "var(--t-muted)" }}>
+            {smsFromClipboard}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => dismissSms(true)}
+              className="flex-1 py-2 rounded-xl text-[12.5px] font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97]"
+              style={{ background: "var(--app-accent-gradient)" }}
+            >
+              ⚡ Разобрать операцию
+            </button>
+            <button
+              type="button"
+              onClick={() => dismissSms(false)}
+              className="px-4 py-2 rounded-xl text-[12.5px] font-medium nav-hover"
+              style={{ border: "1px solid var(--app-border)", color: "var(--t-secondary)" }}
+            >
+              Скрыть
+            </button>
+          </div>
+        </div>
+      )}
     </AuthGuard>
   );
 }
