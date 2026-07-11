@@ -11,8 +11,10 @@ import {
   DragOverEvent,
   DragStartEvent,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
+  DragOverlay,
   useSensor,
   useSensors,
   useDroppable,
@@ -26,6 +28,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api";
+import { hapticTick } from "@/lib/native";
 import { useCreateTask, useReorderTasks } from "@/hooks/useTasks";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { isCompletable, type CompletableKind } from "@/lib/completion";
@@ -244,12 +247,13 @@ function SortableTaskItem({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
+    transition: { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
   });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
 
@@ -585,16 +589,22 @@ export function TodayBlock({ today, plannedOps }: Props) {
   }, [activeTasks]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
+    // Мышь: старт по дистанции. Тач: long-press 220мс — скролл больше
+    // не конфликтует с перетаскиванием (главный источник «дёрганости»).
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  function handleDragStart(_event: DragStartEvent) {
+  const [dragItem, setDragItem] = useState<DashboardItem | null>(null);
+
+  function handleDragStart(event: DragStartEvent) {
     isDraggingRef.current = true;
+    const found = localTaskOrder.find((t) => t.id === event.active.id) ?? null;
+    setDragItem(found);
+    void hapticTick();
   }
 
   // Update order live during drag — this is what makes every drop position work reliably.
@@ -622,12 +632,14 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   function handleDragEnd(event: DragEndEvent) {
     const { over } = event;
+    setDragItem(null);
 
     if (!over) {
       isDraggingRef.current = false;
       setLocalTaskOrder(activeTasks);
       return;
     }
+    void hapticTick();
 
     const taskIds = localTaskOrder
       .filter((t) => t.kind === "task")
@@ -886,6 +898,22 @@ export function TodayBlock({ today, plannedOps }: Props) {
                     })}
                     <SentinelDropZone />
                   </SortableContext>
+                  <DragOverlay
+                    dropAnimation={{ duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}
+                  >
+                    {dragItem ? (
+                      <div
+                        className="rounded-xl shadow-2xl px-1"
+                        style={{
+                          background: "var(--app-card-bg)",
+                          border: "1px solid var(--app-border)",
+                          transform: "scale(1.03)",
+                        }}
+                      >
+                        <Item item={dragItem} onComplete={() => undefined} />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               ),
             });
