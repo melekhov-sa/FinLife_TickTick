@@ -4,7 +4,10 @@
   "webDir": "www",
   "server": {
     "url": "https://centricore.ru",
-    "allowNavigation": ["centricore.ru", "*.centricore.ru"],
+    "allowNavigation": [
+      "centricore.ru",
+      "*.centricore.ru"
+    ],
     "errorPath": "offline.html"
   },
   "backgroundColor": "#FAF7FF",
@@ -20,6 +23,13 @@
       "launchAutoHide": true,
       "backgroundColor": "#140E26",
       "showSpinner": false
+    },
+    "LocalNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     }
   }
 }

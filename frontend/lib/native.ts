@@ -273,6 +273,46 @@ export async function syncLocalReminders(items: NativeReminder[]): Promise<void>
   } catch { /* no-op */ }
 }
 
+/** Диагностика уведомлений: статус разрешения и число запланированных. */
+export async function notificationDiagnostics(): Promise<{
+  permission: string;
+  pending: number;
+}> {
+  const ln = plugin("LocalNotifications");
+  if (!ln) return { permission: "no-plugin", pending: 0 };
+  try {
+    const perm = await ln.checkPermissions();
+    const pending = await ln.getPending();
+    return {
+      permission: String(perm?.display ?? "unknown"),
+      pending: pending?.notifications?.length ?? 0,
+    };
+  } catch (e) {
+    return { permission: `error: ${String(e)}`, pending: 0 };
+  }
+}
+
+/** Тестовое уведомление через 10 секунд (сверни приложение и жди). */
+export async function testLocalNotification(): Promise<string> {
+  const ln = plugin("LocalNotifications");
+  if (!ln) return "плагин недоступен (не нативная среда?)";
+  try {
+    const perm = await ln.requestPermissions();
+    if (perm?.display !== "granted") return `нет разрешения: ${perm?.display}`;
+    await ln.schedule({
+      notifications: [{
+        id: 424242,
+        title: "FinLife: тест уведомлений",
+        body: "Если ты это видишь — локальные уведомления работают ✅",
+        schedule: { at: new Date(Date.now() + 10_000) },
+      }],
+    });
+    return "запланировано через 10 сек — сверни приложение";
+  } catch (e) {
+    return `ошибка: ${String(e)}`;
+  }
+}
+
 export interface NotificationActionInfo {
   actionId: string; // "complete" | "tap"
   kind?: "task" | "task_occ" | "habit";

@@ -19,6 +19,7 @@ from app.infrastructure.db.models import (
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
     WorkCategory, WishModel, ProjectModel,
+    TaskReminderModel,
 )
 
 
@@ -149,8 +150,6 @@ def _query_oneoff_tasks(
             TaskModel.due_date >= date_from,
             TaskModel.due_date <= date_to,
         )).all()
-        for t in rows:
-            items.append(_task_to_item(t, today, wc_map))
 
         # Overdue: due_date < today
         overdue = _exclude_hidden(db.query(TaskModel).filter(
@@ -159,8 +158,18 @@ def _query_oneoff_tasks(
             TaskModel.due_date != None,  # noqa: E711
             TaskModel.due_date < today,
         )).all()
+
+        # Напоминания одним запросом (для локальных уведомлений в нативке)
+        all_ids = [t.task_id for t in rows] + [t.task_id for t in overdue]
+        rems_map: dict[int, list] = {}
+        if all_ids:
+            for r in db.query(TaskReminderModel).filter(TaskReminderModel.task_id.in_(all_ids)).all():
+                rems_map.setdefault(r.task_id, []).append(r)
+
+        for t in rows:
+            items.append(_task_to_item(t, today, wc_map, rems_map.get(t.task_id)))
         for t in overdue:
-            items.append(_task_to_item(t, today, wc_map))
+            items.append(_task_to_item(t, today, wc_map, rems_map.get(t.task_id)))
 
     elif tab == "done":
         rows = _exclude_hidden(db.query(TaskModel).filter(
@@ -186,22 +195,44 @@ def _query_oneoff_tasks(
     return items
 
 
-def _task_to_item(t: TaskModel, today: date, wc_map: dict) -> dict:
+def _task_reminder_times(t: TaskModel, reminders: list) -> list[str]:
+    """Времена срабатывания напоминаний (HH:MM) — как в dashboard."""
+    if not reminders or not t.due_date:
+        return []
+    from datetime import datetime, timedelta
+    base_dt = datetime.combine(t.due_date, t.due_time) if t.due_time else None
+    times: list[tuple] = []
+    for r in reminders:
+        kind = getattr(r, "reminder_kind", "OFFSET")
+        if kind == "FIXED_TIME" and getattr(r, "fixed_time", None) is not None:
+            dt = datetime.combine(t.due_date, r.fixed_time)
+            times.append((dt, r.fixed_time.strftime("%H:%M")))
+        elif kind == "OFFSET" and base_dt and r.offset_minutes is not None:
+            dt = base_dt + timedelta(minutes=r.offset_minutes)
+            times.append((dt, dt.strftime("%H:%M")))
+    times.sort(key=lambda x: x[0])
+    return [label for _, label in times]
+
+
+def _task_to_item(t: TaskModel, today: date, wc_map: dict, reminders: list | None = None) -> dict:
     d = t.due_date or today
     is_overdue = t.status == "ACTIVE" and t.due_date is not None and t.due_date < today
+    task_time = None
+    if t.due_time:
+        task_time = t.due_time.strftime("%H:%M") if hasattr(t.due_time, "strftime") else str(t.due_time)[:5]
     return {
         "kind": "task",
         "id": t.task_id,
         "title": t.title,
         "date": d,
-        "time": None,
+        "time": task_time,
         "is_done": t.status == "DONE",
         "is_overdue": is_overdue,
         "status": t.status,
         "category_emoji": _wc_emoji(wc_map, t.category_id),
         "category_title": _wc_title(wc_map, t.category_id),
         "manual_order": t.manual_order,
-        "meta": {"task_id": t.task_id, "category_id": t.category_id},
+        "meta": {"task_id": t.task_id, "category_id": t.category_id, "reminders": _task_reminder_times(t, reminders or [])},
     }
 
 

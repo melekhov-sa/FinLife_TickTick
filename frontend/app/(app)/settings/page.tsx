@@ -11,7 +11,7 @@ import {
   ScanFace } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
 import { Switch } from "@/components/primitives/Switch";
-import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess } from "@/lib/native";
+import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess, notificationDiagnostics, testLocalNotification } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
 import { Card } from "@/components/primitives/Card";
 
@@ -177,6 +177,49 @@ function AiDigestToggle() {
   );
 }
 
+function NotifDiagCard() {
+  const [diag, setDiag] = useState<{ permission: string; pending: number } | null>(null);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+
+  const refresh = () => void notificationDiagnostics().then(setDiag);
+  useEffect(() => {
+    if (isNative()) refresh();
+  }, []);
+
+  if (!isNative()) return null;
+
+  return (
+    <Card padding="md" className="flex items-start gap-4">
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/10">
+        <Bell size={18} className="text-amber-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Локальные уведомления
+        </p>
+        <p className="text-[12px] mt-1" style={{ color: "var(--t-faint)" }}>
+          Разрешение: <b>{diag?.permission ?? "…"}</b> · Запланировано: <b>{diag?.pending ?? "…"}</b>
+        </p>
+        {testMsg && (
+          <p className="text-[12px] mt-1 font-medium" style={{ color: "var(--app-accent)" }}>{testMsg}</p>
+        )}
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => void testLocalNotification().then((m) => { setTestMsg(m); refresh(); })}
+          >
+            Тест через 10 сек
+          </Button>
+          <Button size="sm" variant="secondary" onClick={refresh}>
+            Обновить статус
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function FaceIdToggle() {
   const [available, setAvailable] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -336,6 +379,9 @@ export default function SettingsPage() {
 
           {/* ── Face ID (только нативное приложение) ── */}
           <FaceIdToggle />
+
+          {/* ── Диагностика уведомлений (нативное) ── */}
+          <NotifDiagCard />
 
           {/* ── AI Digest Toggle ── */}
           <Card padding="lg">
