@@ -102,6 +102,16 @@ export function TimeInput({
 
   return (
     <div ref={wrapRef} className={cn("relative", className)}>
+      {/* Мобиле: системный iOS-пикер поверх триггера */}
+      {!disabled && (
+        <input
+          type="time"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="md:hidden absolute inset-0 w-full h-full opacity-0 z-[1]"
+          aria-label="Выбрать время"
+        />
+      )}
       <button
         ref={triggerRef}
         type="button"
@@ -127,7 +137,7 @@ export function TimeInput({
           {value || placeholder}
         </span>
         {value && !disabled && (
-          <span
+          <span style={{ position: "relative", zIndex: 2 }}
             role="button"
             tabIndex={-1}
             aria-label="Очистить"

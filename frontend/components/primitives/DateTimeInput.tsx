@@ -271,6 +271,16 @@ export function DateTimeInput({
 
   return (
     <div className={cn("relative", className)}>
+      {/* Мобиле: системный iOS-пикер поверх триггера */}
+      {!disabled && (
+        <input
+          type="datetime-local"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="md:hidden absolute inset-0 w-full h-full opacity-0 z-[1]"
+          aria-label="Выбрать дату и время"
+        />
+      )}
       <button
         ref={triggerRef}
         type="button"
@@ -294,7 +304,7 @@ export function DateTimeInput({
           {display || placeholder}
         </span>
         {value && !disabled && (
-          <span
+          <span style={{ position: "relative", zIndex: 2 }}
             role="button"
             tabIndex={-1}
             aria-label="Очистить"

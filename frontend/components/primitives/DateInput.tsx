@@ -233,6 +233,16 @@ export function DateInput({
 
   return (
     <div className={cn("relative", className)}>
+      {/* Мобиле: системный iOS-пикер поверх триггера (стиль остаётся наш) */}
+      {!disabled && (
+        <input
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="md:hidden absolute inset-0 w-full h-full opacity-0 z-[1]"
+          aria-label="Выбрать дату"
+        />
+      )}
       <button
         ref={triggerRef}
         type="button"
@@ -256,7 +266,7 @@ export function DateInput({
           {display || placeholder}
         </span>
         {value && !disabled && (
-          <span
+          <span style={{ position: "relative", zIndex: 2 }}
             role="button"
             tabIndex={-1}
             aria-label="Очистить"
