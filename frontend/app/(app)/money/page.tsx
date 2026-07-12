@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo , useRef } from "react";
+import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
-import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
+import { CreateOperationModal, type CreateOperationInitialValues } from "@/components/modals/CreateOperationModal";
+import { ActionSheet } from "@/components/primitives/ActionSheet";
+import { hapticTick } from "@/lib/native";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
 import { clsx } from "clsx";
@@ -249,10 +252,42 @@ function getMoneyTab(pathname: string | null): string {
 }
 
 export default function MoneyPage() {
+  useTabSwipe(["/money", "/wallets", "/categories", "/goals", "/savings"], "/money");
   const pathname = usePathname();
   const router = useRouter();
   const [showOpModal, setShowOpModal] = useState(false);
   const [editTx, setEditTx] = useState<TransactionItem | null>(null);
+  const [ctxTx, setCtxTx] = useState<TransactionItem | null>(null); // long-press меню
+  const [repeatValues, setRepeatValues] = useState<CreateOperationInitialValues | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function startLongPress(tx: TransactionItem) {
+    longPressRef.current = setTimeout(() => {
+      void hapticTick();
+      setCtxTx(tx);
+    }, 450);
+  }
+  function cancelLongPress() {
+    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+  }
+  async function deleteTx(tx: TransactionItem) {
+    try {
+      await api.delete(`/api/v2/transactions/${tx.transaction_id}`);
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["wallets"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch { /* уже удалена */ }
+  }
+  function repeatTx(tx: TransactionItem) {
+    setRepeatValues({
+      opType: tx.operation_type as CreateOperationInitialValues["opType"],
+      amount: tx.amount,
+      walletId: tx.wallet_id ?? undefined,
+      fromWalletId: tx.from_wallet_id ?? undefined,
+      toWalletId: tx.to_wallet_id ?? undefined,
+      categoryId: tx.category_id ?? undefined,
+    });
+  }
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [opTypeFilter, setOpTypeFilter] = useState("");
   const [walletFilter, setWalletFilter] = useState("");
@@ -320,6 +355,26 @@ export default function MoneyPage() {
   return (
     <>
       {showOpModal && <CreateOperationModal onClose={() => { setShowOpModal(false); }} />}
+      <ActionSheet
+        open={!!ctxTx}
+        onClose={() => setCtxTx(null)}
+        title={ctxTx ? `${ctxTx.description || ctxTx.category_title || "Операция"} · ${ctxTx.amount}` : undefined}
+        actions={ctxTx ? [
+          { label: "Повторить операцию", onClick: () => repeatTx(ctxTx) },
+          { label: "Редактировать", onClick: () => setEditTx(ctxTx) },
+          { label: "Удалить", destructive: true, onClick: () => void deleteTx(ctxTx) },
+        ] : []}
+      />
+      {repeatValues && (
+        <CreateOperationModal
+          initialValues={repeatValues}
+          onClose={() => {
+            setRepeatValues(null);
+            qc.invalidateQueries({ queryKey: ["transactions"] });
+            qc.invalidateQueries({ queryKey: ["wallets"] });
+          }}
+        />
+      )}
       {editTx && (
         <EditTransactionModal
           tx={editTx}
@@ -477,6 +532,10 @@ export default function MoneyPage() {
                     "flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/tx",
                     i < data.items.length - 1 && "border-b border-slate-100 dark:border-white/[0.04]"
                   )}
+                  onTouchStart={() => startLongPress(tx)}
+                  onTouchMove={cancelLongPress}
+                  onTouchEnd={cancelLongPress}
+                  onContextMenu={(e) => e.preventDefault()}
                 >
                   <div
                     className={clsx("w-1 h-8 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-slate-200")}

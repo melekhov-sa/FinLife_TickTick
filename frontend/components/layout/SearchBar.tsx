@@ -229,7 +229,7 @@ export function SearchBar() {
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
             style={{ color: "rgba(255,255,255,0.75)" }}
           />
-          <input
+          <input enterKeyHint="search"
             ref={inputRef}
             type="text"
             value={query}

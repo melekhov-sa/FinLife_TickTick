@@ -9,6 +9,7 @@
  */
 
 import { usePathname, useRouter } from "next/navigation";
+import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, PiggyBank } from "lucide-react";
 import { api } from "@/lib/api";
@@ -67,6 +68,7 @@ function monthLabel(m: string): string {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SavingsPage() {
+  useTabSwipe(["/money", "/wallets", "/categories", "/goals", "/savings"], "/savings");
   const pathname = usePathname();
   const router = useRouter();
 

@@ -223,7 +223,8 @@ export function Select({
               ref={searchRef}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setFocusedIdx(0); }}
-              placeholder="Поиск..."
+              enterKeyHint="search"
+                placeholder="Поиск..."
               className="w-full pl-7 pr-3 h-8 text-base md:text-[13px] rounded-lg focus:outline-none transition-colors"
               style={{ color: c.text, background: c.searchBg, border: `1px solid ${c.searchBorder}` }}
               onKeyDown={(e) => {
@@ -311,6 +312,7 @@ export function Select({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                enterKeyHint="search"
                 placeholder="Поиск..."
                 className="w-full pl-7 pr-3 h-9 text-base rounded-lg focus:outline-none"
                 style={{ color: c.text, background: c.searchBg, border: `1px solid ${c.searchBorder}` }}

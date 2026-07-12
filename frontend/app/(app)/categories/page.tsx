@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -399,6 +400,7 @@ function getMoneyTab(pathname: string | null): string {
 }
 
 export default function CategoriesPage() {
+  useTabSwipe(["/money", "/wallets", "/categories", "/goals", "/savings"], "/categories");
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("EXPENSE");

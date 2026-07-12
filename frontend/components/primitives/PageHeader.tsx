@@ -111,6 +111,7 @@ export function PageHeader({
           {back && (
             <button
               type="button"
+              data-page-back=""
               onClick={back.onClick}
               aria-label={back.label || "Назад"}
               className="inline-flex items-center justify-center shrink-0 transition-colors hover:bg-[var(--app-accent-weak)]"

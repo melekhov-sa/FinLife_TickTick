@@ -35,12 +35,15 @@ export function MobileNav({
     let startX = 0;
     let startY = 0;
     let tracking = false;
+    let mode: "drawer" | "back" = "drawer";
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!t) return;
       // только от кромки, только когда меню закрыто и нет открытых шитов
       if (t.clientX > 24 || drawerOpenRef.current) return;
       if (document.querySelector(".modal-overlay")) return;
+      // вложенная страница (есть кнопка «Назад») → жест ведёт назад
+      mode = document.querySelector("[data-page-back]") ? "back" : "drawer";
       tracking = true;
       startX = t.clientX;
       startY = t.clientY;
@@ -61,18 +64,45 @@ export function MobileNav({
           return;
         }
       }
-      // меню следует за пальцем
-      setDragX(Math.max(0, Math.min(dx, 260)));
+      if (mode === "drawer") {
+        // меню следует за пальцем
+        setDragX(Math.max(0, Math.min(dx, 260)));
+      } else {
+        // контент уезжает вправо за пальцем (свайп-назад)
+        const el = document.getElementById("app-scroll");
+        if (el) {
+          el.style.transition = "none";
+          el.style.transform = `translateX(${Math.max(0, dx) * 0.35}px)`;
+          el.style.opacity = String(1 - Math.min(dx / 600, 0.25));
+        }
+      }
     };
-    const onEnd = () => {
+    const onEnd = (e: TouchEvent) => {
       if (engaged) {
-        setDragX((cur) => {
-          if ((cur ?? 0) > 110) {
-            setDrawerOpen(true);
-            void hapticTick();
+        if (mode === "drawer") {
+          setDragX((cur) => {
+            if ((cur ?? 0) > 110) {
+              setDrawerOpen(true);
+              void hapticTick();
+            }
+            return null;
+          });
+        } else {
+          const t = e.changedTouches[0];
+          const dx = t ? t.clientX - startX : 0;
+          const el = document.getElementById("app-scroll");
+          if (el) {
+            el.style.transition = "transform 200ms cubic-bezier(0.22,1,0.36,1), opacity 200ms ease";
+            el.style.transform = "";
+            el.style.opacity = "";
           }
-          return null;
-        });
+          if (dx > 100) {
+            void hapticTick();
+            // нажать существующую кнопку «Назад» — она знает свой маршрут
+            const backBtn = document.querySelector<HTMLButtonElement>("[data-page-back]");
+            backBtn?.click();
+          }
+        }
       }
       tracking = false;
       engaged = false;
@@ -353,6 +383,14 @@ function BottomItem({
   return (
     <Link
       href={href}
+      onClick={(e) => {
+        // iOS-паттерн: тап по уже активному табу скроллит к началу
+        if (active) {
+          e.preventDefault();
+          document.getElementById("app-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
+          void hapticTick();
+        }
+      }}
       className="flex-1 flex flex-col items-center justify-center gap-0.5 select-none"
       style={{ color: active ? "var(--app-accent)" : "var(--t-muted)" }}
     >

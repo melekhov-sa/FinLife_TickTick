@@ -125,6 +125,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         )}
 
         <input
+        enterKeyHint="done"
           ref={ref}
           id={inputId}
           type={effectiveType}
