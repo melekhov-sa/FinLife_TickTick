@@ -1401,7 +1401,7 @@ def savings_report(
 def net_worth_report(
     request: Request,
     db: Session = Depends(get_db),
-    months: int = Query(24, ge=6, le=60),
+    months: int = Query(24, ge=1, le=60),
 ):
     """Динамика капитала по месяцам (RUB-кошельки).
 
@@ -1445,14 +1445,24 @@ def net_worth_report(
     now = datetime.now(timezone.utc)
     month_labels: list[str] = []
     boundaries: list[datetime] = []
-    y, m = now.year, now.month
-    for _ in range(months):
-        month_labels.append(f"{y:04d}-{m:02d}")
-        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
-        boundaries.append(datetime(ny, nm, 1, tzinfo=timezone.utc))
-        y, m = (y - 1, 12) if m == 1 else (y, m - 1)
-    month_labels.reverse()
-    boundaries.reverse()
+    if months <= 6:
+        # Короткие окна: точка на каждый день (метка YYYY-MM-DD)
+        days = months * 30
+        today = now.date()
+        for i in range(days):
+            d = today - timedelta(days=days - 1 - i)
+            month_labels.append(d.isoformat())
+            nd = d + timedelta(days=1)
+            boundaries.append(datetime(nd.year, nd.month, nd.day, tzinfo=timezone.utc))
+    else:
+        y, m = now.year, now.month
+        for _ in range(months):
+            month_labels.append(f"{y:04d}-{m:02d}")
+            ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
+            boundaries.append(datetime(ny, nm, 1, tzinfo=timezone.utc))
+            y, m = (y - 1, 12) if m == 1 else (y, m - 1)
+        month_labels.reverse()
+        boundaries.reverse()
 
     def wallet_delta(op, wid: int) -> Decimal:
         amt = Decimal(str(op.amount))

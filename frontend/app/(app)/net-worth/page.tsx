@@ -30,6 +30,9 @@ interface NetWorthReport {
 }
 
 const RANGES = [
+  { id: "1",  label: "1 мес" },
+  { id: "3",  label: "3 мес" },
+  { id: "6",  label: "6 мес" },
   { id: "12", label: "12 мес" },
   { id: "24", label: "24 мес" },
   { id: "36", label: "36 мес" },
@@ -56,10 +59,14 @@ export default function NetWorthPage() {
     staleTime: 60_000,
   });
 
-  const points = (data?.months ?? []).map((m) => ({
-    ...m,
-    label: `${MONTH_SHORT[Number(m.month.slice(5, 7)) - 1]}${m.month.slice(2, 4) !== String(new Date().getFullYear()).slice(2) ? " " + m.month.slice(2, 4) : ""}`,
-  }));
+  const points = (data?.months ?? []).map((m) => {
+    const monthName = MONTH_SHORT[Number(m.month.slice(5, 7)) - 1];
+    const label =
+      m.month.length === 10
+        ? `${Number(m.month.slice(8, 10))} ${monthName}` // дневная точка: «5 июл»
+        : `${monthName}${m.month.slice(2, 4) !== String(new Date().getFullYear()).slice(2) ? " " + m.month.slice(2, 4) : ""}`;
+    return { ...m, label };
+  });
 
   // Дельта капитала за окно
   const first = points.find((p) => p.capital !== 0) ?? points[0];
