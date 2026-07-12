@@ -29,6 +29,7 @@ export function MobileNav({
   // Свайп от левой кромки экрана открывает меню «Ещё» (как в TickTick)
   const drawerOpenRef = useRef(drawerOpen);
   const drawerTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const [dragX, setDragX] = useState<number | null>(null); // интерактивная протяжка drawer
   drawerOpenRef.current = drawerOpen;
   useEffect(() => {
     let startX = 0;
@@ -44,21 +45,38 @@ export function MobileNav({
       startX = t.clientX;
       startY = t.clientY;
     };
+    let engaged = false;
     const onMove = (e: TouchEvent) => {
       if (!tracking) return;
       const t = e.touches[0];
       if (!t) return;
       const dx = t.clientX - startX;
       const dy = Math.abs(t.clientY - startY);
-      if (dx > 56 && dx > dy * 1.5) {
-        tracking = false;
-        setDrawerOpen(true);
-        void hapticTick();
-      } else if (dy > 44) {
-        tracking = false; // это вертикальный скролл
+      if (!engaged) {
+        if (dy > 44) { tracking = false; return; } // вертикальный скролл
+        if (dx > 14 && dx > dy * 1.2) {
+          engaged = true;
+          void hapticTick();
+        } else {
+          return;
+        }
       }
+      // меню следует за пальцем
+      setDragX(Math.max(0, Math.min(dx, 260)));
     };
-    const onEnd = () => { tracking = false; };
+    const onEnd = () => {
+      if (engaged) {
+        setDragX((cur) => {
+          if ((cur ?? 0) > 110) {
+            setDrawerOpen(true);
+            void hapticTick();
+          }
+          return null;
+        });
+      }
+      tracking = false;
+      engaged = false;
+    };
     document.addEventListener("touchstart", onStart, { passive: true });
     document.addEventListener("touchmove", onMove, { passive: true });
     document.addEventListener("touchend", onEnd, { passive: true });
@@ -216,14 +234,22 @@ export function MobileNav({
       )}
 
       {/* Drawer */}
-      {drawerOpen && (
+      {(drawerOpen || dragX !== null) && (
         <div
-          className="md:hidden fixed inset-0 z-40 animate-overlay-fade"
+          className={dragX === null ? "md:hidden fixed inset-0 z-40 animate-overlay-fade" : "md:hidden fixed inset-0 z-40"}
           onClick={() => setDrawerOpen(false)}
+          style={dragX !== null ? { pointerEvents: "none" } : undefined}
         >
-          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="absolute inset-0 bg-black/40"
+            style={dragX !== null ? { opacity: Math.min((dragX ?? 0) / 260, 1) * 0.9 } : undefined}
+          />
           <aside
-            className="absolute left-0 top-0 bottom-0 w-[260px] flex flex-col animate-drawer-in"
+            className={
+              dragX === null
+                ? "absolute left-0 top-0 bottom-0 w-[260px] flex flex-col animate-drawer-in"
+                : "absolute left-0 top-0 bottom-0 w-[260px] flex flex-col"
+            }
             onTouchStart={(e) => {
               const t = e.touches[0];
               if (t) drawerTouchRef.current = { x: t.clientX, y: t.clientY };
@@ -245,6 +271,10 @@ export function MobileNav({
               borderRight: "1px solid var(--app-sidebar-border)",
               paddingTop: "env(safe-area-inset-top, 0px)",
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              // интерактивная протяжка: меню следует за пальцем
+              ...(dragX !== null
+                ? { transform: `translateX(${dragX - 260}px)`, willChange: "transform" as const }
+                : {}),
             }}
             onClick={(e) => e.stopPropagation()}
           >

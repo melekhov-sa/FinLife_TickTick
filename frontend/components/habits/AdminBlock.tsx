@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import type { HabitItem } from "@/types/api";
 import { useSkipHabitToday, useDeleteHabit, useRestoreHabit } from "@/hooks/useHabits";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { ActionSheet } from "@/components/primitives/ActionSheet";
 
 type FilterValue = "all" | "pending" | "done";
 
@@ -29,10 +30,11 @@ function QuickMenu({
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const items = [
     { label: "Редактировать", action: () => { onOpen(); setOpen(false); } },
     { label: "Пропустить сегодня", action: () => { onSkip(); setOpen(false); } },
-    { label: "В архив", action: () => { onDelete(); setOpen(false); }, danger: true },
+    { label: "В архив", action: () => { setConfirmArchive(true); setOpen(false); }, danger: true },
   ];
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -61,6 +63,12 @@ function QuickMenu({
           ))}
         </div>
       )}
+      <ActionSheet
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        title="Привычка уедет в архив — статистика сохранится"
+        actions={[{ label: "В архив", destructive: true, onClick: onDelete }]}
+      />
     </div>
   );
 }

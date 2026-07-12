@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { User, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
@@ -16,8 +17,33 @@ export function AppTopbar() {
   const email = me?.email ?? "";
   const vacation = !!me?.vacation;
   const pageMeta = usePageTitleMeta();
+  const pathname = usePathname();
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // iOS Large Title: компактный тайтл в шапке показываем на мобиле только
+  // когда крупный заголовок страницы уехал за скролл.
+  const [largeVisible, setLargeVisible] = useState(true);
+  useEffect(() => {
+    let io: IntersectionObserver | null = null;
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector("[data-large-title]");
+      if (!el) { setLargeVisible(false); return; }
+      io = new IntersectionObserver(
+        ([e]) => setLargeVisible(e.isIntersecting),
+        { threshold: 0.01 }
+      );
+      io.observe(el);
+    });
+    return () => { cancelAnimationFrame(raf); io?.disconnect(); };
+  }, [pathname, pageMeta?.title]);
+
+  const mobileTitleStyle: React.CSSProperties = {
+    opacity: largeVisible ? 0 : 1,
+    transform: largeVisible ? "translateY(4px)" : "translateY(0)",
+    transition: "opacity 180ms ease, transform 180ms ease",
+    pointerEvents: largeVisible ? "none" : undefined,
+  };
 
   return (
     <header
@@ -60,7 +86,7 @@ export function AppTopbar() {
 
         {/* Мобиле: title вместо лого если есть, иначе лого FL */}
         {pageMeta?.title ? (
-          <div className="md:hidden flex flex-col justify-center min-w-0">
+          <div className="md:hidden flex flex-col justify-center min-w-0" style={mobileTitleStyle}>
             {pageMeta.eyebrow && (
               <span className="text-[10px] font-medium leading-none mb-0.5 truncate" style={{ color: "var(--app-topbar-text)", opacity: 0.72 }}>
                 {pageMeta.eyebrow}

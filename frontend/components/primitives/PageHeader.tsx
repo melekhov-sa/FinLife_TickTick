@@ -141,7 +141,8 @@ export function PageHeader({
               </div>
             )}
             <h1
-              className="font-display flex items-center min-w-0 gap-2.5"
+              data-large-title=""
+              className="font-display large-title flex items-center min-w-0 gap-2.5"
               style={{
                 fontSize: tok.titleFz,
                 lineHeight: 1.2,

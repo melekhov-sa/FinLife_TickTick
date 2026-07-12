@@ -829,6 +829,16 @@ html.dark[data-color-theme="vivid"] {
     display: block;
   }
 
+  /* iOS Large Title: на мобиле заголовок страницы крупный; при скролле
+     уезжает, и его подхватывает компактный тайтл в шапке (AppTopbar). */
+  @media (max-width: 767px) {
+    .large-title {
+      font-size: 28px !important;
+      line-height: 1.15 !important;
+      letter-spacing: -0.02em !important;
+    }
+  }
+
   /* Display typeface (Rubik) for headings & large numbers — signature look */
   .font-display {
     font-family: var(--font-display), var(--font-geist-sans), -apple-system,
