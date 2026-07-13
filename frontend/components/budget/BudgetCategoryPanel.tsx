@@ -10,6 +10,8 @@ export interface CategoryMonthData {
   label: string;
   fact: number;
   plan: number;
+  /** Часть плана, пришедшая из плановых операций (остальное — строка бюджета). */
+  plan_ops?: number;
 }
 
 export interface BudgetCategoryStats {
@@ -199,6 +201,34 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
               <AccuracyBadge value={stats.plan_accuracy_6m} />
             </div>
           </div>
+
+          {/* Состав плана: плановые операции + строка бюджета */}
+          {(() => {
+            const m = [...stats.months].reverse().find((x) => (x.plan_ops ?? 0) > 0);
+            if (!m) return null;
+            const ops = m.plan_ops ?? 0;
+            const manual = Math.max(0, m.plan - ops);
+            return (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{ background: "var(--app-sidebar-bg)", border: "1px solid var(--app-border)" }}
+              >
+                <p className="text-[11px] mb-1.5" style={{ color: "var(--t-faint)" }}>
+                  План {m.label} — {fmt(m.plan)} ₽
+                </p>
+                <div className="flex items-center justify-between text-[11px] tabular-nums">
+                  <span style={{ color: "var(--t-muted)" }}>плановые операции</span>
+                  <span className="font-semibold" style={{ color: "var(--t-primary)" }}>{fmt(ops)} ₽</span>
+                </div>
+                {manual > 0 && (
+                  <div className="flex items-center justify-between text-[11px] tabular-nums mt-1">
+                    <span style={{ color: "var(--t-muted)" }}>строка бюджета (сверху)</span>
+                    <span className="font-semibold" style={{ color: "var(--t-primary)" }}>{fmt(manual)} ₽</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 6-month history */}
           <div>

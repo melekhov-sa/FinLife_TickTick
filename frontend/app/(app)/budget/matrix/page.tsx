@@ -198,6 +198,10 @@ function PlanEditModal({
           className="w-full px-3 h-10 text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] transition-colors tabular-nums"
           style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
+        <p className="text-[11px] mt-1.5" style={{ color: "var(--t-faint)" }}>
+          В статистике план месяца = плановые операции статьи + эта сумма.
+          Если статья закрывается плановой операцией целиком — оставь 0.
+        </p>
 
         <label className="block text-[11px] font-medium uppercase tracking-wider mb-1 mt-3" style={{ color: "var(--t-faint)" }}>
           Комментарий

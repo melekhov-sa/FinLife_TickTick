@@ -970,9 +970,10 @@ def budget_stats(
         plan_map[(r.year, r.month, r.category_id, r.kind)] = float(r.total)
 
     # ── Плановые операции как источник плана ─────────────────────────────────
-    # Ипотека/подписки и т.п. часто живут плановыми операциями, а не строками
-    # бюджета. Если по (месяц, статья) нет бюджетного плана — планом считаем
-    # сумму плановых операций месяца (SKIPPED не считаем: пропуск осознанный).
+    # Ипотека/подписки и т.п. живут плановыми операциями. Семантика плана:
+    # план месяца по статье = плановые операции + строка бюджета (строка —
+    # «добавка сверху», напр. счёт 100₽ операцией + 300₽ прочих трат строкой
+    # = план 400₽). SKIPPED не считаем: пропуск осознанный.
     w_start = date(months_window[0][0], months_window[0][1], 1)
     _po_yr = extract("year", OperationOccurrence.scheduled_date)
     _po_mo = extract("month", OperationOccurrence.scheduled_date)
@@ -1000,10 +1001,12 @@ def budget_stats(
         .group_by(_po_yr, _po_mo, OperationTemplateModel.category_id, OperationTemplateModel.kind)
         .all()
     )
+    plan_ops_map: dict = {}
     for r in po_rows:
         key = (int(r.yr), int(r.mo), r.category_id, r.kind)
-        if plan_map.get(key, 0.0) <= 0:  # явная строка бюджета приоритетнее
-            plan_map[key] = float(r.total)
+        plan_ops_map[key] = float(r.total)
+        # План = плановые операции + ручная строка бюджета (добавка сверху).
+        plan_map[key] = plan_map.get(key, 0.0) + float(r.total)
 
     # ── Categories ────────────────────────────────────────────────────────────
     cats = (
@@ -1110,6 +1113,7 @@ def budget_stats(
                 "label": f"{_SHORT_MONTHS[m]} '{y % 100:02d}",
                 "fact": round(fact_map.get((y, m, cat.category_id, op), 0.0)),
                 "plan": round(plan_map.get((y, m, cat.category_id, op), 0.0)),
+                "plan_ops": round(plan_ops_map.get((y, m, cat.category_id, op), 0.0)),
             }
             for (y, m) in months_window
         ]
