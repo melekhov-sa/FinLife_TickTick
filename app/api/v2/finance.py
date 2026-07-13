@@ -393,6 +393,7 @@ class TransactionItem(BaseModel):
     category_title: str | None
     description: str
     occurred_at: str
+    budget_month: str | None = None  # YYYY-MM-DD (1-е число), NULL = по дате
 
 
 @router.get("/transactions", response_model=dict)
@@ -405,6 +406,7 @@ def list_transactions(
     list_id: int | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
+    budget_dates: bool = Query(False),  # окно по coalesce(budget_month, occurred_at)
     search: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, le=200),
@@ -457,20 +459,26 @@ def list_transactions(
                 q = q.filter(TransactionFeed.category_id.in_([category_id] + child_ids))
             else:
                 q = q.filter(TransactionFeed.category_id == category_id)
+    from sqlalchemy import cast as _cast, TIMESTAMP as _TS
+    _window_dt = (
+        func.coalesce(_cast(TransactionFeed.budget_month, _TS(timezone=True)), TransactionFeed.occurred_at)
+        if budget_dates
+        else TransactionFeed.occurred_at
+    )
     if date_from:
         from datetime import datetime as _dt
         try:
             df = _dt.fromisoformat(date_from)
         except ValueError:
             df = _dt.strptime(date_from, "%Y-%m-%d")
-        q = q.filter(TransactionFeed.occurred_at >= df)
+        q = q.filter(_window_dt >= df)
     if date_to:
         from datetime import datetime as _dt
         try:
             dt_end = _dt.fromisoformat(date_to)
         except ValueError:
             dt_end = _dt.strptime(date_to, "%Y-%m-%d")
-        q = q.filter(TransactionFeed.occurred_at < dt_end)
+        q = q.filter(_window_dt < dt_end)
     if search and search.strip():
         q = q.filter(TransactionFeed.description.ilike(f"%{search.strip()}%"))
 
@@ -511,6 +519,7 @@ def list_transactions(
             category_title=cat_map.get(t.category_id) if t.category_id else None,
             description=t.description or "",
             occurred_at=t.occurred_at.isoformat(),
+            budget_month=t.budget_month.isoformat() if t.budget_month else None,
         )
         for t in transactions
     ]
@@ -841,6 +850,8 @@ class CreateTransactionRequest(BaseModel):
     sub_end_date: str | None = None       # YYYY-MM-DD
     # Trip container link
     list_id: int | None = None
+    # Бюджетный месяц-переопределение: YYYY-MM-DD (любой день месяца)
+    budget_month: str | None = None
 
 
 @router.post("/transactions", status_code=201)
@@ -958,14 +969,26 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
         except SubscriptionValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    # Set list_id on the read model (not event-sourced)
-    if body.list_id is not None and tx_id:
+    # Set list_id / budget_month on the read model (not event-sourced)
+    if (body.list_id is not None or body.budget_month) and tx_id:
         tx = db.query(TransactionFeed).filter(TransactionFeed.transaction_id == tx_id).first()
         if tx:
-            tx.list_id = body.list_id
+            if body.list_id is not None:
+                tx.list_id = body.list_id
+            if body.budget_month:
+                tx.budget_month = _parse_budget_month(body.budget_month)
             db.commit()
 
     return {"id": tx_id}
+
+
+def _parse_budget_month(value: str) -> date:
+    """YYYY-MM-DD (любой день) → 1-е число месяца."""
+    try:
+        d = date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Некорректный budget_month")
+    return d.replace(day=1)
 
 
 # ── Update transaction ──────────────────────────────────────────────────────
@@ -976,6 +999,7 @@ class UpdateTransactionRequest(BaseModel):
     category_id: int | None = None
     description: str | None = None
     list_id: int | None = None
+    budget_month: str | None = None  # None в fields_set = сбросить (по дате)
 
 
 @router.patch("/transactions/{transaction_id}")
@@ -1002,8 +1026,9 @@ def update_transaction(
         changes["description"] = body.description
 
     list_id_in_request = "list_id" in body.model_fields_set
+    budget_month_in_request = "budget_month" in body.model_fields_set
 
-    if not changes and not list_id_in_request:
+    if not changes and not list_id_in_request and not budget_month_in_request:
         raise HTTPException(status_code=400, detail="Нет изменений")
 
     if changes:
@@ -1017,15 +1042,18 @@ def update_transaction(
         except TransactionValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    # Update list_id directly on the read model
-    if list_id_in_request:
+    # Update list_id / budget_month directly on the read model
+    if list_id_in_request or budget_month_in_request:
         tx = db.query(TransactionFeed).filter(
             TransactionFeed.transaction_id == transaction_id,
             TransactionFeed.account_id == user_id,
         ).first()
         if not tx:
             raise HTTPException(status_code=404, detail="Транзакция не найдена")
-        tx.list_id = body.list_id
+        if list_id_in_request:
+            tx.list_id = body.list_id
+        if budget_month_in_request:
+            tx.budget_month = _parse_budget_month(body.budget_month) if body.budget_month else None
         db.commit()
 
     return {"ok": True}

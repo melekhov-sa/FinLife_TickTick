@@ -9,7 +9,7 @@ from datetime import datetime, date as date_type, timedelta
 from decimal import Decimal
 from typing import Dict, Any, List
 
-from sqlalchemy import func
+from sqlalchemy import func, cast, TIMESTAMP
 from sqlalchemy.orm import Session
 
 from app.infrastructure.eventlog.repository import EventLogRepository
@@ -1136,10 +1136,14 @@ class BudgetViewService:
         range_end: date_type,
     ) -> Dict[tuple, Decimal]:
         """Aggregate transactions by (category_id, operation_type)."""
-        # Convert date to datetime for TransactionFeed.occurred_at comparison
         dt_start = datetime(range_start.year, range_start.month, range_start.day)
         dt_end = datetime(range_end.year, range_end.month, range_end.day)
 
+        # Эффективная дата для бюджета: budget_month-переопределение или occurred_at
+        budget_dt = func.coalesce(
+            cast(TransactionFeed.budget_month, TIMESTAMP(timezone=True)),
+            TransactionFeed.occurred_at,
+        )
         rows = (
             self.db.query(
                 TransactionFeed.category_id,
@@ -1149,8 +1153,8 @@ class BudgetViewService:
             .filter(
                 TransactionFeed.account_id == account_id,
                 TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                budget_dt >= dt_start,
+                budget_dt < dt_end,
             )
             .group_by(TransactionFeed.category_id, TransactionFeed.operation_type)
             .all()

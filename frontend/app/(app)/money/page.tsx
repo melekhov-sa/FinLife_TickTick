@@ -15,6 +15,7 @@ import { clsx } from "clsx";
 import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
+import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/budgetMonth";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -37,6 +38,7 @@ interface TransactionItem {
   category_title: string | null;
   description: string;
   occurred_at: string;
+  budget_month: string | null;
 }
 
 interface TransactionsResponse {
@@ -84,6 +86,7 @@ function EditTransactionModal({
   const [amount, setAmount] = useState(tx.amount);
   const [walletId, setWalletId] = useState<string>(String(tx.wallet_id ?? ""));
   const [categoryId, setCategoryId] = useState<string>(String(tx.category_id ?? ""));
+  const [budgetMonth, setBudgetMonth] = useState<string>(tx.budget_month ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -116,6 +119,7 @@ function EditTransactionModal({
         amount,
         ...(isTransfer ? {} : { wallet_id: walletId ? Number(walletId) : undefined }),
         ...(isTransfer ? {} : { category_id: categoryId ? Number(categoryId) : null }),
+        budget_month: budgetMonth || null,
       });
       onSaved();
     } catch (err: unknown) {
@@ -175,6 +179,18 @@ function EditTransactionModal({
             <Select value={categoryId} onChange={setCategoryId} options={categoryOptions} searchable />
           </FormRow>
         )}
+
+        <FormRow label="Месяц бюджета">
+          <Select
+            value={budgetMonth}
+            onChange={setBudgetMonth}
+            options={budgetMonthOptions(tx.occurred_at, tx.budget_month)}
+          />
+          <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+            В каком месяце учитывать операцию в бюджете и статистике.
+            Дата и балансы не меняются.
+          </p>
+        </FormRow>
 
         {error && <p className="text-red-500 text-xs">{error}</p>}
 
@@ -567,6 +583,11 @@ export default function MoneyPage() {
                       </p>
                       <p className="text-[9px] mt-0.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
                         {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
+                        {budgetMonthDiffers(tx.budget_month, tx.occurred_at) && (
+                          <span className="ml-1 font-semibold" style={{ color: "var(--app-accent)" }}>
+                            →{budgetMonthShort(tx.budget_month!)}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -590,6 +611,11 @@ export default function MoneyPage() {
                     render: (tx) => (
                       <span className="tabular-nums" style={{ color: "var(--t-faint)" }}>
                         {formatDate(tx.occurred_at)}
+                        {budgetMonthDiffers(tx.budget_month, tx.occurred_at) && (
+                          <span className="ml-1 font-semibold" style={{ color: "var(--app-accent)" }} title="Учитывается в бюджете другого месяца">
+                            →{budgetMonthShort(tx.budget_month!)}
+                          </span>
+                        )}
                       </span>
                     ),
                   },

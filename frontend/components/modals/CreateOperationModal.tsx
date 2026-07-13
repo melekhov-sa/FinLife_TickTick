@@ -15,6 +15,7 @@ import {
   type FieldErrors,
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
+import { budgetMonthOptions } from "@/lib/budgetMonth";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -92,6 +93,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const [listId, setListId] = useState<number | "">(initialListId ?? "");
   const [description, setDescription] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
+  const [budgetMonth, setBudgetMonth] = useState("");
 
   // Transfer goal selectors
   const [fromGoalId, setFromGoalId] = useState<number | "">(initialValues?.fromGoalId ?? "");
@@ -392,6 +394,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       body.sub_end_date = subEndDate || null;
     }
     body.list_id = listId || null;
+    if (budgetMonth) body.budget_month = budgetMonth;
     return body;
   }
 
@@ -766,6 +769,21 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                 value={occurredAt}
                 onChange={setOccurredAt}
               />
+            </FormRow>
+
+            {/* Бюджетный месяц: зарплата 31-го числа может «по смыслу» быть следующим месяцем */}
+            <FormRow label="Месяц бюджета">
+              <Select
+                value={budgetMonth}
+                onChange={setBudgetMonth}
+                options={budgetMonthOptions(occurredAt, budgetMonth)}
+              />
+              {budgetMonth && (
+                <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+                  В бюджете и статистике операция учтётся в выбранном месяце.
+                  Дата и балансы не меняются.
+                </p>
+              )}
             </FormRow>
 
             {/* Subscription coverage (EXPENSE only) */}

@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Request, Query
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import func, case, and_, or_, extract
+from sqlalchemy import func, case, and_, or_, extract, cast, TIMESTAMP
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
@@ -918,8 +918,13 @@ def budget_stats(
     d_end = datetime(next_y, next_m, 1)
 
     # ── Fact per month per category ───────────────────────────────────────────
-    _yr = extract("year", TransactionFeed.occurred_at)
-    _mo = extract("month", TransactionFeed.occurred_at)
+    # Эффективная дата для бюджета: budget_month-переопределение или occurred_at
+    _bdt = func.coalesce(
+        cast(TransactionFeed.budget_month, TIMESTAMP(timezone=True)),
+        TransactionFeed.occurred_at,
+    )
+    _yr = extract("year", _bdt)
+    _mo = extract("month", _bdt)
     fact_rows = (
         db.query(
             _yr.label("yr"),
@@ -931,8 +936,8 @@ def budget_stats(
         .filter(
             TransactionFeed.account_id == user_id,
             TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
-            TransactionFeed.occurred_at >= d_start,
-            TransactionFeed.occurred_at < d_end,
+            _bdt >= d_start,
+            _bdt < d_end,
         )
         .group_by(_yr, _mo, TransactionFeed.category_id, TransactionFeed.operation_type)
         .all()

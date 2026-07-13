@@ -8,7 +8,7 @@ from datetime import datetime, date as date_type, timedelta
 from decimal import Decimal
 from typing import Dict, Any, List, Tuple
 
-from sqlalchemy import func, case, and_, literal
+from sqlalchemy import func, case, and_, literal, cast, TIMESTAMP
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
@@ -27,6 +27,14 @@ SHORT_MONTH_NAMES = {
 RANGE_LIMITS = {"day": 60, "week": 26, "month": 24, "year": 10}
 
 _ZERO = Decimal("0")
+
+# Эффективная дата операции для бюджета: budget_month-переопределение
+# (зарплата 31 янв → февраль) или обычная дата операции.
+BUDGET_DT = func.coalesce(
+    cast(TransactionFeed.budget_month, TIMESTAMP(timezone=True)),
+    TransactionFeed.occurred_at,
+)
+
 
 
 def _zero_cell() -> Dict[str, Decimal]:
@@ -407,8 +415,8 @@ class BudgetMatrixService:
             s = p["range_start"]
             e = p["range_end"]
             cond = and_(
-                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
-                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+                BUDGET_DT >= datetime(s.year, s.month, s.day),
+                BUDGET_DT < datetime(e.year, e.month, e.day),
             )
             whens.append((cond, literal(p["index"])))
 
@@ -424,8 +432,8 @@ class BudgetMatrixService:
             .filter(
                 TransactionFeed.account_id == account_id,
                 TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
             )
             .group_by(
                 TransactionFeed.category_id,
@@ -459,8 +467,8 @@ class BudgetMatrixService:
             .filter(
                 TransactionFeed.account_id == account_id,
                 TransactionFeed.operation_type.in_(["INCOME", "EXPENSE"]),
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
             )
             .group_by(TransactionFeed.category_id, TransactionFeed.operation_type)
             .all()
@@ -818,8 +826,8 @@ class BudgetMatrixService:
             s = p["range_start"]
             e = p["range_end"]
             cond = and_(
-                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
-                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+                BUDGET_DT >= datetime(s.year, s.month, s.day),
+                BUDGET_DT < datetime(e.year, e.month, e.day),
             )
             whens.append((cond, literal(p["index"])))
 
@@ -840,8 +848,8 @@ class BudgetMatrixService:
                 TransactionFeed.operation_type == "TRANSFER",
                 TransactionFeed.to_goal_id.isnot(None),
                 from_wallet.c.wallet_type == "REGULAR",
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
             )
             .group_by(TransactionFeed.to_goal_id, period_col)
             .all()
@@ -996,8 +1004,8 @@ class BudgetMatrixService:
             s = p["range_start"]
             e = p["range_end"]
             cond = and_(
-                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
-                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+                BUDGET_DT >= datetime(s.year, s.month, s.day),
+                BUDGET_DT < datetime(e.year, e.month, e.day),
             )
             whens.append((cond, literal(p["index"])))
 
@@ -1022,8 +1030,8 @@ class BudgetMatrixService:
                 TransactionFeed.operation_type == "TRANSFER",
                 from_wallet.c.wallet_type == "REGULAR",
                 to_wallet.c.wallet_type == "CREDIT",
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
             )
             .group_by(period_col)
             .all()
@@ -1195,8 +1203,8 @@ class BudgetMatrixService:
             s = p["range_start"]
             e = p["range_end"]
             cond = and_(
-                TransactionFeed.occurred_at >= datetime(s.year, s.month, s.day),
-                TransactionFeed.occurred_at < datetime(e.year, e.month, e.day),
+                BUDGET_DT >= datetime(s.year, s.month, s.day),
+                BUDGET_DT < datetime(e.year, e.month, e.day),
             )
             whens.append((cond, literal(p["index"])))
 
@@ -1223,8 +1231,8 @@ class BudgetMatrixService:
                 TransactionFeed.from_goal_id.isnot(None),
                 from_wallet.c.wallet_type == "SAVINGS",
                 to_wallet.c.wallet_type == "REGULAR",
-                TransactionFeed.occurred_at >= dt_start,
-                TransactionFeed.occurred_at < dt_end,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
             )
             .group_by(TransactionFeed.from_goal_id, period_col)
             .all()

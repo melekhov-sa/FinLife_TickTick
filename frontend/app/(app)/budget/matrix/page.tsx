@@ -284,7 +284,7 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
       const filterParam = excl && excl.length > 0
         ? `exclude_category_ids=${excl.join(",")}`
         : `category_id=${target.categoryId}`;
-      return api.get(`/api/v2/transactions?${filterParam}&operation_type=${target.kind}&date_from=${target.dateFrom}&date_to=${target.dateTo}&per_page=100`);
+      return api.get(`/api/v2/transactions?${filterParam}&operation_type=${target.kind}&date_from=${target.dateFrom}&date_to=${target.dateTo}&budget_dates=true&per_page=100`);
     },
     staleTime: 30_000,
   });

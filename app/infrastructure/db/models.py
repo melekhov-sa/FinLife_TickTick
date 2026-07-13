@@ -228,6 +228,10 @@ class TransactionFeed(Base):
     # Trip container link
     list_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
+    # Бюджетный месяц-переопределение (1-е число месяца). NULL = по occurred_at.
+    # Зарплата 31 января с budget_month=1 февраля учитывается в феврале.
+    budget_month: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
