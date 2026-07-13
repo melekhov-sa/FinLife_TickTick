@@ -61,7 +61,8 @@ interface PlanEditTarget {
   month: number;
   periodLabel: string;
   categoryTitle: string;
-  currentAmount: number;
+  currentAmount: number;   // ручная строка бюджета (без плановых операций)
+  plannedAmount?: number;  // сумма плановых операций периода (только категории)
   currentNote: string;
   goalId?: number;        // set for goal/withdrawal rows
   goalPlanType?: string;  // "goal" or "withdrawal"
@@ -184,8 +185,22 @@ function PlanEditModal({
           План на {target.periodLabel}
         </p>
 
+        {(target.plannedAmount ?? 0) > 0 && (
+          <div
+            className="rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between"
+            style={{ background: "var(--app-accent-weak)", border: "1px solid var(--app-border)" }}
+          >
+            <span className="text-[12px]" style={{ color: "var(--t-secondary)" }}>
+              Плановые операции
+            </span>
+            <span className="text-[13px] font-bold tabular-nums" style={{ color: "var(--t-primary)" }}>
+              {fmt(target.plannedAmount!)} ₽
+            </span>
+          </div>
+        )}
+
         <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--t-faint)" }}>
-          Сумма
+          {(target.plannedAmount ?? 0) > 0 ? "Ручной план (сверх операций)" : "Сумма"}
         </label>
         <input
           type="text"
@@ -198,10 +213,12 @@ function PlanEditModal({
           className="w-full px-3 h-10 text-base rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] transition-colors tabular-nums"
           style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
-        <p className="text-[11px] mt-1.5" style={{ color: "var(--t-faint)" }}>
-          В статистике план месяца = плановые операции статьи + эта сумма.
-          Если статья закрывается плановой операцией целиком — оставь 0.
-        </p>
+        {(target.plannedAmount ?? 0) > 0 && (
+          <p className="text-[11px] mt-1.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
+            Итог план месяца: {fmt((target.plannedAmount ?? 0) + (parseFloat(amount.replace(",", ".")) || 0))} ₽
+            {" "}(операции + ручной план). Если статья закрывается операциями целиком — оставь 0.
+          </p>
+        )}
 
         <label className="block text-[11px] font-medium uppercase tracking-wider mb-1 mt-3" style={{ color: "var(--t-faint)" }}>
           Комментарий
@@ -401,7 +418,8 @@ function EditablePlanTd({
     month: period.month,
     periodLabel: period.label,
     categoryTitle: row.title,
-    currentAmount: cell.plan,
+    currentAmount: cell.plan_manual,
+    plannedAmount: cell.plan_planned,
     currentNote: cell.note ?? "",
   };
 
@@ -431,7 +449,7 @@ function EditablePlanTd({
       style={{ color: "var(--t-muted)", background: heatBg, ...extraStyle }}
       onKeyDown={canEdit ? (e) => {
         if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editing.onInlineStart(key, 0, e.key); }
-        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan); }
+        else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan_manual); }
         else if (e.key === "n") { e.preventDefault(); editing.openPlanEdit(target); }
       } : undefined}
     >
@@ -449,13 +467,18 @@ function EditablePlanTd({
       <span
         onClick={(e) => {
           if (!canEdit) return;
-          editing.onInlineStart(key, cell.plan);
+          // Инлайн правит ручную строку; плановые операции добавляются сверху
+          editing.onInlineStart(key, cell.plan_manual);
         }}
         className={clsx(
           canEdit && "cursor-pointer hover:text-[var(--app-accent)] transition-colors",
           hasNote && "border-b border-dotted border-amber-400/60"
         )}
-        title={cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · N — с комментарием" : undefined)}
+        title={
+          cell.plan_planned > 0
+            ? `план. операции ${fmt(cell.plan_planned)}${cell.plan_manual > 0 ? ` + ручной ${fmt(cell.plan_manual)}` : ""}${cell.note ? ` · 📝 ${cell.note}` : ""}`
+            : cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · N — с комментарием" : undefined)
+        }
       >
         {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
         {hasNote && (
@@ -1469,7 +1492,8 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
     month: focusPeriod?.month ?? 0,
     periodLabel: focusPeriod?.label ?? "",
     categoryTitle: row.title,
-    currentAmount: cell.plan,
+    currentAmount: cell.plan_manual,
+    plannedAmount: cell.plan_planned,
     currentNote: cell.note ?? "",
   };
 
@@ -1520,7 +1544,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
         <div
           className="tabular-nums text-right text-[12px]"
           style={{ color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
-          onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+          onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan_manual) : undefined}
         >
           {isEditing ? (
             <InlineCellInput
@@ -2101,7 +2125,8 @@ export default function BudgetMatrixPage() {
         const row = rows.find(r => r.category_id === catId && r.kind === kind);
         if (row) {
           const pi = data.periods.findIndex(p => p.year === yr && p.month === mo);
-          if (pi >= 0) plan = row.cells[pi]?.plan ?? 0;
+          // Редактируется ручная строка (плановые операции идут сверху)
+          if (pi >= 0) plan = row.cells[pi]?.plan_manual ?? 0;
           break;
         }
       }
