@@ -26,6 +26,7 @@ from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel,
     UserActivityDaily, CategoryInfo, WorkCategory,
     BudgetLine, BudgetMonth, MandatoryCategory,
+    OperationOccurrence, OperationTemplateModel,
 )
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -967,6 +968,42 @@ def budget_stats(
     plan_map: dict = {}
     for r in plan_rows:
         plan_map[(r.year, r.month, r.category_id, r.kind)] = float(r.total)
+
+    # ── Плановые операции как источник плана ─────────────────────────────────
+    # Ипотека/подписки и т.п. часто живут плановыми операциями, а не строками
+    # бюджета. Если по (месяц, статья) нет бюджетного плана — планом считаем
+    # сумму плановых операций месяца (SKIPPED не считаем: пропуск осознанный).
+    w_start = date(months_window[0][0], months_window[0][1], 1)
+    _po_yr = extract("year", OperationOccurrence.scheduled_date)
+    _po_mo = extract("month", OperationOccurrence.scheduled_date)
+    po_rows = (
+        db.query(
+            _po_yr.label("yr"),
+            _po_mo.label("mo"),
+            OperationTemplateModel.category_id,
+            OperationTemplateModel.kind,
+            func.sum(OperationTemplateModel.amount).label("total"),
+        )
+        .join(
+            OperationTemplateModel,
+            OperationTemplateModel.template_id == OperationOccurrence.template_id,
+        )
+        .filter(
+            OperationOccurrence.account_id == user_id,
+            OperationOccurrence.status != "SKIPPED",
+            OperationOccurrence.scheduled_date >= w_start,
+            OperationOccurrence.scheduled_date < d_end.date(),
+            OperationTemplateModel.kind.in_(["INCOME", "EXPENSE"]),
+            OperationTemplateModel.category_id != None,  # noqa: E711
+            OperationTemplateModel.amount != None,  # noqa: E711
+        )
+        .group_by(_po_yr, _po_mo, OperationTemplateModel.category_id, OperationTemplateModel.kind)
+        .all()
+    )
+    for r in po_rows:
+        key = (int(r.yr), int(r.mo), r.category_id, r.kind)
+        if plan_map.get(key, 0.0) <= 0:  # явная строка бюджета приоритетнее
+            plan_map[key] = float(r.total)
 
     # ── Categories ────────────────────────────────────────────────────────────
     cats = (
