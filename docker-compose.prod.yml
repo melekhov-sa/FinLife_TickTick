@@ -28,6 +28,7 @@ services:
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_MAILTO=${VAPID_MAILTO:-mailto:admin@finlife.app}
+      - TELEGRAM_PROXY=${TELEGRAM_PROXY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -105,6 +106,18 @@ services:
       - frontend
     networks:
       - shared
+      - default
+
+  # Прокси для Telegram (РФ-блокировки): VLESS-клиент, наружу socks5://xray:1080.
+  # Включается профилем: COMPOSE_PROFILES=proxy в .env + ./xray/config.json (см. xray/README.md).
+  xray:
+    image: teddysun/xray:latest
+    container_name: centricore_xray
+    restart: unless-stopped
+    profiles: ["proxy"]
+    volumes:
+      - ./xray/config.json:/etc/xray/config.json:ro
+    networks:
       - default
 
 volumes:

@@ -3,7 +3,7 @@ SQLAlchemy ORM models (domain tables + readmodels)
 """
 from decimal import Decimal
 from datetime import date as date_type, time as time_type
-from sqlalchemy import String, DateTime, Integer, SmallInteger, Text, TIMESTAMP, Date, Time, func, Boolean, Numeric, UniqueConstraint, Index, ForeignKey
+from sqlalchemy import String, DateTime, Integer, SmallInteger, BigInteger, Text, TIMESTAMP, Date, Time, func, Boolean, Numeric, UniqueConstraint, Index, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -1841,6 +1841,8 @@ class TelegramSettings(Base):
     connected_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     # Секрет в URL вебхука (команды бота); NULL = вебхук не зарегистрирован
     webhook_secret: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Подтверждённое смещение getUpdates для long-polling
+    poll_offset: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
 
 
 class EmailSettings(Base):

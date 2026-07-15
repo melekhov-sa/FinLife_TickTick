@@ -1,0 +1,44 @@
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "listen": "0.0.0.0",
+      "port": 1080,
+      "protocol": "socks",
+      "settings": { "auth": "noauth", "udp": true }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "vless-out",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "ВСТАВЬ_HOST",
+            "port": 443,
+            "users": [
+              {
+                "id": "ВСТАВЬ_UUID",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "publicKey": "ВСТАВЬ_PBK",
+          "serverName": "ВСТАВЬ_SNI",
+          "shortId": "ВСТАВЬ_SID_ИЛИ_ПУСТО",
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    { "tag": "direct", "protocol": "freedom" }
+  ]
+}

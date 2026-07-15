@@ -211,6 +211,20 @@ def _run_football_refresh():
         db.close()
 
 
+def _run_telegram_polling():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.telegram_polling import poll_telegram_updates
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        poll_telegram_updates(db)
+    except Exception:
+        logger.exception("Telegram polling job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     """Start the background scheduler with all periodic jobs."""
     from app.config import get_settings
@@ -330,6 +344,20 @@ def start_scheduler():
         max_instances=1,
         coalesce=True,
     )
+
+    # Telegram long-polling — каждые 30 сек (основной режим получения команд;
+    # вебхук Telegram->сервер из РФ может не проходить). TELEGRAM_POLLING=0 выключает.
+    import os
+    if os.getenv("TELEGRAM_POLLING", "1") != "0":
+        scheduler.add_job(
+            _run_telegram_polling,
+            "interval",
+            seconds=30,
+            id="telegram_polling",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
 
     scheduler.start()
     logger.info(

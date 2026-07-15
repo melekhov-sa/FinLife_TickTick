@@ -174,20 +174,27 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
     tg.connected = bool(raw_token and raw_chat_id)
     tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
 
-    # Вебхук для команд бота и авто-привязки чата через /start
+    # Команды бота: по умолчанию long-polling (надёжно с РФ-сервера через
+    # TELEGRAM_PROXY). Вебхук — только при TELEGRAM_POLLING=0.
     webhook_ok = False
     if raw_token:
         import os
-        import secrets as _secrets
-        if not tg.webhook_secret:
-            tg.webhook_secret = _secrets.token_urlsafe(32)[:64]
-        base = os.getenv("PUBLIC_BASE_URL", "https://centricore.ru").rstrip("/")
-        resp = tg_api(raw_token, "setWebhook", {
-            "url": f"{base}/api/v2/telegram/webhook/{tg.webhook_secret}",
-            "allowed_updates": ["message"],
-        })
-        webhook_ok = bool(resp is not None and resp.status_code == 200
-                          and (resp.json() or {}).get("ok"))
+        polling = os.getenv("TELEGRAM_POLLING", "1") != "0"
+        if polling:
+            tg_api(raw_token, "deleteWebhook")  # getUpdates конфликтует с вебхуком
+            tg.webhook_secret = None
+            webhook_ok = True
+        else:
+            import secrets as _secrets
+            if not tg.webhook_secret:
+                tg.webhook_secret = _secrets.token_urlsafe(32)[:64]
+            base = os.getenv("PUBLIC_BASE_URL", "https://centricore.ru").rstrip("/")
+            resp = tg_api(raw_token, "setWebhook", {
+                "url": f"{base}/api/v2/telegram/webhook/{tg.webhook_secret}",
+                "allowed_updates": ["message"],
+            })
+            webhook_ok = bool(resp is not None and resp.status_code == 200
+                              and (resp.json() or {}).get("ok"))
     db.commit()
 
     return {"ok": True, "connected": tg.connected, "webhook_ok": webhook_ok}

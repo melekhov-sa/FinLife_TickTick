@@ -232,3 +232,6 @@ frontend/e2e/.auth/
 frontend/e2e/.env.test.local
 frontend/playwright-report/
 frontend/test-results/
+
+# Telegram proxy (секреты VLESS)
+xray/config.json
