@@ -604,10 +604,12 @@ export default function FlashcardsSessionPage() {
       {/* card area */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 md:px-6 py-5 max-w-lg mx-auto min-h-full">
+          {/* key=id: карточка обязана размонтироваться при смене, иначе
+              selected/submitted/flipped переезжают на следующую карточку */}
           {card && card.mode === "learn" ? (
-            <LearnCard card={card} onSeen={handleSeen} onSkip={handleSkip} />
+            <LearnCard key={card.id} card={card} onSeen={handleSeen} onSkip={handleSkip} />
           ) : card ? (
-            <ReviewCard card={card} onAnswer={handleAnswer} />
+            <ReviewCard key={card.id} card={card} onAnswer={handleAnswer} />
           ) : null}
         </div>
       </div>
