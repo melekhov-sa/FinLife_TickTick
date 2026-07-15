@@ -1544,6 +1544,46 @@ def net_worth_report(
         series.reverse()
         per_wallet_series[wid] = series
 
+    # ── Личные долги (RUB): мне должны = актив, я должен = пассив ────────────
+    from app.infrastructure.db.models import DebtModel, DebtPaymentModel
+    p_debts = (
+        db.query(DebtModel)
+        .filter(DebtModel.account_id == user_id, DebtModel.currency == "RUB")
+        .all()
+    )
+    p_payments: dict[int, list] = {}
+    if p_debts:
+        for pay in db.query(DebtPaymentModel).filter(
+            DebtPaymentModel.account_id == user_id,
+            DebtPaymentModel.debt_id.in_([d.debt_id for d in p_debts]),
+        ).all():
+            p_payments.setdefault(pay.debt_id, []).append(pay)
+
+    def _debt_totals_at(boundary) -> tuple[Decimal, Decimal]:
+        """(мне должны, я должен) на момент границы (начало след. периода)."""
+        b_date = boundary.date()
+        lent = Decimal("0")
+        borrowed = Decimal("0")
+        for d in p_debts:
+            if d.opened_date >= b_date:
+                continue
+            # Прощённый/закрытый вручную долг после закрытия не считается
+            if d.closed_at and d.closed_at.date() < b_date:
+                continue
+            paid = sum(
+                (Decimal(str(pp.amount)) for pp in p_payments.get(d.debt_id, [])
+                 if pp.paid_date < b_date),
+                Decimal("0"),
+            )
+            remaining = Decimal(str(d.amount)) - paid
+            if remaining <= 0:
+                continue
+            if d.direction == "LENT":
+                lent += remaining
+            else:
+                borrowed += remaining
+        return lent, borrowed
+
     out_months = []
     for i, lbl in enumerate(month_labels):
         money = Decimal("0")
@@ -1553,11 +1593,14 @@ def net_worth_report(
                 credit += series[i]
             else:
                 money += series[i]
+        lent_i, borrowed_i = _debt_totals_at(boundaries[i])
         out_months.append({
             "month": lbl,
             "money": float(money),
             "debt": float(-credit),
-            "capital": float(money + credit),
+            "lent": float(lent_i),
+            "borrowed": float(borrowed_i),
+            "capital": float(money + credit + lent_i - borrowed_i),
         })
 
     money_now = sum(
@@ -1568,11 +1611,30 @@ def net_worth_report(
         (Decimal(str(w.balance)) for w in wallets if w.wallet_type == "CREDIT"),
         Decimal("0"),
     )
+    lent_now = Decimal("0")
+    borrowed_now = Decimal("0")
+    for d in p_debts:
+        if d.status != "OPEN":
+            continue
+        paid = sum(
+            (Decimal(str(pp.amount)) for pp in p_payments.get(d.debt_id, [])),
+            Decimal("0"),
+        )
+        remaining = Decimal(str(d.amount)) - paid
+        if remaining <= 0:
+            continue
+        if d.direction == "LENT":
+            lent_now += remaining
+        else:
+            borrowed_now += remaining
+
     return {
         "months": out_months,
         "current": {
             "money": float(money_now),
             "debt": float(-credit_now),
-            "capital": float(money_now + credit_now),
+            "lent": float(lent_now),
+            "borrowed": float(borrowed_now),
+            "capital": float(money_now + credit_now + lent_now - borrowed_now),
         },
     }

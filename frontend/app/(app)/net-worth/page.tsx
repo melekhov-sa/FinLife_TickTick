@@ -21,12 +21,14 @@ interface NetWorthMonth {
   month: string;
   money: number;
   debt: number;
+  lent?: number;      // мне должны (личные долги)
+  borrowed?: number;  // я должен
   capital: number;
 }
 
 interface NetWorthReport {
   months: NetWorthMonth[];
-  current: { money: number; debt: number; capital: number } | null;
+  current: { money: number; debt: number; lent?: number; borrowed?: number; capital: number } | null;
 }
 
 const RANGES = [
@@ -129,6 +131,20 @@ export default function NetWorthPage() {
                 value={`${capitalDelta >= 0 ? "+" : ""}${fmt(capitalDelta)} ₽`}
                 accent={capitalDelta >= 0 ? "#059669" : "#DC2626"}
               />
+              {(data.current.lent ?? 0) > 0 && (
+                <Kpi
+                  label="Мне должны"
+                  value={`${fmt(data.current.lent ?? 0)} ₽`}
+                  accent="#059669"
+                />
+              )}
+              {(data.current.borrowed ?? 0) > 0 && (
+                <Kpi
+                  label="Я должен"
+                  value={`${fmt(data.current.borrowed ?? 0)} ₽`}
+                  accent="#DC2626"
+                />
+              )}
             </div>
 
             {/* График */}
@@ -202,7 +218,8 @@ export default function NetWorthPage() {
 
             <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
               Деньги — обычные и накопительные кошельки (RUB), долг — кредитные
-              кошельки по модулю, капитал = деньги − долг. Балансы на конец месяца
+              кошельки по модулю. Капитал = деньги − кредиты + мне должны − я должен
+              (личные долги из раздела «Долги»). Балансы на конец месяца
               восстановлены из истории операций.
             </p>
           </>
