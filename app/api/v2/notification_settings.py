@@ -216,6 +216,7 @@ def telegram_disconnect(request: Request, db: Session = Depends(get_db)):
         tg.connected = False
         tg.connected_at = None
         tg.webhook_secret = None
+        tg.poll_offset = 0
         db.commit()
     return {"ok": True, "connected": False}
 

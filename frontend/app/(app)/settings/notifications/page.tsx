@@ -489,28 +489,28 @@ export default function NotificationSettingsPage() {
                 Сохранить
               </Button>
               {settings?.telegram_connected && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<MessageCircle size={13} />}
-                    disabled={testMut.isPending}
-                    loading={testMut.isPending}
-                    onClick={() => { setTgError(""); testMut.mutate(); }}
-                  >
-                    Тест
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={disconnectMut.isPending}
-                    loading={disconnectMut.isPending}
-                    onClick={() => { if (confirm("Отключить Telegram-бота?")) disconnectMut.mutate(); }}
-                    className="text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/10"
-                  >
-                    Отключить
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<MessageCircle size={13} />}
+                  disabled={testMut.isPending}
+                  loading={testMut.isPending}
+                  onClick={() => { setTgError(""); testMut.mutate(); }}
+                >
+                  Тест
+                </Button>
+              )}
+              {(settings?.telegram_connected || settings?.telegram_bot_token_set) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={disconnectMut.isPending}
+                  loading={disconnectMut.isPending}
+                  onClick={() => { if (confirm("Отвязать Telegram-бота? Токен и привязка чата будут стёрты.")) disconnectMut.mutate(); }}
+                  className="text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/10"
+                >
+                  Отвязать
+                </Button>
               )}
             </div>
 
