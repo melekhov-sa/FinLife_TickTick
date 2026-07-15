@@ -1825,6 +1825,8 @@ class UserNotificationSettings(Base):
     channels_json: Mapped[dict] = mapped_column(
         JSONB, nullable=False, default={"inapp": True, "telegram": False, "email": False}
     )
+    # {kind: {"enabled": bool, "silent": bool}} — настройки по видам уведомлений
+    rule_prefs_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
 
 
 class TelegramSettings(Base):
@@ -1837,6 +1839,8 @@ class TelegramSettings(Base):
     chat_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
     connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     connected_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    # Секрет в URL вебхука (команды бота); NULL = вебхук не зарегистрирован
+    webhook_secret: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class EmailSettings(Base):

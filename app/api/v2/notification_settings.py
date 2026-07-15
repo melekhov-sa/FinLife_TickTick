@@ -20,6 +20,7 @@ from app.infrastructure.db.models import (
     NotificationRule,
 )
 from app.infrastructure.crypto import encrypt, decrypt
+from app.infrastructure.telegram import NOTIF_KINDS, get_pref, tg_api
 
 router = APIRouter(prefix="/notification-settings", tags=["notification-settings"])
 
@@ -36,6 +37,7 @@ class SettingsOut(BaseModel):
     telegram_chat_id: str | None
     telegram_bot_token_set: bool
     rules: list[dict]
+    kinds: list[dict]  # виды уведомлений: {code, title, enabled, silent}
 
 
 class SettingsIn(BaseModel):
@@ -81,7 +83,44 @@ def get_settings(request: Request, db: Session = Depends(get_db)):
             }
             for r in rules
         ],
+        kinds=[
+            {
+                "code": code,
+                "title": title,
+                "enabled": get_pref(s.rule_prefs_json if s else None, code)[0],
+                "silent": get_pref(s.rule_prefs_json if s else None, code)[1],
+            }
+            for code, title in NOTIF_KINDS
+        ],
     )
+
+
+# ── POST — настройки видов уведомлений (вкл/выкл, без звука) ─────────────────
+
+class KindPref(BaseModel):
+    code: str
+    enabled: bool = True
+    silent: bool = False
+
+
+class KindsIn(BaseModel):
+    kinds: list[KindPref]
+
+
+@router.post("/kinds")
+def save_kinds(body: KindsIn, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    s = db.query(UserNotificationSettings).filter_by(user_id=user_id).first()
+    if not s:
+        s = UserNotificationSettings(user_id=user_id)
+        db.add(s)
+    valid = {code for code, _ in NOTIF_KINDS}
+    s.rule_prefs_json = {
+        k.code: {"enabled": k.enabled, "silent": k.silent}
+        for k in body.kinds if k.code in valid
+    }
+    db.commit()
+    return {"ok": True}
 
 
 # ── POST — save preferences ──────────────────────────────────────────────────
@@ -134,9 +173,24 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
     tg.chat_id = encrypt(raw_chat_id)
     tg.connected = bool(raw_token and raw_chat_id)
     tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
+
+    # Вебхук для команд бота и авто-привязки чата через /start
+    webhook_ok = False
+    if raw_token:
+        import os
+        import secrets as _secrets
+        if not tg.webhook_secret:
+            tg.webhook_secret = _secrets.token_urlsafe(32)[:64]
+        base = os.getenv("PUBLIC_BASE_URL", "https://centricore.ru").rstrip("/")
+        resp = tg_api(raw_token, "setWebhook", {
+            "url": f"{base}/api/v2/telegram/webhook/{tg.webhook_secret}",
+            "allowed_updates": ["message"],
+        })
+        webhook_ok = bool(resp is not None and resp.status_code == 200
+                          and (resp.json() or {}).get("ok"))
     db.commit()
 
-    return {"ok": True, "connected": tg.connected}
+    return {"ok": True, "connected": tg.connected, "webhook_ok": webhook_ok}
 
 
 # ── POST — test telegram message ─────────────────────────────────────────────
@@ -146,10 +200,15 @@ def telegram_disconnect(request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)
     tg = db.query(TelegramSettings).filter_by(user_id=user_id).first()
     if tg:
+        if tg.bot_token:
+            token = decrypt(tg.bot_token)
+            if token:
+                tg_api(token, "deleteWebhook")
         tg.bot_token = None
         tg.chat_id = None
         tg.connected = False
         tg.connected_at = None
+        tg.webhook_secret = None
         db.commit()
     return {"ok": True, "connected": False}
 

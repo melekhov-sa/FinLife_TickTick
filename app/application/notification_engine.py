@@ -403,6 +403,14 @@ def _send_telegram(db: Session, notif: NotificationModel):
         _TELEGRAM_RETRY sentinel — transient failure (429 or 5xx); leave pending.
     """
     from app.infrastructure.crypto import decrypt
+    from app.infrastructure.telegram import tg_api, get_pref
+
+    # Пер-видовые настройки: выключено — считаем доставленным (пропуск по воле юзера)
+    us = db.query(UserNotificationSettings).filter_by(user_id=notif.user_id).first()
+    enabled, silent = get_pref(us.rule_prefs_json if us else None, notif.rule_code)
+    if not enabled:
+        return True
+
     tg = db.query(TelegramSettings).filter_by(user_id=notif.user_id, connected=True).first()
     if not tg or not tg.chat_id or not tg.bot_token:
         return False
@@ -411,15 +419,16 @@ def _send_telegram(db: Session, notif: NotificationModel):
     if not bot_token or not chat_id:
         return False
     try:
-        resp = requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": notif.body_telegram,
-                "parse_mode": "HTML",
-            },
-            timeout=5,
-        )
+        payload = {
+            "chat_id": chat_id,
+            "text": notif.body_telegram,
+            "parse_mode": "HTML",
+        }
+        if silent:
+            payload["disable_notification"] = True
+        resp = tg_api(bot_token, "sendMessage", payload, timeout=5)
+        if resp is None:
+            return _TELEGRAM_RETRY
         if resp.status_code == 200:
             return True
         if resp.status_code == 429:

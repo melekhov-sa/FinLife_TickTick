@@ -22,6 +22,7 @@ from app.infrastructure.db.models import (
     TelegramSettings, UserNotificationSettings,
 )
 from app.application.push_service import send_push_to_user
+from app.infrastructure.telegram import send_tg
 
 logger = logging.getLogger(__name__)
 MSK = timezone(timedelta(hours=3))
@@ -91,6 +92,9 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                         "url": "/tasks",
                     })
                     sent += n
+                    send_tg(db, task.account_id,
+                            f"⏰ <b>{task.title}</b>\nНапоминание ({hour:02d}:{minute:02d})",
+                            "task_reminder")
             else:
                 # OFFSET kind — fire relative to due datetime, or midnight for date-only tasks
                 ref_time = task.due_time or task.due_start_time
@@ -107,6 +111,9 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                         "url": "/tasks",
                     })
                     sent += n
+                    send_tg(db, task.account_id,
+                            f"⏰ <b>{task.title}</b>\n{_format_task_time(due_dt, rem.offset_minutes)}",
+                            "task_reminder")
 
     return sent
 
@@ -198,6 +205,9 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                     "url": "/events",
                 })
                 sent += n
+                send_tg(db, occ.account_id,
+                        f"📅 <b>{title}</b>\n" + (f"Сегодня в {time_str}" if time_str else "Сегодня"),
+                        "event_reminder")
 
     return sent
 
@@ -246,6 +256,9 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
                 "url": "/habits",
             })
             sent += n
+            send_tg(db, habit.account_id,
+                    f"🔄 <b>{habit.title}</b>\nПора выполнить привычку",
+                    "habit_reminder")
 
     return sent
 
@@ -385,16 +398,8 @@ def _dispatch_hourly_summary(db: Session, now_msk: datetime) -> int:
                 lines.append(f"• {h.title} <i>(до {h.deadline_time.strftime('%H:%M')})</i>")
 
         text = "\n".join(lines)
-        try:
-            resp = requests.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                sent += 1
-        except Exception:
-            logger.exception("Hourly summary Telegram send failed for user_id=%s", user_id)
+        if send_tg(db, user_id, text, "hourly_pending"):
+            sent += 1
 
     return sent
 

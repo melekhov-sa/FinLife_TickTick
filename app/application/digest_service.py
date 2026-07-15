@@ -19,6 +19,19 @@ from app.application.push_service import send_push_to_user
 logger = logging.getLogger(__name__)
 
 
+def _get_tg_digest_user_ids(db: Session, morning: bool) -> list[int]:
+    """Юзеры с подключённым Telegram и включённым флагом дайджеста."""
+    from app.infrastructure.db.models import TelegramSettings
+    field = User.digest_morning if morning else User.digest_evening
+    rows = (
+        db.query(distinct(TelegramSettings.user_id))
+        .join(User, User.id == TelegramSettings.user_id)
+        .filter(TelegramSettings.connected == True, field == True)  # noqa: E712
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
 def _get_digest_user_ids(db: Session, morning: bool) -> list[int]:
     """
     Get user IDs that have push subscriptions and the digest flag enabled.
@@ -38,7 +51,8 @@ def send_morning_digest(db: Session) -> int:
     Send morning digest to all opted-in users.
     Returns total number of push notifications sent.
     """
-    user_ids = _get_digest_user_ids(db, morning=True)
+    user_ids = sorted(set(_get_digest_user_ids(db, morning=True))
+                      | set(_get_tg_digest_user_ids(db, morning=True)))
     if not user_ids:
         logger.info("Morning digest: no users to notify")
         return 0
@@ -86,6 +100,23 @@ def send_morning_digest(db: Session) -> int:
                 "url": "/",
             })
             total_sent += n
+
+            # Telegram-версия — с полным списком дел
+            from app.infrastructure.telegram import send_tg
+            tg_lines = ["☀️ <b>Доброе утро! План на сегодня</b>", ""]
+            if not block["active"] and not block["overdue"]:
+                tg_lines.append("Дел нет — свободный день!")
+            for it in block["active"][:15]:
+                t = it.get("time") or it.get("task_time")
+                tg_lines.append(f"• {it.get('title', '?')}" + (f" <i>({t})</i>" if t else ""))
+            if len(block["active"]) > 15:
+                tg_lines.append(f"…и ещё {len(block['active']) - 15}")
+            if block["overdue"]:
+                tg_lines.append("")
+                tg_lines.append(f"⚠️ Просрочено: {len(block['overdue'])}")
+                for it in block["overdue"][:5]:
+                    tg_lines.append(f"• {it.get('title', '?')}")
+            send_tg(db, user_id, "\n".join(tg_lines), "digest_morning")
         except Exception:
             logger.exception("Morning digest failed for user %d", user_id)
 
@@ -98,7 +129,8 @@ def send_evening_digest(db: Session) -> int:
     Send evening digest to all opted-in users.
     Returns total number of push notifications sent.
     """
-    user_ids = _get_digest_user_ids(db, morning=False)
+    user_ids = sorted(set(_get_digest_user_ids(db, morning=False))
+                      | set(_get_tg_digest_user_ids(db, morning=False)))
     if not user_ids:
         logger.info("Evening digest: no users to notify")
         return 0
@@ -141,6 +173,9 @@ def send_evening_digest(db: Session) -> int:
                 "url": "/",
             })
             total_sent += n
+
+            from app.infrastructure.telegram import send_tg
+            send_tg(db, user_id, f"🌙 <b>Итоги дня</b>\n{body}", "digest_evening")
         except Exception:
             logger.exception("Evening digest failed for user %d", user_id)
 
