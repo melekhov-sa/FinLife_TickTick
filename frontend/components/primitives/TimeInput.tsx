@@ -32,6 +32,24 @@ function isValidTime(s: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 }
 
+/**
+ * Маска ручного ввода: юзер печатает только цифры, двоеточие ставится само.
+ * "1650" → "16:50", "930" → "09:30" (93 — не час, значит 9:30), "165" → "16:5".
+ */
+function maskTimeInput(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 4);
+  if (d.length <= 1) return d;
+  if (d.length === 2) {
+    // "93" не может быть часом — трактуем как 9:3
+    return parseInt(d, 10) > 23 ? `0${d[0]}:${d[1]}` : d;
+  }
+  if (d.length === 3) {
+    const hh = parseInt(d.slice(0, 2), 10);
+    return hh <= 23 ? `${d.slice(0, 2)}:${d[2]}` : `0${d[0]}:${d.slice(1)}`;
+  }
+  return `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
 function generatePresets(step: number): string[] {
   const out: string[] = [];
   // generate from 06:00 to 23:00 by step
@@ -189,7 +207,12 @@ export function TimeInput({
                 type="text"
                 inputMode="numeric"
                 value={manual}
-                onChange={(e) => setManual(e.target.value)}
+                onChange={(e) => {
+                  const m = maskTimeInput(e.target.value);
+                  setManual(m);
+                  // Полное валидное время — применяем сразу, без «ОК»
+                  if (m.length === 5 && isValidTime(m)) commit(m);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
