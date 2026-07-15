@@ -872,7 +872,15 @@ def _date_label(d: date, today: date) -> str:
 
 def _sort_key(item: dict) -> tuple:
     kind_order = KIND_SORT.get(item["kind"], 9)
-    t = item["time"] if item["time"] is not None else _TIME_MAX
+    # time бывает и datetime.time (события), и строкой "HH:MM" (задачи) —
+    # нормализуем к строке, иначе смешанный день падает на сравнении типов
+    tv = item["time"]
+    if tv is None:
+        t = "99:99"
+    elif isinstance(tv, str):
+        t = tv[:5]
+    else:
+        t = tv.strftime("%H:%M")
     # NULLS LAST for manual_order so drag-reordered tasks lead, others fall back to kind/time/title
     mo = item.get("manual_order")
     mo_key = mo if mo is not None else 10**9
