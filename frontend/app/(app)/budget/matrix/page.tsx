@@ -149,22 +149,25 @@ function PlanEditModal({
   onClose,
 }: {
   target: PlanEditTarget;
-  onSave: (amount: string, note: string, copyForward: boolean) => Promise<void>;
+  onSave: (amount: string, note: string, copyForward: boolean, forwardMonths: number) => Promise<void>;
   onClose: () => void;
 }) {
   const { inset: kbInset } = useKeyboardInset();
   const [amount, setAmount] = useState(target.currentAmount ? String(Math.round(target.currentAmount)) : "");
   const [note, setNote] = useState(target.currentNote);
   const [copyForward, setCopyForward] = useState(false);
+  const [copyN, setCopyN] = useState(false);
+  const [copyCount, setCopyCount] = useState("3");
   const [saving, setSaving] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const remainingMonths = 12 - target.month;
+  const forwardMonths = copyN ? Math.max(0, Math.min(36, parseInt(copyCount) || 0)) : 0;
 
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave(amount, note, copyForward);
+      await onSave(amount, note, copyForward, forwardMonths);
     } finally {
       setSaving(false);
     }
@@ -232,11 +235,11 @@ function PlanEditModal({
           style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
         />
 
-        {remainingMonths > 0 && (
-          <div className="mt-3 py-1.5">
+        <div className="mt-3 py-1.5 space-y-2">
+          {remainingMonths > 0 && (
             <Checkbox
               checked={copyForward}
-              onChange={(e) => setCopyForward(e.target.checked)}
+              onChange={(e) => { setCopyForward(e.target.checked); if (e.target.checked) setCopyN(false); }}
               label={
                 <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
                   Копировать до конца года
@@ -246,8 +249,39 @@ function PlanEditModal({
                 </span>
               }
             />
+          )}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={copyN}
+              onChange={(e) => { setCopyN(e.target.checked); if (e.target.checked) setCopyForward(false); }}
+              label={
+                <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
+                  Копировать на
+                </span>
+              }
+            />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={copyCount}
+              onChange={(e) => { setCopyCount(e.target.value.replace(/[^0-9]/g, "")); }}
+              onFocus={() => { setCopyN(true); setCopyForward(false); }}
+              className="w-14 px-2 h-8 text-[13px] text-center rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--app-accent)] tabular-nums"
+              style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}
+            />
+            <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>мес. вперёд</span>
           </div>
-        )}
+          {copyN && forwardMonths > 0 && (
+            <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+              Сумма запишется в {forwardMonths + 1} мес.: с текущего по{" "}
+              {(() => {
+                const d = new Date(target.year, target.month - 1 + forwardMonths, 1);
+                return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+              })()}
+              {target.year + Math.floor((target.month - 1 + forwardMonths) / 12) > target.year ? " (с переходом через год)" : ""}
+            </p>
+          )}
+        </div>
 
         <div className="flex gap-2 mt-4">
           <button
@@ -1971,17 +2005,28 @@ export default function BudgetMatrixPage() {
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
   }
 
-  async function savePlan(target: PlanEditTarget, amount: string, note: string, copyForward: boolean) {
-    const months = [target.month];
+  async function savePlan(
+    target: PlanEditTarget, amount: string, note: string,
+    copyForward: boolean, forwardMonths = 0,
+  ) {
+    // Список (год, месяц): «до конца года» либо «на N месяцев вперёд» (через границу года)
+    const months: { y: number; m: number }[] = [{ y: target.year, m: target.month }];
     if (copyForward) {
-      for (let m = target.month + 1; m <= 12; m++) months.push(m);
+      for (let m = target.month + 1; m <= 12; m++) months.push({ y: target.year, m });
+    } else if (forwardMonths > 0) {
+      let y = target.year, m = target.month;
+      for (let i = 0; i < forwardMonths; i++) {
+        m++;
+        if (m > 12) { m = 1; y++; }
+        months.push({ y, m });
+      }
     }
 
     if (target.goalId) {
       // Goal/withdrawal plan
-      for (const m of months) {
+      for (const p of months) {
         await api.post("/api/v2/budget/goal-plan", {
-          year: target.year, month: m,
+          year: p.y, month: p.m,
           lines: [{ goal_id: target.goalId, plan_amount: amount || "0", note: note || null }],
           plan_type: target.goalPlanType || "goal",
         });
@@ -1989,8 +2034,8 @@ export default function BudgetMatrixPage() {
     } else {
       // Category plan
       const line = { category_id: target.categoryId, kind: target.kind, plan_amount: amount || "0", note: note || null };
-      for (const m of months) {
-        await api.post("/api/v2/budget/plan", { year: target.year, month: m, lines: [line] });
+      for (const p of months) {
+        await api.post("/api/v2/budget/plan", { year: p.y, month: p.m, lines: [line] });
       }
     }
     qc.invalidateQueries({ queryKey: ["budget-matrix"] });
@@ -2217,8 +2262,8 @@ export default function BudgetMatrixPage() {
       {planEditTarget && (
         <PlanEditModal
           target={planEditTarget}
-          onSave={async (amount, note, copyForward) => {
-            await savePlan(planEditTarget, amount, note, copyForward);
+          onSave={async (amount, note, copyForward, forwardMonths) => {
+            await savePlan(planEditTarget, amount, note, copyForward, forwardMonths);
             setPlanEditTarget(null);
           }}
           onClose={() => setPlanEditTarget(null)}
