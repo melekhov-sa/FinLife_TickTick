@@ -233,16 +233,14 @@ def telegram_test(request: Request, db: Session = Depends(get_db)):
     if not bot_token or not chat_id:
         raise HTTPException(400, "Не удалось расшифровать Telegram токен")
 
-    import httpx
-    try:
-        r = httpx.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": "✅ FinLife: тестовое уведомление работает!"},
-            timeout=10,
-        )
-        if r.status_code != 200:
-            raise HTTPException(400, f"Telegram API error: {r.text[:200]}")
-    except httpx.TimeoutException:
-        raise HTTPException(400, "Telegram не ответил (timeout)")
+    # Через tg_api — с TELEGRAM_PROXY (прямой доступ с сервера заблокирован)
+    r = tg_api(bot_token, "sendMessage", {
+        "chat_id": chat_id,
+        "text": "✅ FinLife: тестовое уведомление работает!",
+    }, timeout=12)
+    if r is None:
+        raise HTTPException(400, "Telegram не ответил (timeout/сеть) — проверь туннель xray")
+    if r.status_code != 200:
+        raise HTTPException(400, f"Telegram API error: {r.text[:200]}")
 
     return {"ok": True}
