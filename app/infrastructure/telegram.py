@@ -31,6 +31,7 @@ NOTIF_KINDS: list[tuple[str, str]] = [
     ("hourly_pending", "Почасовая сводка «не выполнено»"),
     ("PAYMENT_DUE_TOMORROW", "Плановый платёж завтра"),
     ("TASK_OVERDUE", "Просроченные задачи"),
+    ("DEBT_DUE", "Долги: срок возврата"),
     ("SUB_MEMBER_EXPIRES_SOON", "Подписка истекает"),
     ("SUB_MEMBER_EXPIRED", "Подписка истекла"),
     ("WEEKLY_DIGEST_READY", "Недельный дайджест"),

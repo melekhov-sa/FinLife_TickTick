@@ -63,6 +63,12 @@ _TEMPLATES: dict[str, dict] = {
         "body_inapp": "Задача «{title}» просрочена на {days} дн.",
         "body_telegram": "⚠️ <b>Просроченная задача</b>\n«{title}»\n📅 Просрочена на {days} дн.",
     },
+    "DEBT_DUE": {
+        "severity": "warn",
+        "title": "Долг: срок возврата",
+        "body_inapp": "{dir_phrase} {who}: осталось {remaining} {cur} — срок {when}.",
+        "body_telegram": "💸 <b>Долг: срок {when}</b>\n{dir_phrase} {who}\n💰 Осталось: {remaining} {cur} · 📅 {date}",
+    },
     "WEEKLY_DIGEST_READY": {
         "severity": "info",
         "title": "Дайджест недели готов",
@@ -329,6 +335,55 @@ def _run_weekly_digest(db: Session, user_id: int, today: date, channels: list[st
 # Main engine
 # ---------------------------------------------------------------------------
 
+def _run_debt_due(db: Session, user_id: int, today: date, channels: list[str]) -> None:
+    """DEBT_DUE: открытый долг со сроком ≤3 дней или просроченный (дедуп по дню)."""
+    from app.infrastructure.db.models import DebtModel, DebtPaymentModel
+    from sqlalchemy import func as _f
+
+    debts = (
+        db.query(DebtModel)
+        .filter(
+            DebtModel.account_id == user_id,
+            DebtModel.status == "OPEN",
+            DebtModel.due_date != None,  # noqa: E711
+            DebtModel.due_date <= today + timedelta(days=3),
+        )
+        .all()
+    )
+    if not debts:
+        return
+    paid_rows = (
+        db.query(DebtPaymentModel.debt_id, _f.sum(DebtPaymentModel.amount))
+        .filter(DebtPaymentModel.debt_id.in_([d.debt_id for d in debts]))
+        .group_by(DebtPaymentModel.debt_id)
+        .all()
+    )
+    paid = {r[0]: float(r[1] or 0) for r in paid_rows}
+
+    for d in debts:
+        if _is_duplicate(db, user_id, "DEBT_DUE", "debt", d.debt_id, today):
+            continue
+        remaining = max(0.0, float(d.amount) - paid.get(d.debt_id, 0.0))
+        if remaining <= 0:
+            continue
+        days = (d.due_date - today).days
+        when = (
+            f"просрочен на {-days} дн." if days < 0
+            else "сегодня" if days == 0
+            else "завтра" if days == 1
+            else f"через {days} дн."
+        )
+        ctx = {
+            "dir_phrase": "Тебе должны:" if d.direction == "LENT" else "Ты должен:",
+            "who": d.counterparty,
+            "remaining": f"{remaining:,.0f}".replace(",", " "),
+            "cur": "₽" if d.currency == "RUB" else d.currency,
+            "when": when,
+            "date": d.due_date.strftime("%d.%m.%Y"),
+        }
+        _create_notification(db, user_id, "DEBT_DUE", "debt", d.debt_id, ctx, channels)
+
+
 class NotificationEngine:
     def __init__(self, db: Session):
         self.db = db
@@ -372,6 +427,8 @@ class NotificationEngine:
             _run_payment_due_tomorrow(self.db, user.id, today, channels)
         if "TASK_OVERDUE" in enabled_rules:
             _run_task_overdue(self.db, user.id, today, channels)
+        if "DEBT_DUE" in enabled_rules:
+            _run_debt_due(self.db, user.id, today, channels)
         if "WEEKLY_DIGEST_READY" in enabled_rules:
             _run_weekly_digest(self.db, user.id, today, channels)
 

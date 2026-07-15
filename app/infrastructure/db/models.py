@@ -965,6 +965,48 @@ class ContactModel(Base):
     )
 
 
+class DebtModel(Base):
+    """Долги и займы: кому/от кого, сумма, срок, частичные возвраты."""
+    __tablename__ = "debts"
+
+    debt_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    direction: Mapped[str] = mapped_column(String(16), nullable=False)  # LENT (мне должны) | BORROWED (я должен)
+    counterparty: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> contacts.id (без FK: контакт можно удалить)
+
+    amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="RUB")
+    opened_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    due_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="OPEN")  # OPEN | CLOSED
+    closed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class DebtPaymentModel(Base):
+    """Частичный возврат по долгу."""
+    __tablename__ = "debt_payments"
+
+    payment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    debt_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("debts.debt_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
+    paid_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    note: Mapped[str] = mapped_column(String(500), nullable=False, server_default="")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class WishModel(Base):
     """Read model: Wishes - long-term intentions backlog"""
     __tablename__ = "wishes"
