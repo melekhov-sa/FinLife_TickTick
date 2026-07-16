@@ -560,11 +560,9 @@ function FactCell({
     return <td className={clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", totalCol && "bgt-tc-fact")} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
-  const pct = hasFact && hasPlan && cell.plan > 0 ? Math.min(1, Math.abs(cell.fact) / Math.abs(cell.plan)) : null;
-
   return (
     <td
-      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px] relative", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
+      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
       style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
     >
       {hasFact && onClick ? (
@@ -573,19 +571,6 @@ function FactCell({
         </span>
       ) : (
         hasFact ? fmt(cell.fact) : "—"
-      )}
-      {/* Мини-прогресс факт/план — капля жизни в таблице */}
-      {pct !== null && !totalCol && (
-        <span
-          className="absolute left-2 right-2 bottom-[2px] h-[2px] rounded-full overflow-hidden"
-          style={{ background: "var(--app-border-subtle, var(--app-border))" }}
-          aria-hidden
-        >
-          <span
-            className="absolute left-0 top-0 bottom-0 rounded-full"
-            style={{ width: `${pct * 100}%`, background: color, opacity: 0.55 }}
-          />
-        </span>
       )}
     </td>
   );
