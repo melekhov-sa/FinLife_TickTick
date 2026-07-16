@@ -591,14 +591,14 @@ function PeriodHeaders({ periods }: { periods: BudgetMatrix["periods"] }) {
           <th
             key={p.index}
             colSpan={periodColCount(kind)}
-            className={clsx(
-              "text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center",
-              kind === "current" ? "bg-[var(--app-accent-weak)]" : ""
-            )}
+            className="text-[11px] font-bold uppercase tracking-wider px-2 py-2 text-center"
             style={{
-              color: kind === "current" ? "var(--t-primary)" : "var(--t-muted)",
-              background: kind !== "current" ? "var(--bgt-head-bg)" : undefined,
+              color: kind === "current" ? "var(--app-accent)" : "var(--t-muted)",
+              background: kind === "current"
+                ? "color-mix(in srgb, var(--app-accent) 16%, var(--bgt-head-bg))"
+                : "var(--bgt-head-bg)",
               border: "1px solid var(--bgt-cell-border-strong)",
+              boxShadow: kind === "current" ? "inset 0 3px 0 var(--app-accent)" : undefined,
             }}
           >
             {label}
@@ -627,9 +627,9 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
         );
         if (kind === "current") return (
           <React.Fragment key={p.index}>
-            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>П</th>
-            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>Ф</th>
-            <th className={clsx(subHdrCls, "bg-[var(--app-accent-light)]")} style={subHdrStyle}>Ост</th>
+            {["П", "Ф", "Ост"].map((t) => (
+              <th key={t} className={subHdrCls} style={{ ...subHdrStyle, color: "var(--app-accent)", background: "color-mix(in srgb, var(--app-accent) 12%, var(--bgt-subhead-bg))" }}>{t}</th>
+            ))}
           </React.Fragment>
         );
         // future
@@ -643,6 +643,15 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
 }
 
 // ── Section header row ────────────────────────────────────────────────────────
+
+function sectionTint(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes("доход")) return "color-mix(in srgb, var(--c-success-ink) 9%, var(--bgt-section-bg))";
+  if (l.includes("расход")) return "color-mix(in srgb, var(--c-danger-ink) 7%, var(--bgt-section-bg))";
+  if (l.includes("отложен") || l.includes("взять")) return "color-mix(in srgb, var(--c-warning-ink) 9%, var(--bgt-section-bg))";
+  if (l.includes("накоплен") || l.includes("цел")) return "color-mix(in srgb, var(--app-accent) 10%, var(--bgt-section-bg))";
+  return "var(--bgt-section-bg)";
+}
 
 function sectionEmoji(label: string): string {
   const l = label.toLowerCase();
@@ -668,9 +677,9 @@ function SectionHeaderRow({
     <tr
       className="cursor-pointer select-none transition-colors"
       onClick={onToggle}
-      style={{ background: "var(--bgt-section-bg)" }}
+      style={{ background: sectionTint(label) }}
     >
-      <td className="px-3 py-2" colSpan={1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: "var(--bgt-section-bg)" }}>
+      <td className="px-3 py-2" colSpan={1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: sectionTint(label) }}>
         <div className="flex items-center gap-1.5">
           {expanded
             ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
@@ -682,7 +691,7 @@ function SectionHeaderRow({
           </span>
         </div>
       </td>
-      <td colSpan={colSpan - 1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: "var(--bgt-section-bg)" }} />
+      <td colSpan={colSpan - 1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: sectionTint(label) }} />
     </tr>
   );
 }
@@ -1500,7 +1509,7 @@ function MobileSecHead({ label, expanded, onToggle }: { label: string; expanded:
     <div
       className="flex items-center gap-1.5 px-4 py-2.5 cursor-pointer select-none border-b"
       onClick={onToggle}
-      style={{ background: "var(--bgt-section-bg)", borderColor: "var(--app-border)" }}
+      style={{ background: sectionTint(label), borderColor: "var(--app-border)" }}
     >
       {expanded
         ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
@@ -2525,6 +2534,21 @@ export default function BudgetMatrixPage() {
                 .bgt-matrix tr:hover .bgt-tc-plan, .bgt-matrix tr:hover .bgt-tc-fact { background-color: var(--bgt-hover-bg) !important; }
               `}</style>
               <table className="bgt-matrix w-full text-left" style={{ border: "1px solid var(--bgt-cell-border-strong)", borderCollapse: "separate", borderSpacing: 0 }}>
+                {/* Колонки текущего периода тонируются целиком (видно на любом экране) */}
+                <colgroup>
+                  <col />
+                  {periods.map((p) => {
+                    const k = getPeriodKind(p);
+                    return Array.from({ length: periodColCount(k) }).map((_, j) => (
+                      <col
+                        key={`${p.index}-${j}`}
+                        style={k === "current" ? { background: "color-mix(in srgb, var(--app-accent) 7%, transparent)" } : undefined}
+                      />
+                    ));
+                  })}
+                  <col />
+                  <col />
+                </colgroup>
                 <thead>
                   {/* Period headers */}
                   <tr style={{ background: "var(--bgt-head-bg)" }}>
