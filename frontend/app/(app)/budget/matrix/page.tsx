@@ -45,13 +45,8 @@ function periodColCount(kind: PeriodKind): number {
   return kind === "current" ? 3 : kind === "past" ? 2 : 1;
 }
 
-// Heatmap background for plan cells — subtle indigo tint
-function planHeatBg(value: number, maxVal: number): string | undefined {
-  if (!value || !maxVal || value <= 0) return undefined;
-  const intensity = Math.min(value / maxVal, 1);
-  const alpha = Math.round(intensity * 10 + 3); // 3-13%
-  return `rgba(99, 102, 241, ${alpha / 100})`;
-}
+// Топ-10 расходных статей периода выделяются типографикой (жирнее/темнее) —
+// вес читается одинаково на любом экране, в отличие от прозрачной заливки.
 
 // ── Editing state types ───────────────────────────────────────────────────────
 
@@ -431,14 +426,15 @@ function EditablePlanTd({
   period,
   row,
   editing,
-  heatBg,
+  emphasize,
   extraStyle,
 }: {
   cell: BudgetCell;
   period: BudgetPeriod;
   row: BudgetRow;
   editing: EditingProps;
-  heatBg?: string;
+  /** Топ-10 расходов периода: сумма плана жирнее и темнее. */
+  emphasize?: boolean;
   extraStyle?: React.CSSProperties;
 }) {
   const canEdit = period.has_manual_plan && !!row.category_id && !row.is_group;
@@ -483,7 +479,7 @@ function EditablePlanTd({
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group outline-none"
       tabIndex={canEdit ? 0 : undefined}
-      style={{ color: "var(--t-muted)", background: heatBg, ...extraStyle }}
+      style={{ color: emphasize ? "var(--t-primary)" : "var(--t-muted)", fontWeight: emphasize ? 700 : undefined, ...extraStyle }}
       onKeyDown={canEdit ? (e) => {
         if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editing.onInlineStart(key, 0, e.key); }
         else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan_manual); }
@@ -773,14 +769,14 @@ function CategoryDataRow({
   periods,
   editing,
   onDrop,
-  maxPlanByPeriod,
+  topExpenseByPeriod,
 }: {
   row: BudgetRow;
   periodCount: number;
   periods: BudgetPeriod[];
   editing: EditingProps;
   onDrop?: (e: React.DragEvent, catId: number) => void;
-  maxPlanByPeriod?: number[];
+  topExpenseByPeriod?: Set<number>[];
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
@@ -861,7 +857,8 @@ function CategoryDataRow({
         const p = periods[i];
         const pk = getPeriodKind(p);
         const canClickFact = !!row.category_id && cell.fact !== 0;
-        const heatBg = maxPlanByPeriod ? planHeatBg(Math.abs(cell.plan), maxPlanByPeriod[i]) : undefined;
+        const emphasize = row.kind === "EXPENSE" && !!row.category_id
+          && !!topExpenseByPeriod?.[i]?.has(row.category_id);
         const factClick = canClickFact ? () => editing.openFactDetail({
           categoryId: row.category_id!,
           categoryTitle: row.title,
@@ -886,7 +883,7 @@ function CategoryDataRow({
           const remainder = cell.plan - cell.fact;
           return (
             <React.Fragment key={i}>
-              <EditablePlanTd cell={cell} period={p} row={row} editing={editing} heatBg={heatBg} extraStyle={periodBorder} />
+              <EditablePlanTd cell={cell} period={p} row={row} editing={editing} emphasize={emphasize} extraStyle={periodBorder} />
               <FactCell cell={cell} kind={kind} onClick={factClick} />
               <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
@@ -897,7 +894,7 @@ function CategoryDataRow({
         // Future: П only
         return (
           <React.Fragment key={i}>
-            <EditablePlanTd cell={cell} period={p} row={row} editing={editing} heatBg={heatBg} extraStyle={periodBorder} />
+            <EditablePlanTd cell={cell} period={p} row={row} editing={editing} emphasize={emphasize} extraStyle={periodBorder} />
           </React.Fragment>
         );
       })}
@@ -2263,14 +2260,14 @@ export default function BudgetMatrixPage() {
   const totalCols = 1 + periodCols + 2; // category + period cols + итого (П+Ф)
 
   // Compute max plan per period for heatmap
-  const maxPlanByPeriod: number[] = periods.map((_, pi) => {
-    let mx = 0;
-    for (const rows of [data?.income_rows, data?.expense_rows]) {
-      for (const row of rows ?? []) {
-        if (row.cells[pi]) mx = Math.max(mx, Math.abs(row.cells[pi].plan));
-      }
-    }
-    return mx;
+  // Топ-10 расходных статей по плану на каждый период (группы не считаем —
+  // они агрегируют детей и задвоили бы список)
+  const topExpenseByPeriod: Set<number>[] = periods.map((_, pi) => {
+    const candidates = (data?.expense_rows ?? [])
+      .filter((r) => r.category_id != null && !r.is_group && Math.abs(r.cells[pi]?.plan ?? 0) > 0)
+      .sort((a, b) => Math.abs(b.cells[pi].plan) - Math.abs(a.cells[pi].plan))
+      .slice(0, 10);
+    return new Set(candidates.map((r) => r.category_id!));
   });
 
   const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
@@ -2586,7 +2583,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
-                      maxPlanByPeriod={maxPlanByPeriod}
+                      topExpenseByPeriod={topExpenseByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
@@ -2681,7 +2678,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
-                      maxPlanByPeriod={maxPlanByPeriod}
+                      topExpenseByPeriod={topExpenseByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
