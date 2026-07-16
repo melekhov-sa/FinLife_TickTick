@@ -178,6 +178,8 @@ class CategoryInfo(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     category_type: Mapped[str] = mapped_column(String(20), nullable=False)  # INCOME/EXPENSE
     parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # #RRGGBB; NULL = детерминированный цвет из палитры на фронте
+    color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

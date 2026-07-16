@@ -495,6 +495,7 @@ export interface FinCategoryItem {
   parent_id: number | null;
   is_frequent: boolean;
   is_archived?: boolean;
+  color?: string | null; // #RRGGBB; null = авто из палитры
 }
 
 // ── Budget Matrix ──────────────────────────────────────────────────────────

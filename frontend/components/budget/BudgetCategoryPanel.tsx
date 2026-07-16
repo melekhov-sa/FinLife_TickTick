@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { clsx } from "clsx";
+import { getCategoryColor } from "@/lib/categoryColor";
 
 export interface CategoryMonthData {
   year: number;
@@ -42,7 +43,7 @@ function TrendIcon({ pct, kind }: { pct: number | null; kind: "INCOME" | "EXPENS
   if (pct === null) return null;
   const isGood = kind === "EXPENSE" ? pct < 0 : pct > 0;
   const Icon = pct === 0 ? Minus : pct > 0 ? TrendingUp : TrendingDown;
-  const color = isGood ? "#10b981" : "#ef4444";
+  const color = isGood ? "var(--c-success-ink)" : "var(--c-danger-ink)";
   return (
     <span className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color }}>
       <Icon size={13} strokeWidth={2} />
@@ -53,11 +54,11 @@ function TrendIcon({ pct, kind }: { pct: number | null; kind: "INCOME" | "EXPENS
 
 function AccuracyBadge({ value }: { value: number | null }) {
   if (value === null) return <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>нет плана</span>;
-  const color = value >= 80 ? "#10b981" : value >= 60 ? "#f59e0b" : "#ef4444";
+  const color = value >= 80 ? "var(--c-success-ink)" : value >= 60 ? "var(--c-warning-ink)" : "var(--c-danger-ink)";
   return (
     <span
       className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: `${color}22`, color }}
+      style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
     >
       {value}%
     </span>
@@ -72,11 +73,11 @@ function MonthBar({ m, maxVal, kind }: { m: CategoryMonthData; maxVal: number; k
   const aboveInc = kind === "INCOME" && m.plan > 0 && m.fact >= m.plan;
 
   const factColor = over
-    ? "#ef4444"
+    ? "var(--c-danger-ink)"
     : under || aboveInc
-    ? "#10b981"
+    ? "var(--c-success-ink)"
     : kind === "INCOME"
-    ? "#10b981"
+    ? "var(--c-success-ink)"
     : "var(--app-accent)";
 
   return (
@@ -129,7 +130,11 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
           style={{ borderColor: "var(--app-border)", paddingTop: "max(16px, env(safe-area-inset-top))" }}
         >
           <div>
-            <p className="text-[15px] font-semibold" style={{ color: "var(--t-primary)" }}>
+            <p className="text-[15px] font-semibold flex items-center gap-2" style={{ color: "var(--t-primary)" }}>
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: getCategoryColor(stats.category_id) }}
+              />
               {stats.title}
             </p>
             <p className="text-[11px] font-medium mt-0.5" style={{ color: "var(--t-faint)" }}>
@@ -243,7 +248,7 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
             {/* Legend */}
             <div className="flex items-center gap-4 mt-3">
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-2 rounded-sm" style={{ background: stats.kind === "INCOME" ? "#10b981" : "var(--app-accent)" }} />
+                <div className="w-3 h-2 rounded-sm" style={{ background: stats.kind === "INCOME" ? "var(--c-success-ink)" : "var(--app-accent)" }} />
                 <span className="text-[10px]" style={{ color: "var(--t-faint)" }}>факт</span>
               </div>
               <div className="flex items-center gap-1.5">

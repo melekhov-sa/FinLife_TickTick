@@ -282,8 +282,8 @@ function DebtDetailSheet({ debt, onClose, onEdit, onChanged }: {
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
               style={{
-                background: isLent ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
-                color: isLent ? "#059669" : "#DC2626",
+                background: isLent ? "var(--c-success-bg)" : "var(--c-danger-bg)",
+                color: isLent ? "var(--c-success-ink)" : "var(--c-danger-ink)",
               }}
             >
               {isLent ? <ArrowUpRight size={11} /> : <ArrowDownLeft size={11} />}
@@ -307,7 +307,7 @@ function DebtDetailSheet({ debt, onClose, onEdit, onChanged }: {
             </span>
           </p>
           <div className="h-1.5 rounded-full overflow-hidden mt-2" style={{ background: "var(--app-border-subtle, var(--app-border))" }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: isLent ? "#10b981" : "#ef4444", opacity: 0.8 }} />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: isLent ? "var(--c-success-ink)" : "var(--c-danger-ink)", opacity: 0.8 }} />
           </div>
           <div className="flex justify-between mt-1.5 text-[11px]" style={{ color: "var(--t-faint)" }}>
             <span>возвращено {fmt(debt.paid)}</span>
@@ -368,7 +368,7 @@ function DebtDetailSheet({ debt, onClose, onEdit, onChanged }: {
               {debt.payments.map((p) => (
                 <div key={p.payment_id} className="flex items-center gap-2 py-1.5 border-b" style={{ borderColor: "var(--app-border-subtle, var(--app-border))" }}>
                   <span className="text-[12px] tabular-nums" style={{ color: "var(--t-faint)" }}>{fmtDate(p.paid_date)}</span>
-                  <span className="flex-1 text-right text-[13px] font-semibold tabular-nums" style={{ color: "#059669" }}>
+                  <span className="flex-1 text-right text-[13px] font-semibold tabular-nums" style={{ color: "var(--c-success-ink)" }}>
                     +{fmt(p.amount)} {cur(debt.currency)}
                   </span>
                   <button
@@ -446,8 +446,8 @@ function DebtCard({ debt, onClick }: { debt: Debt; onClick: () => void }) {
         <span
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
           style={{
-            background: isLent ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
-            color: isLent ? "#059669" : "#DC2626",
+            background: isLent ? "var(--c-success-bg)" : "var(--c-danger-bg)",
+            color: isLent ? "var(--c-success-ink)" : "var(--c-danger-ink)",
           }}
         >
           {isLent ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
@@ -456,7 +456,7 @@ function DebtCard({ debt, onClick }: { debt: Debt; onClick: () => void }) {
           <p className="text-[14px] font-semibold truncate" style={{ color: "var(--t-primary)" }}>
             {debt.counterparty}
           </p>
-          <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: debt.overdue ? "#DC2626" : "var(--t-faint)" }}>
+          <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: debt.overdue ? "var(--c-danger-ink)" : "var(--t-faint)" }}>
             {debt.due_date ? (
               <>
                 <CalendarClock size={11} />
@@ -469,7 +469,7 @@ function DebtCard({ debt, onClick }: { debt: Debt; onClick: () => void }) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[15px] font-bold tabular-nums" style={{ color: isLent ? "#059669" : "#DC2626" }}>
+          <p className="text-[15px] font-bold tabular-nums" style={{ color: isLent ? "var(--c-success-ink)" : "var(--c-danger-ink)" }}>
             {fmt(debt.remaining)} {cur(debt.currency)}
           </p>
           {debt.paid > 0 && (
@@ -481,7 +481,7 @@ function DebtCard({ debt, onClick }: { debt: Debt; onClick: () => void }) {
       </div>
       {debt.paid > 0 && debt.status === "OPEN" && (
         <div className="h-1 rounded-full overflow-hidden mt-3" style={{ background: "var(--app-border-subtle, var(--app-border))" }}>
-          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: isLent ? "#10b981" : "#ef4444", opacity: 0.8 }} />
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: isLent ? "var(--c-success-ink)" : "var(--c-danger-ink)", opacity: 0.8 }} />
         </div>
       )}
     </button>
@@ -542,7 +542,7 @@ export default function DebtsPage() {
                 <ArrowUpRight size={12} /> Мне должны
               </p>
               {currencies.map((c) => (
-                <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "#059669" }}>
+                <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "var(--c-success-ink)" }}>
                   {fmt(totals[c].lent)} {cur(c)}
                 </p>
               ))}
@@ -552,7 +552,7 @@ export default function DebtsPage() {
                 <ArrowDownLeft size={12} /> Я должен
               </p>
               {currencies.map((c) => (
-                <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "#DC2626" }}>
+                <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "var(--c-danger-ink)" }}>
                   {fmt(totals[c].borrowed)} {cur(c)}
                 </p>
               ))}

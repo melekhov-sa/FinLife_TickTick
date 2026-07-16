@@ -225,10 +225,10 @@ function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct:
       };
     }
     if (opt === card.short_definition) {
-      return { background: "color-mix(in srgb, #22C55E 15%, transparent)", border: "1.5px solid #22C55E", color: "var(--t-primary)" };
+      return { background: "var(--c-success-bg)", border: "1.5px solid var(--c-success-ink)", color: "var(--t-primary)" };
     }
     if (opt === selected) {
-      return { background: "color-mix(in srgb, #EF4444 12%, transparent)", border: "1.5px solid #EF4444", color: "var(--t-primary)" };
+      return { background: "var(--c-danger-bg)", border: "1.5px solid var(--c-danger-ink)", color: "var(--t-primary)" };
     }
     return { background: "var(--app-card-bg)", border: "1.5px solid var(--app-border)", color: "var(--t-muted)", opacity: 0.5 };
   };
@@ -274,10 +274,10 @@ function ReviewCard({ card, onAnswer }: { card: SessionCard; onAnswer: (correct:
             <span style={{ fontWeight: 500, marginRight: 8, opacity: 0.5 }}>{["А", "Б", "В"][i]}.</span>
             {opt}
             {submitted && opt === card.short_definition && (
-              <CheckCircle2 size={16} className="inline ml-2" style={{ color: "#22C55E", verticalAlign: "middle" }} />
+              <CheckCircle2 size={16} className="inline ml-2" style={{ color: "var(--c-success-ink)", verticalAlign: "middle" }} />
             )}
             {submitted && opt === selected && opt !== card.short_definition && (
-              <XCircle size={16} className="inline ml-2" style={{ color: "#EF4444", verticalAlign: "middle" }} />
+              <XCircle size={16} className="inline ml-2" style={{ color: "var(--c-danger-ink)", verticalAlign: "middle" }} />
             )}
           </button>
         ))}
@@ -362,12 +362,12 @@ function DoneScreen({
           style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
         >
           <div className="flex flex-col items-center">
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#22C55E" }}>{correct}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "var(--c-success-ink)" }}>{correct}</div>
             <div style={{ fontSize: 12, color: "var(--t-muted)" }}>правильно</div>
           </div>
           <div style={{ width: 1, background: "var(--app-border)" }} />
           <div className="flex flex-col items-center">
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#EF4444" }}>{total - correct}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "var(--c-danger-ink)" }}>{total - correct}</div>
             <div style={{ fontSize: 12, color: "var(--t-muted)" }}>ошибок</div>
           </div>
           <div style={{ width: 1, background: "var(--app-border)" }} />

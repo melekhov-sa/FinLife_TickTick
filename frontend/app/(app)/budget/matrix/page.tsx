@@ -1511,13 +1511,13 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
   let factColor = "var(--t-primary)";
   if (hasFact && hasPlan) {
     const isGood = (kind === "income" && cell.fact >= cell.plan) || (kind === "expense" && cell.fact <= cell.plan);
-    factColor = isGood ? "rgb(22 163 74)" : "rgb(220 38 38)";
+    factColor = isGood ? "var(--c-success-ink)" : "var(--c-danger-ink)";
   }
 
   const pct = hasPlan && pk !== "future" ? cell.fact / cell.plan : null;
   const barColor = kind === "expense"
-    ? (pct !== null && pct > 1 ? "rgb(220 38 38)" : pct !== null && pct > 0.85 ? "rgb(251 146 60)" : "rgb(99 102 241)")
-    : "rgb(52 211 153)";
+    ? (pct !== null && pct > 1 ? "var(--c-danger-ink)" : pct !== null && pct > 0.85 ? "var(--c-warning-ink)" : "var(--app-accent)")
+    : "var(--c-success-ink)";
 
   const planTarget: PlanEditTarget = {
     categoryId: row.category_id!,
@@ -1630,13 +1630,13 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
   let factColor = "var(--t-primary)";
   if (hasFact && hasPlan) {
     const isGood = (kind === "income" && cell.fact >= cell.plan) || (kind === "expense" && cell.fact <= cell.plan);
-    factColor = isGood ? "rgb(22 163 74)" : "rgb(220 38 38)";
+    factColor = isGood ? "var(--c-success-ink)" : "var(--c-danger-ink)";
   }
 
   const pct = hasPlan && pk !== "future" ? cell.fact / cell.plan : null;
   const barColor = kind === "expense"
-    ? (pct !== null && pct > 1 ? "rgb(220 38 38)" : pct !== null && pct > 0.85 ? "rgb(251 146 60)" : "rgb(99 102 241)")
-    : "rgb(52 211 153)";
+    ? (pct !== null && pct > 1 ? "var(--c-danger-ink)" : pct !== null && pct > 0.85 ? "var(--c-warning-ink)" : "var(--app-accent)")
+    : "var(--c-success-ink)";
 
   const target: PlanEditTarget = {
     categoryId: 0,

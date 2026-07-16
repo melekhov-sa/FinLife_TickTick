@@ -163,6 +163,7 @@ class FinCategoryItem(BaseModel):
     category_type: str   # INCOME | EXPENSE
     parent_id: int | None
     is_frequent: bool = False
+    color: str | None = None
 
 
 class FinCategoryItemFull(BaseModel):
@@ -174,6 +175,7 @@ class FinCategoryItemFull(BaseModel):
     is_archived: bool = False
     is_system: bool = False
     is_mandatory: bool = False
+    color: str | None = None
 
 
 @router.get("/fin-categories", response_model=list[FinCategoryItemFull])
@@ -219,6 +221,7 @@ def list_fin_categories(
             category_id=c.category_id,
             title=c.title,
             category_type=c.category_type,
+            color=c.color,
             parent_id=c.parent_id,
             is_frequent=c.category_id in freq_ids,
             is_archived=c.is_archived,
@@ -304,11 +307,13 @@ def create_fin_category(
         is_frequent=False,
         is_archived=cat.is_archived,
         is_system=cat.is_system,
+        color=cat.color,
     )
 
 
 class UpdateFinCategoryRequest(BaseModel):
     title: str | None = None
+    color: str | None = None  # "#RRGGBB"; пустая строка = сбросить в авто
 
 
 @router.patch("/fin-categories/{category_id}")
@@ -329,15 +334,25 @@ def update_fin_category(
     title = body.title.strip() if body.title is not None else None
     if title is not None and not title:
         raise HTTPException(status_code=400, detail="Название не может быть пустым")
-    try:
-        UpdateCategoryUseCase(db).execute(
-            category_id=category_id,
-            account_id=user_id,
-            title=title,
-            actor_user_id=user_id,
-        )
-    except CategoryValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+
+    # Цвет — прямо в read-модель (не событийное поле)
+    if "color" in body.model_fields_set:
+        raw = (body.color or "").strip()
+        if raw and not _re.fullmatch(r"#[0-9a-fA-F]{6}", raw):
+            raise HTTPException(status_code=400, detail="Цвет должен быть #RRGGBB")
+        cat.color = raw or None
+        db.commit()
+
+    if title is not None:
+        try:
+            UpdateCategoryUseCase(db).execute(
+                category_id=category_id,
+                account_id=user_id,
+                title=title,
+                actor_user_id=user_id,
+            )
+        except CategoryValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
 
 

@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
 import { Switch } from "@/components/primitives/Switch";
+import { CATEGORY_PALETTE, getCategoryColor } from "@/lib/categoryColor";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ interface FinCategory {
   is_archived: boolean;
   is_system: boolean;
   is_mandatory: boolean;
+  color?: string | null;
 }
 
 type TabType = "EXPENSE" | "INCOME";
@@ -100,6 +102,65 @@ function useSetMandatory() {
       qc.invalidateQueries({ queryKey: ["analytics", "budget-stats"] });
     },
   });
+}
+
+function useSetColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ categoryId, color }: { categoryId: number; color: string }) =>
+      api.patch(`/api/v2/fin-categories/${categoryId}`, { color }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-categories"] });
+    },
+  });
+}
+
+/** Точка-цвет категории с поповером-палитрой. */
+function ColorDot({ cat, editable }: { cat: FinCategory; editable: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { mutate: setColor } = useSetColor();
+  const current = getCategoryColor(cat.category_id, cat.color);
+
+  const dot = (
+    <span
+      className={clsx("inline-block w-2.5 h-2.5 rounded-full shrink-0", editable && "cursor-pointer")}
+      style={{ background: current, boxShadow: `0 0 0 3px color-mix(in srgb, ${current} 18%, transparent)` }}
+      onClick={editable ? (e) => { e.stopPropagation(); setOpen((v) => !v); } : undefined}
+      role={editable ? "button" : undefined}
+      aria-label="Цвет категории"
+    />
+  );
+
+  if (!editable) return dot;
+  return (
+    <span className="relative inline-flex items-center">
+      {dot}
+      {open && (
+        <>
+          <span className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
+          <span
+            className="absolute left-0 top-5 z-50 grid grid-cols-6 gap-1.5 p-2.5 rounded-xl shadow-xl"
+            style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)", width: 168 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {CATEGORY_PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className="w-5 h-5 rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: c,
+                  outline: c.toLowerCase() === current.toLowerCase() ? "2px solid var(--t-primary)" : "none",
+                  outlineOffset: 1,
+                }}
+                onClick={() => { setColor({ categoryId: cat.category_id, color: c }); setOpen(false); }}
+              />
+            ))}
+          </span>
+        </>
+      )}
+    </span>
+  );
 }
 
 // ── CategoryRow ─────────────────────────────────────────────────────────────
@@ -191,6 +252,7 @@ function CategoryRow({
                 └
               </span>
             )}
+            <ColorDot cat={cat} editable={!cat.is_archived} />
             <span
               className={clsx(
                 "truncate",

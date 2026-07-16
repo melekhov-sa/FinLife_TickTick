@@ -113,12 +113,12 @@ export default function SavingsPage() {
               <Kpi
                 label="Доход за всё время"
                 value={`+${fmt(data.totals.income_total)} ₽`}
-                accent="#059669"
+                accent="var(--c-success-ink)"
               />
               <Kpi
                 label="Доход за 12 мес"
                 value={`+${fmt(data.totals.income_12m)} ₽`}
-                accent="#059669"
+                accent="var(--c-success-ink)"
               />
               <Kpi
                 label="Доходность портфеля"
@@ -129,7 +129,7 @@ export default function SavingsPage() {
 
             {/* Доход по месяцам */}
             <Block title="Доход по месяцам">
-              <MonthBars points={data.months} color="#10b981" />
+              <MonthBars points={data.months} color="var(--c-success-ink)" />
             </Block>
 
             {/* Вклады */}
@@ -224,7 +224,7 @@ function WalletCard({ w }: { w: SavingsWallet }) {
         {w.apy != null && (
           <span
             className="ml-auto shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold tabular-nums"
-            style={{ background: "rgba(16,185,129,0.12)", color: "#059669" }}
+            style={{ background: "rgba(16,185,129,0.12)", color: "var(--c-success-ink)" }}
           >
             {fmt(w.apy, 1)}% год.
           </span>
@@ -235,7 +235,7 @@ function WalletCard({ w }: { w: SavingsWallet }) {
         <span className="text-[18px] font-bold tabular-nums font-display" style={{ color: "var(--t-primary)" }}>
           {fmt(w.balance)} {w.currency === "RUB" ? "₽" : w.currency}
         </span>
-        <span className="text-[11px] tabular-nums" style={{ color: "#059669" }}>
+        <span className="text-[11px] tabular-nums" style={{ color: "var(--c-success-ink)" }}>
           +{fmt(w.income_total)} доход
         </span>
       </div>
@@ -244,11 +244,11 @@ function WalletCard({ w }: { w: SavingsWallet }) {
       <div>
         <div className="h-2 rounded-full overflow-hidden flex" style={{ background: "var(--app-border-subtle)" }}>
           <div style={{ width: `${ownPct}%`, background: "var(--app-accent)", opacity: 0.55 }} />
-          <div style={{ width: `${100 - ownPct}%`, background: "#10b981" }} />
+          <div style={{ width: `${100 - ownPct}%`, background: "var(--c-success-ink)" }} />
         </div>
         <div className="flex justify-between mt-1 text-[10px] tabular-nums" style={{ color: "var(--t-faint)" }}>
           <span>взносы {fmt(w.own_money)}</span>
-          <span style={{ color: "#059669" }}>проценты {fmt(w.income_total)}</span>
+          <span style={{ color: "var(--c-success-ink)" }}>проценты {fmt(w.income_total)}</span>
         </div>
       </div>
 
@@ -269,7 +269,7 @@ function MiniBars({ points }: { points: MonthPoint[] }) {
           className="flex-1 rounded-sm"
           style={{
             height: `${Math.max((p.income / max) * 100, p.income > 0 ? 12 : 4)}%`,
-            background: p.income > 0 ? "#10b981" : "var(--app-border)",
+            background: p.income > 0 ? "var(--c-success-ink)" : "var(--app-border)",
             opacity: p.income > 0 ? 0.85 : 0.5,
           }}
         />

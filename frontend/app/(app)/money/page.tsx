@@ -16,6 +16,7 @@ import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight, Trash2 } from 
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/budgetMonth";
+import { buildCategoryColorMap } from "@/lib/categoryColor";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -341,6 +342,7 @@ export default function MoneyPage() {
     staleTime: 5 * 60_000,
   });
 
+  const catColorMap = useMemo(() => buildCategoryColorMap(finCats), [finCats]);
   const walletMap = Object.fromEntries((wallets ?? []).map((w) => [w.wallet_id, w.title]));
 
   const opTypeOptions = useMemo(() => [
@@ -560,11 +562,19 @@ export default function MoneyPage() {
                     <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                       {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
                     </p>
-                    <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--t-faint)" }}>
-                      {tx.operation_type === "TRANSFER"
-                        ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
-                        : walletMap[tx.wallet_id ?? 0] ?? ""}
-                      {tx.category_title && tx.description && ` · ${tx.category_title}`}
+                    <p className="text-[10px] mt-0.5 truncate flex items-center gap-1" style={{ color: "var(--t-faint)" }}>
+                      {tx.category_id != null && (
+                        <span
+                          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ background: catColorMap[tx.category_id] ?? "var(--t-faint)" }}
+                        />
+                      )}
+                      <span className="truncate">
+                        {tx.operation_type === "TRANSFER"
+                          ? `${walletMap[tx.from_wallet_id ?? 0] ?? "?"} → ${walletMap[tx.to_wallet_id ?? 0] ?? "?"}`
+                          : walletMap[tx.wallet_id ?? 0] ?? ""}
+                        {tx.category_title && tx.description && ` · ${tx.category_title}`}
+                      </span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

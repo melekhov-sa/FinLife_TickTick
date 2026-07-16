@@ -16,6 +16,7 @@ import {
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
 import { budgetMonthOptions } from "@/lib/budgetMonth";
+import { getCategoryColor } from "@/lib/categoryColor";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -730,6 +731,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                           onMouseEnter={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 22%, transparent)"); }}
                           onMouseLeave={(e) => { (e.currentTarget.style.background = `color-mix(in srgb, var(--app-accent) ${idx === 0 ? 12 : 7}%, transparent)`); }}
                         >
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                            style={{ background: getCategoryColor(cat!.category_id, cat!.color) }}
+                          />
                           {cat!.title}
                         </button>
                       ))}

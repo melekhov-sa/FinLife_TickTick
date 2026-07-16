@@ -118,31 +118,31 @@ export default function NetWorthPage() {
                 label="Деньги"
                 value={`${fmt(data.current.money)} ₽`}
                 icon={<TrendingUp size={13} />}
-                accent="#059669"
+                accent="var(--c-success-ink)"
               />
               <Kpi
                 label="Долг по кредитам"
                 value={`${fmt(data.current.debt)} ₽`}
                 icon={<TrendingDown size={13} />}
-                accent="#DC2626"
+                accent="var(--c-danger-ink)"
               />
               <Kpi
                 label={`Рост за ${range} мес`}
                 value={`${capitalDelta >= 0 ? "+" : ""}${fmt(capitalDelta)} ₽`}
-                accent={capitalDelta >= 0 ? "#059669" : "#DC2626"}
+                accent={capitalDelta >= 0 ? "var(--c-success-ink)" : "var(--c-danger-ink)"}
               />
               {(data.current.lent ?? 0) > 0 && (
                 <Kpi
                   label="Мне должны"
                   value={`${fmt(data.current.lent ?? 0)} ₽`}
-                  accent="#059669"
+                  accent="var(--c-success-ink)"
                 />
               )}
               {(data.current.borrowed ?? 0) > 0 && (
                 <Kpi
                   label="Я должен"
                   value={`${fmt(data.current.borrowed ?? 0)} ₽`}
-                  accent="#DC2626"
+                  accent="var(--c-danger-ink)"
                 />
               )}
             </div>
