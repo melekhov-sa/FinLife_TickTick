@@ -553,7 +553,7 @@ html:not(.dark)[data-color-theme="snow"] {
   --app-border: #E7E5E4;
   --t-primary: #1C1917;
   --t-secondary: #44403C;
-  --t-muted: #78716C;
+  --t-muted: #635D55;
   --t-faint: #A8A29E;
 }
 
@@ -569,7 +569,7 @@ html:not(.dark)[data-color-theme="claude"] {
 
   --t-primary:   #1C1917;
   --t-secondary: #44403C;
-  --t-muted:     #78716C;
+  --t-muted:     #635D55;
   --t-faint:     #A8A29E;
   --t-label:     #57534E;
 
@@ -680,7 +680,7 @@ html:not(.dark)[data-color-theme="vivid"] {
 
   --t-primary:   #1E1836;
   --t-secondary: #443C63;
-  --t-muted:     #7A7193;
+  --t-muted:     #655C82;
   --t-faint:     #A79FBE;
   --t-label:     #5B5277;
 

@@ -414,7 +414,7 @@ function PlanTd({ cell, isMuted, extraStyle, totalCol }: { cell: BudgetCell; isM
     return <td className={cls} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
   return (
-    <td className={cls} style={{ color: isMuted ? "var(--t-muted)" : "var(--t-secondary)", ...extraStyle }}>
+    <td className={cls} style={{ color: isMuted ? "var(--t-secondary)" : "var(--t-primary)", ...extraStyle }}>
       {hasPlan ? fmt(cell.plan) : "—"}
     </td>
   );
@@ -479,7 +479,7 @@ function EditablePlanTd({
     <td
       className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group outline-none"
       tabIndex={canEdit ? 0 : undefined}
-      style={{ color: emphasize ? "var(--t-primary)" : "var(--t-muted)", fontWeight: emphasize ? 700 : undefined, ...extraStyle }}
+      style={{ color: "var(--t-primary)", fontWeight: emphasize ? 700 : undefined, ...extraStyle }}
       onKeyDown={canEdit ? (e) => {
         if (/^[0-9]$/.test(e.key)) { e.preventDefault(); editing.onInlineStart(key, 0, e.key); }
         else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editing.onInlineStart(key, cell.plan_manual); }
@@ -887,7 +887,7 @@ function CategoryDataRow({
             <React.Fragment key={i}>
               <EditablePlanTd cell={cell} period={p} row={row} editing={editing} emphasize={emphasize} extraStyle={periodBorder} />
               <FactCell cell={cell} kind={kind} onClick={factClick} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]" style={{ color: remainder > 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]" style={{ color: remainder > 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -1608,7 +1608,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
         )}
         <div
           className="tabular-nums text-right text-[12px]"
-          style={{ color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+          style={{ color: "var(--t-primary)", cursor: canEdit ? "pointer" : "default" }}
           onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan_manual) : undefined}
         >
           {isEditing ? (
@@ -1712,7 +1712,7 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
         )}
         <div
           className="tabular-nums text-right text-[12px]"
-          style={{ color: "var(--t-muted)", cursor: canEdit ? "pointer" : "default" }}
+          style={{ color: "var(--t-primary)", cursor: canEdit ? "pointer" : "default" }}
           onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
         >
           {isEditing ? (
