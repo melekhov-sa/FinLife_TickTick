@@ -770,6 +770,7 @@ function CategoryDataRow({
   editing,
   onDrop,
   topExpenseByPeriod,
+  topIncomeByPeriod,
 }: {
   row: BudgetRow;
   periodCount: number;
@@ -777,6 +778,7 @@ function CategoryDataRow({
   editing: EditingProps;
   onDrop?: (e: React.DragEvent, catId: number) => void;
   topExpenseByPeriod?: Set<number>[];
+  topIncomeByPeriod?: Set<number>[];
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
@@ -857,8 +859,8 @@ function CategoryDataRow({
         const p = periods[i];
         const pk = getPeriodKind(p);
         const canClickFact = !!row.category_id && cell.fact !== 0;
-        const emphasize = row.kind === "EXPENSE" && !!row.category_id
-          && !!topExpenseByPeriod?.[i]?.has(row.category_id);
+        const topSet = row.kind === "EXPENSE" ? topExpenseByPeriod?.[i] : topIncomeByPeriod?.[i];
+        const emphasize = !!row.category_id && !!topSet?.has(row.category_id);
         const factClick = canClickFact ? () => editing.openFactDetail({
           categoryId: row.category_id!,
           categoryTitle: row.title,
@@ -2260,15 +2262,17 @@ export default function BudgetMatrixPage() {
   const totalCols = 1 + periodCols + 2; // category + period cols + итого (П+Ф)
 
   // Compute max plan per period for heatmap
-  // Топ-10 расходных статей по плану на каждый период (группы не считаем —
-  // они агрегируют детей и задвоили бы список)
-  const topExpenseByPeriod: Set<number>[] = periods.map((_, pi) => {
-    const candidates = (data?.expense_rows ?? [])
+  // Крупняк периода выделяется жирным: топ-10 расходов и топ-3 доходов
+  // (группы не считаем — они агрегируют детей и задвоили бы список)
+  const topByPeriod = (rows: BudgetRow[] | undefined, pi: number, n: number): Set<number> => {
+    const candidates = (rows ?? [])
       .filter((r) => r.category_id != null && !r.is_group && Math.abs(r.cells[pi]?.plan ?? 0) > 0)
       .sort((a, b) => Math.abs(b.cells[pi].plan) - Math.abs(a.cells[pi].plan))
-      .slice(0, 10);
+      .slice(0, n);
     return new Set(candidates.map((r) => r.category_id!));
-  });
+  };
+  const topExpenseByPeriod: Set<number>[] = periods.map((_, pi) => topByPeriod(data?.expense_rows, pi, 10));
+  const topIncomeByPeriod: Set<number>[] = periods.map((_, pi) => topByPeriod(data?.income_rows, pi, 3));
 
   const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
     queryKey: ["fin-categories"],
@@ -2583,7 +2587,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
-                      topExpenseByPeriod={topExpenseByPeriod}
+                      topExpenseByPeriod={topExpenseByPeriod} topIncomeByPeriod={topIncomeByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
@@ -2678,7 +2682,7 @@ export default function BudgetMatrixPage() {
                       periodCount={rangeCount}
                       periods={periods}
                       editing={editingProps}
-                      topExpenseByPeriod={topExpenseByPeriod}
+                      topExpenseByPeriod={topExpenseByPeriod} topIncomeByPeriod={topIncomeByPeriod}
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
