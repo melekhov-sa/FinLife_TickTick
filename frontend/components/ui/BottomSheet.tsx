@@ -13,7 +13,7 @@ export interface BottomSheetProps {
   footer?: React.ReactNode;
   children: React.ReactNode;
   onSubmit?: (e: React.FormEvent) => void;
-  /** "half" (по умолч.) — на мобиле открывается полу-шитом, тянется вверх; "full" — сразу во весь рост. */
+  /** "full" (по умолч.) — во весь рост; "half" — полу-шит, тянется вверх за ручку. */
   detent?: "half" | "full";
 }
 
@@ -23,7 +23,7 @@ export interface BottomSheetProps {
  * - Desktop: centered modal dialog
  * Rendered via createPortal into document.body to escape any stacking context.
  */
-export function BottomSheet({ open, onClose, title, footer, children, onSubmit, detent = "half" }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, footer, children, onSubmit, detent = "full" }: BottomSheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
