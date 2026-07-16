@@ -965,6 +965,23 @@ class ContactModel(Base):
     )
 
 
+class CategorySuggestLog(Base):
+    """Что подсказали при вводе операции и что юзер выбрал (обучение движка)."""
+    __tablename__ = "category_suggest_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    operation_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
+    wallet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    suggested_category_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    chosen_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accepted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class DebtModel(Base):
     """Долги и займы: кому/от кого, сумма, срок, частичные возвраты."""
     __tablename__ = "debts"

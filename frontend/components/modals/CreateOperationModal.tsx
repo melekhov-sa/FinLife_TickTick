@@ -110,7 +110,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
-  const [suggestion, setSuggestion] = useState<{ category_id: number; confidence: number; exact?: boolean; reason?: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<{ category_id: number; confidence: number; exact?: boolean; reason?: string }[]>([]);
   const categoryIdRef = useRef(categoryId);
   const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -332,12 +332,12 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
   // Debounced category suggestion
   useEffect(() => {
     if (opType !== "INCOME" && opType !== "EXPENSE") {
-      setSuggestion(null);
+      setSuggestions([]);
       return;
     }
     const amountVal = parseFloat(amount);
     if (!amount || isNaN(amountVal) || amountVal <= 0 || !walletId) {
-      setSuggestion(null);
+      setSuggestions([]);
       return;
     }
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
@@ -355,16 +355,16 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
           },
         );
         if (results.length > 0) {
-          setSuggestion(results[0]);
+          setSuggestions(results.slice(0, 3));
           // Авто-подставляем только при почти точном повторе суммы — надёжный случай.
           if (results[0].exact && results[0].confidence >= 0.8 && !categoryIdRef.current) {
             setCategoryId(results[0].category_id);
           }
         } else {
-          setSuggestion(null);
+          setSuggestions([]);
         }
       } catch {
-        setSuggestion(null);
+        setSuggestions([]);
       }
     }, 600);
     return () => { if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current); };
@@ -391,6 +391,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       body.category_id = categoryId || null;
       if (opType === "INCOME" && showIncomeGoal) {
         body.to_goal_id = toGoalId || null;
+      }
+      // Что подсказывал движок — для обучения на исправлениях
+      if (suggestions.length > 0) {
+        body.suggested_category_id = suggestions[0].category_id;
       }
     }
     if (opType === "EXPENSE" && subSubscriptionId) {
@@ -704,25 +708,34 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
                   searchable
                 />
                 {(() => {
-                  if (!suggestion) return null;
-                  const sugCat = (finCats ?? []).find((c) => c.category_id === suggestion.category_id);
-                  if (!sugCat || suggestion.category_id === Number(categoryId || 0)) return null;
+                  // Топ-3 кандидата чипами: тап — выбор, быстрее селекта
+                  const visible = suggestions
+                    .map((sug) => ({ sug, cat: (finCats ?? []).find((c) => c.category_id === sug.category_id) }))
+                    .filter((x) => x.cat && x.sug.category_id !== Number(categoryId || 0));
+                  if (visible.length === 0) return null;
                   return (
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>Вероятно:</span>
-                      <button
-                        type="button"
-                        onClick={() => setCategoryId(suggestion.category_id)}
-                        className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
-                        style={{ background: "color-mix(in srgb, var(--app-accent) 12%, transparent)", color: "rgb(129,140,248)" }}
-                        onMouseEnter={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 22%, transparent)"); }}
-                        onMouseLeave={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 12%, transparent)"); }}
-                      >
-                        {sugCat.title}
-                      </button>
-                      {suggestion.reason && (
+                      {visible.map(({ sug, cat }, idx) => (
+                        <button
+                          key={sug.category_id}
+                          type="button"
+                          onClick={() => setCategoryId(sug.category_id)}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
+                          style={{
+                            background: `color-mix(in srgb, var(--app-accent) ${idx === 0 ? 12 : 7}%, transparent)`,
+                            color: "rgb(129,140,248)",
+                            opacity: idx === 0 ? 1 : 0.85,
+                          }}
+                          onMouseEnter={(e) => { (e.currentTarget.style.background = "color-mix(in srgb, var(--app-accent) 22%, transparent)"); }}
+                          onMouseLeave={(e) => { (e.currentTarget.style.background = `color-mix(in srgb, var(--app-accent) ${idx === 0 ? 12 : 7}%, transparent)`); }}
+                        >
+                          {cat!.title}
+                        </button>
+                      ))}
+                      {visible[0].sug.reason && (
                         <span className="text-[10.5px]" style={{ color: "var(--t-faint)" }}>
-                          · {suggestion.reason}
+                          · {visible[0].sug.reason}
                         </span>
                       )}
                     </div>

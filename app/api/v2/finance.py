@@ -688,10 +688,14 @@ def _time_bucket(hour: int) -> int:
 
 
 def _amount_similarity(a: float, b: float) -> float:
-    """1.0 — суммы совпадают; плавно убывает с относительной разницей (гаусс)."""
+    """1.0 — суммы совпадают; плавно убывает с разницей (гаусс).
+
+    Для мелких сумм знаменатель прижат к 500: 120 и 180 ₽ — это «похоже»
+    (обе — кофе), хотя относительная разница 33%.
+    """
     if a <= 0 or b <= 0:
         return 0.0
-    d = abs(a - b) / max(a, b)            # относительная разница в [0, 1]
+    d = abs(a - b) / max(a, b, 500.0)
     return _math.exp(-(d * d) / (2 * _AMOUNT_SIGMA * _AMOUNT_SIGMA))
 
 
@@ -728,6 +732,42 @@ def _dom_close(d1: int, d2: int) -> bool:
 
 def _is_weekend(dt) -> bool:
     return dt.weekday() >= 5
+
+
+def _median(xs: list) -> float:
+    ys = sorted(xs)
+    n = len(ys)
+    mid = n // 2
+    return float(ys[mid]) if n % 2 else (ys[mid - 1] + ys[mid]) / 2.0
+
+
+def _log_typicality(amount: float, amounts: list[float]) -> float | None:
+    """Насколько сумма типична для категории (лог-нормаль, [0..1]).
+
+    У «Связи» разброс нулевой, у «Продуктов» огромный — общая сигма это
+    не ловит. None, если истории мало (<4 операций).
+    """
+    vals = [x for x in amounts if x > 0]
+    if len(vals) < 4 or amount <= 0:
+        return None
+    la = [_math.log(x) for x in vals]
+    mean = sum(la) / len(la)
+    var = sum((x - mean) ** 2 for x in la) / len(la)
+    sd = max(var ** 0.5, 0.10)
+    z = abs(_math.log(amount) - mean) / sd
+    return _math.exp(-(z * z) / 2.0)
+
+
+def _roundness_class(a: float) -> str:
+    """Круглость: 5000 ровно — перевод/подарок, 4873.50 — магазинный чек."""
+    if abs(a - round(a)) > 0.004:
+        return "kop"
+    ai = int(round(a))
+    if ai % 1000 == 0:
+        return "r1000"
+    if ai % 100 == 0:
+        return "r100"
+    return "odd"
 
 
 class SuggestCategoryRequest(BaseModel):
@@ -786,6 +826,28 @@ def suggest_category(
         target_date = date.fromisoformat(body.date) if body.date else date.today()
     except ValueError:
         target_date = date.today()
+
+    # ── Обучение на исправлениях: прошлые «подсказали X → юзер выбрал Y» ─────
+    from app.infrastructure.db.models import CategorySuggestLog
+    corr_mult: dict = {}
+    for c in (
+        db.query(CategorySuggestLog)
+        .filter(
+            CategorySuggestLog.account_id == user_id,
+            CategorySuggestLog.operation_type == body.operation_type,
+            CategorySuggestLog.created_at >= since,
+        )
+        .all()
+    ):
+        if _amount_similarity(amount, float(c.amount)) < 0.5:
+            continue
+        if (body.wallet_id is not None and c.wallet_id is not None
+                and c.wallet_id != body.wallet_id):
+            continue
+        if not c.accepted and c.chosen_category_id:
+            corr_mult[c.suggested_category_id] = corr_mult.get(c.suggested_category_id, 1.0) * 0.75
+            corr_mult[c.chosen_category_id] = corr_mult.get(c.chosen_category_id, 1.0) * 1.15
+    corr_mult = {k: min(1.4, max(0.5, v)) for k, v in corr_mult.items()}
 
     # ── Уровень 0: сумма совпадает с плановой операцией ближайших дней ───────
     from app.infrastructure.db.models import OperationOccurrence, OperationTemplateModel
@@ -854,7 +916,8 @@ def suggest_category(
             exact_total += w
         best_cid = max(exact_cat, key=lambda c: exact_cat[c])
         share = exact_cat[best_cid] / exact_total
-        if share >= 0.6:
+        # не повторяем подтверждённую юзером ошибку на этой же сумме
+        if share >= 0.6 and corr_mult.get(best_cid, 1.0) >= 0.8:
             return [SuggestCategoryResult(
                 category_id=best_cid,
                 confidence=round(max(0.85, share), 4),
@@ -862,16 +925,28 @@ def suggest_category(
                 reason="повторяющийся платёж",
             )]
 
-    # ── Уровень 3: похожие суммы (weighted k-NN) ───────────────────────────
+    # ── Уровень 3: похожие суммы (weighted k-NN) + категорийные факторы ─────
     now = datetime.utcnow()
-    cur_time_bkt = _time_bucket(body.hour) if body.hour is not None else None
     target_weekend = _is_weekend(target_date)
+
+    # Пер-категорийная статистика всей истории: типичность суммы, круглость,
+    # профиль кошелька, периодичность, «уже было сегодня»
+    cat_amounts: dict = _defaultdict(list)
+    cat_wallets: dict = _defaultdict(dict)
+    cat_dates_all: dict = _defaultdict(set)
+    for row in rows:
+        cid = row.category_id
+        cat_amounts[cid].append(float(row.amount))
+        if row.wallet_id is not None:
+            cat_wallets[cid][row.wallet_id] = cat_wallets[cid].get(row.wallet_id, 0) + 1
+        if row.occurred_at:
+            cat_dates_all[cid].add(row.occurred_at.date())
 
     cat_weight: dict = _defaultdict(float)
     cat_best_sim: dict = _defaultdict(float)   # лучшая близость суммы в категории
     cat_contrib: dict = _defaultdict(int)      # сколько заметно похожих операций
     cat_same_wallet: dict = _defaultdict(int)
-    total_weight = 0.0
+    cat_dates_similar: dict = _defaultdict(set)
 
     for i, row in enumerate(rows):
         a_sim = _amount_similarity(amount, float(row.amount))
@@ -881,8 +956,12 @@ def suggest_category(
         same_wallet = body.wallet_id is not None and row.wallet_id == body.wallet_id
         wallet_factor = 1.0 if same_wallet else _WALLET_OTHER
 
-        if cur_time_bkt is not None and row.occurred_at:
-            time_factor = 1.0 if _time_bucket(row.occurred_at.hour) == cur_time_bkt else _TIME_OTHER
+        # Циклическая близость по часу (σ≈3 ч), без жёстких корзин:
+        # 11:59 и 12:01 — это одно и то же время
+        if body.hour is not None and row.occurred_at:
+            hd = abs(row.occurred_at.hour - body.hour)
+            hd = min(hd, 24 - hd)
+            time_factor = _TIME_OTHER + (1.0 - _TIME_OTHER) * _math.exp(-(hd * hd) / 18.0)
         else:
             time_factor = 1.0
 
@@ -914,28 +993,88 @@ def suggest_category(
         w = a_sim * wallet_factor * time_factor * recency * dom_factor * dow_factor * text_factor
         cid = row.category_id
         cat_weight[cid] += w
-        total_weight += w
         cat_best_sim[cid] = max(cat_best_sim[cid], a_sim)
         if a_sim >= 0.5:
             cat_contrib[cid] += 1
+            if row.occurred_at:
+                cat_dates_similar[cid].add(row.occurred_at.date())
         if same_wallet:
             cat_same_wallet[cid] += 1
 
-    if total_weight < _MIN_TOTAL_WEIGHT:
+    if sum(cat_weight.values()) < _MIN_TOTAL_WEIGHT:
         return []   # нет осмысленно похожей истории
 
-    results = []
+    # ── Пост-факторы уровня категории ────────────────────────────────────────
+    round_cls = _roundness_class(amount)
+    adjusted: dict = {}
+    cat_periodic: dict = _defaultdict(bool)
     for cid, w in cat_weight.items():
-        confidence = w / total_weight
+        m = 1.0
+        amounts_c = cat_amounts[cid]
+        n = len(amounts_c)
+
+        # Типичность суммы для распределения категории (лог-нормаль)
+        typ = _log_typicality(amount, amounts_c)
+        if typ is not None:
+            m *= 0.7 + 0.6 * typ
+
+        # Круглость суммы против профиля категории
+        if n >= 4:
+            share_r = sum(1 for x in amounts_c if _roundness_class(x) == round_cls) / n
+            m *= 0.9 + 0.2 * share_r
+
+        # Профиль кошелька: категория, никогда не жившая на этом кошельке,
+        # штрафуется; «родной» кошелёк категории — буст
+        if body.wallet_id is not None and n >= 5:
+            share_w = cat_wallets[cid].get(body.wallet_id, 0) / n
+            m *= 0.75 + 0.5 * share_w
+
+        # Периодичность: похожая сумма повторяется с шагом ~N дней,
+        # и с последнего раза прошло примерно N
+        dates_sim = sorted(cat_dates_similar[cid])
+        if len(dates_sim) >= 3:
+            gaps = [(dates_sim[j + 1] - dates_sim[j]).days for j in range(len(dates_sim) - 1)]
+            gaps = [g for g in gaps if g >= 1]
+            if gaps:
+                med = _median(gaps)
+                since_last = (target_date - dates_sim[-1]).days
+                if 5 <= med <= 45 and abs(since_last - med) <= max(2.0, med * 0.2):
+                    m *= 1.2
+                    cat_periodic[cid] = True
+
+        # «Уже было сегодня» для категорий с типичным шагом ≥2 дней
+        if target_date in cat_dates_all[cid]:
+            dates_all = sorted(cat_dates_all[cid])
+            if len(dates_all) >= 3:
+                gaps_all = [(dates_all[j + 1] - dates_all[j]).days for j in range(len(dates_all) - 1)]
+                gaps_all = [g for g in gaps_all if g >= 1]
+                if gaps_all and _median(gaps_all) >= 2:
+                    m *= 0.8
+
+        # Обучение на исправлениях: не повторяем свои ошибки
+        m *= corr_mult.get(cid, 1.0)
+
+        adjusted[cid] = w * m
+
+    total_adj = sum(adjusted.values())
+    if total_adj <= 0:
+        return []
+
+    results = []
+    for cid, w in adjusted.items():
+        confidence = w / total_adj
         near_exact = cat_best_sim[cid] >= _NEAR_EXACT
         # нужна реальная опора: либо ≥2 похожих операции, либо одна почти точная
         if not (cat_contrib[cid] >= 2 or near_exact):
             continue
-        if confidence < _MIN_CONFIDENCE:
+        # слабые кандидаты не показываем даже чипом
+        if confidence < 0.25:
             continue
 
         if near_exact:
             reason = "повторяющийся платёж"
+        elif cat_periodic[cid]:
+            reason = "регулярный платёж"
         elif cat_same_wallet[cid] >= 2:
             reason = "похожие траты с этого кошелька"
         else:
@@ -944,7 +1083,8 @@ def suggest_category(
         results.append(SuggestCategoryResult(
             category_id=cid,
             confidence=round(confidence, 4),
-            exact=near_exact,
+            # exact управляет автоподстановкой — требуем и точную сумму, и уверенность
+            exact=near_exact and confidence >= _MIN_CONFIDENCE,
             reason=reason,
         ))
 
@@ -977,6 +1117,8 @@ class CreateTransactionRequest(BaseModel):
     list_id: int | None = None
     # Бюджетный месяц-переопределение: YYYY-MM-DD (любой день месяца)
     budget_month: str | None = None
+    # Что подсказал движок категорий (для обучения на исправлениях)
+    suggested_category_id: int | None = None
 
 
 @router.post("/transactions", status_code=201)
@@ -1093,6 +1235,21 @@ def create_transaction(body: CreateTransactionRequest, request: Request, db: Ses
             )
         except SubscriptionValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    # Лог подсказки категории: принял юзер или исправил (обучение движка)
+    if (body.suggested_category_id and tx_id
+            and body.operation_type in ("INCOME", "EXPENSE")):
+        from app.infrastructure.db.models import CategorySuggestLog
+        db.add(CategorySuggestLog(
+            account_id=user_id,
+            operation_type=body.operation_type,
+            amount=amount,
+            wallet_id=body.wallet_id,
+            suggested_category_id=body.suggested_category_id,
+            chosen_category_id=body.category_id,
+            accepted=(body.category_id == body.suggested_category_id),
+        ))
+        db.commit()
 
     # Set list_id / budget_month on the read model (not event-sourced)
     if (body.list_id is not None or body.budget_month) and tx_id:
