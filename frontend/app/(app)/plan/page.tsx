@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { SwipeRow } from "@/components/primitives/SwipeRow";
 import { getHolidayRU } from "@/lib/holidays";
 import { pluralizeYears } from "@/lib/utils";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
@@ -363,7 +364,28 @@ function EntryRow({
     disabled: !canDrag,
   });
 
+  // Свайп вправо — выполнить; влево — перенести (только задачи)
+  const swipeComplete = !entry.is_done && (canComplete || (isCounterHabit && !!habitId) || isOp)
+    ? {
+        icon: <span className="text-[18px] font-black leading-none">✓</span>,
+        color: "var(--c-success-ink)",
+        onTrigger: () => {
+          if (isCounterHabit && habitId) incrementHabit(habitId);
+          else if (isOp) onExecuteOp(entry);
+          else if (!isCompleting) onComplete(entry);
+        },
+      }
+    : undefined;
+  const swipeReschedule = !entry.is_done && (entry.kind === "task" || entry.kind === "task_occ")
+    ? {
+        icon: <span className="text-[15px] leading-none">📅</span>,
+        color: "var(--c-warning-ink)",
+        onTrigger: () => onReschedule(entry),
+      }
+    : undefined;
+
   return (
+    <SwipeRow left={swipeComplete} right={swipeReschedule}>
     <div
       ref={setNodeRef}
       className={clsx(
@@ -516,6 +538,7 @@ function EntryRow({
         />
       )}
     </div>
+    </SwipeRow>
   );
 }
 

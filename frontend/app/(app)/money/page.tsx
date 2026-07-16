@@ -18,6 +18,7 @@ import { api } from "@/lib/api";
 import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/budgetMonth";
 import { buildCategoryColorMap } from "@/lib/categoryColor";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
+import { SwipeRow } from "@/components/primitives/SwipeRow";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -550,8 +551,20 @@ export default function MoneyPage() {
             {/* Mobile: card list */}
             <div className="md:hidden bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl overflow-hidden">
               {data.items.map((tx, i) => (
-                <div
+                <SwipeRow
                   key={tx.transaction_id}
+                  left={{
+                    icon: <span className="text-[15px] leading-none">🔁</span>,
+                    color: "var(--app-accent)",
+                    onTrigger: () => repeatTx(tx),
+                  }}
+                  right={{
+                    icon: <span className="text-[15px] leading-none">✏️</span>,
+                    color: "var(--c-warning-ink)",
+                    onTrigger: () => setEditTx(tx),
+                  }}
+                >
+                <div
                   className={clsx(
                     "flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/tx",
                     i < data.items.length - 1 && "border-b border-slate-100 dark:border-white/[0.04]"
@@ -612,6 +625,7 @@ export default function MoneyPage() {
                     </div>
                   </div>
                 </div>
+                </SwipeRow>
               ))}
             </div>
 
