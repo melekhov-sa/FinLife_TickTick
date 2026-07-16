@@ -65,9 +65,28 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   const [draftCategories, setDraftCategories] = useState<number[] | null>(null);
   const prefsMut = useMutation({
     mutationFn: (value: QuickExpensePrefs) =>
-      api.put("/api/v2/profile/ui-prefs", { key: "quick_expense", value }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["ui-prefs"] }),
+      api.put<{ ok: boolean; ui_prefs: Record<string, QuickExpensePrefs> }>(
+        "/api/v2/profile/ui-prefs", { key: "quick_expense", value },
+      ),
+    onSuccess: (resp) => {
+      // применяем сразу, не дожидаясь рефетча
+      qc.setQueryData(["ui-prefs"], { ui_prefs: resp.ui_prefs });
+    },
   });
+
+  async function saveSettings() {
+    setError(null);
+    try {
+      await prefsMut.mutateAsync({
+        wallets: draftWallets ?? [],
+        categories: draftCategories ?? [],
+      });
+      void hapticSuccess();
+      setSettingsMode(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message.replace(/^API error \d+: /, "") : "Не удалось сохранить");
+    }
+  }
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
@@ -101,9 +120,19 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   const amount = evalExpr(expr);
   const hasOp = /[+-]/.test(expr.slice(1));
 
+  // Листовые статьи: без групп-агрегатов, но ВКЛЮЧАЯ самостоятельные
+  // категории верхнего уровня (у них parent_id = null и нет детей)
+  const leafCats = useMemo(() => {
+    const all = finCats ?? [];
+    const withChildren = new Set(
+      all.filter((c) => c.parent_id != null).map((c) => c.parent_id as number),
+    );
+    return all.filter((c) => !withChildren.has(c.category_id));
+  }, [finCats]);
+
   // Чипы: свой список из настроек (для расходов) приоритетнее автоподбора
   const chipCats = useMemo(() => {
-    const forType = (finCats ?? []).filter((c) => c.category_type === opType && c.parent_id !== null);
+    const forType = leafCats.filter((c) => c.category_type === opType);
     const byId = new Map(forType.map((c) => [c.category_id, c]));
 
     if (opType === "EXPENSE" && prefs.categories && prefs.categories.length > 0) {
@@ -133,7 +162,7 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
       if (!ordered.some((x) => x.category_id === c.category_id)) ordered.push(c);
     }
     return ordered.slice(0, 8);
-  }, [finCats, opType, suggested, prefs.categories, categoryId]);
+  }, [leafCats, opType, suggested, prefs.categories, categoryId]);
 
   // Подсказка категории по сумме (тот же движок, что в полной форме)
   useEffect(() => {
@@ -231,12 +260,12 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => (settingsMode ? setSettingsMode(false) : onClose())}
           className="w-9 h-9 flex items-center justify-center rounded-xl"
           style={{ color: "var(--t-muted)", background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
-          aria-label="Закрыть"
+          aria-label={settingsMode ? "Назад" : "Закрыть"}
         >
-          <X size={16} />
+          {settingsMode ? <ChevronLeft size={16} /> : <X size={16} />}
         </button>
         <div className="flex-1 flex justify-center gap-1.5">
           {(["EXPENSE", "INCOME"] as OpType[]).map((t) => (
@@ -272,20 +301,9 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
 
       {settingsMode && (
         <div className="flex-1 overflow-y-auto px-4 pb-6">
-          <button
-            type="button"
-            onClick={() => {
-              prefsMut.mutate({
-                wallets: draftWallets ?? [],
-                categories: draftCategories ?? [],
-              });
-              setSettingsMode(false);
-            }}
-            className="flex items-center gap-1 text-[14px] font-semibold mb-3"
-            style={{ color: "var(--app-accent)" }}
-          >
-            <ChevronLeft size={16} /> Готово
-          </button>
+          <p className="text-[15px] font-bold mb-3" style={{ color: "var(--t-primary)" }}>
+            Настройка формы
+          </p>
 
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
             Кошельки в форме
@@ -327,8 +345,8 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
             Порядок чипов — порядок выбора. Ничего не выбрано — автоподбор.
           </p>
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--app-border)", background: "var(--app-card-bg)" }}>
-            {(finCats ?? [])
-              .filter((c) => c.category_type === "EXPENSE" && c.parent_id !== null)
+            {leafCats
+              .filter((c) => c.category_type === "EXPENSE")
               .map((c) => {
                 const idx = (draftCategories ?? []).indexOf(c.category_id);
                 const emoji = getCategoryEmoji(c.title, c.emoji);
@@ -360,6 +378,23 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
                   </button>
                 );
               })}
+          </div>
+
+          {error && <p className="text-[12px] mt-2" style={{ color: "var(--c-danger-ink)" }}>{error}</p>}
+
+          <div
+            className="sticky bottom-0 mt-3 pt-2"
+            style={{ background: "var(--app-bg)", paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+          >
+            <button
+              type="button"
+              disabled={prefsMut.isPending}
+              onClick={() => void saveSettings()}
+              className="w-full h-12 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "var(--app-accent-gradient, var(--app-accent))", color: "#fff" }}
+            >
+              {prefsMut.isPending ? "Сохраняем…" : "Сохранить"}
+            </button>
           </div>
         </div>
       )}
