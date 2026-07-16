@@ -37,6 +37,33 @@ def change_password(body: ChangePasswordRequest, request: Request, db: Session =
     return {"ok": True}
 
 
+@router.get("/profile/ui-prefs")
+def get_ui_prefs(request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    user = db.query(User).filter(User.id == user_id).first()
+    return {"ui_prefs": (user.ui_prefs if user else None) or {}}
+
+
+class UiPrefsIn(BaseModel):
+    key: str          # напр. "quick_expense"
+    value: dict
+
+
+@router.put("/profile/ui-prefs")
+def put_ui_prefs(body: UiPrefsIn, request: Request, db: Session = Depends(get_db)):
+    user_id = get_user_id(request, db)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if len(body.key) > 64:
+        raise HTTPException(status_code=400, detail="Слишком длинный ключ")
+    prefs = dict(user.ui_prefs or {})
+    prefs[body.key] = body.value
+    user.ui_prefs = prefs
+    db.commit()
+    return {"ok": True, "ui_prefs": prefs}
+
+
 @router.get("/profile")
 def get_profile(request: Request, db: Session = Depends(get_db)):
     user_id = get_user_id(request, db)

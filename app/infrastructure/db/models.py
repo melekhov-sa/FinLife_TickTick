@@ -27,6 +27,8 @@ class User(Base):
     )
 
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # UI-настройки: {"quick_expense": {"wallets": [...], "categories": [...]}, ...}
+    ui_prefs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}", default={})
     last_seen_at: Mapped[DateTime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )

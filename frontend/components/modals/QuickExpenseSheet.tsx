@@ -8,8 +8,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Delete, Check } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { X, Delete, Check, Settings2, ChevronLeft } from "lucide-react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { getCategoryColor } from "@/lib/categoryColor";
@@ -47,7 +47,27 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggested, setSuggested] = useState<number[]>([]);
+  const [settingsMode, setSettingsMode] = useState(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Пользовательские настройки формы: свои кошельки и свои чипы статей
+  interface QuickExpensePrefs {
+    wallets?: number[];     // пусто/нет = все
+    categories?: number[];  // пусто/нет = автоподбор (частые+подсказки)
+  }
+  const { data: uiPrefsData } = useQuery<{ ui_prefs: Record<string, QuickExpensePrefs> }>({
+    queryKey: ["ui-prefs"],
+    queryFn: () => api.get("/api/v2/profile/ui-prefs"),
+    staleTime: 300_000,
+  });
+  const prefs: QuickExpensePrefs = uiPrefsData?.ui_prefs?.quick_expense ?? {};
+  const [draftWallets, setDraftWallets] = useState<number[] | null>(null);
+  const [draftCategories, setDraftCategories] = useState<number[] | null>(null);
+  const prefsMut = useMutation({
+    mutationFn: (value: QuickExpensePrefs) =>
+      api.put("/api/v2/profile/ui-prefs", { key: "quick_expense", value }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ui-prefs"] }),
+  });
 
   const { data: wallets } = useQuery<WalletItem[]>({
     queryKey: ["wallets"],
@@ -60,14 +80,18 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
     staleTime: 300_000,
   });
 
-  const sortedWallets = useMemo(
-    () =>
-      (wallets ?? [])
-        .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
-        .slice()
-        .sort((a, b) => b.operations_count_30d - a.operations_count_30d),
-    [wallets, opType],
-  );
+  const sortedWallets = useMemo(() => {
+    let list = (wallets ?? [])
+      .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
+      .slice()
+      .sort((a, b) => b.operations_count_30d - a.operations_count_30d);
+    if (prefs.wallets && prefs.wallets.length > 0) {
+      const allowed = new Set(prefs.wallets);
+      const filtered = list.filter((w) => allowed.has(w.wallet_id));
+      if (filtered.length > 0) list = filtered;
+    }
+    return list;
+  }, [wallets, opType, prefs.wallets]);
 
   // Кошелёк по умолчанию — самый используемый
   useEffect(() => {
@@ -77,10 +101,25 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   const amount = evalExpr(expr);
   const hasOp = /[+-]/.test(expr.slice(1));
 
-  // Чипы: частые категории типа + подсказки движка (после суммы)
+  // Чипы: свой список из настроек (для расходов) приоритетнее автоподбора
   const chipCats = useMemo(() => {
     const forType = (finCats ?? []).filter((c) => c.category_type === opType && c.parent_id !== null);
     const byId = new Map(forType.map((c) => [c.category_id, c]));
+
+    if (opType === "EXPENSE" && prefs.categories && prefs.categories.length > 0) {
+      const ordered: FinCategoryItem[] = [];
+      for (const id of prefs.categories) {
+        const c = byId.get(id);
+        if (c) ordered.push(c);
+      }
+      // выбранная (в т.ч. подсказкой) категория вне списка — показываем чипом
+      if (categoryId != null && !ordered.some((x) => x.category_id === categoryId)) {
+        const c = byId.get(categoryId);
+        if (c) ordered.push(c);
+      }
+      return ordered;
+    }
+
     const ordered: FinCategoryItem[] = [];
     for (const id of suggested) {
       const c = byId.get(id);
@@ -94,7 +133,7 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
       if (!ordered.some((x) => x.category_id === c.category_id)) ordered.push(c);
     }
     return ordered.slice(0, 8);
-  }, [finCats, opType, suggested]);
+  }, [finCats, opType, suggested, prefs.categories, categoryId]);
 
   // Подсказка категории по сумме (тот же движок, что в полной форме)
   useEffect(() => {
@@ -216,9 +255,117 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
-        <div className="w-9" />
+        <button
+          type="button"
+          onClick={() => {
+            setDraftWallets(prefs.wallets ?? []);
+            setDraftCategories(prefs.categories ?? []);
+            setSettingsMode(true);
+          }}
+          className="w-9 h-9 flex items-center justify-center rounded-xl"
+          style={{ color: "var(--t-muted)", background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
+          aria-label="Настроить форму"
+        >
+          <Settings2 size={16} />
+        </button>
       </div>
 
+      {settingsMode && (
+        <div className="flex-1 overflow-y-auto px-4 pb-6">
+          <button
+            type="button"
+            onClick={() => {
+              prefsMut.mutate({
+                wallets: draftWallets ?? [],
+                categories: draftCategories ?? [],
+              });
+              setSettingsMode(false);
+            }}
+            className="flex items-center gap-1 text-[14px] font-semibold mb-3"
+            style={{ color: "var(--app-accent)" }}
+          >
+            <ChevronLeft size={16} /> Готово
+          </button>
+
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+            Кошельки в форме
+          </p>
+          <p className="text-[11px] mb-2" style={{ color: "var(--t-faint)" }}>
+            Ничего не выбрано — показываются все.
+          </p>
+          <div className="rounded-2xl border overflow-hidden mb-4" style={{ borderColor: "var(--app-border)", background: "var(--app-card-bg)" }}>
+            {(wallets ?? []).filter((w) => w.wallet_type !== "SAVINGS").map((w) => {
+              const on = (draftWallets ?? []).includes(w.wallet_id);
+              return (
+                <button
+                  key={w.wallet_id}
+                  type="button"
+                  onClick={() => {
+                    void hapticTick();
+                    setDraftWallets((prev) => {
+                      const cur = prev ?? [];
+                      return on ? cur.filter((id) => id !== w.wallet_id) : [...cur, w.wallet_id];
+                    });
+                  }}
+                  className="w-full flex items-center gap-2 px-3.5 min-h-[44px] text-left border-b last:border-0"
+                  style={{ borderColor: "var(--app-border-subtle, var(--app-border))" }}
+                >
+                  <span className="flex-1 text-[14px] truncate" style={{ color: "var(--t-primary)" }}>{w.title}</span>
+                  <span className="text-[12px] tabular-nums" style={{ color: "var(--t-faint)" }}>
+                    {parseFloat(w.balance).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} {w.currency === "RUB" ? "₽" : w.currency}
+                  </span>
+                  {on && <Check size={16} style={{ color: "var(--app-accent)" }} />}
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--t-faint)" }}>
+            Чипы статей расходов
+          </p>
+          <p className="text-[11px] mb-2" style={{ color: "var(--t-faint)" }}>
+            Порядок чипов — порядок выбора. Ничего не выбрано — автоподбор.
+          </p>
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--app-border)", background: "var(--app-card-bg)" }}>
+            {(finCats ?? [])
+              .filter((c) => c.category_type === "EXPENSE" && c.parent_id !== null)
+              .map((c) => {
+                const idx = (draftCategories ?? []).indexOf(c.category_id);
+                const emoji = getCategoryEmoji(c.title, c.emoji);
+                return (
+                  <button
+                    key={c.category_id}
+                    type="button"
+                    onClick={() => {
+                      void hapticTick();
+                      setDraftCategories((prev) => {
+                        const cur = prev ?? [];
+                        return idx >= 0 ? cur.filter((id) => id !== c.category_id) : [...cur, c.category_id];
+                      });
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 min-h-[44px] text-left border-b last:border-0"
+                    style={{ borderColor: "var(--app-border-subtle, var(--app-border))" }}
+                  >
+                    <span
+                      className="inline-block w-2 h-2 rounded-full shrink-0"
+                      style={{ background: getCategoryColor(c.category_id, c.color) }}
+                    />
+                    {emoji && <span className="text-[14px] leading-none">{emoji}</span>}
+                    <span className="flex-1 text-[14px] truncate" style={{ color: "var(--t-primary)" }}>{c.title}</span>
+                    {idx >= 0 && (
+                      <span className="text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-md" style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}>
+                        {idx + 1}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {!settingsMode && (
+      <>
       {/* Amount */}
       <div className="flex flex-col items-center justify-center px-6 pt-4 pb-2 shrink-0">
         <div
@@ -309,6 +456,8 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
           })}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 
