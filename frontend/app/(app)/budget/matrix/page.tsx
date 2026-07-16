@@ -909,6 +909,7 @@ function CategoryDataRow({
 // ── Goal row ──────────────────────────────────────────────────────────────────
 
 function GoalDataRow({
+  topByPeriod,
   row,
   periodCount,
   kind,
@@ -930,6 +931,7 @@ function GoalDataRow({
   periods?: BudgetPeriod[];
   editing?: EditingProps;
   goalPlanType?: string;
+  topByPeriod?: Set<number>[];
   isHidden?: boolean;
   onToggleVisibility?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
@@ -1023,7 +1025,7 @@ function GoalDataRow({
             />
           </td>
         ) : (
-          <td className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group" style={{ color: "var(--t-muted)", ...pBorder }}>
+          <td className="tabular-nums text-right px-2 py-1.5 text-[12px] relative group" style={{ color: "var(--t-primary)", fontWeight: topByPeriod?.[i]?.has(row.goal_id) ? 700 : undefined, ...pBorder }}>
             {canEdit && editing && target && (
               <button
                 type="button"
@@ -1060,7 +1062,7 @@ function GoalDataRow({
             <React.Fragment key={i}>
               {planTd}
               <FactCell cell={cell} kind={kind} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "var(--t-muted)" : "#DC2626" }}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>
                 {cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
@@ -1642,13 +1644,14 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
   );
 }
 
-function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType }: {
+function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType, topSet }: {
   row: BudgetGoalRow;
   focusPeriod: BudgetPeriod | undefined;
   focusIdx: number;
   editing: EditingProps;
   kind: "income" | "expense";
   goalPlanType: string;
+  topSet?: Set<number>;
 }) {
   const cell = row.cells[focusIdx] ?? { plan: 0, fact: 0, deviation: 0, note: null };
   const canEdit = !!focusPeriod?.has_manual_plan;
@@ -1712,7 +1715,7 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
         )}
         <div
           className="tabular-nums text-right text-[12px]"
-          style={{ color: "var(--t-primary)", cursor: canEdit ? "pointer" : "default" }}
+          style={{ color: "var(--t-primary)", fontWeight: topSet?.has(row.goal_id) ? 700 : undefined, cursor: canEdit ? "pointer" : "default" }}
           onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
         >
           {isEditing ? (
@@ -2273,6 +2276,16 @@ export default function BudgetMatrixPage() {
   };
   const topExpenseByPeriod: Set<number>[] = periods.map((_, pi) => topByPeriod(data?.expense_rows, pi, 10));
   const topIncomeByPeriod: Set<number>[] = periods.map((_, pi) => topByPeriod(data?.income_rows, pi, 3));
+  const topGoalsByPeriod = (rows: { goal_id: number; cells: BudgetCell[] }[] | undefined, n: number): Set<number>[] =>
+    periods.map((_, pi) => {
+      const top = (rows ?? [])
+        .filter((r) => Math.abs(r.cells[pi]?.plan ?? 0) > 0)
+        .sort((a, b) => Math.abs(b.cells[pi].plan) - Math.abs(a.cells[pi].plan))
+        .slice(0, n);
+      return new Set(top.map((r) => r.goal_id));
+    });
+  const topGoalByPeriod: Set<number>[] = topGoalsByPeriod(data?.goal_rows, 3);
+  const topWithdrawByPeriod: Set<number>[] = topGoalsByPeriod(data?.withdrawal_rows, 3);
 
   const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
     queryKey: ["fin-categories"],
@@ -2445,6 +2458,7 @@ export default function BudgetMatrixPage() {
                     editing={editingProps}
                     kind="income"
                     goalPlanType="withdrawal"
+                    topSet={topWithdrawByPeriod[focusIdx]}
                   />
                 ))}
                 <MobileTotRow label="Итого взять" totals={data.withdrawal_totals} kind="income" />
@@ -2487,6 +2501,7 @@ export default function BudgetMatrixPage() {
                     editing={editingProps}
                     kind="expense"
                     goalPlanType="goal"
+                    topSet={topGoalByPeriod[focusIdx]}
                   />
                 ))}
                 <MobileTotRow label="Итого отложить" totals={data.goal_totals} kind="expense" />
@@ -2639,6 +2654,7 @@ export default function BudgetMatrixPage() {
                           periods={periods}
                           editing={editingProps}
                           goalPlanType="withdrawal"
+                          topByPeriod={topWithdrawByPeriod}
                           isHidden={showHidden && hiddenWGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "withdrawal") : undefined}
                           onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
@@ -2734,6 +2750,7 @@ export default function BudgetMatrixPage() {
                           periods={periods}
                           editing={editingProps}
                           goalPlanType="goal"
+                          topByPeriod={topGoalByPeriod}
                           isHidden={showHidden && hiddenGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "goal") : undefined}
                           onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
