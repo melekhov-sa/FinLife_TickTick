@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm,
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 import { Checkbox } from "@/components/primitives/Checkbox";
@@ -69,6 +70,8 @@ interface PlanEditTarget {
 }
 
 interface EditingProps {
+  /** category_id → кастомный эмодзи из справочника (null = авто по названию) */
+  catVisual?: Record<number, string | null>;
   openPlanEdit: (target: PlanEditTarget) => void;  // shift+click → copy-forward modal
   openFactDetail: (target: FactDetailTarget) => void;
   dragHandlers: DragHandlers;
@@ -557,9 +560,11 @@ function FactCell({
     return <td className={clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", totalCol && "bgt-tc-fact")} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
+  const pct = hasFact && hasPlan && cell.plan > 0 ? Math.min(1, Math.abs(cell.fact) / Math.abs(cell.plan)) : null;
+
   return (
     <td
-      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
+      className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px] relative", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
       style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
     >
       {hasFact && onClick ? (
@@ -568,6 +573,19 @@ function FactCell({
         </span>
       ) : (
         hasFact ? fmt(cell.fact) : "—"
+      )}
+      {/* Мини-прогресс факт/план — капля жизни в таблице */}
+      {pct !== null && !totalCol && (
+        <span
+          className="absolute left-2 right-2 bottom-[2px] h-[2px] rounded-full overflow-hidden"
+          style={{ background: "var(--app-border-subtle, var(--app-border))" }}
+          aria-hidden
+        >
+          <span
+            className="absolute left-0 top-0 bottom-0 rounded-full"
+            style={{ width: `${pct * 100}%`, background: color, opacity: 0.55 }}
+          />
+        </span>
       )}
     </td>
   );
@@ -641,6 +659,15 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
 
 // ── Section header row ────────────────────────────────────────────────────────
 
+function sectionEmoji(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes("доход")) return "💰";
+  if (l.includes("расход")) return "💸";
+  if (l.includes("отложен") || l.includes("взять")) return "🏧";
+  if (l.includes("накоплен") || l.includes("цел")) return "🐷";
+  return "📊";
+}
+
 function SectionHeaderRow({
   label,
   colSpan,
@@ -664,6 +691,7 @@ function SectionHeaderRow({
             ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
             : <ChevronRightSm size={12} style={{ color: "var(--t-muted)" }} />
           }
+          <span className="text-[12px] leading-none">{sectionEmoji(label)}</span>
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>
             {label}
           </span>
@@ -812,6 +840,10 @@ function CategoryDataRow({
             </span>
           )}
           {row.depth > 0 && <span className="text-slate-300 text-[10px] mr-0.5">└</span>}
+          {(() => {
+            const e = (row.category_id != null ? editing.catVisual?.[row.category_id] : null) ?? getCategoryEmoji(row.title);
+            return e ? <span className="text-[12px] leading-none shrink-0">{e}</span> : null;
+          })()}
           <span className={editing.hiddenCatIds?.has(row.category_id!) ? "opacity-40 line-through" : ""}>
             {row.title}
           </span>
@@ -943,6 +975,7 @@ function GoalDataRow({
           >
             <GripVertical size={12} className="text-slate-300 shrink-0 pointer-events-none" />
           </span>
+          {(() => { const e = getCategoryEmoji(row.title); return e ? <span className="text-[12px] leading-none shrink-0 mr-1">{e}</span> : null; })()}
           <span className={isHidden ? "opacity-40 line-through" : ""}>{row.title}</span>
           {onToggleVisibility && (
             <Tooltip content={isHidden ? "Показать в бюджете" : "Скрыть из бюджета"}>
@@ -1487,6 +1520,7 @@ function MobileSecHead({ label, expanded, onToggle }: { label: string; expanded:
       {expanded
         ? <ChevronDown size={12} style={{ color: "var(--t-muted)" }} />
         : <ChevronRightSm size={12} style={{ color: "var(--t-muted)" }} />}
+      <span className="text-[12px] leading-none">{sectionEmoji(label)}</span>
       <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>{label}</span>
     </div>
   );
@@ -1547,6 +1581,10 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
             )}
             style={{ color: "var(--t-primary)" }}
           >
+            {(() => {
+              const e = (row.category_id != null ? editing.catVisual?.[row.category_id] : null) ?? getCategoryEmoji(row.title);
+              return e ? <span className="mr-1">{e}</span> : null;
+            })()}
             {row.title}
           </span>
           {!!cell.note && (
@@ -1657,7 +1695,10 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
       style={{ borderColor: "var(--app-border)", background: "var(--bgt-row-bg)" }}
     >
       <div className="flex-1 min-w-0">
-        <span className="text-[13px] truncate block font-normal" style={{ color: "var(--t-secondary)" }}>{row.title}</span>
+        <span className="text-[13px] truncate block font-normal" style={{ color: "var(--t-secondary)" }}>
+          {(() => { const e = getCategoryEmoji(row.title); return e ? <span className="mr-1">{e}</span> : null; })()}
+          {row.title}
+        </span>
         {pct !== null && (
           <div className="mt-1.5 h-[3px] rounded-full overflow-hidden" style={{ background: "var(--app-border)" }}>
             <div className="h-full rounded-full" style={{ width: `${Math.min(pct * 100, 100)}%`, background: barColor }} />
@@ -2238,7 +2279,19 @@ export default function BudgetMatrixPage() {
     return mx;
   });
 
+  const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
+    queryKey: ["fin-categories"],
+    queryFn: () => api.get("/api/v2/fin-categories"),
+    staleTime: 300_000,
+  });
+  const catVisual = React.useMemo(() => {
+    const m: Record<number, string | null> = {};
+    for (const c of finCatsAll ?? []) m[c.category_id] = getCategoryEmoji(c.title, c.emoji);
+    return m;
+  }, [finCatsAll]);
+
   const editingProps: EditingProps = {
+    catVisual,
     openPlanEdit: setPlanEditTarget,
     openFactDetail: setFactDetailTarget,
     dragHandlers: { onDragStart, onDragOver, onDragLeave, onDragEnd, dragOver },
