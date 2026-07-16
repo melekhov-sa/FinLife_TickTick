@@ -130,7 +130,7 @@ export function TimeInput({
     >
       <div
         className="w-full rounded-t-2xl flex flex-col animate-sheet-up overflow-hidden"
-        style={{ background: "var(--app-card-bg, #fff)" }}
+        style={{ background: "var(--app-sheet-bg, var(--app-card-bg, #fff))" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center pt-2.5 pb-1 shrink-0">

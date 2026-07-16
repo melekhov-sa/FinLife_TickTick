@@ -41,7 +41,7 @@ export function ActionSheet({
         {/* Группа действий */}
         <div
           className="rounded-2xl overflow-hidden mb-2"
-          style={{ background: "var(--app-card-bg)", border: "1px solid var(--app-border)" }}
+          style={{ background: "var(--app-sheet-bg, var(--app-card-bg))", border: "1px solid var(--app-border)" }}
         >
           {title && (
             <p
@@ -77,7 +77,7 @@ export function ActionSheet({
           onClick={onClose}
           className="w-full rounded-2xl px-4 py-3.5 text-[16px] font-semibold text-center transition-transform active:scale-[0.99]"
           style={{
-            background: "var(--app-card-bg)",
+            background: "var(--app-sheet-bg, var(--app-card-bg))",
             border: "1px solid var(--app-border)",
             color: "var(--t-primary)",
           }}

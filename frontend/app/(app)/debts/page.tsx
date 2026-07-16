@@ -20,6 +20,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { FormRow } from "@/components/ui/FormRow";
 import { Select, type SelectOption } from "@/components/ui/Select";
 import { hapticSuccess, hapticTick } from "@/lib/native";
+import { CountUp } from "@/components/primitives/CountUp";
 import { clsx } from "clsx";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -543,7 +544,7 @@ export default function DebtsPage() {
               </p>
               {currencies.map((c) => (
                 <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "var(--c-success-ink)" }}>
-                  {fmt(totals[c].lent)} {cur(c)}
+                  <CountUp value={totals[c].lent} /> {cur(c)}
                 </p>
               ))}
             </div>
@@ -553,7 +554,7 @@ export default function DebtsPage() {
               </p>
               {currencies.map((c) => (
                 <p key={c} className="text-[16px] font-bold tabular-nums font-display" style={{ color: "var(--c-danger-ink)" }}>
-                  {fmt(totals[c].borrowed)} {cur(c)}
+                  <CountUp value={totals[c].borrowed} /> {cur(c)}
                 </p>
               ))}
             </div>

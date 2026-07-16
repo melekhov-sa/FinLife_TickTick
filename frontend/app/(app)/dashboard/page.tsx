@@ -10,6 +10,7 @@ import { ExpiringSubsCard } from "@/components/dashboard/ExpiringSubsCard";
 import { ShoppingWidget } from "@/components/dashboard/ShoppingWidget";
 import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
+import { DaypartGlow } from "@/components/dashboard/DaypartGlow";
 import { FlashcardsWidget } from "@/components/dashboard/FlashcardsWidget";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { PullToRefresh } from "@/components/primitives/PullToRefresh";
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   return (
     <>
       <main className="flex-1 p-3 md:p-6 relative">
+        <DaypartGlow />
         <PullToRefresh
           onRefresh={() =>
             Promise.all([

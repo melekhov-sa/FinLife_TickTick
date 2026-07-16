@@ -97,7 +97,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
         ref={sheetRef as React.Ref<HTMLFormElement & HTMLDivElement>}
         className={clsx(
           "flex flex-col border shadow-2xl overflow-hidden animate-sheet-up",
-          "bg-white dark:bg-[#1a1d23] border-slate-200 dark:border-white/[0.09]",
+          "bg-[var(--app-sheet-bg,#fff)] border-slate-200 dark:border-white/[0.09]",
           // Mobile: bottom sheet, full width
           "w-full rounded-t-2xl",
           // Desktop: centered modal

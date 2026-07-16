@@ -6,6 +6,7 @@ import { TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
+import { CountUp } from "@/components/primitives/CountUp";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
@@ -43,7 +44,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Обычные кошельки</span>
               <span className="text-[13px] md:text-[14px] font-semibold tabular-nums" style={{ color: "var(--t-secondary)" }}>
-                {fmt(finState.regular_total)} ₽
+                <CountUp value={finState.regular_total} /> ₽
               </span>
             </div>
 
@@ -51,7 +52,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Кредиты</span>
               <span className="text-[13px] md:text-[14px] font-semibold tabular-nums money-expense">
-                {fmt(finState.credit_total)} ₽
+                <CountUp value={finState.credit_total} /> ₽
               </span>
             </div>
 
@@ -60,7 +61,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               <Link href="/debts" className="flex items-baseline justify-between gap-2">
                 <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Мне должны</span>
                 <span className="text-[13px] md:text-[14px] font-semibold tabular-nums money-income">
-                  {fmt(debtLent)} ₽
+                  <CountUp value={debtLent} /> ₽
                 </span>
               </Link>
             )}
@@ -68,7 +69,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               <Link href="/debts" className="flex items-baseline justify-between gap-2">
                 <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Я должен</span>
                 <span className="text-[13px] md:text-[14px] font-semibold tabular-nums money-expense">
-                  {fmt(debtBorrowed)} ₽
+                  <CountUp value={debtBorrowed} /> ₽
                 </span>
               </Link>
             )}
@@ -78,7 +79,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Накопления</span>
               <div className="text-right">
                 <p className="text-[13px] md:text-[14px] font-semibold tabular-nums money-income leading-snug">
-                  {fmt(finState.savings_total)} ₽
+                  <CountUp value={finState.savings_total} /> ₽
                 </p>
                 {delta !== null && (
                   <p className={clsx(

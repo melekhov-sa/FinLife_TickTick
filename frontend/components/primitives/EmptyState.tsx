@@ -104,7 +104,7 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function E
       className={cn("flex flex-col items-center text-center", className)}
       style={{ padding: `${tok.padY}px ${tok.padX}px` }}
     >
-      <span aria-hidden className="relative inline-flex shrink-0 animate-pop">
+      <span aria-hidden className="relative inline-flex shrink-0 animate-pop animate-float-soft">
         {/* Фирменный ореол-свечение за плашкой */}
         {variant === "empty" && (
           <span
