@@ -345,7 +345,14 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       try {
         const results = await api.post<{ category_id: number; confidence: number; exact?: boolean; reason?: string }[]>(
           "/api/v2/transactions/suggest-category",
-          { amount, wallet_id: walletId, operation_type: opType, hour: new Date().getHours() },
+          {
+            amount,
+            wallet_id: walletId,
+            operation_type: opType,
+            hour: new Date().getHours(),
+            description: description.trim() || null,
+            date: occurredAt ? occurredAt.slice(0, 10) : null,
+          },
         );
         if (results.length > 0) {
           setSuggestion(results[0]);
@@ -361,7 +368,7 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       }
     }, 600);
     return () => { if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current); };
-  }, [amount, walletId, opType]);
+  }, [amount, walletId, opType, description, occurredAt]);
 
   function clearFieldError(field: string) {
     if (fieldErrors[field]) setFieldErrors((prev) => { const next = { ...prev }; delete next[field]; return next; });

@@ -649,26 +649,35 @@ def aggregate_transactions(
 
 # ── Category suggestion ────────────────────────────────────────────────────
 #
-# Модель «похожих соседей» (weighted k-NN) по сумме / кошельку / времени.
-# Описание не используется — пользователь его обычно не заполняет.
-#
-# Идея: новая операция, скорее всего, той же категории, что и прошлые операции
-# с ПОХОЖЕЙ суммой (а точное совпадение — почти стопроцентный сигнал, напр.
-# 3200 ₽ каждый месяц на транспорт). Каждая прошлая операция «голосует» за свою
-# категорию с весом = близость суммы × кошелёк × время × свежесть.
-# Никакого перекоса на «самую частую категорию»: редкая, но точно совпадающая
-# по сумме категория уверенно побеждает.
+# Модель «похожих соседей» (weighted k-NN) + сильные ранние сигналы.
+# Уровни (от сильного к слабому):
+#   0. Плановая операция: сумма ≈ активной плановой на ближайшие дни → её категория.
+#   1. Описание: токены из введённого текста совпали с прошлыми описаниями.
+#   2. Точный повтор суммы (857 ₽ → связь).
+#   3. k-NN: близость суммы × кошелёк × время суток × день месяца ×
+#      будни/выходной × свежесть. Никакого перекоса на «самую частую»:
+#      редкая, но точно совпадающая по сумме категория уверенно побеждает.
 
 import math as _math
+import re as _re
 from collections import defaultdict as _defaultdict
 
 _LOOKBACK_DAYS = 180          # ловим и помесячные платежи (≈6 повторов)
 _AMOUNT_SIGMA = 0.12          # «ширина» похожести суммы (~±12% — сильное совпадение)
 _WALLET_OTHER = 0.45         # вес операции с другого кошелька
 _TIME_OTHER = 0.80           # вес операции в другое время суток
+_DOW_OTHER = 0.90            # вес операции в другой тип дня (будни/выходной)
+_DOM_BONUS = 1.15            # бонус за близкий день месяца (повторяющиеся платежи)
+_TEXT_BONUS = 1.6            # бонус за совпадение описания внутри k-NN
 _MIN_TOTAL_WEIGHT = 0.8      # минимум «похожей истории», иначе не подсказываем
 _NEAR_EXACT = 0.90           # порог «почти точное совпадение суммы»
 _MIN_CONFIDENCE = 0.45
+
+# Служебные слова, не несущие категорию
+_STOP_TOKENS = {
+    "оплата", "покупка", "покупки", "перевод", "платеж", "платёж", "магазин",
+    "оплатить", "счет", "счёт", "карта", "карты", "рублей", "руб",
+}
 
 
 def _time_bucket(hour: int) -> int:
@@ -686,11 +695,48 @@ def _amount_similarity(a: float, b: float) -> float:
     return _math.exp(-(d * d) / (2 * _AMOUNT_SIGMA * _AMOUNT_SIGMA))
 
 
+def _desc_tokens(s: str | None) -> set[str]:
+    """Нормализованные токены описания: lower, ё→е, только буквы, ≥3 символов."""
+    if not s:
+        return set()
+    s = s.lower().replace("ё", "е")
+    s = _re.sub(r"[^а-яa-z ]", " ", s)
+    return {t for t in s.split() if len(t) >= 3 and t not in _STOP_TOKENS}
+
+
+def _text_match(q_tokens: set[str], row_tokens: set[str]) -> bool:
+    """Совпадение описаний: общий токен или общий префикс ≥4 (склонения)."""
+    if not q_tokens or not row_tokens:
+        return False
+    if q_tokens & row_tokens:
+        return True
+    for qt in q_tokens:
+        if len(qt) < 4:
+            continue
+        p = qt[:4]
+        for rt in row_tokens:
+            if rt.startswith(p) or (len(rt) >= 4 and qt.startswith(rt[:4])):
+                return True
+    return False
+
+
+def _dom_close(d1: int, d2: int) -> bool:
+    """Циклическая близость дня месяца (±2 дня): ипотека 1-го ≈ 30-го."""
+    diff = abs(d1 - d2)
+    return min(diff, 31 - diff) <= 2
+
+
+def _is_weekend(dt) -> bool:
+    return dt.weekday() >= 5
+
+
 class SuggestCategoryRequest(BaseModel):
     amount: str
     wallet_id: int | None = None
     operation_type: str
     hour: int | None = None
+    description: str | None = None   # введённый текст — сильный сигнал
+    date: str | None = None          # YYYY-MM-DD даты операции (для дня месяца/недели)
 
 
 class SuggestCategoryResult(BaseModel):
@@ -715,6 +761,7 @@ def suggest_category(
             TransactionFeed.amount,
             TransactionFeed.wallet_id,
             TransactionFeed.occurred_at,
+            TransactionFeed.description,
         )
         .filter(
             TransactionFeed.account_id == user_id,
@@ -735,7 +782,65 @@ def suggest_category(
     except (ValueError, TypeError):
         return []
 
-    # ── Уровень 1: точный повтор суммы (сильнейший сигнал) ──────────────────
+    try:
+        target_date = date.fromisoformat(body.date) if body.date else date.today()
+    except ValueError:
+        target_date = date.today()
+
+    # ── Уровень 0: сумма совпадает с плановой операцией ближайших дней ───────
+    from app.infrastructure.db.models import OperationOccurrence, OperationTemplateModel
+    po = (
+        db.query(OperationTemplateModel.category_id, OperationTemplateModel.title,
+                 OperationTemplateModel.amount)
+        .join(OperationOccurrence,
+              OperationOccurrence.template_id == OperationTemplateModel.template_id)
+        .filter(
+            OperationOccurrence.account_id == user_id,
+            OperationOccurrence.status == "ACTIVE",
+            OperationOccurrence.scheduled_date >= target_date - timedelta(days=10),
+            OperationOccurrence.scheduled_date <= target_date + timedelta(days=10),
+            OperationTemplateModel.kind == body.operation_type,
+            OperationTemplateModel.category_id.isnot(None),
+            OperationTemplateModel.amount.isnot(None),
+        )
+        .all()
+    )
+    for cat_id, title, po_amount in po:
+        if po_amount and abs(float(po_amount) - amount) <= max(1.0, amount * 0.03):
+            return [SuggestCategoryResult(
+                category_id=cat_id,
+                confidence=0.93,
+                exact=True,
+                reason=f"плановая операция «{title}»",
+            )]
+
+    # ── Уровень 1: совпадение описания (текст — сильнее суммы) ───────────────
+    q_tokens = _desc_tokens(body.description)
+    row_tokens_cache: dict[int, set[str]] = {}
+    if q_tokens:
+        text_cat: dict = _defaultdict(float)
+        text_total = 0.0
+        text_hits = 0
+        for i, r in enumerate(rows):
+            rt = _desc_tokens(r.description)
+            row_tokens_cache[i] = rt
+            if _text_match(q_tokens, rt):
+                w = 1.0 if (body.wallet_id is not None and r.wallet_id == body.wallet_id) else 0.8
+                text_cat[r.category_id] += w
+                text_total += w
+                text_hits += 1
+        if text_hits >= 2 and text_total > 0:
+            best_cid = max(text_cat, key=lambda c: text_cat[c])
+            share = text_cat[best_cid] / text_total
+            if share >= 0.65:
+                return [SuggestCategoryResult(
+                    category_id=best_cid,
+                    confidence=round(max(0.85, share), 4),
+                    exact=True,
+                    reason="по описанию",
+                )]
+
+    # ── Уровень 2: точный повтор суммы (сильнейший сигнал) ──────────────────
     # «Ровно такая же сумма уже была — почти всегда та же категория»
     # (857 ₽ → связь, 3200 ₽ → транспорт). Узкий допуск, чтобы 850 не примешалось.
     exact_tol = max(1.0, amount * 0.005)   # ±0.5%, минимум 1 ₽
@@ -757,9 +862,10 @@ def suggest_category(
                 reason="повторяющийся платёж",
             )]
 
-    # ── Уровень 2: похожие суммы (weighted k-NN) ───────────────────────────
+    # ── Уровень 3: похожие суммы (weighted k-NN) ───────────────────────────
     now = datetime.utcnow()
     cur_time_bkt = _time_bucket(body.hour) if body.hour is not None else None
+    target_weekend = _is_weekend(target_date)
 
     cat_weight: dict = _defaultdict(float)
     cat_best_sim: dict = _defaultdict(float)   # лучшая близость суммы в категории
@@ -767,7 +873,7 @@ def suggest_category(
     cat_same_wallet: dict = _defaultdict(int)
     total_weight = 0.0
 
-    for row in rows:
+    for i, row in enumerate(rows):
         a_sim = _amount_similarity(amount, float(row.amount))
         if a_sim < 0.05:
             continue   # сумма совсем другая — не учитываем
@@ -786,7 +892,26 @@ def suggest_category(
         else:
             recency = 0.8
 
-        w = a_sim * wallet_factor * time_factor * recency
+        # День месяца: почти та же сумма в те же числа = повторяющийся платёж
+        dom_factor = 1.0
+        if row.occurred_at and a_sim >= 0.5 and _dom_close(target_date.day, row.occurred_at.day):
+            dom_factor = _DOM_BONUS
+
+        # Будни/выходной: продукты по субботам ≠ обед в будни
+        dow_factor = 1.0
+        if row.occurred_at and _is_weekend(row.occurred_at) != target_weekend:
+            dow_factor = _DOW_OTHER
+
+        # Совпадение описания — сильный буст даже без раннего выхода
+        text_factor = 1.0
+        if q_tokens:
+            rt = row_tokens_cache.get(i)
+            if rt is None:
+                rt = _desc_tokens(row.description)
+            if _text_match(q_tokens, rt):
+                text_factor = _TEXT_BONUS
+
+        w = a_sim * wallet_factor * time_factor * recency * dom_factor * dow_factor * text_factor
         cid = row.category_id
         cat_weight[cid] += w
         total_weight += w
