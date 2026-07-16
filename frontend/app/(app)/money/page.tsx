@@ -19,6 +19,7 @@ import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/
 import { buildCategoryColorMap } from "@/lib/categoryColor";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { SwipeRow } from "@/components/primitives/SwipeRow";
+import { PullToRefresh } from "@/components/primitives/PullToRefresh";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -426,6 +427,10 @@ export default function MoneyPage() {
       />
 
       <main className="flex-1 p-3 md:p-6 w-full">
+        <PullToRefresh onRefresh={() => Promise.all([
+          qc.invalidateQueries({ queryKey: ["transactions"] }),
+          qc.invalidateQueries({ queryKey: ["wallets"] }),
+        ])}>
 
         {/* ── Mobile: type filter + add button ── */}
         <div className="md:hidden flex items-center gap-2 mb-3">
@@ -729,6 +734,7 @@ export default function MoneyPage() {
             )}
           </>
         )}
+        </PullToRefresh>
       </main>
     </>
   );

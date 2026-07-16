@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
@@ -13,6 +13,8 @@ export interface BottomSheetProps {
   footer?: React.ReactNode;
   children: React.ReactNode;
   onSubmit?: (e: React.FormEvent) => void;
+  /** "half" (по умолч.) — на мобиле открывается полу-шитом, тянется вверх; "full" — сразу во весь рост. */
+  detent?: "half" | "full";
 }
 
 /**
@@ -21,10 +23,23 @@ export interface BottomSheetProps {
  * - Desktop: centered modal dialog
  * Rendered via createPortal into document.body to escape any stacking context.
  */
-export function BottomSheet({ open, onClose, title, footer, children, onSubmit }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, footer, children, onSubmit, detent = "half" }: BottomSheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Детенты: полу-шит ↔ весь экран (тянуть за ручку/шапку)
+  const [expanded, setExpanded] = useState(false);
+  const [dragDy, setDragDy] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setExpanded(false);
+      setDragDy(0);
+      dragStartY.current = null;
+    }
+  }, [open]);
   // Шит, прибитый к низу layout viewport, уезжает под iOS-клавиатуру —
   // поднимаем на kbInset (см. useKeyboardInset).
   const { inset: kbInset, vvHeight: viewportH } = useKeyboardInset(open);
@@ -84,6 +99,8 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
   // keyboard (layout viewport doesn't shrink on iOS — visualViewport does).
   const isMobile = window.innerWidth < 768;
   const overlayPaddingTop = kbInset > 0 ? 0 : isMobile ? 56 : 0;
+  // Полу-шит: только мобила, клавиатура закрыта, не раскрыт руками
+  const isHalf = detent === "half" && isMobile && kbInset === 0 && !expanded;
 
   const modal = (
     <div
@@ -107,9 +124,42 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           maxHeight:
             kbInset > 0 && viewportH
               ? `${viewportH - 12}px`
+              : isHalf
+              ? "min(62dvh, calc(100dvh - 24px))"
               : "calc(100dvh - 24px)",
+          transform: dragDy > 0 ? `translateY(${dragDy}px)` : undefined,
+          transition: dragStartY.current !== null
+            ? "none"
+            : "max-height 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)",
         }}
       >
+        {/* Зона ручки+шапки — тянется: вверх раскрыть, вниз свернуть/закрыть */}
+        <div
+          className="shrink-0 md:contents"
+          onTouchStart={(e) => {
+            if (window.innerWidth >= 768) return;
+            dragStartY.current = e.touches[0]?.clientY ?? null;
+          }}
+          onTouchMove={(e) => {
+            if (dragStartY.current === null) return;
+            const dy = (e.touches[0]?.clientY ?? 0) - dragStartY.current;
+            setDragDy(Math.max(0, dy));
+            if (dy < -48 && !expanded) {
+              setExpanded(true);
+              dragStartY.current = null;
+              setDragDy(0);
+            }
+          }}
+          onTouchEnd={() => {
+            const dy = dragDy;
+            dragStartY.current = null;
+            setDragDy(0);
+            if (dy > 72) {
+              if (expanded) setExpanded(false);
+              else onClose();
+            }
+          }}
+        >
         {/* Handle bar — mobile only, slightly darker for visibility */}
         <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
           <div className="w-9 h-1 rounded-full bg-slate-400/60 dark:bg-white/25" />
@@ -127,6 +177,7 @@ export function BottomSheet({ open, onClose, title, footer, children, onSubmit }
           >
             <X size={15} />
           </button>
+        </div>
         </div>
 
         {/* Scrollable content */}

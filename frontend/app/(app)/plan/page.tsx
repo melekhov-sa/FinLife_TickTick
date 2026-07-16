@@ -19,6 +19,7 @@ import {
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { SwipeRow } from "@/components/primitives/SwipeRow";
+import { PullToRefresh } from "@/components/primitives/PullToRefresh";
 import { getHolidayRU } from "@/lib/holidays";
 import { pluralizeYears } from "@/lib/utils";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
@@ -1248,6 +1249,7 @@ export default function PlanPage() {
         }
       />
       <main className="flex-1 p-3 md:p-6 touch-manipulation">
+        <PullToRefresh onRefresh={() => qc.invalidateQueries({ queryKey: ["plan"] })}>
         <div className="w-full">
 
           {/* ── Controls — compact ────────────────────────────────── */}
@@ -1499,6 +1501,7 @@ export default function PlanPage() {
           </DndContext>
 
         </div>
+        </PullToRefresh>
       </main>
     </>
   );
