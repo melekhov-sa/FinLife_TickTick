@@ -17,6 +17,7 @@ import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
 import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/budgetMonth";
 import { buildCategoryColorMap } from "@/lib/categoryColor";
+import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -343,6 +344,11 @@ export default function MoneyPage() {
   });
 
   const catColorMap = useMemo(() => buildCategoryColorMap(finCats), [finCats]);
+  const catEmojiMap = useMemo(() => {
+    const m: Record<number, string | null> = {};
+    for (const c of finCats ?? []) m[c.category_id] = getCategoryEmoji(c.title, c.emoji);
+    return m;
+  }, [finCats]);
   const walletMap = Object.fromEntries((wallets ?? []).map((w) => [w.wallet_id, w.title]));
 
   const opTypeOptions = useMemo(() => [
@@ -564,10 +570,14 @@ export default function MoneyPage() {
                     </p>
                     <p className="text-[10px] mt-0.5 truncate flex items-center gap-1" style={{ color: "var(--t-faint)" }}>
                       {tx.category_id != null && (
-                        <span
-                          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ background: catColorMap[tx.category_id] ?? "var(--t-faint)" }}
-                        />
+                        catEmojiMap[tx.category_id] ? (
+                          <span className="text-[11px] leading-none shrink-0">{catEmojiMap[tx.category_id]}</span>
+                        ) : (
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: catColorMap[tx.category_id] ?? "var(--t-faint)" }}
+                          />
+                        )
                       )}
                       <span className="truncate">
                         {tx.operation_type === "TRANSFER"

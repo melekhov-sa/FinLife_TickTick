@@ -496,6 +496,7 @@ export interface FinCategoryItem {
   is_frequent: boolean;
   is_archived?: boolean;
   color?: string | null; // #RRGGBB; null = авто из палитры
+  emoji?: string | null; // null = авто-подбор по названию
 }
 
 // ── Budget Matrix ──────────────────────────────────────────────────────────

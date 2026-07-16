@@ -164,6 +164,7 @@ class FinCategoryItem(BaseModel):
     parent_id: int | None
     is_frequent: bool = False
     color: str | None = None
+    emoji: str | None = None
 
 
 class FinCategoryItemFull(BaseModel):
@@ -176,6 +177,7 @@ class FinCategoryItemFull(BaseModel):
     is_system: bool = False
     is_mandatory: bool = False
     color: str | None = None
+    emoji: str | None = None
 
 
 @router.get("/fin-categories", response_model=list[FinCategoryItemFull])
@@ -222,6 +224,7 @@ def list_fin_categories(
             title=c.title,
             category_type=c.category_type,
             color=c.color,
+            emoji=c.emoji,
             parent_id=c.parent_id,
             is_frequent=c.category_id in freq_ids,
             is_archived=c.is_archived,
@@ -308,12 +311,14 @@ def create_fin_category(
         is_archived=cat.is_archived,
         is_system=cat.is_system,
         color=cat.color,
+        emoji=cat.emoji,
     )
 
 
 class UpdateFinCategoryRequest(BaseModel):
     title: str | None = None
     color: str | None = None  # "#RRGGBB"; пустая строка = сбросить в авто
+    emoji: str | None = None  # эмодзи; пустая строка = сбросить в авто
 
 
 @router.patch("/fin-categories/{category_id}")
@@ -341,6 +346,13 @@ def update_fin_category(
         if raw and not _re.fullmatch(r"#[0-9a-fA-F]{6}", raw):
             raise HTTPException(status_code=400, detail="Цвет должен быть #RRGGBB")
         cat.color = raw or None
+        db.commit()
+
+    if "emoji" in body.model_fields_set:
+        raw_e = (body.emoji or "").strip()
+        if len(raw_e) > 8:
+            raise HTTPException(status_code=400, detail="Слишком длинный эмодзи")
+        cat.emoji = raw_e or None
         db.commit()
 
     if title is not None:

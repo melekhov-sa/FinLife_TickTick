@@ -17,6 +17,7 @@ import {
 import { api } from "@/lib/api";
 import { budgetMonthOptions } from "@/lib/budgetMonth";
 import { getCategoryColor } from "@/lib/categoryColor";
+import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { DateInput } from "@/components/primitives/DateInput";
@@ -235,10 +236,10 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     const freq = allForType.filter((c) => c.is_frequent).slice(0, 5);
     const all = [...allForType].sort((a, b) => a.title.localeCompare(b.title, "ru"));
     if (freq.length > 0) {
-      freq.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые" }));
+      freq.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "★ Частые", emoji: getCategoryEmoji(c.title, c.emoji) ?? undefined }));
     }
     if (all.length > 0) {
-      all.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "Все категории" }));
+      all.forEach((c) => opts.push({ value: String(c.category_id), label: c.title, group: "Все категории", emoji: getCategoryEmoji(c.title, c.emoji) ?? undefined }));
     }
     return opts;
   }, [freqCats, finCats, opType]);

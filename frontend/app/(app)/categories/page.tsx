@@ -18,6 +18,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
 import { Switch } from "@/components/primitives/Switch";
 import { CATEGORY_PALETTE, getCategoryColor } from "@/lib/categoryColor";
+import { EMOJI_CHOICES, getCategoryEmoji } from "@/lib/categoryEmoji";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ interface FinCategory {
   is_system: boolean;
   is_mandatory: boolean;
   color?: string | null;
+  emoji?: string | null;
 }
 
 type TabType = "EXPENSE" | "INCOME";
@@ -113,6 +115,66 @@ function useSetColor() {
       qc.invalidateQueries({ queryKey: ["fin-categories"] });
     },
   });
+}
+
+function useSetEmoji() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ categoryId, emoji }: { categoryId: number; emoji: string }) =>
+      api.patch(`/api/v2/fin-categories/${categoryId}`, { emoji }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-categories"] });
+    },
+  });
+}
+
+/** Эмодзи категории с поповером-выбором. */
+function EmojiPick({ cat, editable }: { cat: FinCategory; editable: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { mutate: setEmoji } = useSetEmoji();
+  const current = getCategoryEmoji(cat.title, cat.emoji);
+
+  return (
+    <span className="relative inline-flex items-center">
+      <span
+        className={clsx("text-[15px] leading-none w-5 text-center select-none", editable && "cursor-pointer")}
+        onClick={editable ? (e) => { e.stopPropagation(); setOpen((v) => !v); } : undefined}
+        role={editable ? "button" : undefined}
+        aria-label="Эмодзи категории"
+      >
+        {current ?? "·"}
+      </span>
+      {open && (
+        <>
+          <span className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
+          <span
+            className="absolute left-0 top-6 z-50 grid grid-cols-6 gap-1 p-2.5 rounded-xl shadow-xl"
+            style={{ background: "var(--app-sheet-bg, var(--app-card-bg))", border: "1px solid var(--app-border)", width: 208 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {EMOJI_CHOICES.map((e) => (
+              <button
+                key={e}
+                type="button"
+                className="w-7 h-7 rounded-lg text-[16px] leading-none transition-transform hover:scale-110 hover:bg-[var(--app-accent-weak)]"
+                onClick={() => { setEmoji({ categoryId: cat.category_id, emoji: e }); setOpen(false); }}
+              >
+                {e}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="col-span-6 mt-1 text-[11px] py-1 rounded-lg hover:bg-[var(--app-accent-weak)]"
+              style={{ color: "var(--t-faint)" }}
+              onClick={() => { setEmoji({ categoryId: cat.category_id, emoji: "" }); setOpen(false); }}
+            >
+              Сбросить (авто)
+            </button>
+          </span>
+        </>
+      )}
+    </span>
+  );
 }
 
 /** Точка-цвет категории с поповером-палитрой. */
@@ -253,6 +315,7 @@ function CategoryRow({
               </span>
             )}
             <ColorDot cat={cat} editable={!cat.is_archived} />
+            <EmojiPick cat={cat} editable={!cat.is_archived} />
             <span
               className={clsx(
                 "truncate",
