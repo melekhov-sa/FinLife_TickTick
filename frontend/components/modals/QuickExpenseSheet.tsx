@@ -183,7 +183,8 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   }));
 
   const sheet = (
-    <div className="fixed inset-0 z-[10002] flex flex-col" style={{ background: "var(--app-bg)" }}>
+    // z ниже шитов Select (10000) и ActionSheet (10001) — их пикеры открываются поверх
+    <div className="fixed inset-0 z-[9990] flex flex-col" style={{ background: "var(--app-bg)" }}>
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 pb-2 shrink-0"
