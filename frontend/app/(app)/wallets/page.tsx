@@ -103,6 +103,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
 
   const balance = parseFloat(wallet.balance);
   const isNegative = balance < 0;
+  const isZero = balance === 0 && !wallet.is_archived;
 
   function toggle() {
     if (!open) setEditTitle(wallet.title);
@@ -139,7 +140,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
         onClick={toggle}
       >
         <div>
-          <p className="text-[14px] font-medium" style={{ color: wallet.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}>
+          <p className="text-[14px] font-medium" style={{ color: wallet.is_archived || isZero ? "var(--t-faint)" : "var(--t-primary)" }}>
             {wallet.title}
           </p>
           <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
@@ -149,7 +150,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
         </div>
         <span
           className={`text-[15px] font-semibold tabular-nums ${isNegative ? "text-red-600 dark:text-red-400" : ""}`}
-          style={{ color: isNegative ? undefined : "var(--t-primary)" }}
+          style={{ color: isNegative ? undefined : isZero ? "var(--t-faint)" : "var(--t-primary)" }}
         >
           {formatAmount(wallet.balance)} {wallet.currency}
         </span>
@@ -353,16 +354,46 @@ export default function WalletsPage() {
           />
         )}
 
+        {!isLoading && !isError && orderedGroups.length > 0 && !showArchived && (() => {
+          const rub = wallets.filter((w) => w.currency === "RUB");
+          const money = rub
+            .filter((w) => w.wallet_type !== "CREDIT")
+            .reduce((sum, w) => sum + (parseFloat(w.balance) || 0), 0);
+          const credit = rub
+            .filter((w) => w.wallet_type === "CREDIT")
+            .reduce((sum, w) => sum + (parseFloat(w.balance) || 0), 0);
+          const fmtK = (n: number) => Math.round(n).toLocaleString("ru-RU");
+          return (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Деньги</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-success-ink)" }}>{fmtK(money)} ₽</p>
+              </div>
+              <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Кредиты</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-danger-ink)" }}>{fmtK(credit)} ₽</p>
+              </div>
+              <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
+                <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Чистыми</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: money + credit >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>{fmtK(money + credit)} ₽</p>
+              </div>
+            </div>
+          );
+        })()}
+
         {!isLoading && !isError && orderedGroups.length > 0 && (
           <div className="rounded-2xl bg-white dark:bg-transparent border border-slate-200 dark:border-white/[0.06] overflow-hidden">
             {orderedGroups.map(({ type, label, items }) => (
               <div key={type}>
                 {/* Group header */}
-                <div
-                  className="text-[11px] font-semibold uppercase tracking-widest px-4 pt-5 pb-2"
-                  style={{ color: "var(--t-faint)" }}
-                >
-                  {label}
+                <div className="flex items-center justify-between px-4 pt-5 pb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+                    {label}
+                  </span>
+                  <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--t-muted)" }}>
+                    {Math.round(items.reduce((sum, w) => sum + (parseFloat(w.balance) || 0), 0)).toLocaleString("ru-RU")}{" "}
+                    {items.every((w) => w.currency === items[0].currency) ? (items[0].currency === "RUB" ? "₽" : items[0].currency) : ""}
+                  </span>
                 </div>
                 {/* Wallet rows */}
                 {items.map((w) => (
