@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
 import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
+import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { Badge } from "@/components/primitives/Badge";
 import { Card } from "@/components/primitives/Card";
 import { Skeleton } from "@/components/primitives/Skeleton";
@@ -121,6 +122,48 @@ function GoalCard({
   const sym = currencySymbol(goal.currency);
   const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
 
+  // Пустая цель без целевой суммы — тонкая строка вместо большой карточки
+  const isEmpty = !goal.target_amount
+    && (parseFloat(goal.current_balance) || 0) === 0
+    && goal.wallets.length === 0;
+  if (isEmpty) {
+    return (
+      <div className={goal.is_archived ? "opacity-60" : undefined}>
+        <Card padding="sm" className="group/card">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[18px] leading-none shrink-0">{getCategoryEmoji(goal.title) ?? "🎯"}</span>
+            <span className="flex-1 min-w-0 text-[13.5px] font-medium truncate" style={{ color: goal.is_archived ? "var(--t-faint)" : "var(--t-primary)" }}>
+              {goal.title}
+            </span>
+            {goal.is_system && <Badge variant="warning" size="sm">Системная</Badge>}
+            {goal.is_archived && <Badge variant="neutral" size="sm">Архив</Badge>}
+            <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>0 {sym}</span>
+            {!goal.is_system && !goal.is_archived && (
+              <button
+                onClick={() => onEdit(goal)}
+                title="Редактировать"
+                className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.07] md:opacity-0 md:group-hover/card:opacity-100"
+                style={{ color: "var(--t-faint)" }}
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {!goal.is_system && goal.is_archived && (
+              <button
+                onClick={() => onUnarchive(goal.goal_id)}
+                title="Восстановить"
+                className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-emerald-500/15"
+                style={{ color: "var(--t-faint)" }}
+              >
+                <ArchiveRestore size={13} />
+              </button>
+            )}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className={goal.is_archived ? "opacity-60" : undefined}>
       <Card padding="lg" className="group/card">
@@ -149,7 +192,7 @@ function GoalCard({
                 className="flex items-center justify-center"
                 style={{ width: 64, height: 64, borderRadius: 16, background: "var(--app-accent-weak)", fontSize: 28 }}
               >
-                🎯
+                {getCategoryEmoji(goal.title) ?? "🎯"}
               </div>
             )}
           </div>
@@ -338,7 +381,7 @@ export default function GoalsPage() {
               label="Архивные"
               size="sm"
             />
-            <RebuildAllocationsButton />
+            
             {!showArchived && (
               <Button
                 variant="primary"
@@ -432,31 +475,3 @@ export default function GoalsPage() {
 }
 
 // ── Пересчёт распределения по целям ──────────────────────────────────────────
-// Реплей событий: исторические доходы на накопительные кошельки падают
-// в «Без цели» (фикс зависших денег). Идемпотентно.
-function RebuildAllocationsButton() {
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-
-  async function rebuild() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await api.post("/api/v2/goals/rebuild-allocations", {});
-      qc.invalidateQueries({ queryKey: ["goals"] });
-      qc.invalidateQueries({ queryKey: ["wallets"] });
-      setDone(true);
-      setTimeout(() => setDone(false), 3000);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Button variant="secondary" size="sm" onClick={rebuild} loading={busy}>
-      <RotateCcw size={13} className="mr-1" />
-      {done ? "Готово ✓" : "Пересчитать"}
-    </Button>
-  );
-}
