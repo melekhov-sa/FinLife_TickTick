@@ -76,6 +76,23 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
     for task in tasks:
         reminders = reminders_by_task.get(task.task_id, [])
 
+        # Время задано, явных напоминаний нет → авто-напоминание в само время
+        if not reminders:
+            ref_time = task.due_time or task.due_start_time
+            if ref_time:
+                fire_at = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
+                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                    n = send_push_to_user(db, task.account_id, {
+                        "title": f"⏰ {task.title}",
+                        "body": f"Запланировано на {ref_time.strftime('%H:%M')}",
+                        "url": "/tasks",
+                    })
+                    sent += n
+                    send_tg(db, task.account_id,
+                            f"⏰ <b>{task.title}</b>\nЗапланировано на {ref_time.strftime('%H:%M')}",
+                            "task_reminder")
+            continue
+
         for rem in reminders:
             kind = getattr(rem, "reminder_kind", "OFFSET")
 
@@ -178,6 +195,23 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
         # Union of per-occurrence + default reminders, deduped by (mode, offset, fixed_time).
         combined = per_occ_reminders.get(occ.id, []) + defaults_by_event.get(occ.event_id, [])
         seen: set = set()
+
+        # Время начала есть, напоминаний нет → авто-напоминание в момент начала
+        if not combined and occ.start_time and not occ.is_completed:
+            if start_dt <= now_msk and start_dt > now_msk - timedelta(minutes=2):
+                event = event_map.get(occ.event_id)
+                title = event.title if event else "Событие"
+                time_str = occ.start_time.strftime("%H:%M")
+                n = send_push_to_user(db, occ.account_id, {
+                    "title": f"📅 {title}",
+                    "body": f"Начало в {time_str}",
+                    "url": "/events",
+                })
+                sent += n
+                send_tg(db, occ.account_id,
+                        f"📅 <b>{title}</b>\nНачало в {time_str}",
+                        "event_reminder")
+            continue
 
         for rem in combined:
             key = (rem.mode, rem.offset_minutes, rem.fixed_time)
