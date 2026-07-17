@@ -29,11 +29,27 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" });
 }
 
+const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
 function PaymentRow({ p }: { p: UpcomingPayment }) {
   const colorCls = KIND_COLOR[p.kind] ?? "";
+  const d = new Date(p.scheduled_date);
+  const hasAmount = p.amount_formatted && p.amount_formatted !== "—";
   return (
     <div className="flex items-center gap-2.5 py-2 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
-      <span className="text-base shrink-0">📅</span>
+      {/* Мини-календарь с датой САМОГО платежа (эмодзи 📅 всегда рисовал «17») */}
+      <span
+        className="w-8 h-8 rounded-lg flex flex-col items-center justify-center shrink-0"
+        style={{ background: "var(--app-accent-weak)" }}
+        aria-hidden
+      >
+        <span className="text-[13px] font-bold leading-none tabular-nums" style={{ color: "var(--app-accent)" }}>
+          {d.getDate()}
+        </span>
+        <span className="text-[7.5px] uppercase leading-none mt-[1px]" style={{ color: "var(--t-muted)" }}>
+          {MONTHS_SHORT[d.getMonth()]}
+        </span>
+      </span>
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-[500] leading-snug truncate" style={{ color: "var(--t-primary)" }}>{p.title}</p>
         <p className="text-[12px] tabular-nums" style={{ color: "var(--t-muted)" }}>
@@ -46,9 +62,11 @@ function PaymentRow({ p }: { p: UpcomingPayment }) {
           <span style={{ color: "var(--t-faint)" }}>({formatDate(p.scheduled_date)})</span>
         </p>
       </div>
-      <span className={clsx("text-[13px] font-semibold tabular-nums shrink-0", colorCls)}>
-        {p.amount_formatted}
-      </span>
+      {hasAmount && (
+        <span className={clsx("text-[13px] font-semibold tabular-nums shrink-0", colorCls)}>
+          {p.amount_formatted}
+        </span>
+      )}
     </div>
   );
 }

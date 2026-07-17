@@ -16,19 +16,37 @@ function formatDate(iso: string) {
 }
 
 export function ExpiringSubsCard({ subs, docs = [] }: Props) {
-  const hasAnything = subs.length > 0 || docs.length > 0;
+  // Истёкшее — в одну строку-сводку; впереди только ближайшие 7 дней (подписки)
+  const expiredCount =
+    subs.filter((s) => s.days_left < 0).length + docs.filter((d) => d.days_left < 0).length;
+  const upcomingSubs = subs.filter((s) => s.days_left >= 0 && s.days_left <= 7);
+  const upcomingDocs = docs.filter((d) => d.days_left >= 0);
+  const hasAnything = upcomingSubs.length > 0 || upcomingDocs.length > 0 || expiredCount > 0;
 
   return (
     <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
-      <p className="block-title mb-3" style={{ color: "var(--t-muted)" }}>
+      <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Скоро заканчивается
-      </p>
+      </h2>
 
       {!hasAnything ? (
         <p className="text-[13px] py-1" style={{ color: "var(--t-faint)" }}>Всё в порядке</p>
       ) : (
         <div className="space-y-0.5">
-          {docs.map((d) => (
+          {expiredCount > 0 && (
+            <a
+              href="/trackers?tab=subscriptions"
+              className="flex items-center justify-between gap-2 py-2 border-b border-white/[0.04] group"
+            >
+              <span className="text-[13px] font-medium" style={{ color: "var(--c-danger-ink)" }}>
+                ⚠️ Истекло: {expiredCount}
+              </span>
+              <span className="text-[11px] group-hover:text-[var(--app-accent)]" style={{ color: "var(--t-faint)" }}>
+                открыть →
+              </span>
+            </a>
+          )}
+          {upcomingDocs.map((d) => (
             <div
               key={`doc-${d.id}`}
               className="flex items-start justify-between gap-3 py-2 border-b border-white/[0.04] last:border-0"
@@ -58,7 +76,7 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
             </div>
           ))}
 
-          {subs.map((s) => (
+          {upcomingSubs.map((s) => (
             <div
               key={`sub-${s.member_id}`}
               className="flex items-start justify-between gap-3 py-2 border-b border-white/[0.04] last:border-0"

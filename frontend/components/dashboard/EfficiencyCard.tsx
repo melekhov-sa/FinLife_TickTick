@@ -36,7 +36,7 @@ export function EfficiencyCard({ efficiency }: Props) {
 
   return (
     <Card padding="lg">
-      <h2 className="block-title" style={{ color: "var(--t-primary)" }}>
+      <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Эффективность
       </h2>
 

@@ -53,7 +53,7 @@ export function ShoppingWidget({ listId, items }: Props) {
   return (
     <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="block-title" style={{ color: "var(--t-muted)" }}>
+        <p className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
           Ближайшие покупки
         </p>
         <button
@@ -71,7 +71,7 @@ export function ShoppingWidget({ listId, items }: Props) {
         <p className="text-[13px] py-1" style={{ color: "var(--t-faint)" }}>Список пуст</p>
       ) : (
         <div className="space-y-0.5">
-          {items.map((item) => {
+          {items.slice(0, 5).map((item) => {
             const isDone = item.status === "done";
             return (
               <label
@@ -139,7 +139,7 @@ export function ShoppingWidget({ listId, items }: Props) {
           className="text-xs font-medium hover:text-[var(--app-accent)] transition-colors"
           style={{ color: "var(--t-muted)" }}
         >
-          Открыть список →
+          {items.length > 5 ? `Открыть список · ещё ${items.length - 5}` : "Открыть список"} →
         </a>
       </div>
     </div>

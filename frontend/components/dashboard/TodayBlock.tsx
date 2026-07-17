@@ -82,9 +82,16 @@ function categoryColorClass(name: string): string {
 
 function CategoryChip({ name, emoji }: { name: string; emoji?: string | null }) {
   const colorCls = categoryColorClass(name);
+  // Компактно: только эмодзи (название — в деталке по тапу); без эмодзи — чип с текстом
+  if (emoji) {
+    return (
+      <span className="inline-flex items-center leading-none shrink-0 text-[14px]" title={name} aria-label={name}>
+        {emoji}
+      </span>
+    );
+  }
   return (
-    <span className={`inline-flex items-center h-6 px-2 gap-1 rounded-md text-[12px] font-medium leading-none shrink-0 ${colorCls}`}>
-      {emoji && <span aria-hidden className="leading-none">{emoji}</span>}
+    <span className={`inline-flex items-center h-6 px-2 gap-1 rounded-md text-[12px] font-medium leading-none shrink-0 ${colorCls}`} title={name}>
       <span className="whitespace-nowrap">{name}</span>
     </span>
   );
@@ -189,15 +196,13 @@ function Item({
         )}
         {/* Habit streak */}
         {kind === "habit" && Boolean(item.meta?.current_streak) && (
-          isDone ? (
-            <span className="text-[11px] font-medium shrink-0 tabular-nums" style={{ color: "var(--t-muted)" }}>
-              {String(item.meta.current_streak)} дн.
-            </span>
-          ) : (
-            <span className="text-[11px] font-semibold shrink-0 tabular-nums text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">
-              {String(item.meta.current_streak)} дн.
-            </span>
-          )
+          <span
+            className="text-[11px] font-semibold shrink-0 tabular-nums"
+            style={{ color: isDone ? "var(--t-muted)" : "#F97316" }}
+            title={`Стрик: ${String(item.meta.current_streak)} дн.`}
+          >
+            🔥{String(item.meta.current_streak)}
+          </span>
         )}
         {reminders.length > 0 && !isDone && (
           <span

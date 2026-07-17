@@ -25,7 +25,7 @@ export function WeekEventsCard({ events }: Props) {
 
   return (
     <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
-      <p className="block-title" style={{ color: "var(--t-muted)" }}>
+      <p className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         События на неделе
       </p>
 
