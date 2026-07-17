@@ -11,6 +11,7 @@ import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEv
 import { pluralizeYears } from "@/lib/utils";
 import { EventReminders } from "./EventReminders";
 import { EventTaskTemplates } from "./EventTaskTemplates";
+import { EventChecks } from "./EventChecks";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
@@ -345,6 +346,9 @@ export function EventDetailPanel({ event, onClose }: Props) {
               Задачи к событию
             </p>
             <EventTaskTemplates eventId={event.event_id} />
+            <div className="mt-4">
+              <EventChecks eventId={event.event_id} />
+            </div>
           </div>
         </div>
 

@@ -988,6 +988,45 @@ class CategorySuggestLog(Base):
     )
 
 
+class CheckModel(Base):
+    """Проверка: да/нет-вопрос перед событием или на конкретную дату."""
+    __tablename__ = "checks"
+
+    check_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    question: Mapped[str] = mapped_column(String(500), nullable=False)
+    event_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # -> events
+    days_before: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    ask_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)  # одиночный вопрос
+    fallback_task_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CheckAnswerModel(Base):
+    """Ответ на проверку по конкретной дате повторения (дедуп + история)."""
+    __tablename__ = "check_answers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    check_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("checks.check_id", ondelete="CASCADE"), nullable=False
+    )
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    occurrence_date: Mapped[date_type] = mapped_column(Date, nullable=False)
+    answer: Mapped[str] = mapped_column(String(8), nullable=False)  # YES | NO
+    task_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    answered_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("check_id", "occurrence_date", name="uq_check_answer"),
+    )
+
+
 class DebtModel(Base):
     """Долги и займы: кому/от кого, сумма, срок, частичные возвраты."""
     __tablename__ = "debts"

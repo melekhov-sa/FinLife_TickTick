@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { SidePanel } from "@/components/primitives/SidePanel";
 import { TimeInput } from "@/components/primitives/TimeInput";
 import { EventTaskTemplates } from "./EventTaskTemplates";
+import { EventChecks } from "./EventChecks";
 import { useUpdateEventTemplate } from "@/hooks/useEvents";
 import type { CompletionMode } from "@/types/api";
 
@@ -285,6 +286,9 @@ export function EventTemplatePanel({ template, onClose }: Props) {
               Задачи к событию
             </p>
             <EventTaskTemplates eventId={template.event_id} />
+            <div className="mt-4">
+              <EventChecks eventId={template.event_id} />
+            </div>
           </div>
         </div>
 

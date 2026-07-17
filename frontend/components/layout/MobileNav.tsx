@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "./AppSidebar";
 import { useKeyboardVisible } from "@/lib/useKeyboardVisible";
 import { hapticTick } from "@/lib/native";
 import { QuickExpenseSheet } from "@/components/modals/QuickExpenseSheet";
+import { SelfCheckModal } from "@/components/modals/SelfCheckModal";
 
 interface MobileNavProps {
   /** Открыть создание задачи (короткий тап по FAB / default) */
@@ -26,6 +27,7 @@ export function MobileNav({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
+  const [selfCheckOpen, setSelfCheckOpen] = useState(false);
   const keyboardOpen = useKeyboardVisible();
 
   // Свайп от левой кромки экрана открывает меню «Ещё» (как в TickTick)
@@ -264,6 +266,17 @@ export function MobileNav({
             <button
               type="button"
               className="w-full text-left px-3 py-3 rounded-xl nav-hover text-[14px] font-medium"
+              style={{ color: "var(--t-primary)" }}
+              onClick={() => {
+                setCreateMenuOpen(false);
+                setSelfCheckOpen(true);
+              }}
+            >
+              ❓ Спросить себя
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-3 rounded-xl nav-hover text-[14px] font-medium"
               style={{ color: "var(--app-accent-ink)" }}
               onClick={() => {
                 setCreateMenuOpen(false);
@@ -277,6 +290,7 @@ export function MobileNav({
       )}
 
       {quickExpenseOpen && <QuickExpenseSheet onClose={() => setQuickExpenseOpen(false)} />}
+      {selfCheckOpen && <SelfCheckModal onClose={() => setSelfCheckOpen(false)} />}
 
       {/* Drawer */}
       {(drawerOpen || dragX !== null) && (

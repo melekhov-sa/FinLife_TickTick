@@ -25,6 +25,7 @@ import {
 } from "@/lib/native";
 import { useRouter } from "next/navigation";
 import type { DashboardItem } from "@/types/api";
+import { CheckPrompt } from "@/components/CheckPrompt";
 
 function AppLayoutInner({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
@@ -250,6 +251,9 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           />
         </main>
       </div>
+
+      {/* Всплывающие да/нет-вопросы (проверки) */}
+      <CheckPrompt />
 
       {/* Modals and overlays */}
       {showTaskModal && (
