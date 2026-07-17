@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { Popover } from "@/components/primitives/Popover";
 import { Switch } from "@/components/primitives/Switch";
 import { CATEGORY_PALETTE, getCategoryColor } from "@/lib/categoryColor";
+import { ActionSheet } from "@/components/primitives/ActionSheet";
 import { EMOJI_CHOICES, getCategoryEmoji } from "@/lib/categoryEmoji";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -230,13 +231,17 @@ function ColorDot({ cat, editable }: { cat: FinCategory; editable: boolean }) {
 function CategoryRow({
   cat,
   isChild,
+  monthFact = 0,
 }: {
   cat: FinCategory;
   isChild: boolean;
+  /** Факт за текущий месяц по категории, ₽. */
+  monthFact?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(cat.title);
   const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { mutate: rename, isPending: renaming } = useRenameCategory();
@@ -269,6 +274,12 @@ function CategoryRow({
         isChild ? "px-4 py-2 pl-10" : "px-4 py-2.5",
         cat.is_archived ? "opacity-50" : "hover:bg-slate-50 dark:hover:bg-white/[0.02]"
       )}
+      onClick={() => {
+        // Мобила: действия по тапу (кнопки в строке скрыты)
+        if (typeof window !== "undefined" && window.innerWidth < 768 && !cat.is_system && !editing) {
+          setSheetOpen(true);
+        }
+      }}
     >
       {/* Title */}
       <div className="flex-1 min-w-0">
@@ -341,9 +352,39 @@ function CategoryRow({
         )}
       </div>
 
-      {/* Actions */}
+      {/* Сумма за текущий месяц */}
+      {monthFact > 0 && (
+        <span className="text-[12px] font-semibold tabular-nums ml-2 shrink-0" style={{ color: "var(--t-muted)" }}>
+          {Math.round(monthFact).toLocaleString("ru-RU")} ₽
+        </span>
+      )}
+
+      {/* Мобила: шит действий по тапу */}
+      {!cat.is_system && (
+        <ActionSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title={cat.title}
+          actions={[
+            ...(cat.category_type === "EXPENSE" && !cat.is_archived
+              ? [{
+                  label: cat.is_mandatory ? "Убрать «обязательная»" : "Пометить обязательной",
+                  onClick: () => setMandatory({ categoryId: cat.category_id, value: !cat.is_mandatory }),
+                }]
+              : []),
+            ...(!cat.is_archived
+              ? [{ label: "Переименовать", onClick: () => startEdit() }]
+              : []),
+            cat.is_archived
+              ? { label: "Восстановить из архива", onClick: () => restore(cat.category_id) }
+              : { label: "В архив", onClick: () => archive(cat.category_id), destructive: true },
+          ]}
+        />
+      )}
+
+      {/* Actions (десктоп) */}
       {!cat.is_system && !editing && (
-        <div className="flex items-center gap-1 ml-2 shrink-0">
+        <div className="hidden md:flex items-center gap-1 ml-2 shrink-0">
           {cat.category_type === "EXPENSE" && !cat.is_archived && (
             <Tooltip content={cat.is_mandatory ? "Обязательный расход — нажми, чтобы снять" : "Пометить как обязательный расход"}>
               <button
@@ -533,6 +574,23 @@ export default function CategoriesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   const { data, isLoading, isError } = useCategories(includeArchived);
+
+  // Факт текущего месяца по категориям — полезная цифра справа в строке
+  const now = new Date();
+  const { data: budgetMonthData } = useQuery<{ income_lines: { category_id: number | null; fact: number }[]; expense_lines: { category_id: number | null; fact: number }[] }>({
+    queryKey: ["budget", now.getFullYear(), now.getMonth() + 1],
+    queryFn: () => api.get(`/api/v2/budget?year=${now.getFullYear()}&month=${now.getMonth() + 1}`),
+    staleTime: 60_000,
+  });
+  const monthFactMap = useMemo(() => {
+    const m: Record<number, number> = {};
+    for (const rows of [budgetMonthData?.income_lines, budgetMonthData?.expense_lines]) {
+      for (const r of rows ?? []) {
+        if (r.category_id != null) m[r.category_id] = Number(r.fact) || 0;
+      }
+    }
+    return m;
+  }, [budgetMonthData]);
   const allCats = data ?? [];
 
   const tabCats = allCats.filter((c) => c.category_type === activeTab);
@@ -646,16 +704,16 @@ export default function CategoriesPage() {
                   const children = childrenMap.get(parent.category_id) ?? [];
                   return (
                     <div key={parent.category_id}>
-                      <CategoryRow cat={parent} isChild={false} />
+                      <CategoryRow cat={parent} isChild={false} monthFact={monthFactMap[parent.category_id]} />
                       {children.map((child) => (
-                        <CategoryRow key={child.category_id} cat={child} isChild={true} />
+                        <CategoryRow key={child.category_id} cat={child} isChild={true} monthFact={monthFactMap[child.category_id]} />
                       ))}
                     </div>
                   );
                 })}
 
                 {orphans.map((c) => (
-                  <CategoryRow key={c.category_id} cat={c} isChild={true} />
+                  <CategoryRow key={c.category_id} cat={c} isChild={true} monthFact={monthFactMap[c.category_id]} />
                 ))}
               </>
             )}
