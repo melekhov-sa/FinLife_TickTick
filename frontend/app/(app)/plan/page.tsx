@@ -574,6 +574,32 @@ function entryGroupType(kind: string): EntryGroupType {
   return "ops";
 }
 
+/** Кольцо прогресса «сегодня»: выполнено / всего. */
+function TodayRing({ done, total }: { done: number; total: number }) {
+  const pct = total > 0 ? Math.min(1, done / total) : 0;
+  const R = 9;
+  const C = 2 * Math.PI * R;
+  return (
+    <span className="relative inline-flex shrink-0" title={`${done} из ${total}`}>
+      <svg width={26} height={26} viewBox="0 0 26 26" className="-rotate-90">
+        <circle cx={13} cy={13} r={R} fill="none" stroke="var(--app-border)" strokeWidth={3.2} />
+        <circle
+          cx={13} cy={13} r={R} fill="none"
+          stroke="var(--app-accent)"
+          strokeWidth={3.2}
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - pct)}
+          strokeLinecap="round"
+          className="transition-[stroke-dashoffset] duration-500"
+        />
+      </svg>
+      {pct >= 1 && (
+        <span className="absolute inset-0 flex items-center justify-center text-[10px]" style={{ color: "var(--app-accent)" }}>✓</span>
+      )}
+    </span>
+  );
+}
+
 // Цвет типа дела — полоска слева у строки (вместо капс-заголовков групп)
 const ENTRY_GROUP_STRIPE: Record<EntryGroupType, string> = {
   tasks: "var(--app-accent)",
@@ -595,6 +621,7 @@ function DayGroupCard({
   onAddTask,
   onEntryClick,
   completingKey,
+  doneToday = 0,
 }: {
   group: DayGroup;
   onComplete: (entry: PlanEntry) => void;
@@ -608,6 +635,7 @@ function DayGroupCard({
   onAddTask: () => void;
   onEntryClick: (entry: PlanEntry) => void;
   completingKey: string | null;
+  doneToday?: number;
 }) {
   const label = group.date && !group.is_overdue_group
     ? formatDayHeader(group.date)
@@ -690,8 +718,12 @@ function DayGroupCard({
   return (
     <div
       ref={setDropRef}
+      style={group.is_today ? {
+        boxShadow: "0 6px 26px color-mix(in srgb, var(--app-accent) 24%, transparent), 0 1px 3px rgba(0,0,0,0.06)",
+      } : undefined}
       className={clsx(
-        "rounded-xl border-[1.5px] px-3 py-2.5 transition-all",
+        "rounded-xl px-3 py-2.5 transition-all",
+        group.is_today ? "border-2" : "border-[1.5px]",
         isOver && !group.is_overdue_group && "ring-2 ring-[var(--app-accent)]",
         group.is_overdue_group
           ? "bg-red-50/50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/25"
@@ -712,10 +744,14 @@ function DayGroupCard({
     >
       {/* Day header */}
       <div className="flex items-center gap-2 mb-1 flex-wrap">
+        {group.is_today && (
+          <TodayRing done={doneToday} total={doneToday + group.entries.filter((e) => !e.is_done).length} />
+        )}
         <h3 className={clsx(
-          "text-[14px] font-semibold leading-none",
+          "font-semibold leading-none",
+          group.is_today ? "text-[16px]" : "text-[14px]",
           group.is_overdue_group ? "text-red-600 dark:text-red-400/85"
-            : group.is_today ? "text-[var(--app-accent)]/90"
+            : group.is_today ? "text-[var(--app-accent)]"
             : "text-slate-800 dark:text-white/90"
         )}>
           {label}
@@ -1498,6 +1534,7 @@ export default function PlanPage() {
                     onAddTask={() => setCreateTaskDate(g.date ?? "")}
                     onEntryClick={setDetailEntry}
                     completingKey={completingKey}
+                    doneToday={g.is_today ? (filteredData.done_today?.length ?? 0) : 0}
                   />
                 ))}
               </div>
