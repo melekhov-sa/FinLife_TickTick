@@ -19,6 +19,7 @@ import {
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { SwipeRow } from "@/components/primitives/SwipeRow";
+import { SlidersHorizontal, X as XIcon } from "lucide-react";
 import { PullToRefresh } from "@/components/primitives/PullToRefresh";
 import { getHolidayRU } from "@/lib/holidays";
 import { pluralizeYears } from "@/lib/utils";
@@ -396,6 +397,16 @@ function EntryRow({
         isDragging && "opacity-30",
       )}
     >
+      {/* Цвет типа дела */}
+      <span
+        aria-hidden
+        className="w-[3px] self-stretch rounded-full shrink-0 my-0.5"
+        style={{
+          background: ENTRY_GROUP_STRIPE[entryGroupType(entry.kind)],
+          opacity: entry.is_done ? 0.25 : 0.75,
+        }}
+      />
+
       {/* Checkbox / icon */}
       <div className="shrink-0">
         {isCounterHabit && !entry.is_done && habitId ? (
@@ -454,6 +465,17 @@ function EntryRow({
             entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
+            {entry.time && (
+              <span
+                className="text-[11px] font-semibold tabular-nums px-1.5 py-px rounded-md mr-1.5 align-middle inline-block"
+                style={{
+                  background: entry.is_done ? "var(--app-border-subtle, var(--app-border))" : "var(--app-accent-weak)",
+                  color: entry.is_done ? "var(--t-faint)" : "var(--app-accent)",
+                }}
+              >
+                {String(entry.time).slice(0, 5)}
+              </span>
+            )}
             {entry.category_emoji && <span className="mr-0.5">{entry.category_emoji}</span>}
             {entry.title}
           </span>
@@ -500,11 +522,6 @@ function EntryRow({
             </span>
           )}
 
-          {entry.time && (
-            <span className="text-[11px] tabular-nums shrink-0 ml-auto" style={{ color: "var(--t-muted)" }}>
-              {entry.time}
-            </span>
-          )}
         </div>
       </div>
 
@@ -557,13 +574,13 @@ function entryGroupType(kind: string): EntryGroupType {
   return "ops";
 }
 
-function EntryGroupHeader({ label }: { label: string }) {
-  return (
-    <p className="text-[10px] font-bold uppercase tracking-[0.05em] pt-3.5 pb-0.5 first:pt-0" style={{ color: "var(--t-muted)", opacity: 0.5 }}>
-      {label}
-    </p>
-  );
-}
+// Цвет типа дела — полоска слева у строки (вместо капс-заголовков групп)
+const ENTRY_GROUP_STRIPE: Record<EntryGroupType, string> = {
+  tasks: "var(--app-accent)",
+  habits: "#8B5CF6",
+  events: "#3B82F6",
+  ops: "#F59E0B",
+};
 
 function DayGroupCard({
   group,
@@ -634,7 +651,7 @@ function DayGroupCard({
             : group.day_type === "holiday"
             ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
             : group.day_type === "weekend"
-            ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+            ? "bg-sky-50/70 dark:bg-sky-500/[0.07] border-sky-300/80 dark:border-sky-400/25"
             : group.day_type === "preholiday"
             ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
             : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"),
@@ -687,7 +704,7 @@ function DayGroupCard({
           : group.day_type === "holiday"
           ? "bg-red-50/30 dark:bg-red-500/[0.04] border-red-200/60 dark:border-red-500/15"
           : group.day_type === "weekend"
-          ? "bg-slate-100 dark:bg-white/[0.04] border-slate-300 dark:border-white/[0.1]"
+          ? "bg-sky-50/70 dark:bg-sky-500/[0.07] border-sky-300/80 dark:border-sky-400/25"
           : group.day_type === "preholiday"
           ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
           : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"
@@ -743,8 +760,7 @@ function DayGroupCard({
 
       {/* Type-grouped entries */}
       {grouped.map((g) => (
-        <div key={g.type}>
-          {grouped.length > 1 && <EntryGroupHeader label={ENTRY_GROUP_LABELS[g.type]} />}
+        <div key={g.type} className="[&:not(:first-of-type)]:mt-1.5">
           {g.entries.map((e) => (
             <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
@@ -858,6 +874,7 @@ export default function PlanPage() {
   const [createTaskDate, setCreateTaskDate] = useState<string | null>(null);
   const [createEventDate, setCreateEventDate] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
@@ -1252,74 +1269,93 @@ export default function PlanPage() {
         <PullToRefresh onRefresh={() => qc.invalidateQueries({ queryKey: ["plan"] })}>
         <div className="w-full">
 
-          {/* ── Controls — compact ────────────────────────────────── */}
+          {/* ── Controls: фильтр одной кнопкой + сброс ─────────────── */}
           <div className="flex flex-col gap-2 mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Status: Активные / Выполненные */}
-            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-              {TABS.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setTab(t.value)}
-                  className={clsx(
-                    "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
-                    tab === t.value
-                      ? "bg-white text-slate-800 dark:text-white shadow-sm"
-                      : "text-slate-500 dark:text-white/50 hover:text-slate-700"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Period: Неделя / Месяц (list mode only) */}
-            {viewMode === "list" && (
-              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-                {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => setRange(r.value)}
-                    className={clsx(
-                      "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
-                      range === r.value
-                        ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
-                        : "text-slate-500 dark:text-white/50 hover:text-slate-700"
-                    )}
+            {(() => {
+              const isDefaultFilter = tab === "active" && range === 7 && viewMode === "list";
+              const seg = (activeVal: boolean) =>
+                clsx(
+                  "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
+                  activeVal
+                    ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-white/50 hover:text-slate-700",
+                );
+              return (
+                <>
+                  <Popover
+                    open={showFilterMenu}
+                    onOpenChange={setShowFilterMenu}
+                    side="bottom"
+                    align="start"
+                    className="!p-3 w-64"
+                    trigger={
+                      <button
+                        className={clsx(
+                          "relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold border transition-colors",
+                          "bg-slate-100 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.07]",
+                        )}
+                        style={{ color: "var(--t-secondary)" }}
+                      >
+                        <SlidersHorizontal size={13} />
+                        Фильтр
+                        {!isDefaultFilter && (
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full" style={{ background: "var(--app-accent)" }} />
+                        )}
+                      </button>
+                    }
                   >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            )}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>Статус</p>
+                        <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+                          {TABS.map((t) => (
+                            <button key={t.value} onClick={() => setTab(t.value)} className={clsx(seg(tab === t.value), "flex-1")}>
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {viewMode === "list" && (
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>Период</p>
+                          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+                            {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
+                              <button key={r.value} onClick={() => setRange(r.value)} className={clsx(seg(range === r.value), "flex-1")}>
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>Вид</p>
+                        <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
+                          <button onClick={() => setAndPersistViewMode("list")} className={clsx(seg(viewMode === "list"), "flex-1 flex items-center justify-center gap-1")}>
+                            <List size={13} /> Список
+                          </button>
+                          <button onClick={() => setAndPersistViewMode("calendar")} className={clsx(seg(viewMode === "calendar"), "flex-1 flex items-center justify-center gap-1")}>
+                            <CalendarDays size={13} /> Календарь
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </Popover>
 
-            {/* View mode toggle: Список / Календарь */}
-            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-              <button
-                onClick={() => setAndPersistViewMode("list")}
-                title="Список"
-                className={clsx(
-                  "w-7 h-7 flex items-center justify-center rounded-md transition-all",
-                  viewMode === "list"
-                    ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
-                    : "text-slate-500 dark:text-white/50 hover:text-slate-700",
-                )}
-              >
-                <List size={13} />
-              </button>
-              <button
-                onClick={() => setAndPersistViewMode("calendar")}
-                title="Календарь"
-                className={clsx(
-                  "w-7 h-7 flex items-center justify-center rounded-md transition-all",
-                  viewMode === "calendar"
-                    ? "bg-white dark:bg-white/[0.12] text-slate-800 dark:text-white shadow-sm"
-                    : "text-slate-500 dark:text-white/50 hover:text-slate-700",
-                )}
-              >
-                <CalendarDays size={13} />
-              </button>
-            </div>
+                  {!isDefaultFilter && (
+                    <button
+                      onClick={() => { setTab("active"); setRange(7); setAndPersistViewMode("list"); }}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                      style={{ color: "var(--t-muted)" }}
+                      title="Сбросить фильтр"
+                    >
+                      <XIcon size={12} />
+                      Сбросить
+                    </button>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Add button */}
             <div className="ml-auto">
