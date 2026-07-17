@@ -244,6 +244,25 @@ function formatAmount(amount: string, type: string, currency: string) {
   return `${sign}${num.toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ${curr}`;
 }
 
+function dayKey(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function dayLabel(key: string): string {
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const y = new Date(today.getTime() - 86400_000);
+  const yesterdayKey = `${y.getFullYear()}-${pad(y.getMonth() + 1)}-${pad(y.getDate())}`;
+  if (key === todayKey) return "Сегодня";
+  if (key === yesterdayKey) return "Вчера";
+  const d = new Date(key + "T00:00:00");
+  return d.toLocaleDateString("ru-RU", {
+    weekday: "short", day: "numeric", month: "long",
+    year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
@@ -344,6 +363,23 @@ export default function MoneyPage() {
     queryFn: () => api.get<FinCategoryItem[]>("/api/v2/fin-categories"),
     staleTime: 5 * 60_000,
   });
+
+  // Сводка текущего месяца (когда фильтры не активны)
+  const { data: aggInc } = useQuery<{ total: string; period_label: string }>({
+    queryKey: ["tx-agg", "INCOME"],
+    queryFn: () => api.post("/api/v2/transactions/aggregate", { operation_type: "INCOME", period: "month" }),
+    staleTime: 60_000,
+  });
+  const { data: aggExp } = useQuery<{ total: string; period_label: string }>({
+    queryKey: ["tx-agg", "EXPENSE"],
+    queryFn: () => api.post("/api/v2/transactions/aggregate", { operation_type: "EXPENSE", period: "month" }),
+    staleTime: 60_000,
+  });
+  const monthAgg = {
+    label: aggExp?.period_label ?? aggInc?.period_label ?? "",
+    income: parseFloat(aggInc?.total ?? "0") || 0,
+    expense: parseFloat(aggExp?.total ?? "0") || 0,
+  };
 
   const catColorMap = useMemo(() => buildCategoryColorMap(finCats), [finCats]);
   const catEmojiMap = useMemo(() => {
@@ -504,27 +540,39 @@ export default function MoneyPage() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats: без фильтров — текущий месяц; с фильтрами — итог выборки */}
         {data && (
-          <div className="flex items-center justify-between mb-2 md:mb-4">
+          <div className="flex items-center justify-between mb-2 md:mb-4 flex-wrap gap-1">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-              {data.total} операций
+              {hasFilters ? `Найдено: ${data.total}` : monthAgg.label || "Этот месяц"}
             </p>
             <div className="flex items-center gap-3">
-              {data.totals["INCOME"] != null && data.totals["INCOME"] > 0 && (
-                <span className="text-[12px] font-semibold tabular-nums text-emerald-500">
-                  +{data.totals["INCOME"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
-                </span>
-              )}
-              {data.totals["EXPENSE"] != null && data.totals["EXPENSE"] > 0 && (
-                <span className="text-[12px] font-semibold tabular-nums text-red-400">
-                  −{data.totals["EXPENSE"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
-                </span>
-              )}
-              {data.totals["TRANSFER"] != null && data.totals["TRANSFER"] > 0 && (
-                <span className="text-[12px] font-semibold tabular-nums text-blue-400">
-                  ↔{data.totals["TRANSFER"].toLocaleString("ru-RU", { minimumFractionDigits: 2 })} ₽
-                </span>
+              {hasFilters ? (
+                <>
+                  {data.totals["INCOME"] != null && data.totals["INCOME"] > 0 && (
+                    <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--c-success-ink)" }}>
+                      +{Math.round(data.totals["INCOME"]).toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+                  {data.totals["EXPENSE"] != null && data.totals["EXPENSE"] > 0 && (
+                    <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--c-danger-ink)" }}>
+                      −{Math.round(data.totals["EXPENSE"]).toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {monthAgg.income > 0 && (
+                    <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--c-success-ink)" }}>
+                      +{Math.round(monthAgg.income).toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+                  {monthAgg.expense > 0 && (
+                    <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--c-danger-ink)" }}>
+                      −{Math.round(monthAgg.expense).toLocaleString("ru-RU")} ₽
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -553,11 +601,45 @@ export default function MoneyPage() {
 
         {data && data.items.length > 0 && (
           <>
-            {/* Mobile: card list */}
+            {/* Mobile: card list, grouped by day */}
             <div className="md:hidden bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl overflow-hidden">
-              {data.items.map((tx, i) => (
+              {data.items.map((tx, i) => {
+                const key = dayKey(tx.occurred_at);
+                const isNewDay = i === 0 || dayKey(data.items[i - 1].occurred_at) !== key;
+                // Итог дня: доходы − расходы (переводы не считаем)
+                let dayNet = 0;
+                if (isNewDay) {
+                  for (const t of data.items) {
+                    if (dayKey(t.occurred_at) !== key) continue;
+                    const a = parseFloat(t.amount) || 0;
+                    if (t.operation_type === "INCOME") dayNet += a;
+                    else if (t.operation_type === "EXPENSE") dayNet -= a;
+                  }
+                }
+                return (
+                <div key={tx.transaction_id}>
+                {isNewDay && (
+                  <div
+                    className={clsx(
+                      "flex items-center justify-between px-3 py-1.5",
+                      i > 0 && "border-t border-slate-200 dark:border-white/[0.06]"
+                    )}
+                    style={{ background: "var(--app-sidebar-bg, var(--app-card-bg))" }}
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>
+                      {dayLabel(key)}
+                    </span>
+                    {dayNet !== 0 && (
+                      <span
+                        className="text-[11px] font-semibold tabular-nums"
+                        style={{ color: dayNet > 0 ? "var(--c-success-ink)" : "var(--c-danger-ink)" }}
+                      >
+                        {dayNet > 0 ? "+" : "−"}{Math.abs(Math.round(dayNet)).toLocaleString("ru-RU")} ₽
+                      </span>
+                    )}
+                  </div>
+                )}
                 <SwipeRow
-                  key={tx.transaction_id}
                   left={{
                     icon: <span className="text-[15px] leading-none">🔁</span>,
                     color: "var(--app-accent)",
@@ -579,9 +661,6 @@ export default function MoneyPage() {
                   onTouchEnd={cancelLongPress}
                   onContextMenu={(e) => e.preventDefault()}
                 >
-                  <div
-                    className={clsx("w-1 h-8 rounded-full shrink-0", OP_ACCENT[tx.operation_type] ?? "bg-slate-200")}
-                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium truncate leading-snug" style={{ color: "var(--t-primary)" }}>
                       {tx.description || tx.category_title || OP_TYPE_LABELS[tx.operation_type]}
@@ -606,21 +685,12 @@ export default function MoneyPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Tooltip content="Редактировать">
-                      <button
-                        onClick={() => setEditTx(tx)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all touch-manipulation"
-                        style={{ color: "var(--t-faint)" }}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    </Tooltip>
                     <div className="text-right">
                       <p className={clsx("text-[13px] font-semibold tabular-nums leading-snug", OP_TYPE_COLORS[tx.operation_type])}>
                         {formatAmount(tx.amount, tx.operation_type, tx.currency)}
                       </p>
                       <p className="text-[9px] mt-0.5 tabular-nums" style={{ color: "var(--t-faint)" }}>
-                        {formatDate(tx.occurred_at)} · {formatTime(tx.occurred_at)}
+                        {formatTime(tx.occurred_at)}
                         {budgetMonthDiffers(tx.budget_month, tx.occurred_at) && (
                           <span className="ml-1 font-semibold" style={{ color: "var(--app-accent)" }}>
                             →{budgetMonthShort(tx.budget_month!)}
@@ -631,7 +701,9 @@ export default function MoneyPage() {
                   </div>
                 </div>
                 </SwipeRow>
-              ))}
+                </div>
+                );
+              })}
             </div>
 
             {/* Desktop: Table primitive */}
