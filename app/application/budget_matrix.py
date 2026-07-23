@@ -36,6 +36,19 @@ BUDGET_DT = func.coalesce(
 )
 
 
+def _goal_realloc_cutoff(db) -> int:
+    """Рубеж: переносы цель→цель учитываем только для операций, созданных после
+    обновления (id больше записанного при миграции максимума). Нет записи =
+    не считаем ничего (безопасный дефолт)."""
+    from app.infrastructure.db.models import AppConfigModel
+    cfg = (
+        db.query(AppConfigModel)
+        .filter(AppConfigModel.key == "goal_realloc_cutoff_tx_id")
+        .first()
+    )
+    return int(cfg.value) if cfg and (cfg.value or "").isdigit() else 2 ** 62
+
+
 
 def _zero_cell() -> Dict[str, Decimal]:
     return {"plan": _ZERO, "plan_manual": _ZERO, "plan_planned": _ZERO, "fact": _ZERO, "deviation": _ZERO}
@@ -860,23 +873,15 @@ class BudgetMatrixService:
             if row.period_idx >= 0:
                 result[(row.to_goal_id, row.period_idx)] = row.total or _ZERO
 
-        # ── Переносы цель→цель (SAVINGS→SAVINGS): получатель +N, источник −N ──
-        # Итог секции при этом не меняется (плюс и минус гасятся). Считаем только
-        # НОВЫЕ переносы (id > рубежа) — исторические месяцы юзер уже свёл вручную.
-        from app.infrastructure.db.models import AppConfigModel
-        cfg = (
-            self.db.query(AppConfigModel)
-            .filter(AppConfigModel.key == "goal_realloc_cutoff_tx_id")
-            .first()
-        )
-        realloc_cutoff = int(cfg.value) if cfg and (cfg.value or "").isdigit() else 2 ** 62
-
+        # ── Переносы цель→цель (SAVINGS→SAVINGS): ПОЛУЧАТЕЛЬ +N в «Отложить» ──
+        # Источник учитывается в «Взять из отложенного» (см. _aggregate_withdrawal…).
+        # Считаем только НОВЫЕ переносы (id > рубежа) — историю юзер свёл вручную.
+        realloc_cutoff = _goal_realloc_cutoff(self.db)
         to_wallet = self.db.query(
             WalletBalance.wallet_id, WalletBalance.wallet_type,
         ).subquery("to_wallet_realloc")
         realloc_rows = (
             self.db.query(
-                TransactionFeed.from_goal_id,
                 TransactionFeed.to_goal_id,
                 period_col,
                 func.sum(TransactionFeed.amount).label("total"),
@@ -895,19 +900,14 @@ class BudgetMatrixService:
                 BUDGET_DT >= dt_start,
                 BUDGET_DT < dt_end,
             )
-            .group_by(
-                TransactionFeed.from_goal_id, TransactionFeed.to_goal_id, period_col,
-            )
+            .group_by(TransactionFeed.to_goal_id, period_col)
             .all()
         )
         for row in realloc_rows:
             if row.period_idx < 0:
                 continue
-            amt = row.total or _ZERO
             k_to = (row.to_goal_id, row.period_idx)
-            k_from = (row.from_goal_id, row.period_idx)
-            result[k_to] = result.get(k_to, _ZERO) + amt
-            result[k_from] = result.get(k_from, _ZERO) - amt
+            result[k_to] = result.get(k_to, _ZERO) + (row.total or _ZERO)
 
         return result
 
@@ -1292,4 +1292,40 @@ class BudgetMatrixService:
         for row in rows:
             if row.period_idx >= 0:
                 result[(row.from_goal_id, row.period_idx)] = row.total or _ZERO
+
+        # ── Переносы цель→цель: ИСТОЧНИК +N в «Взять из отложенного» ──────────
+        # (получатель учитывается в «Отложить»). Только новые переносы (id > рубежа).
+        realloc_cutoff = _goal_realloc_cutoff(self.db)
+        to_wallet2 = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("to_wallet_realloc_wd")
+        realloc_rows = (
+            self.db.query(
+                TransactionFeed.from_goal_id,
+                period_col,
+                func.sum(TransactionFeed.amount).label("total"),
+            )
+            .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
+            .join(to_wallet2, TransactionFeed.to_wallet_id == to_wallet2.c.wallet_id)
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type == "TRANSFER",
+                TransactionFeed.from_goal_id.isnot(None),
+                TransactionFeed.to_goal_id.isnot(None),
+                TransactionFeed.from_goal_id != TransactionFeed.to_goal_id,
+                from_wallet.c.wallet_type == "SAVINGS",
+                to_wallet2.c.wallet_type == "SAVINGS",
+                TransactionFeed.transaction_id > realloc_cutoff,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
+            )
+            .group_by(TransactionFeed.from_goal_id, period_col)
+            .all()
+        )
+        for row in realloc_rows:
+            if row.period_idx < 0:
+                continue
+            k_from = (row.from_goal_id, row.period_idx)
+            result[k_from] = result.get(k_from, _ZERO) + (row.total or _ZERO)
+
         return result
