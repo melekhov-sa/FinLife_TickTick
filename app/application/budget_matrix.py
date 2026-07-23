@@ -859,6 +859,56 @@ class BudgetMatrixService:
         for row in rows:
             if row.period_idx >= 0:
                 result[(row.to_goal_id, row.period_idx)] = row.total or _ZERO
+
+        # ── Переносы цель→цель (SAVINGS→SAVINGS): получатель +N, источник −N ──
+        # Итог секции при этом не меняется (плюс и минус гасятся). Считаем только
+        # НОВЫЕ переносы (id > рубежа) — исторические месяцы юзер уже свёл вручную.
+        from app.infrastructure.db.models import AppConfigModel
+        cfg = (
+            self.db.query(AppConfigModel)
+            .filter(AppConfigModel.key == "goal_realloc_cutoff_tx_id")
+            .first()
+        )
+        realloc_cutoff = int(cfg.value) if cfg and (cfg.value or "").isdigit() else 2 ** 62
+
+        to_wallet = self.db.query(
+            WalletBalance.wallet_id, WalletBalance.wallet_type,
+        ).subquery("to_wallet_realloc")
+        realloc_rows = (
+            self.db.query(
+                TransactionFeed.from_goal_id,
+                TransactionFeed.to_goal_id,
+                period_col,
+                func.sum(TransactionFeed.amount).label("total"),
+            )
+            .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
+            .join(to_wallet, TransactionFeed.to_wallet_id == to_wallet.c.wallet_id)
+            .filter(
+                TransactionFeed.account_id == account_id,
+                TransactionFeed.operation_type == "TRANSFER",
+                TransactionFeed.from_goal_id.isnot(None),
+                TransactionFeed.to_goal_id.isnot(None),
+                TransactionFeed.from_goal_id != TransactionFeed.to_goal_id,
+                from_wallet.c.wallet_type == "SAVINGS",
+                to_wallet.c.wallet_type == "SAVINGS",
+                TransactionFeed.transaction_id > realloc_cutoff,
+                BUDGET_DT >= dt_start,
+                BUDGET_DT < dt_end,
+            )
+            .group_by(
+                TransactionFeed.from_goal_id, TransactionFeed.to_goal_id, period_col,
+            )
+            .all()
+        )
+        for row in realloc_rows:
+            if row.period_idx < 0:
+                continue
+            amt = row.total or _ZERO
+            k_to = (row.to_goal_id, row.period_idx)
+            k_from = (row.from_goal_id, row.period_idx)
+            result[k_to] = result.get(k_to, _ZERO) + amt
+            result[k_from] = result.get(k_from, _ZERO) - amt
+
         return result
 
     def _load_goal_plans_ranged(
