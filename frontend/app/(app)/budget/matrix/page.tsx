@@ -845,12 +845,15 @@ function TotalsRow({
   kind,
   periodCount,
   periods,
+  closedLeftover,
 }: {
   label: string;
   totals: BudgetSectionTotals;
   kind: "income" | "expense" | "neutral";
   periodCount: number;
   periods?: BudgetPeriod[];
+  /** Сумма остатков закрытых статей/целей по периодам — вычитается из «Ост». */
+  closedLeftover?: number[];
 }) {
   return (
     <tr style={{ background: "var(--bgt-totals-bg)", borderTop: "2px solid var(--app-accent)", borderBottom: "2px solid var(--app-accent)" }}>
@@ -869,7 +872,7 @@ function TotalsRow({
           </React.Fragment>
         );
         if (pk === "current") {
-          const remainder = cell.plan - cell.fact;
+          const remainder = cell.plan - cell.fact - (closedLeftover?.[i] ?? 0);
           return (
             <React.Fragment key={i}>
               <PlanTd cell={cell} isMuted />
@@ -2841,6 +2844,7 @@ export default function BudgetMatrixPage() {
                     kind="income"
                     periodCount={rangeCount}
                     periods={periods}
+                    closedLeftover={closedAdj.income}
                   />
 
                   {/* ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── */}
@@ -2887,6 +2891,7 @@ export default function BudgetMatrixPage() {
                         kind="income"
                         periodCount={rangeCount}
                         periods={periods}
+                    closedLeftover={closedAdj.withdrawal}
                       />
                     </>
                   )}
@@ -2937,6 +2942,7 @@ export default function BudgetMatrixPage() {
                     kind="expense"
                     periodCount={rangeCount}
                     periods={periods}
+                    closedLeftover={closedAdj.expense}
                   />
 
                   {/* ── ОТЛОЖИТЬ ── */}
@@ -2983,6 +2989,7 @@ export default function BudgetMatrixPage() {
                         kind="expense"
                         periodCount={rangeCount}
                         periods={periods}
+                    closedLeftover={closedAdj.goal}
                       />
                     </>
                   )}
