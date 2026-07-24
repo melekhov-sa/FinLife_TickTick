@@ -971,6 +971,28 @@ class ContactModel(Base):
     )
 
 
+class BudgetPeriodClosure(Base):
+    """Статья/цель закрыта на период: «больше сюда не потрачу/не отложу».
+
+    Убирает «осталось потратить X» из плана и учитывается в прогнозе баланса.
+    """
+    __tablename__ = "budget_period_closures"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(16), nullable=False)  # category|goal|withdrawal
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "year", "month", "entity_type", "entity_id", name="uq_budget_period_closure"),
+    )
+
+
 class PlanAccuracyVerdict(Base):
     """Ручная оценка выбивающейся из плана статьи за закрытый месяц.
 

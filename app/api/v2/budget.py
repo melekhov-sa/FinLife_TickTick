@@ -341,3 +341,54 @@ def toggle_goal_visibility(body: ToggleGoalVisibilityBody, request: Request, db:
         save_hidden_goal_ids(db, variant.id, hidden)
     db.commit()
     return {"ok": True}
+
+
+# ── Закрытие статьи/цели на период ──────────────────────────────────────────
+
+@router.get("/budget/closures")
+def list_closures(request: Request, db: Session = Depends(get_db)):
+    """Все закрытые (статья/цель × месяц) для аккаунта. Их немного."""
+    from app.infrastructure.db.models import BudgetPeriodClosure
+    user_id = get_user_id(request, db)
+    rows = db.query(BudgetPeriodClosure).filter(
+        BudgetPeriodClosure.account_id == user_id
+    ).all()
+    return [
+        {"entity_type": r.entity_type, "entity_id": r.entity_id, "year": r.year, "month": r.month}
+        for r in rows
+    ]
+
+
+class ClosureToggleBody(BaseModel):
+    entity_type: str          # category | goal | withdrawal
+    entity_id: int
+    year: int
+    month: int
+    closed: bool
+
+
+@router.post("/budget/closures/toggle")
+def toggle_closure(body: ClosureToggleBody, request: Request, db: Session = Depends(get_db)):
+    from fastapi import HTTPException
+    from app.infrastructure.db.models import BudgetPeriodClosure
+    user_id = get_user_id(request, db)
+    if body.entity_type not in ("category", "goal", "withdrawal"):
+        raise HTTPException(400, "entity_type: category, goal или withdrawal")
+
+    row = db.query(BudgetPeriodClosure).filter(
+        BudgetPeriodClosure.account_id == user_id,
+        BudgetPeriodClosure.year == body.year,
+        BudgetPeriodClosure.month == body.month,
+        BudgetPeriodClosure.entity_type == body.entity_type,
+        BudgetPeriodClosure.entity_id == body.entity_id,
+    ).first()
+
+    if body.closed and not row:
+        db.add(BudgetPeriodClosure(
+            account_id=user_id, year=body.year, month=body.month,
+            entity_type=body.entity_type, entity_id=body.entity_id,
+        ))
+    elif not body.closed and row:
+        db.delete(row)
+    db.commit()
+    return {"ok": True, "closed": body.closed}

@@ -75,6 +75,8 @@ interface PlanEditTarget {
 interface EditingProps {
   /** category_id → кастомный эмодзи из справочника (null = авто по названию) */
   catVisual?: Record<number, string | null>;
+  /** Ключи закрытых статей/целей: "type:id:year:month" */
+  closures?: Set<string>;
   openPlanEdit: (target: PlanEditTarget) => void;  // shift+click → copy-forward modal
   openFactDetail: (target: FactDetailTarget) => void;
   dragHandlers: DragHandlers;
@@ -200,6 +202,31 @@ function PlanEditModal({
     },
   });
 
+  // ── Закрытие статьи/цели на период ────────────────────────────────────────
+  const closureType = target.goalId
+    ? (target.goalPlanType === "withdrawal" ? "withdrawal" : "goal")
+    : "category";
+  const closureId = target.goalId ?? target.categoryId;
+  const showClose = !isFutureMonth && (totalPlan > 0 || fact > 0);
+  const { data: closureData } = useQuery<{ closed: boolean }>({
+    queryKey: ["budget-closure", closureType, closureId, target.year, target.month],
+    queryFn: async () => {
+      const all = await api.get<{ entity_type: string; entity_id: number; year: number; month: number }[]>("/api/v2/budget/closures");
+      return { closed: all.some((c) => c.entity_type === closureType && c.entity_id === closureId && c.year === target.year && c.month === target.month) };
+    },
+    enabled: showClose,
+  });
+  const isClosed = !!closureData?.closed;
+  const closureMut = useMutation({
+    mutationFn: (closed: boolean) =>
+      api.post("/api/v2/budget/closures/toggle", { entity_type: closureType, entity_id: closureId, year: target.year, month: target.month, closed }),
+    onSuccess: () => {
+      vqc.invalidateQueries({ queryKey: ["budget-closure"] });
+      vqc.invalidateQueries({ queryKey: ["budget-closures"] });
+      vqc.invalidateQueries({ queryKey: ["budget-matrix"] });
+    },
+  });
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -307,6 +334,35 @@ function PlanEditModal({
               </>
             )}
           </div>
+        )}
+
+        {/* Закрыть статью/цель на этот месяц */}
+        {showClose && (
+          <button
+            type="button"
+            onClick={() => closureMut.mutate(!isClosed)}
+            className="mt-3 w-full flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors"
+            style={{
+              background: isClosed ? "var(--c-success-bg)" : "var(--app-sidebar-bg)",
+              border: `1px solid ${isClosed ? "var(--c-success-ink)" : "var(--app-border)"}`,
+            }}
+          >
+            <span className="text-[13px] font-medium text-left" style={{ color: isClosed ? "var(--c-success-ink)" : "var(--t-primary)" }}>
+              {isClosed ? "✓ Закрыто на этот месяц" : "Закрыть на этот месяц"}
+              <span className="block text-[11px] font-normal" style={{ color: "var(--t-faint)" }}>
+                {isClosed ? "остаток не ждём, из прогноза убран" : "больше сюда не потрачу — убрать остаток"}
+              </span>
+            </span>
+            <span
+              className="w-10 h-6 rounded-full relative shrink-0 transition-colors"
+              style={{ background: isClosed ? "var(--c-success-ink)" : "var(--app-border)" }}
+            >
+              <span
+                className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                style={{ left: isClosed ? "18px" : "2px" }}
+              />
+            </span>
+          </button>
         )}
 
         <label className="block text-[11px] font-medium uppercase tracking-wider mb-1 mt-3" style={{ color: "var(--t-faint)" }}>
@@ -972,12 +1028,17 @@ function CategoryDataRow({
         }
         if (pk === "current") {
           const remainder = cell.plan - cell.fact;
+          const closed = !!row.category_id && !!editing.closures?.has(`category:${row.category_id}:${p.year}:${p.month}`);
           return (
             <React.Fragment key={i}>
               <EditablePlanTd cell={cell} period={p} row={row} editing={editing} emphasize={emphasize} extraStyle={periodBorder} />
               <FactCell cell={cell} kind={kind} onClick={factClick} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]" style={{ color: remainder > 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>
-                {cell.plan ? fmt(remainder) : "—"}
+              <td
+                className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]"
+                style={{ color: closed ? "var(--c-success-ink)" : remainder > 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}
+                title={closed ? "Статья закрыта на этот месяц" : undefined}
+              >
+                {closed ? "✓" : cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
           );
@@ -1147,12 +1208,17 @@ function GoalDataRow({
 
         if (pk === "current") {
           const remainder = cell.plan - cell.fact;
+          const closed = !!row.goal_id && !!editing?.closures?.has(`${goalPlanType === "withdrawal" ? "withdrawal" : "goal"}:${row.goal_id}:${p?.year}:${p?.month}`);
           return (
             <React.Fragment key={i}>
               {planTd}
               <FactCell cell={cell} kind={kind} />
-              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: remainder >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>
-                {cell.plan ? fmt(remainder) : "—"}
+              <td
+                className="tabular-nums text-right px-2 py-1.5 text-[12px]"
+                style={{ color: closed ? "var(--c-success-ink)" : remainder >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}
+                title={closed ? "Закрыто на этот месяц" : undefined}
+              >
+                {closed ? "✓" : cell.plan ? fmt(remainder) : "—"}
               </td>
             </React.Fragment>
           );
@@ -1228,6 +1294,7 @@ function ForecastRow({
   expenseTotals,
   withdrawalTotals,
   goalTotals,
+  closedAdj,
 }: {
   walletBalance: number;
   periodCount: number;
@@ -1236,16 +1303,19 @@ function ForecastRow({
   expenseTotals: BudgetSectionTotals;
   withdrawalTotals: BudgetSectionTotals;
   goalTotals: BudgetSectionTotals;
+  closedAdj?: { income: number[]; expense: number[]; goal: number[]; withdrawal: number[] };
 }) {
   const currentIdx = periods.findIndex((p) => getPeriodKind(p) !== "past");
   const startIdx = currentIdx < 0 ? periodCount : currentIdx;
 
-  // For a period: remaining = plan - fact for current, full plan for future
-  function remaining(cells: BudgetCell[], i: number): number {
+  // remaining = plan - fact (current) / plan (future) минус закрытые статьи:
+  // закрыл статью → её остаток в прогнозе больше не ждём.
+  function remaining(cells: BudgetCell[], i: number, adj?: number[]): number {
     const cell = cells[i];
     if (!cell) return 0;
     const pk = periods[i] ? getPeriodKind(periods[i]) : "future";
-    return pk === "current" ? cell.plan - cell.fact : cell.plan;
+    const base = pk === "current" ? cell.plan - cell.fact : cell.plan;
+    return base - (adj?.[i] ?? 0);
   }
 
   // Cumulative projected balance: walletBalance already includes all fact transactions,
@@ -1254,10 +1324,10 @@ function ForecastRow({
   let running = walletBalance;
   for (let i = 0; i < periodCount; i++) {
     if (i < startIdx) { projected.push(null); continue; }
-    running += remaining(incomeTotals.cells, i)
-             - remaining(expenseTotals.cells, i)
-             + remaining(withdrawalTotals.cells, i)
-             - remaining(goalTotals.cells, i);
+    running += remaining(incomeTotals.cells, i, closedAdj?.income)
+             - remaining(expenseTotals.cells, i, closedAdj?.expense)
+             + remaining(withdrawalTotals.cells, i, closedAdj?.withdrawal)
+             - remaining(goalTotals.cells, i, closedAdj?.goal);
     projected.push(running);
   }
 
@@ -2339,6 +2409,46 @@ export default function BudgetMatrixPage() {
   // Ставим до любых вызовов getPeriodKind ниже (мемо/JSX/дочерние компоненты).
   _singleMonthAsCurrent = periods.length === 1;
 
+  // Закрытые статьи/цели на период — «больше сюда не потрачу/не отложу»
+  const { data: closuresData } = useQuery<{ entity_type: string; entity_id: number; year: number; month: number }[]>({
+    queryKey: ["budget-closures"],
+    queryFn: () => api.get("/api/v2/budget/closures"),
+    staleTime: 30_000,
+  });
+  const closureSet = React.useMemo(
+    () => new Set((closuresData ?? []).map((c) => `${c.entity_type}:${c.entity_id}:${c.year}:${c.month}`)),
+    [closuresData],
+  );
+
+  // Прогноз баланса: у закрытых статей/целей остаток больше не ожидаем
+  const closedAdj = React.useMemo(() => {
+    const mk = (rows: (BudgetRow | BudgetGoalRow)[] | undefined, type: string, idKey: "category_id" | "goal_id") => {
+      const arr = new Array(periods.length).fill(0);
+      for (const row of rows ?? []) {
+        const id = idKey === "category_id"
+          ? (row as BudgetRow).category_id
+          : (row as BudgetGoalRow).goal_id;
+        if (id == null) continue;
+        if (type === "category" && (row as BudgetRow).is_group) continue; // только листья
+        for (let i = 0; i < periods.length; i++) {
+          const p = periods[i];
+          if (!closureSet.has(`${type}:${id}:${p.year}:${p.month}`)) continue;
+          const cell = row.cells[i];
+          if (!cell) continue;
+          const pk = getPeriodKind(p);
+          arr[i] += pk === "current" ? cell.plan - cell.fact : pk === "future" ? cell.plan : 0;
+        }
+      }
+      return arr;
+    };
+    return {
+      income: mk(data?.income_rows, "category", "category_id"),
+      expense: mk(data?.expense_rows, "category", "category_id"),
+      goal: mk(data?.goal_rows, "goal", "goal_id"),
+      withdrawal: mk(data?.withdrawal_rows, "withdrawal", "goal_id"),
+    };
+  }, [data, periods, closureSet]);
+
   // Focus period for mobile view: prefer current, then last past, then first period
   const focusIdx = React.useMemo(() => {
     const ci = periods.findIndex(p => getPeriodKind(p) === "current");
@@ -2396,6 +2506,7 @@ export default function BudgetMatrixPage() {
 
   const editingProps: EditingProps = {
     catVisual,
+    closures: closureSet,
     openPlanEdit: setPlanEditTarget,
     openFactDetail: setFactDetailTarget,
     dragHandlers: { onDragStart, onDragOver, onDragLeave, onDragEnd, dragOver },
@@ -2888,6 +2999,7 @@ export default function BudgetMatrixPage() {
                     expenseTotals={data.expense_totals}
                     withdrawalTotals={data.withdrawal_totals}
                     goalTotals={data.goal_totals}
+                    closedAdj={closedAdj}
                   />
 
                 </tbody>
