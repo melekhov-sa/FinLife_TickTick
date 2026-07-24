@@ -971,6 +971,30 @@ class ContactModel(Base):
     )
 
 
+class PlanAccuracyVerdict(Base):
+    """Ручная оценка выбивающейся из плана статьи за закрытый месяц.
+
+    FIT  — недорасход «вписался» (сэкономил/дешевле) → считается точным.
+    MISS — реальный промах → считается мимо.
+    Перерасход вне коридора всегда мимо и вердиктом не помечается.
+    """
+    __tablename__ = "plan_accuracy_verdicts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    category_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    verdict: Mapped[str] = mapped_column(String(8), nullable=False)  # FIT | MISS
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("account_id", "year", "month", "category_id", name="uq_plan_accuracy_verdict"),
+    )
+
+
 class CategorySuggestLog(Base):
     """Что подсказали при вводе операции и что юзер выбрал (обучение движка)."""
     __tablename__ = "category_suggest_log"

@@ -1047,18 +1047,29 @@ def budget_stats(
     avg_sav = avg_inc - avg_exp
     avg_sav_rate = round(avg_sav / avg_inc * 100) if avg_inc else None
 
-    # Plan accuracy over window
-    acc_total = acc_ok = 0
-    for (y, m) in months_window:
+    # ── Plan accuracy: коридор ±15% + ручные вердикты, без текущего месяца ────
+    from app.application.plan_accuracy import classify as _classify, load_verdicts as _load_verdicts
+    _verdicts = _load_verdicts(db, user_id)
+    _closed_months = [ym for ym in months_window if ym != cur_month]
+
+    acc_ok = acc_miss = acc_pending = 0
+    for (y, m) in _closed_months:
         for cat in cats:
             if cat.category_type != "EXPENSE":
                 continue
             plan = plan_map.get((y, m, cat.category_id, "EXPENSE"), 0.0)
-            if plan > 0:
-                acc_total += 1
-                if fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0) <= plan:
-                    acc_ok += 1
-    plan_accuracy = round(acc_ok / acc_total * 100) if acc_total else None
+            if plan <= 0:
+                continue
+            fact = fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0)
+            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)))
+            if st == "accurate":
+                acc_ok += 1
+            elif st == "miss":
+                acc_miss += 1
+            elif st == "pending":
+                acc_pending += 1
+    _reviewed = acc_ok + acc_miss
+    plan_accuracy = round(acc_ok / _reviewed * 100) if _reviewed else None
 
     # ── Per-category stats ────────────────────────────────────────────────────
     total_exp_w = sum(exp_w)
@@ -1101,16 +1112,20 @@ def budget_stats(
         total_ref = total_exp_w if op == "EXPENSE" else total_inc_w
         pct = round(total_w / total_ref * 100) if total_ref else 0
 
-        # Plan accuracy per category
-        cat_acc_total = cat_acc_ok = 0
-        for (y, m) in months_window:
+        # Plan accuracy per category (тот же коридор + вердикты, без текущего месяца)
+        cat_acc_ok = cat_acc_reviewed = 0
+        for (y, m) in _closed_months:
             plan = plan_map.get((y, m, cat.category_id, op), 0.0)
-            if plan > 0:
-                cat_acc_total += 1
-                fact = fact_map.get((y, m, cat.category_id, op), 0.0)
-                if (fact <= plan if op == "EXPENSE" else fact >= plan):
-                    cat_acc_ok += 1
-        cat_plan_acc = round(cat_acc_ok / cat_acc_total * 100) if cat_acc_total else None
+            if plan <= 0:
+                continue
+            fact = fact_map.get((y, m, cat.category_id, op), 0.0)
+            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)))
+            if st == "accurate":
+                cat_acc_ok += 1
+                cat_acc_reviewed += 1
+            elif st == "miss":
+                cat_acc_reviewed += 1
+        cat_plan_acc = round(cat_acc_ok / cat_acc_reviewed * 100) if cat_acc_reviewed else None
 
         months_data = [
             {
@@ -1221,6 +1236,9 @@ def budget_stats(
             "avg_savings_6m": round(avg_sav),
             "avg_savings_rate_6m": avg_sav_rate,
             "plan_accuracy_expense_6m": plan_accuracy,
+            # Точность: коридор ±15% + ручные вердикты; текущий месяц не в расчёте
+            "plan_accuracy_pending": acc_pending,
+            "plan_accuracy_reviewed": _reviewed,
         },
         "monthly_trend": monthly_trend,
         "categories": cat_results,

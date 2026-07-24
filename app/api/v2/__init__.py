@@ -6,7 +6,7 @@ Auth: same session cookie as SSR (credentials: 'include' from frontend).
 """
 from fastapi import APIRouter
 
-from . import me, dashboard, projects, tasks, task_attachments, notifications, notification_settings, efficiency, habits, subscriptions, events, event_task_templates, knowledge, strategy, finance, plan, profile, auth, budget, goals, planned_ops, analytics, push, shared_lists, list_images, digests, admin_config, search, counters, caldav_token, documents, maintenance, body_metrics, meal_plan, dishes, media, football, collection, flashcards, ai_ops, telegram_bot, debts, checks
+from . import me, dashboard, projects, tasks, task_attachments, notifications, notification_settings, efficiency, habits, subscriptions, events, event_task_templates, knowledge, strategy, finance, plan, profile, auth, budget, goals, planned_ops, analytics, push, shared_lists, list_images, digests, admin_config, search, counters, caldav_token, documents, maintenance, body_metrics, meal_plan, dishes, media, football, collection, flashcards, ai_ops, telegram_bot, debts, checks, plan_accuracy
 
 router = APIRouter(prefix="/api/v2", tags=["v2"])
 router.include_router(auth.router)
@@ -20,6 +20,7 @@ router.include_router(notification_settings.router)
 router.include_router(telegram_bot.router)
 router.include_router(debts.router)
 router.include_router(checks.router)
+router.include_router(plan_accuracy.router)
 router.include_router(efficiency.router)
 router.include_router(habits.router)
 router.include_router(subscriptions.router)
