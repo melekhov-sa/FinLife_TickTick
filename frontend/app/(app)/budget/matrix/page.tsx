@@ -1845,7 +1845,10 @@ export default function BudgetMatrixPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  const [rangeCount, setRangeCount] = useState(4);
+  // По умолчанию: телефон — 1 месяц (полные колонки П/Ф/Ост), ПК — 6 месяцев
+  const [rangeCount, setRangeCount] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? 1 : 6
+  );
 
   // Mobile default: 2 periods on narrow screens
   React.useEffect(() => {
