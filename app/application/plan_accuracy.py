@@ -23,8 +23,12 @@ from app.infrastructure.db.models import (
 CORRIDOR = 0.15
 
 
-def classify(plan: float, fact: float, verdict: str | None) -> str:
-    """Статус ячейки: 'accurate' | 'miss' | 'pending' | 'skip'."""
+def classify(plan: float, fact: float, verdict: str | None, closed: bool = False) -> str:
+    """Статус ячейки: 'accurate' | 'miss' | 'pending' | 'skip'.
+
+    closed=True (статья закрыта на период) для недорасхода = авто-«вписался»:
+    закрыл → сэкономил. Явный вердикт перебивает авто.
+    """
     if plan <= 0:
         return "skip"
     lo = plan * (1 - CORRIDOR)
@@ -33,11 +37,13 @@ def classify(plan: float, fact: float, verdict: str | None) -> str:
         return "miss"          # перерасход вне коридора — всегда мимо
     if fact >= lo:
         return "accurate"      # в коридоре
-    # недорасход вне коридора — по вердикту
+    # недорасход вне коридора — вердикт → закрытие → ждёт
     if verdict == "FIT":
         return "accurate"
     if verdict == "MISS":
         return "miss"
+    if closed:
+        return "accurate"      # закрыл статью = осознанно сэкономил
     return "pending"
 
 
@@ -49,6 +55,20 @@ def load_verdicts(db: Session, user_id: int) -> dict:
         .all()
     )
     return {(r.year, r.month, r.category_id): r.verdict for r in rows}
+
+
+def load_closures(db: Session, user_id: int) -> set:
+    """{(year, month, category_id)} — закрытые расходные/доходные статьи."""
+    from app.infrastructure.db.models import BudgetPeriodClosure
+    rows = (
+        db.query(BudgetPeriodClosure)
+        .filter(
+            BudgetPeriodClosure.account_id == user_id,
+            BudgetPeriodClosure.entity_type == "category",
+        )
+        .all()
+    )
+    return {(r.year, r.month, r.category_id) for r in rows}
 
 
 def build_fact_plan_maps(

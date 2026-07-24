@@ -392,3 +392,66 @@ def toggle_closure(body: ClosureToggleBody, request: Request, db: Session = Depe
         db.delete(row)
     db.commit()
     return {"ok": True, "closed": body.closed}
+
+
+# ── Подсказка плана: типичная сумма (вес по похожести, устойчиво к выбросам) ─
+
+@router.get("/budget/plan-suggestion")
+def plan_suggestion(
+    request: Request,
+    category_id: int = Query(...),
+    kind: str = Query("EXPENSE"),
+    db: Session = Depends(get_db),
+):
+    """Типичный факт по статье за 6 закрытых месяцев.
+
+    Не среднее (его перекашивает разовый скачок), а средневзвешенное по
+    похожести: каждый месяц весит числом близких (±15%) месяцев — та сумма,
+    что повторяется чаще, и получается.
+    """
+    from datetime import date as _date, datetime as _dt
+    from sqlalchemy import func as _f, cast as _cast, TIMESTAMP as _TS, extract as _ex
+    from app.infrastructure.db.models import TransactionFeed
+
+    user_id = get_user_id(request, db)
+    today = _date.today()
+
+    # окно: 6 месяцев до текущего (текущий незакрытый не берём)
+    cur = (today.year, today.month)
+    months = []
+    for i in range(6, 0, -1):
+        m, y = today.month - i, today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        months.append((y, m))
+    d_start = _dt(months[0][0], months[0][1], 1)
+    d_end = _dt(cur[0], cur[1], 1)
+
+    _bdt = _f.coalesce(_cast(TransactionFeed.budget_month, _TS(timezone=True)), TransactionFeed.occurred_at)
+    rows = (
+        db.query(
+            _ex("year", _bdt).label("yr"), _ex("month", _bdt).label("mo"),
+            _f.sum(TransactionFeed.amount).label("total"),
+        )
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.operation_type == kind,
+            TransactionFeed.category_id == category_id,
+            _bdt >= d_start, _bdt < d_end,
+        )
+        .group_by(_ex("year", _bdt), _ex("month", _bdt))
+        .all()
+    )
+    vals = [float(r.total) for r in rows if r.total and float(r.total) > 0]
+    if len(vals) < 2:
+        return {"suggestion": round(vals[0]) if vals else None, "months": len(vals)}
+
+    # вес месяца = число значений в пределах ±15% от него
+    band = 0.15
+    num = den = 0.0
+    for v in vals:
+        w = sum(1 for u in vals if abs(u - v) <= v * band)
+        num += v * w
+        den += w
+    return {"suggestion": round(num / den) if den else round(vals[0]), "months": len(vals)}

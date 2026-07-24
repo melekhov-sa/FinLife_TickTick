@@ -1048,8 +1048,9 @@ def budget_stats(
     avg_sav_rate = round(avg_sav / avg_inc * 100) if avg_inc else None
 
     # ── Plan accuracy: коридор ±15% + ручные вердикты, без текущего месяца ────
-    from app.application.plan_accuracy import classify as _classify, load_verdicts as _load_verdicts
+    from app.application.plan_accuracy import classify as _classify, load_verdicts as _load_verdicts, load_closures as _load_closures
     _verdicts = _load_verdicts(db, user_id)
+    _closures = _load_closures(db, user_id)
     _closed_months = [ym for ym in months_window if ym != cur_month]
 
     acc_ok = acc_miss = acc_pending = 0
@@ -1061,7 +1062,7 @@ def budget_stats(
             if plan <= 0:
                 continue
             fact = fact_map.get((y, m, cat.category_id, "EXPENSE"), 0.0)
-            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)))
+            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)), (y, m, cat.category_id) in _closures)
             if st == "accurate":
                 acc_ok += 1
             elif st == "miss":
@@ -1119,7 +1120,7 @@ def budget_stats(
             if plan <= 0:
                 continue
             fact = fact_map.get((y, m, cat.category_id, op), 0.0)
-            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)))
+            st = _classify(plan, fact, _verdicts.get((y, m, cat.category_id)), (y, m, cat.category_id) in _closures)
             if st == "accurate":
                 cat_acc_ok += 1
                 cat_acc_reviewed += 1

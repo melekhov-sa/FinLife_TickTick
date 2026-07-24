@@ -211,6 +211,19 @@ def _run_football_refresh():
         db.close()
 
 
+def _run_plan_accuracy_reminder():
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.plan_accuracy_reminder import send_plan_accuracy_reminders
+    Session = get_session_factory()
+    db = Session()
+    try:
+        send_plan_accuracy_reminders(db)
+    except Exception:
+        logger.exception("Plan accuracy reminder job failed")
+    finally:
+        db.close()
+
+
 def _run_telegram_polling():
     from app.infrastructure.db.session import get_session_factory
     from app.application.telegram_polling import poll_telegram_updates
@@ -340,6 +353,16 @@ def start_scheduler():
         _run_football_refresh,
         CronTrigger(hour=9, minute=0, timezone="UTC"),
         id="football_refresh",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Оценить точность плана — 1-го числа 09:00 МСК (06:00 UTC)
+    scheduler.add_job(
+        _run_plan_accuracy_reminder,
+        CronTrigger(day=1, hour=6, minute=0, timezone="UTC"),
+        id="plan_accuracy_reminder",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

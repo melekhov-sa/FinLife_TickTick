@@ -15,7 +15,7 @@ from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import CategoryInfo, PlanAccuracyVerdict
 from app.application.plan_accuracy import (
-    CORRIDOR, classify, load_verdicts, build_fact_plan_maps,
+    CORRIDOR, classify, load_verdicts, load_closures, build_fact_plan_maps,
 )
 
 router = APIRouter(prefix="/plan-accuracy", tags=["plan-accuracy"])
@@ -58,6 +58,7 @@ def get_plan_accuracy(
 
     fact_map, plan_map, _, _ = build_fact_plan_maps(db, user_id, window, d_start, d_end)
     verdicts = load_verdicts(db, user_id)
+    closures = load_closures(db, user_id)
 
     cats = {
         c.category_id: c
@@ -77,7 +78,8 @@ def get_plan_accuracy(
                 continue
             fact = fact_map.get((y, m, cid, "EXPENSE"), 0.0)
             verdict = verdicts.get((y, m, cid))
-            status = classify(plan, fact, verdict)
+            is_closed = (y, m, cid) in closures
+            status = classify(plan, fact, verdict, is_closed)
             if status == "skip":
                 continue
             tot[status] = tot.get(status, 0) + 1
@@ -95,6 +97,7 @@ def get_plan_accuracy(
                 "over": fact > plan,           # перерасход — вердикт недоступен
                 "status": status,              # miss | pending | accurate
                 "verdict": verdict,            # FIT | MISS | None
+                "closed": is_closed,           # закрыл статью → авто-«вписался»
             })
         if rows:
             # незакрытые/выбивающиеся сортируем: сначала ждущие оценки
@@ -113,6 +116,69 @@ def get_plan_accuracy(
         "counts": tot,
         "months": months_out,
     }
+
+
+@router.get("/chronic")
+def get_chronic(
+    request: Request,
+    months: int = Query(6, ge=3, le=24),
+    db: Session = Depends(get_db),
+):
+    """Статьи, которые регулярно мимо плана (чинить надо план, а не факт)."""
+    user_id = get_user_id(request, db)
+    today = date.today()
+    window = _months_back(today, months)
+    cur = (today.year, today.month)
+    closed = [ym for ym in window if ym != cur]
+    if not closed:
+        return {"items": []}
+
+    d_start = datetime(window[0][0], window[0][1], 1)
+    d_end = datetime(cur[0], cur[1], 1)
+    fact_map, plan_map, _, _ = build_fact_plan_maps(db, user_id, window, d_start, d_end)
+    verdicts = load_verdicts(db, user_id)
+    closures = load_closures(db, user_id)
+    cats = {
+        c.category_id: c
+        for c in db.query(CategoryInfo).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.category_type == "EXPENSE",
+        ).all()
+    }
+
+    items = []
+    for cid, cat in cats.items():
+        reviewed = miss = over_n = under_n = 0
+        dev_sum = 0.0
+        for (y, m) in closed:
+            plan = plan_map.get((y, m, cid, "EXPENSE"), 0.0)
+            if plan <= 0:
+                continue
+            fact = fact_map.get((y, m, cid, "EXPENSE"), 0.0)
+            st = classify(plan, fact, verdicts.get((y, m, cid)), (y, m, cid) in closures)
+            if st in ("accurate", "miss"):
+                reviewed += 1
+                dev_sum += (fact - plan) / plan * 100
+            if st == "miss":
+                miss += 1
+                if fact > plan:
+                    over_n += 1
+                else:
+                    under_n += 1
+        # хроническая: мимо в ≥3 месяцах и ≥50% оценённых
+        if miss >= 3 and reviewed > 0 and miss / reviewed >= 0.5:
+            items.append({
+                "category_id": cid,
+                "title": cat.title,
+                "color": cat.color,
+                "miss": miss,
+                "reviewed": reviewed,
+                "miss_rate": round(miss / reviewed * 100),
+                "direction": "over" if over_n >= under_n else "under",
+                "avg_deviation_pct": round(dev_sum / reviewed) if reviewed else 0,
+            })
+    items.sort(key=lambda x: (-x["miss_rate"], -x["miss"]))
+    return {"items": items}
 
 
 @router.get("/verdict")

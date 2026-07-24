@@ -32,6 +32,7 @@ NOTIF_KINDS: list[tuple[str, str]] = [
     ("PAYMENT_DUE_TOMORROW", "Плановый платёж завтра"),
     ("TASK_OVERDUE", "Просроченные задачи"),
     ("DEBT_DUE", "Долги: срок возврата"),
+    ("plan_accuracy_review", "Оценить точность плана (1-го числа)"),
     ("SUB_MEMBER_EXPIRES_SOON", "Подписка истекает"),
     ("SUB_MEMBER_EXPIRED", "Подписка истекла"),
     ("WEEKLY_DIGEST_READY", "Недельный дайджест"),
