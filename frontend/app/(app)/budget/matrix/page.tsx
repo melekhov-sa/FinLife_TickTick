@@ -877,15 +877,15 @@ function TotalsRow({
   kind,
   periodCount,
   periods,
-  closedLeftover,
+  remaining,
 }: {
   label: string;
   totals: BudgetSectionTotals;
   kind: "income" | "expense" | "neutral";
   periodCount: number;
   periods?: BudgetPeriod[];
-  /** Сумма остатков закрытых статей/целей по периодам — вычитается из «Ост». */
-  closedLeftover?: number[];
+  /** «Ост» раздела = Σ положительных остатков листовых статей (без минусов). */
+  remaining?: number[];
 }) {
   return (
     <tr style={{ background: "var(--bgt-totals-bg)", borderTop: "2px solid var(--app-accent)", borderBottom: "2px solid var(--app-accent)" }}>
@@ -904,13 +904,13 @@ function TotalsRow({
           </React.Fragment>
         );
         if (pk === "current") {
-          const remainder = cell.plan - cell.fact - (closedLeftover?.[i] ?? 0);
+          const r = remaining?.[i] ?? 0;
           return (
             <React.Fragment key={i}>
               <PlanTd cell={cell} isMuted />
               <FactCell cell={cell} kind={kind} isBold />
-              <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-[var(--app-accent-light)]" style={{ color: remainder >= 0 ? "var(--t-secondary)" : "rgb(248 113 113)" }}>
-                {cell.plan ? fmt(remainder) : "—"}
+              <td className="tabular-nums text-right px-2 py-2 text-[12px] font-semibold bg-[var(--app-accent-light)]" style={{ color: "var(--t-secondary)" }}>
+                {cell.plan ? fmt(r) : "—"}
               </td>
             </React.Fragment>
           );
@@ -951,6 +951,7 @@ function CategoryDataRow({
   onDrop,
   topExpenseByPeriod,
   topIncomeByPeriod,
+  remainderOverride,
 }: {
   row: BudgetRow;
   periodCount: number;
@@ -959,6 +960,8 @@ function CategoryDataRow({
   onDrop?: (e: React.DragEvent, catId: number) => void;
   topExpenseByPeriod?: Set<number>[];
   topIncomeByPeriod?: Set<number>[];
+  /** Для групп: остаток = Σ положительных остатков детей (иначе считаем по ячейке). */
+  remainderOverride?: number[];
 }) {
   const kind: "income" | "expense" | "neutral" =
     row.kind === "INCOME" ? "income" : "expense";
@@ -1062,18 +1065,27 @@ function CategoryDataRow({
           );
         }
         if (pk === "current") {
-          const remainder = cell.plan - cell.fact;
           const closed = !!row.category_id && !!editing.closures?.has(`category:${row.category_id}:${p.year}:${p.month}`);
+          const isGroup = row.is_group;
+          // Группа: остаток = Σ положительных остатков детей (не минусует).
+          // Лист: остаток = план − факт (перерасход виден минусом в красном).
+          const remainder = isGroup ? (remainderOverride?.[i] ?? 0) : cell.plan - cell.fact;
+          const showDash = isGroup ? remainder <= 0 : !cell.plan;
+          const color = closed
+            ? "var(--c-success-ink)"
+            : isGroup || remainder > 0
+            ? "var(--t-primary)"
+            : "var(--c-danger-ink)";
           return (
             <React.Fragment key={i}>
               <EditablePlanTd cell={cell} period={p} row={row} editing={editing} emphasize={emphasize} extraStyle={periodBorder} />
               <FactCell cell={cell} kind={kind} onClick={factClick} />
               <td
                 className="tabular-nums text-right px-2 py-1.5 text-[12px] bg-[var(--app-accent-light)]"
-                style={{ color: closed ? "var(--c-success-ink)" : remainder > 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}
+                style={{ color }}
                 title={closed ? "Статья закрыта на этот месяц" : undefined}
               >
-                {closed ? "✓" : cell.plan ? fmt(remainder) : "—"}
+                {closed ? "✓" : showDash ? "—" : fmt(remainder)}
               </td>
             </React.Fragment>
           );
@@ -1325,44 +1337,28 @@ function ForecastRow({
   walletBalance,
   periodCount,
   periods,
-  incomeTotals,
-  expenseTotals,
-  withdrawalTotals,
-  goalTotals,
-  closedAdj,
+  sectionRemaining,
 }: {
   walletBalance: number;
   periodCount: number;
   periods: BudgetPeriod[];
-  incomeTotals: BudgetSectionTotals;
-  expenseTotals: BudgetSectionTotals;
-  withdrawalTotals: BudgetSectionTotals;
-  goalTotals: BudgetSectionTotals;
-  closedAdj?: { income: number[]; expense: number[]; goal: number[]; withdrawal: number[] };
+  /** «Ост» по разделам = Σ положительных остатков листьев (без минусов). */
+  sectionRemaining: { income: number[]; expense: number[]; goal: number[]; withdrawal: number[] };
 }) {
   const currentIdx = periods.findIndex((p) => getPeriodKind(p) !== "past");
   const startIdx = currentIdx < 0 ? periodCount : currentIdx;
 
-  // remaining = plan - fact (current) / plan (future) минус закрытые статьи:
-  // закрыл статью → её остаток в прогнозе больше не ждём.
-  function remaining(cells: BudgetCell[], i: number, adj?: number[]): number {
-    const cell = cells[i];
-    if (!cell) return 0;
-    const pk = periods[i] ? getPeriodKind(periods[i]) : "future";
-    const base = pk === "current" ? cell.plan - cell.fact : cell.plan;
-    return base - (adj?.[i] ?? 0);
-  }
-
-  // Cumulative projected balance: walletBalance already includes all fact transactions,
-  // so we add only what is still expected (remaining plan per period)
+  // Прогноз: баланс уже включает весь факт, добавляем только ещё ожидаемое —
+  // положительные остатки планов. Перевыполнил доход → остатка 0 (не «раззаработать»),
+  // перерасход → остатка 0 (не «раз-потратить»). Никаких минусов в прогнозе.
   const projected: (number | null)[] = [];
   let running = walletBalance;
   for (let i = 0; i < periodCount; i++) {
     if (i < startIdx) { projected.push(null); continue; }
-    running += remaining(incomeTotals.cells, i, closedAdj?.income)
-             - remaining(expenseTotals.cells, i, closedAdj?.expense)
-             + remaining(withdrawalTotals.cells, i, closedAdj?.withdrawal)
-             - remaining(goalTotals.cells, i, closedAdj?.goal);
+    running += (sectionRemaining.income[i] ?? 0)
+             - (sectionRemaining.expense[i] ?? 0)
+             + (sectionRemaining.withdrawal[i] ?? 0)
+             - (sectionRemaining.goal[i] ?? 0);
     projected.push(running);
   }
 
@@ -1395,18 +1391,18 @@ function ForecastRow({
     return <td key={i} className={tdVal}>{cell}</td>;
   }
 
-  // Renders one complete "remaining plan per period" row
-  // Current period shows plan−fact (what's still expected); future shows full plan
-  function planRow(label: string, cells: BudgetCell[], color: string) {
+  // Renders one complete "remaining plan per period" row.
+  // remArr[i] — уже посчитанный положительный остаток раздела за период i.
+  function planRow(label: string, remArr: number[], color: string) {
     // Total = sum of remaining values across current+future periods
-    const totalRemaining = cells.slice(startIdx, periodCount).reduce((s, _, i) => s + remaining(cells, startIdx + i), 0);
+    const totalRemaining = remArr.slice(startIdx, periodCount).reduce((s, v) => s + (v ?? 0), 0);
     return (
       <tr>
         <td className={labelCls} style={{ color: "var(--t-secondary)", background: rowBg, borderRight: stickyBorder }}>
           {label}
         </td>
-        {cells.slice(0, periodCount).map((_, i) =>
-          periodCells(i, i >= startIdx ? remaining(cells, i) : null, color)
+        {Array.from({ length: periodCount }).map((_, i) =>
+          periodCells(i, i >= startIdx ? (remArr[i] ?? 0) : null, color)
         )}
         <td className={clsx(tdVal, "bgt-tc-plan")} style={{ color, background: "var(--app-sidebar-bg)" }}>
           {fmt(totalRemaining)}
@@ -1453,10 +1449,10 @@ function ForecastRow({
         <td className="bgt-tc-fact" style={{ background: "var(--app-sidebar-bg)" }} />
       </tr>
 
-      {planRow("Доходы", incomeTotals.cells, "rgb(52 211 153)")}
-      {planRow("Расходы", expenseTotals.cells, "rgb(248 113 113)")}
-      {planRow("Взять из отложенного", withdrawalTotals.cells, "rgb(96 165 250)")}
-      {planRow("Отложить", goalTotals.cells, "rgb(167 139 250)")}
+      {planRow("Доходы", sectionRemaining.income, "rgb(52 211 153)")}
+      {planRow("Расходы", sectionRemaining.expense, "rgb(248 113 113)")}
+      {planRow("Взять из отложенного", sectionRemaining.withdrawal, "rgb(96 165 250)")}
+      {planRow("Отложить", sectionRemaining.goal, "rgb(167 139 250)")}
 
       {/* Остаток на конец — cumulative projected balance */}
       <tr>
@@ -2455,33 +2451,75 @@ export default function BudgetMatrixPage() {
     [closuresData],
   );
 
-  // Прогноз баланса: у закрытых статей/целей остаток больше не ожидаем
-  const closedAdj = React.useMemo(() => {
-    const mk = (rows: (BudgetRow | BudgetGoalRow)[] | undefined, type: string, idKey: "category_id" | "goal_id") => {
-      const arr = new Array(periods.length).fill(0);
+  // Остаток («Ост») = сумма ПОЛОЖИТЕЛЬНЫХ остатков по листовым статьям.
+  // Перевыполнил план (заработал/потратил/отложил больше) → статья даёт 0,
+  // а не минус: перевыполнение не уходит в общий итог. Закрыл статью → 0
+  // (больше сюда не жду). Прошлые периоды остатка не имеют.
+  // Группа = Σ положительных остатков детей (Вариант A). Раздел = Σ листьев + «Прочие».
+  const rem = React.useMemo(() => {
+    const n = periods.length;
+    const zeros = () => new Array(n).fill(0);
+    const clamp = (cell: BudgetCell | undefined, pk: ReturnType<typeof getPeriodKind>) => {
+      if (!cell || pk === "past") return 0;
+      const base = pk === "current" ? cell.plan - cell.fact : cell.plan;
+      return base > 0 ? base : 0;
+    };
+    const closed = (type: string, id: number, p: BudgetPeriod) =>
+      closureSet.has(`${type}:${id}:${p.year}:${p.month}`);
+
+    const catRem: Record<number, number[]> = {};
+    const goalRem: Record<number, number[]> = {};
+    const wdRem: Record<number, number[]> = {};
+    const section = { income: zeros(), expense: zeros(), goal: zeros(), withdrawal: zeros() };
+
+    const cats = (rows: BudgetRow[] | undefined, sec: "income" | "expense") => {
+      // листья: остаток + вклад в раздел
       for (const row of rows ?? []) {
-        const id = idKey === "category_id"
-          ? (row as BudgetRow).category_id
-          : (row as BudgetGoalRow).goal_id;
-        if (id == null) continue;
-        if (type === "category" && (row as BudgetRow).is_group) continue; // только листья
-        for (let i = 0; i < periods.length; i++) {
+        if (row.category_id == null || row.is_group) continue;
+        const arr = zeros();
+        for (let i = 0; i < n; i++) {
           const p = periods[i];
-          if (!closureSet.has(`${type}:${id}:${p.year}:${p.month}`)) continue;
-          const cell = row.cells[i];
-          if (!cell) continue;
-          const pk = getPeriodKind(p);
-          arr[i] += pk === "current" ? cell.plan - cell.fact : pk === "future" ? cell.plan : 0;
+          arr[i] = closed("category", row.category_id, p) ? 0 : clamp(row.cells[i], getPeriodKind(p));
+          section[sec][i] += arr[i];
         }
+        catRem[row.category_id] = arr;
       }
-      return arr;
+      // группы: Σ остатков листьев-детей
+      for (const row of rows ?? []) {
+        if (row.category_id == null || !row.is_group) continue;
+        const arr = zeros();
+        for (const child of rows ?? []) {
+          if (child.is_group || child.parent_id !== row.category_id || child.category_id == null) continue;
+          const cr = catRem[child.category_id];
+          if (cr) for (let i = 0; i < n; i++) arr[i] += cr[i];
+        }
+        catRem[row.category_id] = arr;
+      }
     };
-    return {
-      income: mk(data?.income_rows, "category", "category_id"),
-      expense: mk(data?.expense_rows, "category", "category_id"),
-      goal: mk(data?.goal_rows, "goal", "goal_id"),
-      withdrawal: mk(data?.withdrawal_rows, "withdrawal", "goal_id"),
+    cats(data?.income_rows, "income");
+    cats(data?.expense_rows, "expense");
+
+    const other = (o: { cells: BudgetCell[] } | undefined, sec: "income" | "expense") => {
+      for (let i = 0; i < n; i++) section[sec][i] += clamp(o?.cells?.[i], getPeriodKind(periods[i]));
     };
+    other(data?.other_income, "income");
+    other(data?.other_expense, "expense");
+
+    const goals = (rows: BudgetGoalRow[] | undefined, type: string, sec: "goal" | "withdrawal", map: Record<number, number[]>) => {
+      for (const row of rows ?? []) {
+        const arr = zeros();
+        for (let i = 0; i < n; i++) {
+          const p = periods[i];
+          arr[i] = closed(type, row.goal_id, p) ? 0 : clamp(row.cells[i], getPeriodKind(p));
+          section[sec][i] += arr[i];
+        }
+        map[row.goal_id] = arr;
+      }
+    };
+    goals(data?.goal_rows, "goal", "goal", goalRem);
+    goals(data?.withdrawal_rows, "withdrawal", "withdrawal", wdRem);
+
+    return { section, catRem, goalRem, wdRem };
   }, [data, periods, closureSet]);
 
   // Focus period for mobile view: prefer current, then last past, then first period
@@ -2845,6 +2883,7 @@ export default function BudgetMatrixPage() {
                       periods={periods}
                       editing={editingProps}
                       topExpenseByPeriod={topExpenseByPeriod} topIncomeByPeriod={topIncomeByPeriod}
+                      remainderOverride={row.is_group && row.category_id != null ? rem.catRem[row.category_id] : undefined}
                       onDrop={(e, catId) => handleDrop(e, catId, data.income_rows)}
                     />
                   ))}
@@ -2876,7 +2915,7 @@ export default function BudgetMatrixPage() {
                     kind="income"
                     periodCount={rangeCount}
                     periods={periods}
-                    closedLeftover={closedAdj.income}
+                    remaining={rem.section.income}
                   />
 
                   {/* ── ВЗЯТЬ ИЗ ОТЛОЖЕННОГО ── */}
@@ -2923,7 +2962,7 @@ export default function BudgetMatrixPage() {
                         kind="income"
                         periodCount={rangeCount}
                         periods={periods}
-                    closedLeftover={closedAdj.withdrawal}
+                        remaining={rem.section.withdrawal}
                       />
                     </>
                   )}
@@ -2943,6 +2982,7 @@ export default function BudgetMatrixPage() {
                       periods={periods}
                       editing={editingProps}
                       topExpenseByPeriod={topExpenseByPeriod} topIncomeByPeriod={topIncomeByPeriod}
+                      remainderOverride={row.is_group && row.category_id != null ? rem.catRem[row.category_id] : undefined}
                       onDrop={(e, catId) => handleDrop(e, catId, data.expense_rows)}
                     />
                   ))}
@@ -2974,7 +3014,7 @@ export default function BudgetMatrixPage() {
                     kind="expense"
                     periodCount={rangeCount}
                     periods={periods}
-                    closedLeftover={closedAdj.expense}
+                    remaining={rem.section.expense}
                   />
 
                   {/* ── ОТЛОЖИТЬ ── */}
@@ -3021,7 +3061,7 @@ export default function BudgetMatrixPage() {
                         kind="expense"
                         periodCount={rangeCount}
                         periods={periods}
-                    closedLeftover={closedAdj.goal}
+                        remaining={rem.section.goal}
                       />
                     </>
                   )}
@@ -3034,11 +3074,7 @@ export default function BudgetMatrixPage() {
                     walletBalance={data.wallet_balance}
                     periodCount={rangeCount}
                     periods={periods}
-                    incomeTotals={data.income_totals}
-                    expenseTotals={data.expense_totals}
-                    withdrawalTotals={data.withdrawal_totals}
-                    goalTotals={data.goal_totals}
-                    closedAdj={closedAdj}
+                    sectionRemaining={rem.section}
                   />
 
                 </tbody>
