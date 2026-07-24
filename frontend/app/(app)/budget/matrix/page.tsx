@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
@@ -66,6 +66,7 @@ interface PlanEditTarget {
   categoryTitle: string;
   currentAmount: number;   // ручная строка бюджета (без плановых операций)
   plannedAmount?: number;  // сумма плановых операций периода (только категории)
+  factAmount?: number;     // факт периода — для оценки точности прямо в окне
   currentNote: string;
   goalId?: number;        // set for goal/withdrawal rows
   goalPlanType?: string;  // "goal" or "withdrawal"
@@ -169,6 +170,36 @@ function PlanEditModal({
   const remainingMonths = 12 - target.month;
   const forwardMonths = copyN ? Math.max(0, Math.min(36, parseInt(copyCount) || 0)) : 0;
 
+  // ── Оценка точности плана прямо в окне (для расходной статьи) ──────────────
+  const vqc = useQueryClient();
+  const nowD = new Date();
+  const totalPlan = target.currentAmount + (target.plannedAmount ?? 0);
+  const fact = target.factAmount ?? 0;
+  const isCurrentMonth = target.year === nowD.getFullYear() && target.month === nowD.getMonth() + 1;
+  const isFutureMonth = target.year > nowD.getFullYear() || (target.year === nowD.getFullYear() && target.month > nowD.getMonth() + 1);
+  const isClosedMonth = !isCurrentMonth && !isFutureMonth;
+  const showAccuracy = target.kind === "EXPENSE" && !target.goalId && totalPlan > 0;
+  const CORRIDOR = 0.15;
+  const under = fact < totalPlan * (1 - CORRIDOR);
+  const over = fact > totalPlan * (1 + CORRIDOR);
+  const inCorridor = !under && !over;
+
+  const { data: verdictData } = useQuery<{ verdict: "FIT" | "MISS" | null }>({
+    queryKey: ["plan-verdict", target.year, target.month, target.categoryId],
+    queryFn: () => api.get(`/api/v2/plan-accuracy/verdict?year=${target.year}&month=${target.month}&category_id=${target.categoryId}`),
+    enabled: showAccuracy && isClosedMonth && under,
+  });
+  const verdict = verdictData?.verdict ?? null;
+  const verdictMut = useMutation({
+    mutationFn: (v: "FIT" | "MISS" | null) =>
+      api.post("/api/v2/plan-accuracy/verdict", { year: target.year, month: target.month, category_id: target.categoryId, verdict: v }),
+    onSuccess: () => {
+      vqc.invalidateQueries({ queryKey: ["plan-verdict", target.year, target.month, target.categoryId] });
+      vqc.invalidateQueries({ queryKey: ["plan-accuracy"] });
+      vqc.invalidateQueries({ queryKey: ["analytics", "budget-stats"] });
+    },
+  });
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -226,6 +257,56 @@ function PlanEditModal({
             Итог план месяца: {fmt((target.plannedAmount ?? 0) + (parseFloat(amount.replace(",", ".")) || 0))} ₽
             {" "}(операции + ручной план). Если статья закрывается операциями целиком — оставь 0.
           </p>
+        )}
+
+        {/* Оценка точности плана */}
+        {showAccuracy && (
+          <div className="mt-3 rounded-xl p-3" style={{ background: "var(--app-sidebar-bg)", border: "1px solid var(--app-border)" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--t-faint)" }}>
+              Точность плана
+            </p>
+            {isCurrentMonth ? (
+              <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+                ⏳ Рассчитывается — итог 1-го числа следующего месяца.
+              </p>
+            ) : isFutureMonth ? (
+              <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
+                Будущий месяц — оценим, когда закроется.
+              </p>
+            ) : inCorridor ? (
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-success-ink)" }}>
+                ✓ В коридоре ±15% — точно ({fmt(fact)} из {fmt(Math.round(totalPlan))} ₽)
+              </p>
+            ) : over ? (
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-danger-ink)" }}>
+                Перерасход (+{Math.round((fact - totalPlan) / totalPlan * 100)}%) — мимо плана.
+              </p>
+            ) : (
+              <>
+                <p className="text-[12px] mb-2" style={{ color: "var(--t-muted)" }}>
+                  Недорасход ({Math.round((fact - totalPlan) / totalPlan * 100)}%): {fmt(fact)} из {fmt(Math.round(totalPlan))} ₽. Как оценишь?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => verdictMut.mutate(verdict === "FIT" ? null : "FIT")}
+                    className="flex-1 h-9 rounded-lg text-[12.5px] font-semibold transition-all active:scale-[0.97]"
+                    style={verdict === "FIT" ? { background: "var(--c-success-ink)", color: "#fff" } : { background: "var(--c-success-bg)", color: "var(--c-success-ink)" }}
+                  >
+                    ✓ Вписался
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => verdictMut.mutate(verdict === "MISS" ? null : "MISS")}
+                    className="flex-1 h-9 rounded-lg text-[12.5px] font-semibold transition-all active:scale-[0.97]"
+                    style={verdict === "MISS" ? { background: "var(--c-danger-ink)", color: "#fff" } : { background: "var(--c-danger-bg)", color: "var(--c-danger-ink)" }}
+                  >
+                    ✗ Не вписался
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
 
         <label className="block text-[11px] font-medium uppercase tracking-wider mb-1 mt-3" style={{ color: "var(--t-faint)" }}>
@@ -460,6 +541,7 @@ function EditablePlanTd({
     categoryTitle: row.title,
     currentAmount: cell.plan_manual,
     plannedAmount: cell.plan_planned,
+    factAmount: cell.fact,
     currentNote: cell.note ?? "",
   };
 
@@ -1564,6 +1646,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
     categoryTitle: row.title,
     currentAmount: cell.plan_manual,
     plannedAmount: cell.plan_planned,
+    factAmount: cell.fact,
     currentNote: cell.note ?? "",
   };
 

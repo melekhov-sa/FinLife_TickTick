@@ -115,6 +115,23 @@ def get_plan_accuracy(
     }
 
 
+@router.get("/verdict")
+def get_verdict(
+    request: Request,
+    year: int = Query(...), month: int = Query(...), category_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Текущий вердикт ячейки + классификация (для окна плана в бюджете)."""
+    user_id = get_user_id(request, db)
+    row = db.query(PlanAccuracyVerdict).filter(
+        PlanAccuracyVerdict.account_id == user_id,
+        PlanAccuracyVerdict.year == year,
+        PlanAccuracyVerdict.month == month,
+        PlanAccuracyVerdict.category_id == category_id,
+    ).first()
+    return {"verdict": row.verdict if row else None, "corridor_pct": round(CORRIDOR * 100)}
+
+
 class VerdictIn(BaseModel):
     year: int
     month: int

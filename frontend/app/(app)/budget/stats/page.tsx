@@ -27,6 +27,7 @@ interface BudgetStatsData {
     avg_savings_6m: number;
     avg_savings_rate_6m: number | null;
     plan_accuracy_expense_6m: number | null;
+    plan_accuracy_pending?: number;
     savings_total: number;
     runway_months: number | null;
     avg_check: number | null;
@@ -554,7 +555,9 @@ export default function BudgetStatsPage() {
                     ? data.kpi.plan_accuracy_expense_6m + "%"
                     : "—"
                 }
-                sub="расходы в рамках плана"
+                sub={(data.kpi.plan_accuracy_pending ?? 0) > 0
+                  ? `${data.kpi.plan_accuracy_pending} ждут оценки →`
+                  : "расходы в коридоре ±15%"}
                 accent={
                   data.kpi.plan_accuracy_expense_6m === null
                     ? "neutral"
