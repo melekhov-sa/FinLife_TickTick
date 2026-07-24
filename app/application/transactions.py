@@ -6,10 +6,10 @@ from decimal import Decimal
 
 MSK = timezone(timedelta(hours=3))
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, cast, Integer
 
 from app.infrastructure.eventlog.repository import EventLogRepository
-from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance, CategoryInfo
+from app.infrastructure.db.models import TransactionFeed, WalletBalance, GoalInfo, GoalWalletBalance, CategoryInfo, EventLog
 from app.domain.transaction import Transaction
 from app.domain.wallet import WALLET_TYPE_SAVINGS, WALLET_TYPE_REGULAR, WALLET_TYPE_CREDIT
 from app.readmodels.projectors.wallet_balances import WalletBalancesProjector
@@ -429,8 +429,19 @@ class CreateTransactionUseCase:
             return {"action": "expense", "delta": abs(delta), "transaction_id": tx_id}
 
     def _generate_transaction_id(self) -> int:
-        max_id = self.db.query(func.max(TransactionFeed.transaction_id)).scalar() or 0
-        return max_id + 1
+        # Лента (transactions_feed) — это read-model и может отставать от event_log
+        # (например, если проектор упал уже после коммита события). Тогда id из
+        # ленты столкнётся с уже существующим событием (ix_event_log_idempotency_key)
+        # и любое создание операции падало бы. Берём максимум и из журнала событий.
+        max_feed = self.db.query(func.max(TransactionFeed.transaction_id)).scalar() or 0
+        max_event = (
+            self.db.query(
+                func.max(cast(EventLog.payload_json["transaction_id"].astext, Integer))
+            )
+            .filter(EventLog.event_type == "transaction_created")
+            .scalar()
+        ) or 0
+        return max(int(max_feed), int(max_event)) + 1
 
     def _run_projectors(self, account_id: int):
         """Запустить projector'ы: балансы + лента + цели"""
