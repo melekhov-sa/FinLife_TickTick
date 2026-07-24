@@ -120,7 +120,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
             style={{
               background: "var(--app-accent-gradient)",
               boxShadow:
-                "0 1px 2px rgba(99,102,241,.3), 0 4px 12px -4px rgba(99,102,241,.4)",
+                "0 1px 2px color-mix(in srgb, var(--app-accent) 30%, transparent), 0 4px 12px -4px color-mix(in srgb, var(--app-accent) 40%, transparent)",
             }}
           >
             <span className="text-[#fff] text-[11px] font-bold tracking-tight">

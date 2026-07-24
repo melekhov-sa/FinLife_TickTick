@@ -95,8 +95,8 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
       className="rounded-2xl p-4"
       style={{
         background:
-          "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.12) 100%)",
-        border: "1px solid rgba(99,102,241,0.25)",
+          "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 12%, transparent) 0%, color-mix(in srgb, var(--app-accent) 12%, transparent) 100%)",
+        border: "1px solid color-mix(in srgb, var(--app-accent) 25%, transparent)",
       }}
     >
       <div className="flex items-center justify-between mb-3">
@@ -104,7 +104,7 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
           <div
             style={{
               fontSize: 11,
-              color: "rgba(129,140,248,0.8)",
+              color: "color-mix(in srgb, var(--app-accent) 80%, transparent)",
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.06em",
@@ -127,7 +127,7 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
         <div
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
           style={{
-            background: "rgba(99,102,241,0.2)",
+            background: "color-mix(in srgb, var(--app-accent) 20%, transparent)",
             fontSize: 13,
             fontWeight: 700,
             color: "var(--app-accent)",
@@ -141,21 +141,21 @@ function LevelPanel({ stats }: { stats: StatsOut }) {
       <div className="mb-1">
         <div
           className="flex justify-between mb-1.5"
-          style={{ fontSize: 11, color: "rgba(129,140,248,0.7)" }}
+          style={{ fontSize: 11, color: "color-mix(in srgb, var(--app-accent) 70%, transparent)" }}
         >
           <span>{stats.xp_in_level} XP на этом уровне</span>
           <span>ур.{stats.level + 1} через {stats.xp_to_next} XP</span>
         </div>
         <div
           className="h-2 rounded-full overflow-hidden"
-          style={{ background: "rgba(99,102,241,0.15)" }}
+          style={{ background: "color-mix(in srgb, var(--app-accent) 15%, transparent)" }}
         >
           <div
             className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${pct}%`,
               background: "var(--app-accent-gradient)",
-              boxShadow: pct > 5 ? "0 0 8px rgba(99,102,241,0.5)" : "none",
+              boxShadow: pct > 5 ? "0 0 8px color-mix(in srgb, var(--app-accent) 50%, transparent)" : "none",
             }}
           />
         </div>
@@ -260,8 +260,8 @@ function SessionTab({
             <div
               className="flex flex-col items-center gap-1 py-3 rounded-2xl"
               style={{
-                background: "rgba(99,102,241,0.06)",
-                border: "1px solid rgba(99,102,241,0.2)",
+                background: "color-mix(in srgb, var(--app-accent) 6%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--app-accent) 20%, transparent)",
               }}
             >
               <Brain size={16} style={{ color: "var(--app-accent)" }} />
@@ -764,7 +764,7 @@ function ProgressTab({
                 style={{
                   background: "var(--app-card-bg)",
                   border: a.unlocked
-                    ? "1px solid rgba(99,102,241,0.3)"
+                    ? "1px solid color-mix(in srgb, var(--app-accent) 30%, transparent)"
                     : "1px solid var(--app-border)",
                   opacity: a.unlocked ? 1 : 0.45,
                 }}
@@ -775,7 +775,7 @@ function ProgressTab({
                     width: 36,
                     height: 36,
                     background: a.unlocked
-                      ? "rgba(99,102,241,0.12)"
+                      ? "color-mix(in srgb, var(--app-accent) 12%, transparent)"
                       : "var(--app-border)",
                   }}
                 >

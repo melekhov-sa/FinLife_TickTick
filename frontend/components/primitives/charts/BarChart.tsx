@@ -93,7 +93,7 @@ export function BarChart({
               />
             )}
             <Tooltip
-              cursor={{ fill: "rgba(99,102,241,.06)" }}
+              cursor={{ fill: "color-mix(in srgb, var(--app-accent) 6%, transparent)" }}
               contentStyle={CHART_TOOLTIP_STYLE}
               itemStyle={CHART_TOOLTIP_ITEM_STYLE}
               labelStyle={CHART_TOOLTIP_LABEL_STYLE}
@@ -175,7 +175,7 @@ export function DualBarChart({
             />
           )}
           <Tooltip
-            cursor={{ fill: "rgba(99,102,241,.06)" }}
+            cursor={{ fill: "color-mix(in srgb, var(--app-accent) 6%, transparent)" }}
             contentStyle={CHART_TOOLTIP_STYLE}
             itemStyle={CHART_TOOLTIP_ITEM_STYLE}
             labelStyle={CHART_TOOLTIP_LABEL_STYLE}

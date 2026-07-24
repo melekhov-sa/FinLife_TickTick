@@ -314,7 +314,7 @@ export default function AISettingsPage() {
                 onClick={() => saveMut.mutate(keyInput)}
                 disabled={!keyInput.trim() || saveMut.isPending}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold text-[#fff] transition-all hover:opacity-90 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}
+                style={{ background: "var(--app-accent-gradient)" }}
               >
                 <Save size={14} />
                 {saveMut.isPending ? "..." : "Сохранить"}

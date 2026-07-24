@@ -72,7 +72,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
                   style={{
                     width: `${levelPct}%`,
                     background: "var(--app-accent-gradient)",
-                    boxShadow: levelPct > 5 ? "0 0 8px rgba(99,102,241,0.6)" : "none",
+                    boxShadow: levelPct > 5 ? "0 0 8px color-mix(in srgb, var(--app-accent) 60%, transparent)" : "none",
                   }}
                 />
               </div>

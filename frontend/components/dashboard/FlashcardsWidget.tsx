@@ -47,8 +47,8 @@ export function FlashcardsWidget() {
     <div
       className="rounded-2xl overflow-hidden cursor-pointer group transition-transform hover:scale-[1.01]"
       style={{
-        background: "linear-gradient(135deg, rgba(99,102,241,0.13) 0%, rgba(139,92,246,0.13) 100%)",
-        border: "1px solid rgba(99,102,241,0.25)",
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 100%)",
+        border: "1px solid color-mix(in srgb, var(--app-accent) 25%, transparent)",
       }}
       onClick={() => router.push("/flashcards")}
     >
@@ -56,7 +56,7 @@ export function FlashcardsWidget() {
       <div className="flex items-center gap-2.5 px-4 pt-4 pb-2">
         <div
           className="flex items-center justify-center rounded-xl shrink-0"
-          style={{ width: 36, height: 36, background: "rgba(99,102,241,0.18)" }}
+          style={{ width: 36, height: 36, background: "color-mix(in srgb, var(--app-accent) 18%, transparent)" }}
         >
           <BookOpen size={17} style={{ color: "var(--app-accent)" }} />
         </div>
@@ -88,13 +88,13 @@ export function FlashcardsWidget() {
             <span>{stats.xp} XP</span>
             <span>+{stats.xp_to_next} до ур.{stats.level + 1}</span>
           </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(99,102,241,0.15)" }}>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--app-accent) 15%, transparent)" }}>
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${xpPct}%`,
                 background: "var(--app-accent-gradient)",
-                boxShadow: xpPct > 5 ? "0 0 6px rgba(99,102,241,0.5)" : "none",
+                boxShadow: xpPct > 5 ? "0 0 6px color-mix(in srgb, var(--app-accent) 50%, transparent)" : "none",
               }}
             />
           </div>
@@ -105,13 +105,13 @@ export function FlashcardsWidget() {
       {stats && (
         <div
           className="flex items-center gap-0 border-t"
-          style={{ borderColor: "rgba(99,102,241,0.15)" }}
+          style={{ borderColor: "color-mix(in srgb, var(--app-accent) 15%, transparent)" }}
         >
           <div className="flex-1 flex flex-col items-center py-3">
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--t-primary)" }}>{stats.learned}</div>
             <div style={{ fontSize: 10.5, color: "var(--t-muted)" }}>изучено</div>
           </div>
-          <div style={{ width: 1, height: 28, background: "rgba(99,102,241,0.15)" }} />
+          <div style={{ width: 1, height: 28, background: "color-mix(in srgb, var(--app-accent) 15%, transparent)" }} />
           <div className="flex-1 flex flex-col items-center py-3">
             <div style={{ fontSize: 16, fontWeight: 700, color: stats.total_correct + stats.total_wrong > 0 ? "#22C55E" : "var(--t-primary)" }}>
               {stats.total_correct + stats.total_wrong > 0
@@ -120,7 +120,7 @@ export function FlashcardsWidget() {
             </div>
             <div style={{ fontSize: 10.5, color: "var(--t-muted)" }}>точность</div>
           </div>
-          <div style={{ width: 1, height: 28, background: "rgba(99,102,241,0.15)" }} />
+          <div style={{ width: 1, height: 28, background: "color-mix(in srgb, var(--app-accent) 15%, transparent)" }} />
           <div className="flex-1 flex flex-col items-center py-3">
             <div style={{ fontSize: 16, fontWeight: 700, color: hasSession ? "var(--app-accent)" : "var(--t-primary)" }}>
               {(stats.new_today + stats.due_today) || "✓"}

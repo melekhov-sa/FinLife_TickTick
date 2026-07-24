@@ -179,7 +179,7 @@ export default function CalDAVSettingsPage() {
 
           <div
             className="rounded-xl px-4 py-3 mt-2"
-            style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}
+            style={{ background: "color-mix(in srgb, var(--app-accent) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--app-accent) 20%, transparent)" }}
           >
             <p className="text-[12px]" style={{ color: "var(--t-secondary)" }}>
               <span className="font-semibold" style={{ color: "var(--t-primary)" }}>Совет: </span>

@@ -14,8 +14,8 @@ function gradientFor(hour: number): string {
   if (hour >= 11 && hour < 17)
     return "radial-gradient(ellipse 90% 75% at 50% -20%, rgba(56,189,248,0.10), transparent 62%)";
   if (hour >= 17 && hour < 22)
-    return "radial-gradient(ellipse 90% 75% at 50% -20%, rgba(129,140,248,0.16), transparent 62%)";
-  return "radial-gradient(ellipse 90% 75% at 50% -20%, rgba(99,102,241,0.09), transparent 62%)";
+    return "radial-gradient(ellipse 90% 75% at 50% -20%, color-mix(in srgb, var(--app-accent) 16%, transparent), transparent 62%)";
+  return "radial-gradient(ellipse 90% 75% at 50% -20%, color-mix(in srgb, var(--app-accent) 9%, transparent), transparent 62%)";
 }
 
 export function DaypartGlow() {

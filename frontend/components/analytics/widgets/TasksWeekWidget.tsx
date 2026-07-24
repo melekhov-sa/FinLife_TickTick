@@ -61,7 +61,7 @@ export function TasksWeekWidget({ instanceId: _ }: WidgetProps) {
               formatter={(v: any) => [typeof v === "number" ? `${v} задач` : "", ""]}
               contentStyle={CHART_TOOLTIP_STYLE}
               itemStyle={CHART_TOOLTIP_ITEM_STYLE}
-              cursor={{ fill: "rgba(99,102,241,.06)" }}
+              cursor={{ fill: "color-mix(in srgb, var(--app-accent) 6%, transparent)" }}
             />
             <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={false}>
               {points.map((entry, i) => (

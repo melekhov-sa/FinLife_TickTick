@@ -72,27 +72,27 @@ function TrendBadge({ value }: { value: number | null }) {
 function heatColor(count: number, max: number): string {
   if (count === 0 || max === 0) return "rgba(255,255,255,0.04)";
   const pct = count / max;
-  if (pct <= 0.2) return "rgba(99,102,241,0.22)";
-  if (pct <= 0.4) return "rgba(99,102,241,0.40)";
-  if (pct <= 0.65) return "rgba(99,102,241,0.62)";
-  return "rgba(99,102,241,0.88)";
+  if (pct <= 0.2) return "color-mix(in srgb, var(--app-accent) 22%, transparent)";
+  if (pct <= 0.4) return "color-mix(in srgb, var(--app-accent) 40%, transparent)";
+  if (pct <= 0.65) return "color-mix(in srgb, var(--app-accent) 62%, transparent)";
+  return "color-mix(in srgb, var(--app-accent) 88%, transparent)";
 }
 
 // absolute colors for day view (fixed thresholds)
 function dayColor(count: number): string {
   if (count === 0) return "rgba(255,255,255,0.04)";
-  if (count === 1) return "rgba(99,102,241,0.22)";
-  if (count <= 3) return "rgba(99,102,241,0.40)";
-  if (count <= 6) return "rgba(99,102,241,0.62)";
-  return "rgba(99,102,241,0.88)";
+  if (count === 1) return "color-mix(in srgb, var(--app-accent) 22%, transparent)";
+  if (count <= 3) return "color-mix(in srgb, var(--app-accent) 40%, transparent)";
+  if (count <= 6) return "color-mix(in srgb, var(--app-accent) 62%, transparent)";
+  return "color-mix(in srgb, var(--app-accent) 88%, transparent)";
 }
 
 const LEGEND_COLORS = [
   "rgba(255,255,255,0.04)",
-  "rgba(99,102,241,0.22)",
-  "rgba(99,102,241,0.40)",
-  "rgba(99,102,241,0.62)",
-  "rgba(99,102,241,0.88)",
+  "color-mix(in srgb, var(--app-accent) 22%, transparent)",
+  "color-mix(in srgb, var(--app-accent) 40%, transparent)",
+  "color-mix(in srgb, var(--app-accent) 62%, transparent)",
+  "color-mix(in srgb, var(--app-accent) 88%, transparent)",
 ];
 
 // ── Day heatmap (13 weeks) ────────────────────────────────────────────────────
@@ -309,7 +309,7 @@ function HeatmapCard({ data }: { data: TasksOverview }) {
               onClick={() => setView(t.key)}
               className="text-[11px] font-medium px-2.5 py-1 transition-colors"
               style={{
-                background: view === t.key ? "rgba(99,102,241,0.3)" : "transparent",
+                background: view === t.key ? "color-mix(in srgb, var(--app-accent) 30%, transparent)" : "transparent",
                 color: view === t.key ? "#a5b4fc" : "var(--t-faint)",
               }}
             >
