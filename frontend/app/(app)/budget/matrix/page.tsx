@@ -30,7 +30,14 @@ function fmtSigned(n: number): string {
 
 type PeriodKind = "past" | "current" | "future";
 
+// Когда на экране ровно один месяц (любой — прошлый/текущий/будущий), трактуем
+// его как текущий: колонки П/Ф/Ост, чтобы заранее внесённые операции сразу
+// были видны в бюджете. Флаг выставляется в основном компоненте до рендера
+// таблицы (рендер синхронный, матрица на экране одна).
+let _singleMonthAsCurrent = false;
+
 function getPeriodKind(p: BudgetPeriod): PeriodKind {
+  if (_singleMonthAsCurrent) return "current";
   const now = new Date();
   const cy = now.getFullYear();
   const cm = now.getMonth() + 1;
@@ -2242,6 +2249,9 @@ export default function BudgetMatrixPage() {
   }
 
   const periods = data?.periods ?? [];
+  // Один месяц на экране → показываем его колонками текущего месяца (П/Ф/Ост).
+  // Ставим до любых вызовов getPeriodKind ниже (мемо/JSX/дочерние компоненты).
+  _singleMonthAsCurrent = periods.length === 1;
 
   // Focus period for mobile view: prefer current, then last past, then first period
   const focusIdx = React.useMemo(() => {
