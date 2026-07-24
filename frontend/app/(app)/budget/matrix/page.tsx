@@ -224,8 +224,25 @@ function PlanEditModal({
       vqc.invalidateQueries({ queryKey: ["budget-closure"] });
       vqc.invalidateQueries({ queryKey: ["budget-closures"] });
       vqc.invalidateQueries({ queryKey: ["budget-matrix"] });
+      vqc.invalidateQueries({ queryKey: ["plan-accuracy"] });
+      vqc.invalidateQueries({ queryKey: ["analytics", "budget-stats"] });
     },
   });
+
+  // ── Подсказка плана: типичная сумма по истории (вес по похожести) ──────────
+  const { data: suggestData } = useQuery<{ suggestion: number | null; months: number }>({
+    queryKey: ["plan-suggestion", target.categoryId, target.kind],
+    queryFn: () => api.get(`/api/v2/budget/plan-suggestion?category_id=${target.categoryId}&kind=${target.kind}`),
+    enabled: !target.goalId && (target.kind === "EXPENSE" || target.kind === "INCOME"),
+    staleTime: 5 * 60_000,
+  });
+  const suggestion = suggestData?.suggestion ?? null;
+  function applySuggestion() {
+    if (suggestion == null) return;
+    // ставим ручную строку так, чтобы итог плана ≈ подсказке (минус плановые операции)
+    const manual = Math.max(0, suggestion - (target.plannedAmount ?? 0));
+    setAmount(String(manual));
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -285,6 +302,17 @@ function PlanEditModal({
             {" "}(операции + ручной план). Если статья закрывается операциями целиком — оставь 0.
           </p>
         )}
+        {suggestion != null && suggestion > 0 && (
+          <button
+            type="button"
+            onClick={applySuggestion}
+            className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
+            style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
+            title={`Типичная сумма за ${suggestData?.months ?? 0} мес (устойчиво к разовым скачкам)`}
+          >
+            Обычно ~{fmt(suggestion)} ₽ · поставить
+          </button>
+        )}
 
         {/* Оценка точности плана */}
         {showAccuracy && (
@@ -307,6 +335,10 @@ function PlanEditModal({
             ) : over ? (
               <p className="text-[12px] font-medium" style={{ color: "var(--c-danger-ink)" }}>
                 Перерасход (+{Math.round((fact - totalPlan) / totalPlan * 100)}%) — мимо плана.
+              </p>
+            ) : isClosed && verdict !== "MISS" ? (
+              <p className="text-[12px] font-medium" style={{ color: "var(--c-success-ink)" }}>
+                ✓ Закрыто → зачтётся как «вписался» ({fmt(fact)} из {fmt(Math.round(totalPlan))} ₽)
               </p>
             ) : (
               <>

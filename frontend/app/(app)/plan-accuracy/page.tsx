@@ -27,6 +27,17 @@ interface Row {
   over: boolean;
   status: "miss" | "pending" | "accurate";
   verdict: "FIT" | "MISS" | null;
+  closed?: boolean;
+}
+interface ChronicItem {
+  category_id: number;
+  title: string;
+  color: string | null;
+  miss: number;
+  reviewed: number;
+  miss_rate: number;
+  direction: "over" | "under";
+  avg_deviation_pct: number;
 }
 interface MonthGroup { year: number; month: number; label: string; rows: Row[]; }
 interface Report {
@@ -49,6 +60,13 @@ function fmt(n: number) {
 export default function PlanAccuracyPage() {
   const qc = useQueryClient();
   const [range, setRange] = useState("6");
+  const [tab, setTab] = useState<"review" | "chronic">("review");
+
+  const { data: chronic } = useQuery<{ items: ChronicItem[] }>({
+    queryKey: ["plan-accuracy-chronic", range],
+    queryFn: () => api.get(`/api/v2/plan-accuracy/chronic?months=${range}`),
+    enabled: tab === "chronic",
+  });
 
   const { data, isLoading } = useQuery<Report>({
     queryKey: ["plan-accuracy", range],
@@ -82,6 +100,51 @@ export default function PlanAccuracyPage() {
         tabs={<Tabs items={RANGES} active={range} onChange={setRange} variant="pills" />}
       />
       <main className="flex-1 p-4 md:p-6 max-w-2xl space-y-4">
+        <div className="flex gap-1 p-0.5 rounded-xl w-fit" style={{ background: "var(--app-sidebar-bg)", border: "1px solid var(--app-border)" }}>
+          {([["review", "Оценка"], ["chronic", "Хронические промахи"]] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className="px-3 h-8 rounded-lg text-[13px] font-semibold transition-colors"
+              style={tab === id ? { background: "var(--app-accent)", color: "#fff" } : { color: "var(--t-muted)" }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "chronic" ? (
+          <>
+            {(chronic?.items.length ?? 0) === 0 ? (
+              <EmptyState icon={<Target size={26} />} title="Хроников нет" description="Нет статей, которые ты регулярно мимо плана за этот период. Молодец." />
+            ) : (
+              <>
+                <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>
+                  Статьи, где ты чаще мимо плана — здесь чинить надо план, а не факт.
+                </p>
+                <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--app-card-border)", background: "var(--app-card-bg)" }}>
+                  {(chronic?.items ?? []).map((it, i) => (
+                    <div key={it.category_id} className="flex items-center gap-2 px-3.5 py-3" style={{ borderTop: i > 0 ? "1px solid var(--app-border-subtle, var(--app-border))" : undefined }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getCategoryColor(it.category_id, it.color) }} />
+                      <span className="text-[14px] leading-none">{getCategoryEmoji(it.title) ?? ""}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium truncate" style={{ color: "var(--t-primary)" }}>{it.title}</p>
+                        <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
+                          {it.direction === "over" ? "хронически перерасход" : "хронически перезаклад"} · в среднем {it.avg_deviation_pct > 0 ? "+" : ""}{it.avg_deviation_pct}%
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: "var(--c-danger-ink)" }}>
+                        {it.miss}/{it.reviewed}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+        <>
         {isLoading && (
           <div className="space-y-3">
             <Skeleton variant="rect" className="h-24 rounded-2xl" />
@@ -166,10 +229,14 @@ export default function PlanAccuracyPage() {
                           )}
                         </div>
 
-                        {/* Перерасход — всегда мимо, кнопок нет. Недорасход — вердикт. */}
+                        {/* Перерасход — мимо. Закрыто → авто-вписался. Иначе — вердикт. */}
                         {r.over ? (
                           <div className="mt-2 pl-4 text-[12px] font-semibold" style={{ color: "var(--c-danger-ink)" }}>
                             Перерасход — мимо плана
+                          </div>
+                        ) : r.closed && r.verdict !== "MISS" ? (
+                          <div className="mt-2 pl-4 text-[12px] font-semibold" style={{ color: "var(--c-success-ink)" }}>
+                            ✓ Закрыто → вписался
                           </div>
                         ) : (
                           <div className="mt-2 pl-4 flex gap-2">
@@ -206,6 +273,8 @@ export default function PlanAccuracyPage() {
               </div>
             ))}
           </>
+        )}
+        </>
         )}
       </main>
     </>
