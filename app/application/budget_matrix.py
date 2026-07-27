@@ -135,6 +135,8 @@ class BudgetMatrixService:
         # --- Data aggregation (single query per source) ---
         fact_map = self._aggregate_fact_bucketed(account_id, periods)
         planned_map = self._aggregate_planned_bucketed(account_id, periods)
+        # Статьи/периоды, где есть плановая операция без суммы (amount IS NULL)
+        planned_unknown = self._aggregate_planned_unknown_bucketed(account_id, periods)
         credit_fact_map = self._aggregate_credit_fact_bucketed(account_id, periods)
 
         # Manual plans: available when base_granularity stores them (MONTH base → always)
@@ -171,6 +173,7 @@ class BudgetMatrixService:
                 cells.append({
                     "plan": plan, "plan_manual": pm, "plan_planned": pp,
                     "fact": fact, "deviation": fact - plan, "note": note,
+                    "plan_unknown": key_p in planned_unknown,
                 })
                 total_plan += plan
                 total_plan_manual += pm
@@ -249,11 +252,11 @@ class BudgetMatrixService:
         # --- "Прочие" (uncategorized/system) ---
         other_income = self._build_other_row(
             fact_map, planned_map, manual_map, consumed_fact, consumed_planned,
-            "INCOME", system_other_income_id, n, has_manual,
+            "INCOME", system_other_income_id, n, has_manual, planned_unknown,
         )
         other_expense = self._build_other_row(
             fact_map, planned_map, manual_map, consumed_fact, consumed_planned,
-            "EXPENSE", system_other_expense_id, n, has_manual,
+            "EXPENSE", system_other_expense_id, n, has_manual, planned_unknown,
         )
 
         # --- Section totals ---
@@ -554,6 +557,57 @@ class BudgetMatrixService:
                 result[(row.category_id, row.kind, row.period_idx)] = row.total or _ZERO
         return result
 
+    def _aggregate_planned_unknown_bucketed(
+        self, account_id: int, periods: List[Dict],
+    ) -> set:
+        """(category_id, kind, period_idx) со ЗАПЛАНИРОВАННОЙ операцией без суммы.
+
+        amount IS NULL → сумма не задана. В план такие операции дают 0, но по
+        статье движение ожидается — фронт рисует точку вместо «—».
+        """
+        if not periods:
+            return set()
+        global_start = periods[0]["range_start"]
+        global_end = periods[-1]["range_end"]
+
+        whens = []
+        for p in periods:
+            cond = and_(
+                OperationOccurrence.scheduled_date >= p["range_start"],
+                OperationOccurrence.scheduled_date < p["range_end"],
+            )
+            whens.append((cond, literal(p["index"])))
+        period_col = case(*whens, else_=literal(-1)).label("period_idx")
+
+        rows = (
+            self.db.query(
+                OperationTemplateModel.category_id,
+                OperationTemplateModel.kind,
+                period_col,
+            )
+            .join(
+                OperationOccurrence,
+                OperationOccurrence.template_id == OperationTemplateModel.template_id,
+            )
+            .filter(
+                OperationTemplateModel.account_id == account_id,
+                OperationTemplateModel.is_archived == False,
+                OperationTemplateModel.kind.in_(["INCOME", "EXPENSE"]),
+                OperationTemplateModel.category_id.isnot(None),
+                OperationTemplateModel.amount.is_(None),
+                OperationOccurrence.scheduled_date >= global_start,
+                OperationOccurrence.scheduled_date < global_end,
+                OperationOccurrence.status != "SKIPPED",
+            )
+            .group_by(
+                OperationTemplateModel.category_id,
+                OperationTemplateModel.kind,
+                period_col,
+            )
+            .all()
+        )
+        return {(r.category_id, r.kind, r.period_idx) for r in rows if r.period_idx >= 0}
+
     def _load_manual_plans_ranged(
         self, account_id: int, periods: List[Dict],
         budget_variant_id: int | None = None,
@@ -622,7 +676,7 @@ class BudgetMatrixService:
         fact_map: Dict, planned_map: Dict, manual_map: Dict,
         consumed_fact: set, consumed_planned: set,
         kind: str, system_cat_id: int | None,
-        n: int, has_manual: bool,
+        n: int, has_manual: bool, planned_unknown: set | None = None,
     ) -> Dict[str, Any]:
         cells = []
         total_plan = _ZERO
@@ -642,9 +696,13 @@ class BudgetMatrixService:
             if has_manual and system_cat_id is not None:
                 manual = manual_map.get((system_cat_id, kind, i), _ZERO)
             plan = (manual + planned) if has_manual else planned
+            unknown = bool(planned_unknown) and any(
+                k not in consumed_planned and k[1] == kind and k[2] == i
+                for k in planned_unknown
+            )
             cells.append({
                 "plan": plan, "plan_manual": manual, "plan_planned": planned,
-                "fact": fact, "deviation": fact - plan,
+                "fact": fact, "deviation": fact - plan, "plan_unknown": unknown,
             })
             total_plan += plan
             total_pm += manual
@@ -694,6 +752,11 @@ class BudgetMatrixService:
                 parent_row["cells"][i]["plan_planned"] = agg_pp
                 parent_row["cells"][i]["fact"] = agg_fact
                 parent_row["cells"][i]["deviation"] = agg_fact - agg_plan
+                # Точка «без суммы» поднимается на группу, если она есть у своей строки или у детей
+                parent_row["cells"][i]["plan_unknown"] = (
+                    parent_row["cells"][i].get("plan_unknown", False)
+                    or any(ch["cells"][i].get("plan_unknown", False) for ch in children)
+                )
 
             # Update totals
             parent_row["total"]["plan"] = sum(parent_row["cells"][i]["plan"] for i in range(n))

@@ -508,6 +508,8 @@ export interface BudgetCell {
   fact: number;
   deviation: number;
   note?: string;
+  /** Есть плановая операция без суммы (amount не задан) — фронт рисует точку вместо «—». */
+  plan_unknown?: boolean;
 }
 
 export interface BudgetRow {

@@ -582,6 +582,19 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
 // ── Cell rendering ────────────────────────────────────────────────────────────
 
 // Non-editable plan <td> (used in totals, goal rows, result row)
+// Точка «плановая операция без суммы»: по статье движение ожидается, сумма пока не задана
+function PlanDot() {
+  return (
+    <span
+      title="Плановая операция без суммы — движение ожидается, сумма пока не задана"
+      aria-label="плановая операция без суммы"
+      style={{ color: "var(--app-accent)", fontSize: 16, lineHeight: 1, fontWeight: 700 }}
+    >
+      •
+    </span>
+  );
+}
+
 function PlanTd({ cell, isMuted, extraStyle, totalCol }: { cell: BudgetCell; isMuted?: boolean; extraStyle?: React.CSSProperties; totalCol?: boolean }) {
   const hasFact = cell.fact !== 0;
   const hasPlan = cell.plan !== 0;
@@ -649,7 +662,7 @@ function EditablePlanTd({
   }
 
   if (!hasPlan && !hasFact && !canEdit) {
-    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
+    return <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...extraStyle }}>{cell.plan_unknown ? <PlanDot /> : "—"}</td>;
   }
 
   return (
@@ -690,7 +703,7 @@ function EditablePlanTd({
             : cell.note ? `📝 ${cell.note}` : (canEdit ? "Клик — изменить · N — с комментарием" : undefined)
         }
       >
-        {hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
+        {hasPlan ? fmt(cell.plan) : cell.plan_unknown ? <PlanDot /> : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
         {hasNote && (
           <span
             className="text-[9px] text-amber-400 ml-0.5 align-super font-bold drop-shadow-[0_0_3px_rgba(251,191,36,0.6)] cursor-pointer"
@@ -1672,7 +1685,7 @@ function OtherRow({
         // У «Прочих» тоже есть план — агрегат плановых операций скрытых/некатегоризованных статей
         const planEl = cell.plan
           ? <span style={{ color: "var(--t-muted)" }}>{fmt(cell.plan)}</span>
-          : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
+          : cell.plan_unknown ? <PlanDot /> : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
 
         if (pk === "past") return (
           <React.Fragment key={i}>
@@ -1819,7 +1832,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
               onCancel={editing.onInlineCancel}
             />
           ) : (
-            hasPlan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
+            hasPlan ? fmt(cell.plan) : cell.plan_unknown ? <PlanDot /> : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")
           )}
         </div>
       </div>
@@ -1976,7 +1989,7 @@ function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick
   onFactClick: (target: FactDetailTarget) => void;
   shownCategoryIds?: number[];
 }) {
-  const cell = cells?.[focusIdx] ?? { plan: 0, fact: 0, deviation: 0 };
+  const cell = cells?.[focusIdx] ?? ({ plan: 0, fact: 0, deviation: 0 } as BudgetCell);
   const factColor = kind === "EXPENSE" ? "rgb(220 38 38)" : "var(--t-secondary)";
   const hasFact = cell.fact !== 0;
 
@@ -1986,7 +1999,7 @@ function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick
       style={{ borderColor: "var(--app-border)", background: "var(--bgt-row-bg)" }}
     >
       <div className="flex-1 text-[13px] truncate" style={{ color: "var(--t-faint)" }}>{label}</div>
-      <div className="tabular-nums text-right text-[12px] shrink-0" style={{ width: 60, color: cell.plan ? "var(--t-muted)" : "var(--bgt-dash)" }}>{cell.plan ? fmt(cell.plan) : "—"}</div>
+      <div className="tabular-nums text-right text-[12px] shrink-0" style={{ width: 60, color: cell.plan ? "var(--t-muted)" : "var(--bgt-dash)" }}>{cell.plan ? fmt(cell.plan) : cell.plan_unknown ? <PlanDot /> : "—"}</div>
       <div
         className="tabular-nums text-right text-[13px] font-medium shrink-0"
         style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)", cursor: hasFact ? "pointer" : "default" }}
