@@ -68,7 +68,8 @@ def load_closures(db: Session, user_id: int) -> set:
         )
         .all()
     )
-    return {(r.year, r.month, r.category_id) for r in rows}
+    # entity_type='category' → entity_id это category_id (модель хранит в entity_id)
+    return {(r.year, r.month, r.entity_id) for r in rows}
 
 
 def build_fact_plan_maps(
