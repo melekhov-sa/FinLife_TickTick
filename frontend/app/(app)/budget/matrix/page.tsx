@@ -1669,6 +1669,10 @@ function OtherRow({
         const factEl = cell.fact
           ? <span onClick={() => onFactClick({ categoryId: -1, categoryTitle: label, kind, periodLabel: p.label, dateFrom: p.range_start, dateTo: p.range_end, factAmount: cell.fact, excludeCategoryIds: shownCategoryIds })} className="cursor-pointer hover:underline hover:text-[var(--app-accent)]" style={{ color: factColor }}>{fmt(cell.fact)}</span>
           : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
+        // У «Прочих» тоже есть план — агрегат плановых операций скрытых/некатегоризованных статей
+        const planEl = cell.plan
+          ? <span style={{ color: "var(--t-muted)" }}>{fmt(cell.plan)}</span>
+          : <span style={{ color: "var(--bgt-dash)" }}>—</span>;
 
         if (pk === "past") return (
           <React.Fragment key={i}>
@@ -1676,16 +1680,19 @@ function OtherRow({
             <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
           </React.Fragment>
         );
-        if (pk === "current") return (
-          <React.Fragment key={i}>
-            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...pBorder }}>—</td>
-            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]">{factEl}</td>
-            <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)" }}>—</td>
-          </React.Fragment>
-        );
-        return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: "var(--bgt-dash)", ...pBorder }}>—</td>;
+        if (pk === "current") {
+          const rem = cell.plan > 0 ? Math.max(0, cell.plan - cell.fact) : 0;
+          return (
+            <React.Fragment key={i}>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={pBorder}>{planEl}</td>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]">{factEl}</td>
+              <td className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={{ color: rem > 0 ? "var(--t-secondary)" : "var(--bgt-dash)" }}>{rem > 0 ? fmt(rem) : "—"}</td>
+            </React.Fragment>
+          );
+        }
+        return <td key={i} className="tabular-nums text-right px-2 py-1.5 text-[12px]" style={pBorder}>{planEl}</td>;
       })}
-      <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bgt-tc-plan" style={{ color: "var(--bgt-dash)", borderLeft: "2px solid var(--bgt-sticky-border)", background: "var(--bgt-row-bg)" }}>—</td>
+      <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bgt-tc-plan" style={{ color: total?.plan ? "var(--t-muted)" : "var(--bgt-dash)", borderLeft: "2px solid var(--bgt-sticky-border)", background: "var(--bgt-row-bg)" }}>{total?.plan ? fmt(total.plan) : "—"}</td>
       <td className="tabular-nums text-right px-2 py-1.5 text-[12px] bgt-tc-fact" style={{ color: total?.fact ? factColor : "var(--bgt-dash)", background: "var(--bgt-row-bg)" }}>
         {total?.fact ? fmt(total.fact) : "—"}
       </td>
@@ -1979,7 +1986,7 @@ function MobileOtherRow({ label, kind, cells, focusPeriod, focusIdx, onFactClick
       style={{ borderColor: "var(--app-border)", background: "var(--bgt-row-bg)" }}
     >
       <div className="flex-1 text-[13px] truncate" style={{ color: "var(--t-faint)" }}>{label}</div>
-      <div className="tabular-nums text-right text-[12px] shrink-0" style={{ width: 60, color: "var(--bgt-dash)" }}>—</div>
+      <div className="tabular-nums text-right text-[12px] shrink-0" style={{ width: 60, color: cell.plan ? "var(--t-muted)" : "var(--bgt-dash)" }}>{cell.plan ? fmt(cell.plan) : "—"}</div>
       <div
         className="tabular-nums text-right text-[13px] font-medium shrink-0"
         style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)", cursor: hasFact ? "pointer" : "default" }}
