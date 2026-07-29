@@ -2049,15 +2049,11 @@ export default function BudgetMatrixPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
-  // По умолчанию: телефон — 1 месяц (полные колонки П/Ф/Ост), ПК — 6 месяцев
+  // По умолчанию: телефон — 1 месяц всегда (полные колонки П/Ф/Ост), ПК — 6 месяцев.
+  // На мобиле выбор периода скрыт, так что rangeCount там остаётся 1.
   const [rangeCount, setRangeCount] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768 ? 1 : 6
   );
-
-  // Mobile default: 2 periods on narrow screens
-  React.useEffect(() => {
-    if (window.innerWidth < 640) setRangeCount(2);
-  }, []);
 
   // Section collapse — persisted in localStorage
   const [sections, setSectionsState] = useState<{ incomeOpen: boolean; expenseOpen: boolean; goalsOpen: boolean; withdrawOpen: boolean }>(() => {
@@ -2645,11 +2641,17 @@ export default function BudgetMatrixPage() {
                 <ChevronLeft size={16} />
               </button>
             </Tooltip>
-            <PeriodPicker
-              value={{ year, month, rangeCount }}
-              onChange={({ year: y, month: m, rangeCount: rc }) => { setYear(y); setMonth(m); setRangeCount(rc); }}
-              label={periodLabel}
-            />
+            {/* ПК — полный выбор периода; телефон — только месяц (стрелками) */}
+            <div className="hidden md:block">
+              <PeriodPicker
+                value={{ year, month, rangeCount }}
+                onChange={({ year: y, month: m, rangeCount: rc }) => { setYear(y); setMonth(m); setRangeCount(rc); }}
+                label={periodLabel}
+              />
+            </div>
+            <span className="md:hidden text-[13px] font-semibold px-2 whitespace-nowrap" style={{ color: "var(--t-primary)" }}>
+              {periods[0]?.label ?? periodLabel}
+            </span>
             <Tooltip content="Вперёд">
               <button
                 onClick={goForward}
