@@ -1470,9 +1470,11 @@ def net_worth_report(
 ):
     """Динамика капитала по месяцам (RUB-кошельки).
 
-    money   — REGULAR + SAVINGS,
+    money   — все не-CREDIT кошельки (REGULAR + SAVINGS + COLLECTION),
     debt    — |CREDIT| (кредитные балансы хранятся отрицательными),
-    capital — money − debt.
+    capital — money − debt + себестоимость коллекции.
+    Считается 1-в-1 как «Фин. результат» на дашборде. Личные долги
+    (мне должны / я должен) в капитал НЕ входят — показываются отдельно.
     Балансы на конец месяца восстанавливаются обратным проходом по ленте
     (включая архивные кошельки — для честной истории).
     """
@@ -1603,6 +1605,15 @@ def net_worth_report(
                 borrowed += remaining
         return lent, borrowed
 
+    # Себестоимость коллекции — как на дашборде (financial_result её включает).
+    # Снимков по месяцам нет → добавляем константой во все точки (история приблизит).
+    from app.infrastructure.db.models import CollectionItem
+    collection_cost = Decimal(str(
+        db.query(func.coalesce(func.sum(CollectionItem.acquisition_price), 0))
+        .filter(CollectionItem.account_id == user_id)
+        .scalar() or 0
+    ))
+
     out_months = []
     for i, lbl in enumerate(month_labels):
         money = Decimal("0")
@@ -1619,7 +1630,8 @@ def net_worth_report(
             "debt": float(-credit),
             "lent": float(lent_i),
             "borrowed": float(borrowed_i),
-            "capital": float(money + credit + lent_i - borrowed_i),
+            # капитал = как «Фин. результат» на дашборде (без личных долгов, с коллекцией)
+            "capital": float(money + credit + collection_cost),
         })
 
     money_now = sum(
@@ -1654,6 +1666,6 @@ def net_worth_report(
             "debt": float(-credit_now),
             "lent": float(lent_now),
             "borrowed": float(borrowed_now),
-            "capital": float(money_now + credit_now + lent_now - borrowed_now),
+            "capital": float(money_now + credit_now + collection_cost),
         },
     }
