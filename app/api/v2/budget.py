@@ -142,6 +142,14 @@ def budget_matrix(
                 year=y, month=m,
                 budget_variant_id=variant_id_resolved,
             )
+        # Материализуем плановые операции до конца просматриваемого диапазона,
+        # чтобы будущие операции (напр. годовые) появлялись в бюджете, а не только
+        # в пределах стандартного окна генерации (~до конца текущего года).
+        end_y, end_m = (y + 1, 1) if m == 12 else (y, m + 1)
+        from app.application.occurrence_generator import OccurrenceGenerator
+        OccurrenceGenerator(db).generate_operation_occurrences(
+            user_id, until=date_type(end_y, end_m, 1)
+        )
 
     view = BudgetMatrixService(db).build(
         account_id=user_id,

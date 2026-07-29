@@ -157,14 +157,21 @@ class OccurrenceGenerator:
             self.db.commit()
         return count
 
-    def generate_operation_occurrences(self, account_id: int) -> int:
-        """Generate missing operation template occurrences. Returns count of new rows."""
+    def generate_operation_occurrences(self, account_id: int, until: date | None = None) -> int:
+        """Generate missing operation template occurrences. Returns count of new rows.
+
+        until — расширить окно генерации вперёд (напр. до конца просматриваемого
+        диапазона бюджета), чтобы плановые операции будущих месяцев (годовые и т.п.)
+        были видны в бюджете, а не только в пределах стандартного окна.
+        """
         templates = self.db.query(OperationTemplateModel).filter(
             OperationTemplateModel.account_id == account_id,
             OperationTemplateModel.is_archived == False,
         ).all()
 
         window_start, window_end = _get_window()
+        if until is not None and until > window_end:
+            window_end = until
         count = 0
 
         for tmpl in templates:
