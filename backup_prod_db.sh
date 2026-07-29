@@ -21,6 +21,9 @@ _envget() { grep -E "^$1=" "$PROJECT_DIR/.env" 2>/dev/null | tail -1 | cut -d= -
 BACKUP_TG_BOT_TOKEN="${BACKUP_TG_BOT_TOKEN:-$(_envget BACKUP_TG_BOT_TOKEN)}"
 BACKUP_TG_CHAT_ID="${BACKUP_TG_CHAT_ID:-$(_envget BACKUP_TG_CHAT_ID)}"
 TELEGRAM_PROXY="${TELEGRAM_PROXY:-$(_envget TELEGRAM_PROXY)}"
+# (опц.) зеркало в приватный git-репо: путь к локальному клону + ветка
+BACKUP_GIT_DIR="${BACKUP_GIT_DIR:-$(_envget BACKUP_GIT_DIR)}"
+BACKUP_GIT_BRANCH="${BACKUP_GIT_BRANCH:-$(_envget BACKUP_GIT_BRANCH)}"
 
 TS="$(date +%Y%m%d-%H%M%S)"
 GZ="$BACKUP_DIR/prod_${TS}.sql.gz"
@@ -74,6 +77,35 @@ fi
 ls -1t "$BACKUP_DIR"/prod_*.sql.gz 2>/dev/null | tail -n +"$((KEEP+1))" | xargs -r rm -f
 
 trap - ERR
-echo "==> Done: $GZ (sent_tg=$SENT)"
+
+# 4) (опц.) зеркало в приватный git-репозиторий: только последние N дампов,
+#    история сплющивается orphan-снапшотом → репозиторий не разрастается.
+GIT_STATE=""
+if [ -n "${BACKUP_GIT_DIR:-}" ] && [ -d "$BACKUP_GIT_DIR/.git" ]; then
+  # Страховка: orphan-пуш ПЕРЕЗАПИСЫВАЕТ историю. Это должен быть ОТДЕЛЬНЫЙ
+  # бэкап-репо. Если внутри есть что-то кроме бэкапов (код!) — не трогаем.
+  if ls -A "$BACKUP_GIT_DIR" | grep -qvE '^(prod_[0-9-]+\.sql\.gz|\.git|\.gitignore|README\.md)$'; then
+    GIT_STATE=" · git ПРОПУЩЕН (посторонние файлы)"
+    tg_msg "⚠️ git-бэкап пропущен: в $BACKUP_GIT_DIR есть посторонние файлы. Нужен ОТДЕЛЬНЫЙ приватный репо только для бэкапов."
+  elif (
+        cd "$BACKUP_GIT_DIR"
+        cp -f "$BACKUP_DIR"/prod_*.sql.gz ./ 2>/dev/null || true
+        ls -1t prod_*.sql.gz 2>/dev/null | tail -n +"$((KEEP+1))" | xargs -r rm -f
+        br="${BACKUP_GIT_BRANCH:-main}"
+        git checkout -q --orphan _snap
+        git add -A
+        git commit -q -m "backup $TS" >/dev/null
+        git branch -q -D "$br" 2>/dev/null || true
+        git branch -q -m "$br"
+        git push -qf origin "$br"
+      ); then
+    GIT_STATE=" · git ок"
+  else
+    GIT_STATE=" · git ПРОВАЛ"
+    tg_msg "⚠️ git-бэкап не удался ($TS) — проверь доступ к репозиторию."
+  fi
+fi
+
+echo "==> Done: $GZ (sent_tg=$SENT)$GIT_STATE"
 tg_msg "✅ <b>Бэкап FinLife ок</b>
-$(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · отправлен в канал' || echo ' · в канал НЕ отправлен')"
+$(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · в канал' || echo ' · в канал НЕ ушёл')$GIT_STATE"
