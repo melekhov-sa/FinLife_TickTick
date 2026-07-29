@@ -1,10 +1,9 @@
-# FinLife - pull encrypted DB backups (.age) from the prod server to this machine.
+# FinLife - pull DB backups (.sql.gz) from the prod server to this machine.
 # Run on a schedule (Task Scheduler). PULL (not push) on purpose: the server holds
-# no credentials to your machine, so a seized server can't reach this copy.
+# no credentials to your machine, so losing the server doesn't lose this copy.
 #
 # Requirements: OpenSSH client (built into Windows 10/11) + an SSH key to the server.
-# Adjust $Server / $LocalDir below. The private age key is NOT needed here - files
-# stay encrypted; decryption happens only at restore time.
+# Adjust $Server / $LocalDir below.
 #
 # ASCII-only on purpose: Windows PowerShell 5.1 reads .ps1 as ANSI, so non-ASCII
 # comments can break parsing. Keep this file ASCII.
@@ -22,9 +21,9 @@ function Log($m) { "$(Get-Date -Format o)  $m" | Tee-Object -FilePath $log -Appe
 
 Log "pull start -> $LocalDir"
 try {
-    # List encrypted backups on the server
-    $remoteList = ssh $Server "ls -1 $RemoteDir/prod_*.sql.gz.age 2>/dev/null"
-    if (-not $remoteList) { Log "no .age files on server (encryption not set up yet?)"; exit 0 }
+    # List backups on the server
+    $remoteList = ssh $Server "ls -1 $RemoteDir/prod_*.sql.gz 2>/dev/null"
+    if (-not $remoteList) { Log "no .sql.gz backups on server yet"; exit 0 }
 
     $names = $remoteList -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
     $copied = 0
@@ -39,11 +38,11 @@ try {
     }
 
     # Local retention
-    Get-ChildItem $LocalDir -Filter "prod_*.sql.gz.age" |
+    Get-ChildItem $LocalDir -Filter "prod_*.sql.gz" |
         Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$KeepDays) } |
         Remove-Item -Force
 
-    $total = (Get-ChildItem $LocalDir -Filter "prod_*.sql.gz.age").Count
+    $total = (Get-ChildItem $LocalDir -Filter "prod_*.sql.gz").Count
     Log "pull done: $copied new, $total total"
 }
 catch {
