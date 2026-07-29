@@ -392,7 +392,7 @@ function EntryRow({
       ref={setNodeRef}
       className={clsx(
         "flex items-center gap-2.5 py-[7px] border-t first:border-0 transition-colors cursor-default group/row",
-        "border-slate-100/70 dark:border-white/[0.05] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
+        "border-[var(--app-border)] hover:bg-slate-50/50 dark:hover:bg-white/[0.03]",
         isCompleting && "task-row-completing",
         isDragging && "opacity-30",
       )}
