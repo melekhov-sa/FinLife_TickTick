@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, TrendingUp, TrendingDown, LayoutGrid, BarChart3, CalendarClock } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -156,9 +156,12 @@ function Section({
   if (isEmpty) return null;
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-[14px] p-5">
+    <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-[14px] p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[13px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+        <h2 className="text-[13px] font-semibold uppercase tracking-wide flex items-center gap-1.5" style={{ color: "var(--t-muted)" }}>
+          {kind === "income"
+            ? <TrendingUp size={13} strokeWidth={2} className="opacity-70" />
+            : <TrendingDown size={13} strokeWidth={2} className="opacity-70" />}
           {label}
         </h2>
         <div className="text-right">
@@ -265,9 +268,10 @@ export default function BudgetPage() {
         actions={
           <a
             href="/planned-ops"
-            className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
             style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
           >
+            <CalendarClock size={13} strokeWidth={2} className="opacity-70" />
             Плановые операции
           </a>
         }
@@ -281,6 +285,7 @@ export default function BudgetPage() {
             className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.07] transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
             style={{ color: "var(--t-faint)" }}
           >
+            <LayoutGrid size={13} strokeWidth={2} className="opacity-70" />
             Расширенный бюджет →
           </Link>
           <Link
@@ -288,6 +293,7 @@ export default function BudgetPage() {
             className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.07] transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
             style={{ color: "var(--t-faint)" }}
           >
+            <BarChart3 size={13} strokeWidth={2} className="opacity-70" />
             Статистика →
           </Link>
         </div>
@@ -327,12 +333,12 @@ export default function BudgetPage() {
 
         {/* Balance summary */}
         {data && (
-          <div className="rounded-[14px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] p-5 mb-5">
+          <div className="rounded-[14px] bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-5 mb-5">
             <div className="flex items-center justify-between">
               <div>
                 <p
-                  className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-                  style={{ color: "var(--t-faint)" }}
+                  className="text-[11px] font-semibold uppercase tracking-wide mb-1"
+                  style={{ color: "var(--t-muted)" }}
                 >
                   Баланс
                 </p>
