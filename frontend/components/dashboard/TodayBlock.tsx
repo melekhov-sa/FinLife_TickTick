@@ -889,7 +889,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                       const rescheduleCount = (item.meta?.reschedule_count as number) ?? 0;
                       const isZombie = item.kind === "task" && !item.is_done && (getDaysOverdue(item) >= ZOMBIE_DAYS || rescheduleCount >= ZOMBIE_DAYS);
                       return item.kind === "task" && !item.is_done ? (
-                        <div key={`${item.kind}-${item.id}`} className={isZombie ? "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5" : undefined}>
+                        <div key={`${item.kind}-${item.id}`} className={isZombie ? "rounded-lg border border-amber-300/25 bg-amber-50/50 dark:border-amber-500/15 dark:bg-amber-500/[0.05] -mx-1 px-1 mb-0.5" : undefined}>
                           <SortableTaskItem
                             item={item}
                             onComplete={handleOpenCompleteItem}
@@ -940,7 +940,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
                 if (isCounter && habitId) {
                   return (
-                    <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
+                    <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-300/25 bg-amber-50/50 dark:border-amber-500/15 dark:bg-amber-500/[0.05] -mx-1 px-1 mb-0.5")}>
                       <div className="flex items-center gap-2.5 py-[6px] hover:bg-[var(--app-accent-light)] transition-colors rounded-md -mx-1 px-1 group/ch">
                         {/* +1 button or done check */}
                         <div className="shrink-0">
@@ -990,7 +990,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 }
 
                 return (
-                  <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-400/40 bg-amber-50/30 dark:bg-amber-500/5 -mx-1 px-1 mb-0.5")}>
+                  <div key={`${item.kind}-${item.id}`} className={clsx(item.is_done && "opacity-70", streakAtRisk && "rounded-lg border border-amber-300/25 bg-amber-50/50 dark:border-amber-500/15 dark:bg-amber-500/[0.05] -mx-1 px-1 mb-0.5")}>
                     <Item item={item} onComplete={handleOpenCompleteItem} isCompleting={completingKey === (item.kind + "-" + item.id)} />
                   </div>
                 );
