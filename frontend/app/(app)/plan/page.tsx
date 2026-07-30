@@ -978,13 +978,8 @@ export default function PlanPage() {
     // Задачи: мгновенно выполняем + тост «Отменить» (как в TickTick), без диалога.
     const kind = entry.kind as "task" | "task_occ";
     const id = entry.id;
-    completeTaskLike(kind, id).catch(() => {
-      toast({ title: "Не удалось выполнить", variant: "danger" });
-      qc.invalidateQueries({ queryKey: ["plan"] });
-    });
-    handleCompleted(kind, id); // анимация галочки + отложенная инвалидация
+    setCompletingKey(key); // мгновенная галочка (строка уйдёт по подтверждению сервера)
     showUndo(() => {
-      if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
       setCompletingKey(null);
       uncompleteTaskLike(kind, id)
         .then(() => {
@@ -994,6 +989,17 @@ export default function PlanPage() {
         })
         .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
     });
+    completeTaskLike(kind, id)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["plan"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["tasks"] });
+      })
+      .catch(() => {
+        setCompletingKey(null);
+        toast({ title: "Не удалось выполнить", variant: "danger" });
+        qc.invalidateQueries({ queryKey: ["plan"] });
+      });
   }
 
   const { mutate: skipOp } = useMutation({

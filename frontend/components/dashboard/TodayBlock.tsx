@@ -491,13 +491,8 @@ export function TodayBlock({ today, plannedOps }: Props) {
     const kind = item.kind as "task" | "task_occ";
     const id = item.id;
     void hapticTick();
-    completeTaskLike(kind, id).catch(() => {
-      toast({ title: "Не удалось выполнить", variant: "danger" });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-    });
-    handleTodayCompleted(kind, id); // анимация галочки + отложенная инвалидация
+    setCompletingKey(key); // мгновенная галочка (строка уйдёт по подтверждению сервера)
     showUndo(() => {
-      if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
       setCompletingKey(null);
       uncompleteTaskLike(kind, id)
         .then(() => {
@@ -507,6 +502,18 @@ export function TodayBlock({ today, plannedOps }: Props) {
         })
         .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
     });
+    completeTaskLike(kind, id)
+      .then(() => {
+        // сервер подтвердил → перечитываем: строка уходит без гонки/дёрганья
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["plan"] });
+        qc.invalidateQueries({ queryKey: ["tasks"] });
+      })
+      .catch(() => {
+        setCompletingKey(null);
+        toast({ title: "Не удалось выполнить", variant: "danger" });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      });
   }
 
   const [createMenuOpen, setCreateMenuOpen] = useState(false);

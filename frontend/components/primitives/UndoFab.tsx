@@ -41,7 +41,7 @@ export function UndoFabProvider({ children }: { children: ReactNode }) {
     setTimeout(() => { setVisible(false); setExiting(false); onUndoRef.current = null; }, 160);
   }, []);
 
-  const showUndo = useCallback((onUndo: () => void, duration = 5000) => {
+  const showUndo = useCallback((onUndo: () => void, duration = 8000) => {
     onUndoRef.current = onUndo;
     setExiting(false);
     setVisible(true);
