@@ -155,6 +155,11 @@
   --app-card-border: #E2E8F0;
   --app-card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
 
+  /* Dashboard cards — тёплая мягкая подача (см. .dash-card) */
+  --dash-card-bg:     #FFFDFB;
+  --dash-card-border: rgba(30,27,22,0.055);
+  --dash-card-shadow: 0 1px 2px rgba(30,27,22,0.03), 0 10px 26px -14px rgba(30,27,22,0.10);
+
   /* Accent */
   --app-accent:       #6366F1;
   --app-accent-light: rgba(99,102,241,0.08);
@@ -247,6 +252,11 @@
   --app-card-border: rgba(255,255,255,0.06);
   --app-card-shadow: 0 1px 3px rgba(0,0,0,0.3);
   --app-sheet-bg:    #131a2b;  /* elevation поверх карточек */
+
+  /* Dashboard cards (dark) */
+  --dash-card-bg:     rgba(255,255,255,0.045);
+  --dash-card-border: rgba(255,255,255,0.07);
+  --dash-card-shadow: 0 10px 30px -18px rgba(0,0,0,0.55);
 
   --app-accent:       #818CF8;
   --app-accent-light: rgba(129,140,248,0.12);
@@ -502,6 +512,17 @@ html:not(.dark) .bg-amber-500\/10   { background-color: rgba(217,119,6,0.08) !im
 html:not(.dark) .bg-indigo-600\/80  { background-color: #4F46E5 !important; }
 
 /* ── Remove combined selector (now handled individually) ─────────────────── */
+
+/* ── Dashboard cards ─────────────────────────────────────────────────────────
+   Тёплая мягкая подача вместо жёсткого «технического» бордера: мягкий бордер-
+   волосок, деликатная диффузная тень, больший радиус, лёгкая теплота фона.
+   Единый класс — меняем в одном месте, теплеет весь дашборд. Тема-осознанный. */
+.dash-card {
+  background: var(--dash-card-bg, #FFFDFB);
+  border: 1px solid var(--dash-card-border, rgba(30,27,22,0.055));
+  border-radius: 16px;
+  box-shadow: var(--dash-card-shadow, 0 1px 2px rgba(30,27,22,0.03), 0 10px 26px -14px rgba(30,27,22,0.10));
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    COLOR THEMES — applied via data-color-theme attribute on <html>

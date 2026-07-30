@@ -82,7 +82,7 @@ export function UpcomingPayments({ payments }: Props) {
   const groupEntries = Object.entries(groups);
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
+    <div className="dash-card p-4">
       <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Ближайшие платежи
       </h2>

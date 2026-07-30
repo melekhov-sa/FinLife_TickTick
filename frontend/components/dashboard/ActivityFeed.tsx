@@ -198,7 +198,7 @@ export function ActivityFeed({ feed }: Props) {
   const hiddenDayCount = feed.length - 1;
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-3 md:p-4">
+    <div className="dash-card p-3 md:p-4">
       <h2 className="text-[15px] md:text-[16px] font-semibold mb-2" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Активность
       </h2>

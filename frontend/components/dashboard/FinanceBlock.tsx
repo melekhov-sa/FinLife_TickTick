@@ -33,7 +33,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
   const debtBorrowed = debtsData?.totals?.["RUB"]?.borrowed ?? 0;
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-3.5 md:p-5">
+    <div className="dash-card p-3.5 md:p-5">
       <h2 className="text-[13px] md:text-[14px] font-semibold mb-2 md:mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Финансы
       </h2>

@@ -51,7 +51,7 @@ export function ShoppingWidget({ listId, items }: Props) {
   }
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-4">
+    <div className="dash-card p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
           Ближайшие покупки

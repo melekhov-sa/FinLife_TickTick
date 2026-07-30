@@ -41,7 +41,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
   const levelPct = level ? Math.min(100, Math.round(level.percent_progress)) : 0;
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-xl md:rounded-[14px] border border-slate-200 dark:border-white/[0.09] shadow-sm p-3.5 md:p-5 space-y-3 md:space-y-4">
+    <div className="dash-card p-3.5 md:p-5 space-y-3 md:space-y-4">
       <h2 className="text-[13px] md:text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Продуктивность
       </h2>
