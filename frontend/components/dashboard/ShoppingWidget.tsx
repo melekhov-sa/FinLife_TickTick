@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Plus } from "lucide-react";
+import { Plus, ShoppingCart } from "lucide-react";
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ShoppingItem } from "@/types/api";
@@ -53,7 +53,8 @@ export function ShoppingWidget({ listId, items }: Props) {
   return (
     <div className="dash-card p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[14px] font-semibold" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <p className="text-[14px] font-semibold inline-flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+          <ShoppingCart size={14} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
           Ближайшие покупки
         </p>
         <button

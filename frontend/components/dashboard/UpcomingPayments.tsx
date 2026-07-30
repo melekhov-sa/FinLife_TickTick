@@ -1,6 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
+import { CalendarClock } from "lucide-react";
 import type { UpcomingPayment } from "@/types/api";
 
 interface Props {
@@ -83,7 +84,8 @@ export function UpcomingPayments({ payments }: Props) {
 
   return (
     <div className="dash-card p-4">
-      <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <h2 className="text-[14px] font-semibold mb-3 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <CalendarClock size={14} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
         Ближайшие платежи
       </h2>
 

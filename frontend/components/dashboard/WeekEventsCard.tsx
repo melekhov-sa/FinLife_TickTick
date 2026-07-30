@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, CalendarDays } from "lucide-react";
 import type { WeekEvent } from "@/types/api";
 import { pluralizeYears } from "@/lib/utils";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
@@ -25,7 +25,8 @@ export function WeekEventsCard({ events }: Props) {
 
   return (
     <div className="dash-card p-4">
-      <p className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <p className="text-[14px] font-semibold mb-3 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <CalendarDays size={14} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
         События на неделе
       </p>
 

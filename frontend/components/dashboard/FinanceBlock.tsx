@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { clsx } from "clsx";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Wallet } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
@@ -34,7 +34,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
 
   return (
     <div className="dash-card p-3.5 md:p-5">
-      <h2 className="text-[13px] md:text-[14px] font-semibold mb-2 md:mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <h2 className="text-[13px] md:text-[14px] font-semibold mb-2 md:mb-3 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <Wallet size={14} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
         Финансы
       </h2>
 

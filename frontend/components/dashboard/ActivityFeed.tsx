@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { clsx } from "clsx";
+import { Activity } from "lucide-react";
 import type { FeedGroup, FeedEvent } from "@/types/api";
 
 interface Props {
@@ -199,7 +200,8 @@ export function ActivityFeed({ feed }: Props) {
 
   return (
     <div className="dash-card p-3 md:p-4">
-      <h2 className="text-[15px] md:text-[16px] font-semibold mb-2" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <h2 className="text-[15px] md:text-[16px] font-semibold mb-2 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <Activity size={15} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
         Активность
       </h2>
 

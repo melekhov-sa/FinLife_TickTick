@@ -2,7 +2,7 @@
 
 import type { ExpiringSub, ExpiringDoc } from "@/types/api";
 import { Badge } from "@/components/primitives/Badge";
-import { FileBadge2 } from "lucide-react";
+import { AlarmClock, FileBadge2 } from "lucide-react";
 
 interface Props {
   subs: ExpiringSub[];
@@ -25,7 +25,8 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
 
   return (
     <div className="dash-card p-4">
-      <h2 className="text-[14px] font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+      <h2 className="text-[14px] font-semibold mb-3 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
+        <AlarmClock size={14} strokeWidth={2} style={{ color: "var(--t-muted)" }} />
         Скоро заканчивается
       </h2>
 
