@@ -31,7 +31,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { DayListModal } from "@/components/modals/DayListModal";
 import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
-import { isCompletable, type CompletableKind } from "@/lib/completion";
+import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKind } from "@/lib/completion";
+import { useToast } from "@/components/primitives/Toast";
 import { clsx } from "clsx";
 import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
 import { api } from "@/lib/api";
@@ -919,6 +920,7 @@ export default function PlanPage() {
   const qc = useQueryClient();
   const [completingKey, setCompletingKey] = useState<string | null>(null);
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toast } = useToast();
 
   // ── View mode: list | calendar ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"list" | "calendar">(() => {
@@ -965,8 +967,37 @@ export default function PlanPage() {
   }
 
   function handleOpenComplete(entry: PlanEntry) {
-    if (completingKey === entry.kind + "-" + entry.id) return;
-    setConfirmEntry(entry);
+    const key = entry.kind + "-" + entry.id;
+    if (completingKey === key) return;
+    // Привычки — прежний путь (у них свой inline-undo).
+    if (entry.kind === "habit") { setConfirmEntry(entry); return; }
+    // Задачи: мгновенно выполняем + тост «Отменить» (как в TickTick), без диалога.
+    const kind = entry.kind as "task" | "task_occ";
+    const id = entry.id;
+    completeTaskLike(kind, id).catch(() => {
+      toast({ title: "Не удалось выполнить", variant: "danger" });
+      qc.invalidateQueries({ queryKey: ["plan"] });
+    });
+    handleCompleted(kind, id); // анимация галочки + отложенная инвалидация
+    toast({
+      title: "Выполнено",
+      description: entry.title,
+      duration: 5000,
+      action: {
+        label: "Отменить",
+        onClick: () => {
+          if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+          setCompletingKey(null);
+          uncompleteTaskLike(kind, id)
+            .then(() => {
+              qc.invalidateQueries({ queryKey: ["plan"] });
+              qc.invalidateQueries({ queryKey: ["dashboard"] });
+              qc.invalidateQueries({ queryKey: ["tasks"] });
+            })
+            .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
+        },
+      },
+    });
   }
 
   const { mutate: skipOp } = useMutation({

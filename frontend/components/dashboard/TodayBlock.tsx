@@ -31,7 +31,7 @@ import { api } from "@/lib/api";
 import { hapticTick } from "@/lib/native";
 import { useCreateTask, useReorderTasks } from "@/hooks/useTasks";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
-import { isCompletable, type CompletableKind } from "@/lib/completion";
+import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKind } from "@/lib/completion";
 import { pluralizeYears } from "@/lib/utils";
 import type { TodayBlock as TodayBlockType, DashboardItem, UpcomingPayment } from "@/types/api";
 import { CreateOperationModal } from "@/components/modals/CreateOperationModal";
@@ -41,15 +41,6 @@ import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { Button } from "@/components/primitives/Button";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useToast } from "@/components/primitives/Toast";
-
-// Мгновенное выполнение/откат задачи (как в TickTick) — прямые вызовы, чтобы
-// сохранить анимацию галочки и не триггерить лишние инвалидации.
-async function completeTaskLike(kind: "task" | "task_occ", id: number) {
-  return api.post(kind === "task_occ" ? `/api/v2/task-occurrences/${id}/complete` : `/api/v2/tasks/${id}/complete`);
-}
-async function uncompleteTaskLike(kind: "task" | "task_occ", id: number) {
-  return api.post(kind === "task_occ" ? `/api/v2/task-occurrences/${id}/uncomplete` : `/api/v2/tasks/${id}/uncomplete`);
-}
 
 interface Props {
   today: TodayBlockType;
