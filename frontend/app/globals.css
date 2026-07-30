@@ -124,7 +124,7 @@
 
 /* ── Light mode (DEFAULT) — clean white, vivid accents ─────────────────── */
 :root {
-  --app-bg:            #F7F8FC;
+  --app-bg:            #F7F5F0;
   --app-canvas:        #F7F8FC;
   --app-sidebar-bg:    #FFFFFF;
   --app-topbar-bg:     linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%);
@@ -178,8 +178,8 @@
   --shadow-widget: 0 1px 2px rgba(16, 24, 40, .04);
 
   /* Finance */
-  --color-income:  #22C55E;
-  --color-expense: #EF4444;
+  --color-income:  #16A34A;
+  --color-expense: #D25E5E;
   --color-transfer: #3B82F6;
 
   /* Semantic palette — bg/fg/ink триплеты под бейджи, чипы, тосты, AmountText */
@@ -503,7 +503,7 @@ html:not(.dark) .border-indigo-500\/40    { border-color: rgba(99,102,241,0.50) 
 
 /* ── Money colors on light — vivid for visibility ────────────────────────── */
 html:not(.dark) .money-income  { color: #16A34A !important; }
-html:not(.dark) .money-expense { color: #DC2626 !important; }
+html:not(.dark) .money-expense { color: #C24E4E !important; }
 
 /* ── Status / semantic backgrounds (less vivid on white) ─────────────────── */
 html:not(.dark) .bg-emerald-500\/10 { background-color: rgba(5,150,105,0.08) !important; }
