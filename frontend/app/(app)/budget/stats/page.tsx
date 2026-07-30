@@ -99,7 +99,7 @@ function KpiCard({
         border: "1px solid var(--app-border)",
       }}
     >
-      <p className="text-[11px] font-medium mb-2 uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
+      <p className="text-[11px] font-medium mb-2 uppercase tracking-wide" style={{ color: "var(--t-muted)" }}>
         {label}
       </p>
       <p
@@ -320,7 +320,7 @@ function SavingsRateBlock({ data }: { data: MonthPoint[] }) {
   const maxAbs = Math.max(1, ...rates.map((r) => Math.abs(r.rate)));
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+    <div className="bg-[var(--dash-card-bg)] rounded-2xl border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-4 md:p-5">
       <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
         Норма сбережений по месяцам
       </h3>
@@ -365,7 +365,7 @@ function StructureBlock({ cats }: { cats: BudgetCategoryStats[] }) {
   const concentrated = topIncome && topIncome.pct_of_total_6m >= 70;
 
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+    <div className="bg-[var(--dash-card-bg)] rounded-2xl border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-4 md:p-5">
       <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
         Структура и концентрация
       </h3>
@@ -402,7 +402,7 @@ function StructureBlock({ cats }: { cats: BudgetCategoryStats[] }) {
 function OutOfPlanBlock({ data }: { data: BudgetStatsData["out_of_plan"] }) {
   if (!data || data.categories.length === 0) return null;
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+    <div className="bg-[var(--dash-card-bg)] rounded-2xl border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-4 md:p-5">
       <div className="flex items-baseline justify-between gap-2 mb-3">
         <h3 className="text-[13px] md:text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
           Расходы вне плана
@@ -430,7 +430,7 @@ function MandatoryBlock({ data }: { data: BudgetStatsData["mandatory"] }) {
   if (!data) return null;
   if (!data.configured) {
     return (
-      <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+      <div className="bg-[var(--dash-card-bg)] rounded-2xl border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-4 md:p-5">
         <h3 className="text-[13px] md:text-[14px] font-semibold mb-1" style={{ color: "var(--t-primary)" }}>
           Обязательные vs необязательные
         </h3>
@@ -445,7 +445,7 @@ function MandatoryBlock({ data }: { data: BudgetStatsData["mandatory"] }) {
   const total = Math.max(1, data.mandatory_avg + data.optional_avg);
   const mandPct = Math.round((data.mandatory_avg / total) * 100);
   return (
-    <div className="bg-white dark:bg-white/[0.05] rounded-[14px] border border-slate-200 dark:border-white/[0.09] p-4 md:p-5">
+    <div className="bg-[var(--dash-card-bg)] rounded-2xl border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] p-4 md:p-5">
       <h3 className="text-[13px] md:text-[14px] font-semibold mb-3" style={{ color: "var(--t-primary)" }}>
         Обязательные vs необязательные
       </h3>
