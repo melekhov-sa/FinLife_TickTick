@@ -483,6 +483,20 @@ def complete_task(task_id: int, request: Request, db: Session = Depends(get_db))
     }
 
 
+@router.post("/tasks/{task_id}/uncomplete")
+def uncomplete_task(task_id: int, request: Request, db: Session = Depends(get_db)):
+    """Снять выполнение задачи (undo). Возвращает её в ACTIVE."""
+    from fastapi import HTTPException
+    from app.application.tasks_usecases import UncompleteTaskUseCase, TaskValidationError
+
+    user_id = get_user_id(request, db)
+    try:
+        UncompleteTaskUseCase(db).execute(task_id=task_id, account_id=user_id, actor_user_id=user_id)
+    except TaskValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
+
+
 @router.post("/tasks/{task_id}/archive")
 def archive_task(task_id: int, request: Request, db: Session = Depends(get_db)):
     from fastapi import HTTPException

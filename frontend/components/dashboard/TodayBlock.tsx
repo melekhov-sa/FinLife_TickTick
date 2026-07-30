@@ -40,6 +40,16 @@ import { ConfirmCompleteModal } from "@/components/modals/ConfirmCompleteModal";
 import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { Button } from "@/components/primitives/Button";
 import { Tooltip } from "@/components/primitives/Tooltip";
+import { useToast } from "@/components/primitives/Toast";
+
+// Мгновенное выполнение/откат задачи (как в TickTick) — прямые вызовы, чтобы
+// сохранить анимацию галочки и не триггерить лишние инвалидации.
+async function completeTaskLike(kind: "task" | "task_occ", id: number) {
+  return api.post(kind === "task_occ" ? `/api/v2/task-occurrences/${id}/complete` : `/api/v2/tasks/${id}/complete`);
+}
+async function uncompleteTaskLike(kind: "task" | "task_occ", id: number) {
+  return api.post(kind === "task_occ" ? `/api/v2/task-occurrences/${id}/uncomplete` : `/api/v2/tasks/${id}/uncomplete`);
+}
 
 interface Props {
   today: TodayBlockType;
@@ -465,6 +475,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showDone, setShowDone] = useState(false);
+  const { toast } = useToast();
 
   // Create menu (dropdown: task / operation) — desktop only
   // Cleanup timer on unmount
@@ -479,8 +490,38 @@ export function TodayBlock({ today, plannedOps }: Props) {
   }
 
   function handleOpenCompleteItem(item: DashboardItem) {
-    if (completingKey === item.kind + "-" + item.id) return;
-    setConfirmItem(item);
+    const key = item.kind + "-" + item.id;
+    if (completingKey === key) return;
+    // Привычки — прежний путь (у них свой inline-undo «Отменить +1»).
+    if (item.kind === "habit") { setConfirmItem(item); return; }
+    // Задачи: мгновенно выполняем + тост «Отменить» (как в TickTick), без диалога.
+    const kind = item.kind as "task" | "task_occ";
+    const id = item.id;
+    void hapticTick();
+    completeTaskLike(kind, id).catch(() => {
+      toast({ title: "Не удалось выполнить", variant: "danger" });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    });
+    handleTodayCompleted(kind, id); // анимация галочки + отложенная инвалидация
+    toast({
+      title: "Выполнено",
+      description: item.title,
+      duration: 5000,
+      action: {
+        label: "Отменить",
+        onClick: () => {
+          if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+          setCompletingKey(null);
+          uncompleteTaskLike(kind, id)
+            .then(() => {
+              qc.invalidateQueries({ queryKey: ["dashboard"] });
+              qc.invalidateQueries({ queryKey: ["plan"] });
+              qc.invalidateQueries({ queryKey: ["tasks"] });
+            })
+            .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
+        },
+      },
+    });
   }
 
   const [createMenuOpen, setCreateMenuOpen] = useState(false);

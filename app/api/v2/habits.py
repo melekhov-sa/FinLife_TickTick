@@ -342,3 +342,17 @@ def complete_task_occurrence(occurrence_id: int, request: Request, db: Session =
     except (TaskTemplateValidationError, Exception) as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
+
+
+@router.post("/task-occurrences/{occurrence_id}/uncomplete")
+def uncomplete_task_occurrence(occurrence_id: int, request: Request, db: Session = Depends(get_db)):
+    """Снять выполнение вхождения повторяющейся задачи (undo)."""
+    from app.application.task_templates import UncompleteTaskOccurrenceUseCase, TaskTemplateValidationError
+    user_id = get_user_id(request, db)
+    try:
+        UncompleteTaskOccurrenceUseCase(db).execute(
+            occurrence_id=occurrence_id, account_id=user_id, actor_user_id=user_id
+        )
+    except (TaskTemplateValidationError, Exception) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True}
