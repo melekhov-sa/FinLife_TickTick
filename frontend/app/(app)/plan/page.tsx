@@ -34,7 +34,7 @@ import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
 import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKind } from "@/lib/completion";
 import { useToast } from "@/components/primitives/Toast";
 import { clsx } from "clsx";
-import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle, Archive } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
@@ -266,6 +266,7 @@ function RowMenu({
             Перенести
           </button>
           <button className={itemCls} style={dangerStyle} onClick={onArchiveTask}>
+            <Archive size={12} className="inline mr-2 opacity-60" />
             Архивировать
           </button>
         </>
@@ -278,6 +279,7 @@ function RowMenu({
             Перенести
           </button>
           <button className={itemCls} style={dangerStyle} onClick={onSkipTaskOcc}>
+            <SkipForward size={12} className="inline mr-2 opacity-60" />
             Пропустить
           </button>
         </>
@@ -401,10 +403,10 @@ function EntryRow({
       {/* Цвет типа дела */}
       <span
         aria-hidden
-        className="w-[3px] self-stretch rounded-full shrink-0 my-0.5"
+        className="w-[2.5px] self-stretch rounded-full shrink-0 my-0.5"
         style={{
           background: ENTRY_GROUP_STRIPE[entryGroupType(entry.kind)],
-          opacity: entry.is_done ? 0.25 : 0.75,
+          opacity: entry.is_done ? 0.25 : 0.7,
         }}
       />
 
@@ -671,7 +673,7 @@ function DayGroupCard({
       <div
         ref={setDropRef}
         className={clsx(
-          "rounded-xl border-[1.5px] px-3 py-3.5 transition-all",
+          "rounded-2xl border px-3.5 py-4 transition-all shadow-[var(--dash-card-shadow)]",
           isOver && "ring-2 ring-[var(--app-accent)] bg-[var(--app-accent-weak)]",
           !isOver && (hTheme
             ? `${hTheme.bg} ${hTheme.border}`
@@ -683,7 +685,7 @@ function DayGroupCard({
             ? "bg-sky-50/70 dark:bg-sky-500/[0.07] border-sky-300/80 dark:border-sky-400/25"
             : group.day_type === "preholiday"
             ? "bg-amber-50/40 dark:bg-amber-500/[0.04] border-amber-200 dark:border-amber-500/20"
-            : "bg-slate-50 dark:bg-white/[0.03] border-slate-300 dark:border-white/[0.09]"),
+            : "bg-[var(--dash-card-bg)] border-[var(--dash-card-border)]"),
         )}
       >
         <div className="flex items-center gap-2 flex-wrap">
