@@ -41,6 +41,7 @@ import { EntryDetailModal } from "@/components/modals/EntryDetailModal";
 import { Button } from "@/components/primitives/Button";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useToast } from "@/components/primitives/Toast";
+import { useUndoFab } from "@/components/primitives/UndoFab";
 
 interface Props {
   today: TodayBlockType;
@@ -467,6 +468,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 
   const [showDone, setShowDone] = useState(false);
   const { toast } = useToast();
+  const { showUndo } = useUndoFab();
 
   // Create menu (dropdown: task / operation) — desktop only
   // Cleanup timer on unmount
@@ -494,24 +496,16 @@ export function TodayBlock({ today, plannedOps }: Props) {
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     });
     handleTodayCompleted(kind, id); // анимация галочки + отложенная инвалидация
-    toast({
-      title: "Выполнено",
-      description: item.title,
-      duration: 5000,
-      action: {
-        label: "Отменить",
-        onClick: () => {
-          if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
-          setCompletingKey(null);
-          uncompleteTaskLike(kind, id)
-            .then(() => {
-              qc.invalidateQueries({ queryKey: ["dashboard"] });
-              qc.invalidateQueries({ queryKey: ["plan"] });
-              qc.invalidateQueries({ queryKey: ["tasks"] });
-            })
-            .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
-        },
-      },
+    showUndo(() => {
+      if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+      setCompletingKey(null);
+      uncompleteTaskLike(kind, id)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+          qc.invalidateQueries({ queryKey: ["plan"] });
+          qc.invalidateQueries({ queryKey: ["tasks"] });
+        })
+        .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
     });
   }
 

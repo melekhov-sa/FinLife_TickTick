@@ -6,6 +6,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { ToastProvider } from "@/components/primitives/Toast";
+import { UndoFabProvider } from "@/components/primitives/UndoFab";
 
 // SSR-безопасная заглушка хранилища (на сервере окна нет)
 const noopStorage = {
@@ -53,7 +54,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           buster: "v1",
         }}
       >
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <UndoFabProvider>{children}</UndoFabProvider>
+        </ToastProvider>
       </PersistQueryClientProvider>
     </ThemeProvider>
   );

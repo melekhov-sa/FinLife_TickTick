@@ -33,6 +33,7 @@ import { DayListModal } from "@/components/modals/DayListModal";
 import { CalendarMonthView } from "@/components/plan/CalendarMonthView";
 import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKind } from "@/lib/completion";
 import { useToast } from "@/components/primitives/Toast";
+import { useUndoFab } from "@/components/primitives/UndoFab";
 import { clsx } from "clsx";
 import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle, Archive } from "lucide-react";
 import { api } from "@/lib/api";
@@ -923,6 +924,7 @@ export default function PlanPage() {
   const [completingKey, setCompletingKey] = useState<string | null>(null);
   const completingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
+  const { showUndo } = useUndoFab();
 
   // ── View mode: list | calendar ─────────────────────────────────────────
   const [viewMode, setViewMode] = useState<"list" | "calendar">(() => {
@@ -981,24 +983,16 @@ export default function PlanPage() {
       qc.invalidateQueries({ queryKey: ["plan"] });
     });
     handleCompleted(kind, id); // анимация галочки + отложенная инвалидация
-    toast({
-      title: "Выполнено",
-      description: entry.title,
-      duration: 5000,
-      action: {
-        label: "Отменить",
-        onClick: () => {
-          if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
-          setCompletingKey(null);
-          uncompleteTaskLike(kind, id)
-            .then(() => {
-              qc.invalidateQueries({ queryKey: ["plan"] });
-              qc.invalidateQueries({ queryKey: ["dashboard"] });
-              qc.invalidateQueries({ queryKey: ["tasks"] });
-            })
-            .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
-        },
-      },
+    showUndo(() => {
+      if (completingTimerRef.current) clearTimeout(completingTimerRef.current);
+      setCompletingKey(null);
+      uncompleteTaskLike(kind, id)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["plan"] });
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+          qc.invalidateQueries({ queryKey: ["tasks"] });
+        })
+        .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
     });
   }
 
