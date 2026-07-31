@@ -86,7 +86,7 @@ function MetricCardRow({ card }: { card: MetricCard }) {
   const badge = subScoreBadge(card.sub_score);
 
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-5 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors">
+    <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl p-5 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -151,7 +151,7 @@ export default function EfficiencyPage() {
         {data && (
           <div className="space-y-5">
             {/* Score card */}
-            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl p-6 text-center">
+            <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl p-6 text-center">
               <ScoreRing score={data.score} />
               <div className={`mt-3 text-xl font-semibold ${scoreColor(data.score)}`} style={{ letterSpacing: "-0.025em" }}>
                 {data.score >= 85

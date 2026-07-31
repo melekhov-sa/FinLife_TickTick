@@ -316,7 +316,7 @@ export default function EventTemplatesPage() {
         {!isLoading && !isError && (
           <div className="space-y-4">
             {/* Main list */}
-            <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
+            <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-xl md:rounded-2xl overflow-hidden">
               {filteredMain.length === 0 && filteredPast.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
@@ -344,7 +344,7 @@ export default function EventTemplatesPage() {
 
             {/* Past one-time section */}
             {!archived && filteredPast.length > 0 && (
-              <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-xl md:rounded-2xl overflow-hidden">
+              <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-xl md:rounded-2xl overflow-hidden">
                 {/* Header */}
                 <div
                   className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.02] transition-colors"

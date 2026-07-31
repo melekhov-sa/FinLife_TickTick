@@ -337,7 +337,7 @@ export default function WorkCategoriesPage() {
         )}
 
         {!isLoading && !isError && (
-          <div className="bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] rounded-2xl overflow-hidden">
+          <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl overflow-hidden">
             {cats.length === 0 ? (
               <div className="py-12 text-center text-sm" style={{ color: "var(--t-muted)" }}>
                 Нет категорий

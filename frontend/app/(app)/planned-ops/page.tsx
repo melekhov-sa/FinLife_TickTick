@@ -322,7 +322,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
       )}
 
       {data && data.length > 0 && (
-        <div className="rounded-[14px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] px-5 py-1">
+        <div className="rounded-[14px] bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] px-5 py-1">
           {data.map((item) => (
             <TemplateRow key={item.template_id} item={item} archived={archived} />
           ))}
@@ -436,7 +436,7 @@ function UpcomingTab() {
       )}
 
       {data && data.length > 0 && (
-        <div className="rounded-[14px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] px-5 py-1">
+        <div className="rounded-[14px] bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] px-5 py-1">
           {data.map((occ) => (
             <OccurrenceRow key={occ.id} occ={occ} onExecute={setExecuteOcc} />
           ))}

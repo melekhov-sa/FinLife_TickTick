@@ -97,7 +97,7 @@ function SubCard({ sub, onOpen, onAddMember }: { sub: SubscriptionItem; onOpen: 
   return (
     <div
       onClick={onOpen}
-      className="relative group rounded-[12px] bg-slate-50 dark:bg-white/[0.03] border-[1.5px] border-slate-300 dark:border-white/[0.09] overflow-hidden transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.05] hover:border-slate-400 dark:hover:border-white/[0.12] cursor-pointer p-3.5"
+      className="relative group rounded-[12px] bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] overflow-hidden transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.05] hover:border-slate-400 dark:hover:border-white/[0.12] cursor-pointer p-3.5"
     >
       <div className="flex items-start gap-2.5 mb-2">
         <div className="w-8 h-8 rounded-lg bg-[var(--app-accent-light)] flex items-center justify-center shrink-0">
