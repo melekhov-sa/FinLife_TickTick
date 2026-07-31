@@ -516,7 +516,7 @@ export default function MoneyPage() {
 
         {/* ── Desktop: Filters ── */}
         <div className="hidden md:block bg-white border border-slate-200 rounded-2xl p-4 mb-5 space-y-3">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Фильтры</p>
+          <p className="text-[10px] font-semibold text-[var(--t-faint)] uppercase tracking-wide">Фильтры</p>
           <div className="flex flex-wrap gap-2">
             <div className="w-40">
               <Select value={opTypeFilter} onChange={(v) => { setOpTypeFilter(v); setPage(1); }} options={opTypeOptions} />
@@ -543,7 +543,7 @@ export default function MoneyPage() {
         {/* Stats: без фильтров — текущий месяц; с фильтрами — итог выборки */}
         {data && (
           <div className="flex items-center justify-between mb-2 md:mb-4 flex-wrap gap-1">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <p className="text-[10px] font-semibold text-[var(--t-faint)] uppercase tracking-wide">
               {hasFilters ? `Найдено: ${data.total}` : monthAgg.label || "Этот месяц"}
             </p>
             <div className="flex items-center gap-3">
@@ -626,7 +626,7 @@ export default function MoneyPage() {
                     )}
                     style={{ background: "var(--app-sidebar-bg, var(--app-card-bg))" }}
                   >
-                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>
+                    <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--t-muted)" }}>
                       {dayLabel(key)}
                     </span>
                     {dayNet !== 0 && (
