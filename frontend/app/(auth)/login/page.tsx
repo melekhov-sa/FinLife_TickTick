@@ -15,13 +15,29 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError("Неверный email или пароль");
+      if (error) {
+        // 400 = сервер отклонил учётные данные (реально неверный логин/пароль).
+        // Всё остальное (сеть, WKWebView, CORS, timeout) — показываем настоящую
+        // причину, а не вводящее в заблуждение «неверный пароль».
+        const status = (error as { status?: number }).status;
+        setError(
+          status === 400
+            ? "Неверный email или пароль"
+            : `Не удалось войти: ${error.message}${status ? ` [${status}]` : ""}`
+        );
+        setLoading(false);
+      } else {
+        window.location.href = "/";
+      }
+    } catch (err) {
+      // signInWithPassword может бросить (сетевой сбой в вебвью) — иначе кнопка
+      // навсегда зависнет на «Вход…».
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Ошибка сети: ${msg}`);
       setLoading(false);
-    } else {
-      window.location.href = "/";
     }
   }
 
