@@ -169,9 +169,14 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
 
     raw_token = body.bot_token.strip() or None
     raw_chat_id = body.chat_id.strip() or None
-    tg.bot_token = encrypt(raw_token)
-    tg.chat_id = encrypt(raw_chat_id)
-    tg.connected = bool(raw_token and raw_chat_id)
+    # Не затирать уже сохранённые токен/chat_id пустым значением: форма обычно
+    # НЕ пере-присылает секретный токен при повторном сохранении. Раньше это
+    # обнуляло токен и рвало подключение. Для сброса есть /telegram/disconnect.
+    if raw_token:
+        tg.bot_token = encrypt(raw_token)
+    if raw_chat_id:
+        tg.chat_id = encrypt(raw_chat_id)
+    tg.connected = bool(tg.bot_token and tg.chat_id)
     tg.connected_at = datetime.now(timezone.utc) if tg.connected else None
 
     # Команды бота: по умолчанию long-polling (надёжно с РФ-сервера через
