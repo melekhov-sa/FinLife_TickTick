@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { clsx } from "clsx";
-import { TrendingUp, Wallet } from "lucide-react";
+import { BadgePercent, TrendingUp, Wallet } from "lucide-react";
+import { CashbackSheet } from "@/components/cashback/CashbackSheet";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { FinStateBlock, FinancialCurrencyBlock } from "@/types/api";
@@ -32,6 +34,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
   const debtLent = debtsData?.totals?.["RUB"]?.lent ?? 0;
   const debtBorrowed = debtsData?.totals?.["RUB"]?.borrowed ?? 0;
 
+  const [cashbackOpen, setCashbackOpen] = useState(false);
+
   return (
     <div className="dash-card p-3.5 md:p-5">
       <h2 className="text-[13px] md:text-[14px] font-semibold mb-2 md:mb-3 flex items-center gap-1.5" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
@@ -56,6 +60,26 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
                 <CountUp value={finState.credit_total} /> ₽
               </span>
             </div>
+
+            {/* Кэшбеки — быстрый просмотр перед покупкой */}
+            <button
+              type="button"
+              onClick={() => setCashbackOpen(true)}
+              className="w-full flex items-baseline justify-between gap-2 text-left"
+            >
+              <span
+                className="text-[12px] md:text-[13px] inline-flex items-center gap-1"
+                style={{ color: "var(--t-muted)" }}
+              >
+                <BadgePercent size={12} /> Кэшбеки
+              </span>
+              <span
+                className="text-[13px] md:text-[14px] font-semibold"
+                style={{ color: "var(--app-accent)" }}
+              >
+                смотреть
+              </span>
+            </button>
 
             {/* Личные долги — только ненулевые */}
             {debtLent > 0 && (
@@ -154,6 +178,8 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               Капитал
             </a>
       </div>
+
+      <CashbackSheet open={cashbackOpen} onClose={() => setCashbackOpen(false)} />
     </div>
   );
 }

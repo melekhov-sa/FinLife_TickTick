@@ -28,7 +28,7 @@ app/                        # backend
 migrations/versions/        # Alembic
 frontend/
   app/(app)/<page>/page.tsx # страницы приложения
-  components/primitives/     # дизайн-система (PageHeader, EmptyState, Tabs, Heatmap, BottomSheet…)
+  components/primitives/     # дизайн-система (PageHeader, EmptyState, Tabs, Heatmap…)
   components/dashboard/      # виджеты дашборда
   components/layout/AppSidebar.tsx  # навигация (NAV_ITEMS)
   lib/api.ts                # API-клиент
@@ -98,7 +98,8 @@ tests/                      # pytest
 - **Дизайн-система** в `components/primitives`. Важные API:
   - `PageHeader`: `title`, `subtitle`, `back={{ onClick }}` (НЕ `backHref`), `tabs`, `actions`, `divider`.
   - `EmptyState`: `action={{ label, onClick, icon? }}` — объект, не JSX.
-  - `BottomSheet`: требует проп `open: boolean`.
+  - `BottomSheet` (лежит в `components/ui/BottomSheet.tsx`, НЕ в primitives): пропсы
+    `open: boolean`, `onClose`, `title`, `footer?`, `children`, `onSubmit?`, `detent?: "half"|"full"`.
   - `Tabs`: `items=[{id,label,count?}]`, `active`, `onChange`, `variant "underline"|"pills"`.
   - `Heatmap`: `cells=[{date,value,label?}]`.
 - **Темизация** через CSS-переменные: `var(--t-primary)`, `var(--t-muted)`, `var(--t-faint)`,
