@@ -723,3 +723,31 @@ export interface CounterItem {
   previous_label: string;
 }
 
+
+// ── Кэшбеки по картам ────────────────────────────────────────────────────────
+// percent приходит строкой: FastAPI сериализует Decimal в строку.
+
+export interface CashbackEntry {
+  id: number;
+  category_id: number;
+  category_title: string;
+  percent: string;
+  is_best: boolean;
+  is_outranked: boolean;
+}
+
+export interface CashbackCard {
+  wallet_id: number;
+  title: string;
+  entries: CashbackEntry[];
+}
+
+export interface CashbackMonth {
+  month: string;
+  cards: CashbackCard[];
+}
+
+export interface CashbackCategory {
+  id: number;
+  title: string;
+}
