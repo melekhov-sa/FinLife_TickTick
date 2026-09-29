@@ -24,10 +24,10 @@ const MOCK_DATA = {
     rows: [
       { left: "Кафе и рестораны", right: "10%", note: "Т-Банк", tone: "accent" },
       { left: "Супермаркеты", right: "5%", note: "Альфа-Банк", tone: "accent" },
-      { left: "АЗС", right: "5%", note: "Сбер", tone: "normal" },
-      { left: "Аптеки", right: "3%", note: "Альфа-Банк", tone: "accent" },
-      { left: "Такси", right: "3%", note: "Т-Банк", tone: "normal" },
-      { left: "Доставка еды", right: "2%", note: "ВТБ", tone: "normal" },
+      { left: "АЗС", right: "5%", note: "Сбер", tone: "accent" },
+      { left: "Аптеки", right: "3%", note: "Альфа-Банк", tone: "accentSoft" },
+      { left: "Такси", right: "3%", note: "Т-Банк", tone: "accentSoft" },
+      { left: "Доставка еды", right: "2%", note: "ВТБ", tone: "accentSoft" },
     ],
   },
   today: {
@@ -66,10 +66,25 @@ const C = dark
       warn: new Color("#D25E5E"),
     };
 
+// Тон задаёт бэкенд, скрипт только красит:
+//   accent     — акцентный цвет, жирный   (крупная ставка кэшбека, от 5%)
+//   accentSoft — акцентный цвет, обычный  (остальные ставки)
+//   warn       — красный                  (просроченная задача)
+//   normal     — обычный текст            (время задачи и прочее)
+//
+// Важно: в виджете кэшбеков показана только лучшая карта по каждой категории,
+// поэтому «лучшая ставка» там не признак — все строки и так победители.
+// Цвет вместо этого отделяет крупные ставки от мелких.
 function toneColor(tone) {
-  if (tone === "accent") return C.accent;
+  if (tone === "accent" || tone === "accentSoft") return C.accent;
   if (tone === "warn") return C.warn;
   return C.text;
+}
+
+function toneFont(tone, size) {
+  if (tone === "accent") return Font.boldSystemFont(size);
+  if (tone === "warn") return Font.semiboldSystemFont(size);
+  return Font.mediumSystemFont(size);
 }
 
 // ── Загрузка данных ─────────────────────────────────────────────────────────
@@ -151,10 +166,7 @@ function buildWidget(data, family) {
 
     if (r.right) {
       const right = line.addText(r.right);
-      right.font =
-        r.tone === "accent"
-          ? Font.boldSystemFont(compact ? 12 : 13)
-          : Font.mediumSystemFont(compact ? 12 : 13);
+      right.font = toneFont(r.tone, compact ? 12 : 13);
       right.textColor = toneColor(r.tone);
       right.lineLimit = 1;
     }
