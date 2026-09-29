@@ -2415,3 +2415,55 @@ class WalletBankRef(Base):
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class CashbackCategory(Base):
+    """Справочник категорий кэшбека — наполняется пользователем постепенно.
+
+    Категории переиспользуются между картами: именно поэтому они вынесены в
+    отдельную таблицу, а не хранятся строкой в ставке — только так можно
+    обнаружить, что одна категория заведена сразу на нескольких картах.
+    """
+    __tablename__ = "cashback_categories"
+    __table_args__ = (
+        UniqueConstraint("account_id", "title", name="uq_cashback_category_account_title"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class CashbackEntry(Base):
+    """Ставка кэшбека: карта + категория + процент на конкретный месяц.
+
+    Месяц заполняется с нуля (копирования прошлого месяца нет by design).
+    """
+    __tablename__ = "cashback_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id", "wallet_id", "category_id", "period_month",
+            name="uq_cashback_entry_card_category_month",
+        ),
+        Index("ix_cashback_entries_account_month", "account_id", "period_month"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Ссылка на кошелёк. FK не ставим: wallet_balances — read-model проектора.
+    wallet_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("cashback_categories.id", ondelete="CASCADE"), nullable=False
+    )
+    percent: Mapped[Decimal] = mapped_column(Numeric(precision=5, scale=2), nullable=False)
+    # Всегда 1-е число месяца.
+    period_month: Mapped[date_type] = mapped_column(Date, nullable=False)
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
