@@ -426,7 +426,7 @@ function EntryRow({
           <button
             onClick={() => { if (!isCompleting) onComplete(entry); }}
             className={clsx(
-              "relative w-[16px] h-[16px] rounded-full border-[1.5px] transition-all hover:scale-110 flex items-center justify-center",
+              "tap-halo relative w-[16px] h-[16px] rounded-full border-[1.5px] transition-all hover:scale-110 flex items-center justify-center",
               entry.is_overdue
                 ? "border-red-400 hover:bg-red-500/20"
                 : "border-violet-300/70 dark:border-violet-400/40 hover:bg-violet-500/15 hover:border-violet-400",
