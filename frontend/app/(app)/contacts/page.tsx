@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { api } from "@/lib/api";
@@ -25,15 +25,14 @@ export default function ContactsPage() {
   const [newName, setNewName] = useState("");
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
-  // Redirect non-admin
-  if (me && !me.is_admin) {
-    router.replace("/settings");
-    return null;
-  }
+  // me ещё грузится → null; пришло и не админ → true
+  const notAdmin = !!me && !me.is_admin;
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["contacts"],
     queryFn: () => api.get("/api/v2/contacts"),
+    // Не дёргать админский эндпоинт у того, кому он всё равно откажет.
+    enabled: !notAdmin,
   });
 
   const createMut = useMutation({
@@ -45,6 +44,15 @@ export default function ContactsPage() {
     mutationFn: (id: number) => api.delete(`/api/v2/contacts/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["contacts"] }); setConfirmId(null); },
   });
+
+  // Редирект — побочный эффект, его нельзя делать прямо в рендере.
+  useEffect(() => {
+    if (notAdmin) router.replace("/settings");
+  }, [notAdmin, router]);
+
+  // Ранний выход ТОЛЬКО после всех хуков: иначе при загрузке me их количество
+  // менялось между рендерами и React падал («Rendered fewer hooks than expected»).
+  if (notAdmin) return null;
 
   return (
     <>
