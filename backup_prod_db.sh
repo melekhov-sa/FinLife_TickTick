@@ -196,6 +196,20 @@ if [ -n "${BACKUP_GIT_DIR:-}" ] && [ -d "$BACKUP_GIT_DIR/.git" ]; then
   fi
 fi
 
+# 5) состояние — в базу, чтобы приложение могло показать, если выгрузка
+#    перестала уходить. Тихий сбой уже однажды прожил незамеченным месяцами:
+#    скрипт писал sent_tg=0 в лог, куда никто не смотрел.
+_off=$([ "$SENT" = 1 ] && echo true || echo false)
+_cfg=$([ "$CFG_SENT" = 1 ] && echo true || echo false)
+docker compose -f docker-compose.prod.yml exec -T db   psql -U finlife -d finlife -q -c   "INSERT INTO backup_status (id, last_run_at, size_text, offsite_ok, config_ok, error)
+   VALUES (1, now(), '${SIZE}', ${_off}, ${_cfg}, NULL)
+   ON CONFLICT (id) DO UPDATE SET
+     last_run_at = EXCLUDED.last_run_at,
+     size_text   = EXCLUDED.size_text,
+     offsite_ok  = EXCLUDED.offsite_ok,
+     config_ok   = EXCLUDED.config_ok,
+     error       = EXCLUDED.error;" >/dev/null 2>&1 || true
+
 echo "==> Done: $GZ (yadisk=$SENT, config=$CFG_SENT)$GIT_STATE"
 tg_msg "✅ <b>Бэкап FinLife ок</b>
 $(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · на Я.Диск' || echo ' · на Я.Диск НЕ ушёл')$GIT_STATE"

@@ -751,3 +751,16 @@ export interface CashbackCategory {
   id: number;
   title: string;
 }
+
+// ── Состояние бэкапа (только для админа) ─────────────────────────────────────
+
+export interface BackupStatus {
+  configured: boolean;
+  healthy: boolean;
+  problem: string | null;
+  last_run_at: string | null;
+  age_hours: number | null;
+  size_text: string | null;
+  offsite_ok: boolean;
+  config_ok: boolean;
+}

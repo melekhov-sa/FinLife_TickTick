@@ -8,8 +8,9 @@ import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
   ChevronRight, Smartphone, LayoutGrid, Send, Download, CheckCircle2, Zap, Sparkles,
-  ScanFace } from "lucide-react";
+  ScanFace, HardDriveDownload } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
+import type { BackupStatus } from "@/types/api";
 import { Switch } from "@/components/primitives/Switch";
 import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess, notificationDiagnostics, testLocalNotification } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
@@ -173,6 +174,40 @@ function AiDigestToggle() {
             {isPending ? "..." : enabled ? "Включено" : "Выключено"}
           </span>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+function BackupStatusCard() {
+  const { data } = useQuery<BackupStatus>({
+    queryKey: ["backup-status"],
+    queryFn: () => api.get<BackupStatus>("/api/v2/system/backup-status"),
+    retry: false,            // не админу придёт 403 — просто молчим
+    staleTime: 30 * 60 * 1000,
+  });
+
+  if (!data) return null;
+
+  const ok = data.healthy;
+  return (
+    <Card padding="md" className="flex items-start gap-4">
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: ok ? "rgba(16,185,129,0.10)" : "rgba(245,158,11,0.12)" }}
+      >
+        <HardDriveDownload size={18} style={{ color: ok ? "#10b981" : "#d97706" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Бэкап
+        </p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          {ok
+            ? `Последний ${data.last_run_at ? new Date(data.last_run_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}`
+              + `${data.size_text ? ` · ${data.size_text}` : ""} · копия на Яндекс.Диске есть`
+            : data.problem ?? "Что-то не так"}
+        </p>
       </div>
     </Card>
   );
@@ -383,6 +418,9 @@ export default function SettingsPage() {
 
           {/* ── Диагностика уведомлений (нативное) ── */}
           <NotifDiagCard />
+
+          {/* ── Состояние бэкапа (только админ) ── */}
+          <BackupStatusCard />
 
           {/* ── AI Digest Toggle ── */}
           <Card padding="lg">

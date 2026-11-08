@@ -11,6 +11,7 @@ import { ShoppingWidget } from "@/components/dashboard/ShoppingWidget";
 import { useDashboard } from "@/hooks/useDashboard";
 import { DigestCard } from "@/components/dashboard/DigestCard";
 import { DaypartGlow } from "@/components/dashboard/DaypartGlow";
+import { BackupHealthBanner } from "@/components/dashboard/BackupHealthBanner";
 import { FlashcardsWidget } from "@/components/dashboard/FlashcardsWidget";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { PullToRefresh } from "@/components/primitives/PullToRefresh";
@@ -40,6 +41,11 @@ export default function DashboardPage() {
             ])
           }
         >
+        {/* Виден только при проблеме с бэкапом и только админу */}
+        <div className="empty:hidden mb-3">
+          <BackupHealthBanner />
+        </div>
+
         {isError && (
           <div className="text-red-400/70 text-sm text-center py-12">
             Не удалось загрузить дашборд

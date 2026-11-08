@@ -2486,3 +2486,20 @@ class WidgetTokenModel(Base):
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class BackupStatusModel(Base):
+    """Состояние последнего бэкапа — одна строка (id=1).
+
+    Пишется скриптом backup_prod_db.sh через psql: контейнер приложения не
+    видит папку с бэкапами, а в базу скрипт и так ходит. Нужно, чтобы тихий
+    сбой выгрузки не оставался незамеченным месяцами, как это уже случилось.
+    """
+    __tablename__ = "backup_status"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_run_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    size_text: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    offsite_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    config_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
