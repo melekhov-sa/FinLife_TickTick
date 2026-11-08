@@ -68,8 +68,13 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// Статика не должна проходить проверку авторизации: иначе запрос за шрифтом
+// или манифестом получает 307 на /login и отдаёт HTML вместо файла, а каждый
+// такой запрос ещё и зря дёргает getUser() в Supabase.
+// Кроме _next/* и картинок исключаем: шрифты (public/fonts), манифест PWA и
+// service worker — всё это лежит в public и обязано отдаваться без сессии.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|fonts/|manifest.json|service-worker.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2|woff|ttf|otf)$).*)",
   ],
 };
