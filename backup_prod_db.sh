@@ -36,6 +36,8 @@ YADISK_TOKEN="${YADISK_TOKEN:-$(_envget YADISK_TOKEN)}"
 YADISK_DIR="${YADISK_DIR:-$(_envget YADISK_DIR)}"
 YADISK_DIR="${YADISK_DIR:-FinLife-backups}"
 YADISK_BASE="https://webdav.yandex.ru"
+# Класть ли .env в архив конфигурации (по умолчанию нет: там секреты).
+BACKUP_INCLUDE_ENV="${BACKUP_INCLUDE_ENV:-$(_envget BACKUP_INCLUDE_ENV)}"
 
 TS="$(date +%Y%m%d-%H%M%S)"
 GZ="$BACKUP_DIR/prod_${TS}.sql.gz"
@@ -80,15 +82,14 @@ ya_upload() {  # $1 = путь к файлу
   esac
 }
 
-ya_rotate() {  # оставить на Диске только последние $KEEP дампов
+ya_rotate() {  # $1 = регулярка имён; оставить на Диске только последние $KEEP
   _ya_ok || return 0
-  local listing names old
+  local pattern="$1" listing names old
   listing="$(_ya_curl -X PROPFIND -H 'Depth: 1' \
                "${YADISK_BASE}/${YADISK_DIR}/" 2>/dev/null || true)"
-  # Имена вида prod_20261108-231602.sql.gz: лексикографический порядок
-  # совпадает с хронологическим, поэтому достаточно sort.
-  names="$(printf '%s' "$listing" \
-            | grep -oE 'prod_[0-9]{8}-[0-9]{6}\.sql\.gz' | sort -u || true)"
+  # Имена содержат метку времени YYYYmmdd-HHMMSS, поэтому лексикографический
+  # порядок совпадает с хронологическим и достаточно sort.
+  names="$(printf '%s' "$listing" | grep -oE "$pattern" | sort -u || true)"
   [ -n "$names" ] || return 0
   old="$(printf '%s\n' "$names" | sort -r | tail -n +"$((KEEP+1))")"
   [ -n "$old" ] || return 0
@@ -96,6 +97,37 @@ ya_rotate() {  # оставить на Диске только последни�
     [ -n "$f" ] || continue
     _ya_curl -o /dev/null -X DELETE "${YADISK_BASE}/${YADISK_DIR}/${f}" >/dev/null 2>&1 || true
   done <<< "$old"
+}
+
+# Конфигурация сервера. База без неё восстанавливается, но поднимать сервер
+# заново пришлось бы по памяти: Caddyfile живёт только на сервере (в публичный
+# гит его нельзя — там хеш пароля и настройки прокси).
+# .env по умолчанию НЕ включаем: там ключ Supabase, пароль базы и токены.
+# Включить осознанно: BACKUP_INCLUDE_ENV=1 в .env.
+ya_upload_config() {
+  _ya_ok || return 1
+  local tmp="/tmp/finlife-config-${TS}.tar.gz"
+  local list=()
+  [ -f "$PROJECT_DIR/Caddyfile" ]               && list+=("Caddyfile")
+  [ -f "$PROJECT_DIR/docker-compose.prod.yml" ] && list+=("docker-compose.prod.yml")
+  [ -f "$PROJECT_DIR/xray/config.json" ]        && list+=("xray/config.json")
+  [ "${BACKUP_INCLUDE_ENV:-0}" = "1" ] && [ -f "$PROJECT_DIR/.env" ] && list+=(".env")
+  [ ${#list[@]} -gt 0 ] || return 1
+
+  # crontab — тоже часть конфигурации сервера
+  crontab -l > "$PROJECT_DIR/crontab.snapshot" 2>/dev/null && list+=("crontab.snapshot") || true
+
+  tar -czf "$tmp" -C "$PROJECT_DIR" "${list[@]}" 2>/dev/null || { rm -f "$tmp"; return 1; }
+  rm -f "$PROJECT_DIR/crontab.snapshot"
+
+  local code
+  code="$(_ya_curl -o /dev/null -w '%{http_code}' -T "$tmp" \
+            "${YADISK_BASE}/${YADISK_DIR}/config_${TS}.tar.gz" 2>/dev/null || echo 000)"
+  rm -f "$tmp"
+  case "$code" in
+    201|204) return 0 ;;
+    *) echo "!! Яндекс.Диск: конфиг вернул HTTP $code" >&2; return 1 ;;
+  esac
 }
 
 on_err() {
@@ -115,11 +147,17 @@ SIZE="$(du -h "$GZ" | cut -f1)"
 #    в отличие от Telegram, которому нужен прокси (из-за чего файлы туда и
 #    перестали доходить).
 SENT=0
+CFG_SENT=0
 if _ya_ok; then
   echo "==> Яндекс.Диск → /${YADISK_DIR}/$(basename "$GZ")"
   if ya_upload "$GZ"; then
     SENT=1
-    ya_rotate
+    ya_rotate 'prod_[0-9]{8}-[0-9]{6}\.sql\.gz'
+  fi
+  # Конфигурация сервера — вторым архивом
+  if ya_upload_config; then
+    CFG_SENT=1
+    ya_rotate 'config_[0-9]{8}-[0-9]{6}\.tar\.gz'
   fi
 else
   echo "==> Яндекс.Диск не настроен (нет YADISK_USER/YADISK_TOKEN) — только локальный дамп"
@@ -158,6 +196,6 @@ if [ -n "${BACKUP_GIT_DIR:-}" ] && [ -d "$BACKUP_GIT_DIR/.git" ]; then
   fi
 fi
 
-echo "==> Done: $GZ (yadisk=$SENT)$GIT_STATE"
+echo "==> Done: $GZ (yadisk=$SENT, config=$CFG_SENT)$GIT_STATE"
 tg_msg "✅ <b>Бэкап FinLife ок</b>
 $(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · на Я.Диск' || echo ' · на Я.Диск НЕ ушёл')$GIT_STATE"

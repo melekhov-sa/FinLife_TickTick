@@ -235,3 +235,6 @@ frontend/test-results/
 
 # Telegram proxy (секреты VLESS)
 xray/config.json
+
+# временный снимок crontab при бэкапе
+crontab.snapshot
