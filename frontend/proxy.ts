@@ -73,8 +73,14 @@ export async function proxy(request: NextRequest) {
 // такой запрос ещё и зря дёргает getUser() в Supabase.
 // Кроме _next/* и картинок исключаем: шрифты (public/fonts), манифест PWA и
 // service worker — всё это лежит в public и обязано отдаваться без сессии.
+//
+// Отдельно исключён `api/v2/widget/` — данные для виджетов на домашнем экране.
+// Они приходят из Scriptable без куки и авторизуются собственным токеном в
+// адресе; без этого исключения запрос улетал бы на /login и до бэкенда не
+// доходил. Обрати внимание на слэш: `api/v2/widget-token` под исключение НЕ
+// попадает и остаётся под обычной Supabase-авторизацией.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|fonts/|manifest.json|service-worker.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2|woff|ttf|otf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|fonts/|manifest.json|service-worker.js|api/v2/widget/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2|woff|ttf|otf)$).*)",
   ],
 };
