@@ -55,3 +55,39 @@ def test_categories_are_independent():
 
 def test_empty_input():
     assert compute_highlights([]) == {}
+
+
+def test_best_per_category_picks_max():
+    from app.application.cashback import best_per_category
+    rows = best_per_category([
+        (1, "Супермаркеты", Decimal("3.00"), "T-Bank"),
+        (2, "Супермаркеты", Decimal("5.00"), "Alfa"),
+    ])
+    assert rows == [("Супермаркеты", Decimal("5.00"), "Alfa")]
+
+
+def test_best_per_category_keeps_single_card_categories():
+    """Категория на одной карте обязана попасть в виджет — в отличие от
+    compute_highlights, где она нейтральна."""
+    from app.application.cashback import best_per_category
+    rows = best_per_category([(1, "АЗС", Decimal("5.00"), "Sber")])
+    assert rows == [("АЗС", Decimal("5.00"), "Sber")]
+
+
+def test_best_per_category_sorted_by_percent_desc():
+    from app.application.cashback import best_per_category
+    rows = best_per_category([
+        (1, "Аптеки", Decimal("3.00"), "Alfa"),
+        (2, "Кафе", Decimal("10.00"), "T-Bank"),
+        (3, "АЗС", Decimal("5.00"), "Sber"),
+    ])
+    assert [r[0] for r in rows] == ["Кафе", "АЗС", "Аптеки"]
+
+
+def test_best_per_category_tie_is_stable():
+    from app.application.cashback import best_per_category
+    rows = best_per_category([
+        (1, "Кафе", Decimal("5.00"), "Zeta"),
+        (2, "Кафе", Decimal("5.00"), "Alfa"),
+    ])
+    assert rows == [("Кафе", Decimal("5.00"), "Alfa")]

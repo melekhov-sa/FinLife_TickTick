@@ -2467,3 +2467,22 @@ class CashbackEntry(Base):
     updated_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class WidgetTokenModel(Base):
+    """Токен для виджетов на домашнем экране iOS (Scriptable).
+
+    Отдельный от CalDAV-токена намеренно: отзыв одного не должен ломать
+    другое. Даёт доступ только на чтение виджетных данных.
+    """
+    __tablename__ = "widget_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -33,3 +33,26 @@ def compute_highlights(
             is_best = percent == top
             flags[entry_id] = {"is_best": is_best, "is_outranked": not is_best}
     return flags
+
+
+def best_per_category(
+    entries: list[tuple[int, str, Decimal, str]],
+) -> list[tuple[str, Decimal, str]]:
+    """Лучшая карта по каждой категории — проекция для виджета.
+
+    entries: (entry_id, category_title, percent, card_title)
+    Возврат: [(category_title, percent, card_title)] по убыванию процента.
+
+    Это НЕ то же самое, что compute_highlights: там is_best помечает только
+    спорные категории (на двух и более картах), а здесь нужны все категории,
+    включая те, что заведены на одной карте. При равенстве процента берём
+    первую по алфавиту карту — лишь бы результат был устойчивым.
+    """
+    best: dict[str, tuple[Decimal, str]] = {}
+    for _entry_id, category, percent, card in entries:
+        cur = best.get(category)
+        if cur is None or percent > cur[0] or (percent == cur[0] and card < cur[1]):
+            best[category] = (percent, card)
+    rows = [(cat, pct, card) for cat, (pct, card) in best.items()]
+    rows.sort(key=lambda r: (-r[1], r[0]))
+    return rows
