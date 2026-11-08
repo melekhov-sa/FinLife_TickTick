@@ -2,16 +2,20 @@
 # FinLife/Centricore — бэкап прод-БД. Без шифрования (данные не секретные,
 # цель — просто не потерять). Схема 3-2-1:
 #   1) локальный сжатый дамп на сервере (быстрый откат);
-#   2) копия в приватный Telegram-канал (off-site);
+#   2) копия на Яндекс.Диск по WebDAV (off-site);
 #   3) твоя машина тянет копию к себе (scripts/pull_backups.ps1).
 #
-# Мягкая деградация: если Telegram не настроен — просто делает локальный дамп.
+# Почему Я.Диск, а не Telegram: api.telegram.org с РФ-сервера доступен только
+# через прокси, и файлы туда переставали доходить. Яндекс доступен напрямую.
+# В Telegram остаётся только короткое уведомление о результате.
+#
+# Мягкая деградация: если Я.Диск не настроен или недоступен — локальный дамп
+# всё равно делается, деплой не падает.
 set -euo pipefail
 
 PROJECT_DIR="/opt/centricore"
 BACKUP_DIR="$PROJECT_DIR/backups"
 KEEP=14            # сколько дампов держать на сервере
-TG_LIMIT=49000000  # лимит Bot API sendDocument (~50 МБ)
 
 cd "$PROJECT_DIR"
 
@@ -24,6 +28,14 @@ TELEGRAM_PROXY="${TELEGRAM_PROXY:-$(_envget TELEGRAM_PROXY)}"
 # (опц.) зеркало в приватный git-репо: путь к локальному клону + ветка
 BACKUP_GIT_DIR="${BACKUP_GIT_DIR:-$(_envget BACKUP_GIT_DIR)}"
 BACKUP_GIT_BRANCH="${BACKUP_GIT_BRANCH:-$(_envget BACKUP_GIT_BRANCH)}"
+# Яндекс.Диск по WebDAV — основной off-site канал. В отличие от Telegram
+# доступен с РФ-сервера напрямую, без прокси. YADISK_TOKEN — это «пароль
+# приложения» из id.yandex.ru, обычный пароль от аккаунта не подойдёт.
+YADISK_USER="${YADISK_USER:-$(_envget YADISK_USER)}"
+YADISK_TOKEN="${YADISK_TOKEN:-$(_envget YADISK_TOKEN)}"
+YADISK_DIR="${YADISK_DIR:-$(_envget YADISK_DIR)}"
+YADISK_DIR="${YADISK_DIR:-FinLife-backups}"
+YADISK_BASE="https://webdav.yandex.ru"
 
 TS="$(date +%Y%m%d-%H%M%S)"
 GZ="$BACKUP_DIR/prod_${TS}.sql.gz"
@@ -43,12 +55,47 @@ tg_msg() {  # $1 = текст
     "https://api.telegram.org/bot${BACKUP_TG_BOT_TOKEN}/sendMessage" >/dev/null || true
 }
 
-tg_file() {  # $1 = путь, $2 = подпись
-  [ -n "${BACKUP_TG_BOT_TOKEN:-}" ] && [ -n "${BACKUP_TG_CHAT_ID:-}" ] || return 1
-  mapfile -t P < <(_proxy_arg)
-  curl -sS --max-time 600 "${P[@]}" \
-    -F chat_id="$BACKUP_TG_CHAT_ID" -F document=@"$1" -F caption="$2" \
-    "https://api.telegram.org/bot${BACKUP_TG_BOT_TOKEN}/sendDocument" >/dev/null
+
+# ── Яндекс.Диск (WebDAV) ─────────────────────────────────────────────────────
+# Все функции «мягкие»: при сбое возвращают 1, но не валят скрипт — локальный
+# дамп важнее, и деплой из-за недоступного Диска падать не должен.
+
+_ya_ok() { [ -n "${YADISK_USER:-}" ] && [ -n "${YADISK_TOKEN:-}" ]; }
+
+_ya_curl() {  # общие параметры curl для WebDAV
+  curl -sS --max-time 600 -u "${YADISK_USER}:${YADISK_TOKEN}" "$@"
+}
+
+ya_upload() {  # $1 = путь к файлу
+  _ya_ok || return 1
+  # MKCOL на существующей папке вернёт 405 — это нормально, игнорируем.
+  _ya_curl -o /dev/null -X MKCOL "${YADISK_BASE}/${YADISK_DIR}/" >/dev/null 2>&1 || true
+  local name code
+  name="$(basename "$1")"
+  code="$(_ya_curl -o /dev/null -w '%{http_code}' -T "$1" \
+            "${YADISK_BASE}/${YADISK_DIR}/${name}" 2>/dev/null || echo 000)"
+  case "$code" in
+    201|204) return 0 ;;
+    *) echo "!! Яндекс.Диск: загрузка вернула HTTP $code" >&2; return 1 ;;
+  esac
+}
+
+ya_rotate() {  # оставить на Диске только последние $KEEP дампов
+  _ya_ok || return 0
+  local listing names old
+  listing="$(_ya_curl -X PROPFIND -H 'Depth: 1' \
+               "${YADISK_BASE}/${YADISK_DIR}/" 2>/dev/null || true)"
+  # Имена вида prod_20261108-231602.sql.gz: лексикографический порядок
+  # совпадает с хронологическим, поэтому достаточно sort.
+  names="$(printf '%s' "$listing" \
+            | grep -oE 'prod_[0-9]{8}-[0-9]{6}\.sql\.gz' | sort -u || true)"
+  [ -n "$names" ] || return 0
+  old="$(printf '%s\n' "$names" | sort -r | tail -n +"$((KEEP+1))")"
+  [ -n "$old" ] || return 0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    _ya_curl -o /dev/null -X DELETE "${YADISK_BASE}/${YADISK_DIR}/${f}" >/dev/null 2>&1 || true
+  done <<< "$old"
 }
 
 on_err() {
@@ -64,13 +111,18 @@ docker compose -f docker-compose.prod.yml exec -T db \
   pg_dump -U finlife -d finlife --no-owner --no-privileges | gzip -c > "$GZ"
 SIZE="$(du -h "$GZ" | cut -f1)"
 
-# 2) off-site в Telegram (если настроено и влезает в лимит)
+# 2) off-site на Яндекс.Диск — основной канал. Доступен с РФ-сервера напрямую,
+#    в отличие от Telegram, которому нужен прокси (из-за чего файлы туда и
+#    перестали доходить).
 SENT=0
-BYTES="$(stat -c%s "$GZ")"
-if [ "$BYTES" -lt "$TG_LIMIT" ]; then
-  if tg_file "$GZ" "🗄 FinLife backup ${TS} (${SIZE})"; then SENT=1; fi
+if _ya_ok; then
+  echo "==> Яндекс.Диск → /${YADISK_DIR}/$(basename "$GZ")"
+  if ya_upload "$GZ"; then
+    SENT=1
+    ya_rotate
+  fi
 else
-  tg_msg "⚠️ Бэкап ${TS} = ${SIZE} — больше лимита Telegram. Есть локально и в пуле."
+  echo "==> Яндекс.Диск не настроен (нет YADISK_USER/YADISK_TOKEN) — только локальный дамп"
 fi
 
 # 3) ротация
@@ -106,6 +158,6 @@ if [ -n "${BACKUP_GIT_DIR:-}" ] && [ -d "$BACKUP_GIT_DIR/.git" ]; then
   fi
 fi
 
-echo "==> Done: $GZ (sent_tg=$SENT)$GIT_STATE"
+echo "==> Done: $GZ (yadisk=$SENT)$GIT_STATE"
 tg_msg "✅ <b>Бэкап FinLife ок</b>
-$(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · в канал' || echo ' · в канал НЕ ушёл')$GIT_STATE"
+$(date '+%F %T') · ${SIZE}$([ "$SENT" = 1 ] && echo ' · на Я.Диск' || echo ' · на Я.Диск НЕ ушёл')$GIT_STATE"
