@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import React, { useState, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil } from "lucide-react";
 import { clsx } from "clsx";
@@ -14,140 +13,14 @@ import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
+import { PeriodPicker } from "@/components/budget/PeriodPicker";
+import {
+  fmt, fmtSigned, getPeriodKind, periodColCount, sectionTint, sectionEmoji,
+  InlineCellInput, PlanDot, setSingleMonthAsCurrent,
+  type PlanEditTarget, type EditingProps,
+  type FactDetailTarget,
+} from "@/components/budget/matrixShared";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(n: number): string {
-  if (n === 0) return "0";
-  return Math.round(n).toLocaleString("ru-RU");
-}
-
-function fmtSigned(n: number): string {
-  if (n === 0) return "0";
-  const s = Math.round(n).toLocaleString("ru-RU");
-  return n > 0 ? `+${s}` : s;
-}
-
-type PeriodKind = "past" | "current" | "future";
-
-// Когда на экране ровно один месяц (любой — прошлый/текущий/будущий), трактуем
-// его как текущий: колонки П/Ф/Ост, чтобы заранее внесённые операции сразу
-// были видны в бюджете. Флаг выставляется в основном компоненте до рендера
-// таблицы (рендер синхронный, матрица на экране одна).
-let _singleMonthAsCurrent = false;
-
-function getPeriodKind(p: BudgetPeriod): PeriodKind {
-  if (_singleMonthAsCurrent) return "current";
-  const now = new Date();
-  const cy = now.getFullYear();
-  const cm = now.getMonth() + 1;
-  if (p.year < cy || (p.year === cy && p.month < cm)) return "past";
-  if (p.year === cy && p.month === cm) return "current";
-  return "future";
-}
-
-// Columns per period kind:
-// past: Ф, Δ (2)  |  current: П, Ф, Ост (3)  |  future: П (1)
-function periodColCount(kind: PeriodKind): number {
-  return kind === "current" ? 3 : kind === "past" ? 2 : 1;
-}
-
-// Топ-10 расходных статей периода выделяются типографикой (жирнее/темнее) —
-// вес читается одинаково на любом экране, в отличие от прозрачной заливки.
-
-// ── Editing state types ───────────────────────────────────────────────────────
-
-interface PlanEditTarget {
-  categoryId: number;
-  kind: string;
-  year: number;
-  month: number;
-  periodLabel: string;
-  categoryTitle: string;
-  currentAmount: number;   // ручная строка бюджета (без плановых операций)
-  plannedAmount?: number;  // сумма плановых операций периода (только категории)
-  factAmount?: number;     // факт периода — для оценки точности прямо в окне
-  currentNote: string;
-  goalId?: number;        // set for goal/withdrawal rows
-  goalPlanType?: string;  // "goal" or "withdrawal"
-}
-
-interface EditingProps {
-  /** category_id → кастомный эмодзи из справочника (null = авто по названию) */
-  catVisual?: Record<number, string | null>;
-  /** Ключи закрытых статей/целей: "type:id:year:month" */
-  closures?: Set<string>;
-  openPlanEdit: (target: PlanEditTarget) => void;  // shift+click → copy-forward modal
-  openFactDetail: (target: FactDetailTarget) => void;
-  dragHandlers: DragHandlers;
-  toggleVisibility?: (catId: number) => void;
-  hiddenCatIds?: Set<number>;
-  showHidden?: boolean;
-  // Inline editing
-  activeEditKey: string | null;
-  inlineValue: string;
-  onInlineStart: (key: string, currentValue: number, initialStr?: string) => void;
-  onInlineChange: (value: string) => void;
-  onInlineSave: (target: PlanEditTarget) => void;
-  onInlineCancel: () => void;
-  onTabNav: (dir: "next" | "prev", fromKey: string, savedTarget: PlanEditTarget) => void;
-}
-
-interface DragHandlers {
-  onDragStart: (e: React.DragEvent, catId: number, parentId: number | null) => void;
-  onDragOver: (e: React.DragEvent, catId: number, parentId: number | null) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDragEnd: (e: React.DragEvent) => void;
-  dragOver: { id: number; pos: "before" | "after" | "invalid" | "end" } | null;
-}
-
-// ── Inline cell input ────────────────────────────────────────────────────────
-
-function InlineCellInput({
-  value,
-  onChange,
-  onSave,
-  onCancel,
-  onTabNext,
-  onTabPrev,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  onTabNext?: () => void;
-  onTabPrev?: () => void;
-}) {
-  const cancelledRef = React.useRef(false);
-  const tabbedRef = React.useRef(false);
-  return (
-    <input
-      autoFocus
-      type="text"
-      inputMode="decimal"
-      value={value}
-      onChange={(e) => onChange(e.target.value.replace(/[^0-9.,\-]/g, ""))}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        if (e.key === "Escape") { cancelledRef.current = true; (e.target as HTMLInputElement).blur(); }
-        if (e.key === "Tab") {
-          e.preventDefault();
-          tabbedRef.current = true;
-          (e.target as HTMLInputElement).blur();
-          if (e.shiftKey) onTabPrev?.();
-          else onTabNext?.();
-        }
-      }}
-      onBlur={() => {
-        if (cancelledRef.current) { cancelledRef.current = false; onCancel(); return; }
-        if (tabbedRef.current) { tabbedRef.current = false; return; }
-        onSave();
-      }}
-      className="w-full min-w-[40px] text-right bg-transparent outline-none tabular-nums text-[12px] px-2 py-1.5"
-      style={{ color: "var(--app-accent-ink)" }}
-    />
-  );
-}
 
 // ── Plan Edit Modal ──────────────────────────────────────────────────────────
 
@@ -480,16 +353,6 @@ function PlanEditModal({
 
 // ── Fact Detail Modal ────────────────────────────────────────────────────────
 
-interface FactDetailTarget {
-  categoryId: number;
-  categoryTitle: string;
-  kind: string;
-  periodLabel: string;
-  dateFrom: string;
-  dateTo: string;
-  factAmount: number;
-  excludeCategoryIds?: number[];
-}
 
 interface TransactionRow {
   id: number;
@@ -582,18 +445,6 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
 // ── Cell rendering ────────────────────────────────────────────────────────────
 
 // Non-editable plan <td> (used in totals, goal rows, result row)
-// Точка «плановая операция без суммы»: по статье движение ожидается, сумма пока не задана
-function PlanDot() {
-  return (
-    <span
-      title="Плановая операция без суммы — движение ожидается, сумма пока не задана"
-      aria-label="плановая операция без суммы"
-      style={{ color: "var(--app-accent)", fontSize: 16, lineHeight: 1, fontWeight: 700 }}
-    >
-      •
-    </span>
-  );
-}
 
 function PlanTd({ cell, isMuted, extraStyle, totalCol }: { cell: BudgetCell; isMuted?: boolean; extraStyle?: React.CSSProperties; totalCol?: boolean }) {
   const hasFact = cell.fact !== 0;
@@ -829,24 +680,6 @@ function SubHeaders({ periods }: { periods: BudgetPeriod[] }) {
 }
 
 // ── Section header row ────────────────────────────────────────────────────────
-
-function sectionTint(label: string): string {
-  const l = label.toLowerCase();
-  if (l.includes("доход")) return "color-mix(in srgb, var(--c-success-ink) 9%, var(--bgt-section-bg))";
-  if (l.includes("расход")) return "color-mix(in srgb, var(--c-danger-ink) 7%, var(--bgt-section-bg))";
-  if (l.includes("отложен") || l.includes("взять")) return "color-mix(in srgb, var(--c-warning-ink) 9%, var(--bgt-section-bg))";
-  if (l.includes("накоплен") || l.includes("цел")) return "color-mix(in srgb, var(--app-accent) 10%, var(--bgt-section-bg))";
-  return "var(--bgt-section-bg)";
-}
-
-function sectionEmoji(label: string): string {
-  const l = label.toLowerCase();
-  if (l.includes("доход")) return "💰";
-  if (l.includes("расход")) return "💸";
-  if (l.includes("отложен") || l.includes("взять")) return "🏧";
-  if (l.includes("накоплен") || l.includes("цел")) return "🐷";
-  return "📊";
-}
 
 function SectionHeaderRow({
   label,
@@ -1495,153 +1328,6 @@ function ForecastRow({
   );
 }
 
-// ── Period picker ─────────────────────────────────────────────────────────────
-
-const MONTHS_RU = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
-
-interface PeriodSelection { year: number; month: number; rangeCount: number; }
-
-function PeriodPicker({ value, onChange, label }: {
-  value: PeriodSelection;
-  onChange: (v: PeriodSelection) => void;
-  label: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
-  const [dropPos, setDropPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const [cYear, setCYear] = useState(value.year);
-  const [cMonth, setCMonth] = useState(value.month);
-  const [cCount, setCCount] = useState(value.rangeCount);
-
-  React.useEffect(() => { setCYear(value.year); setCMonth(value.month); setCCount(value.rangeCount); }, [value.year, value.month, value.rangeCount]);
-
-  function handleToggle() {
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      const left = Math.min(r.left, window.innerWidth - 318);
-      setDropPos({ top: r.bottom + 6, left: Math.max(8, left) });
-    }
-    setOpen(v => !v);
-  }
-
-  React.useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      const t = e.target as Node;
-      if (!dropRef.current?.contains(t) && !btnRef.current?.contains(t)) setOpen(false);
-    }
-    function handleScroll() { setOpen(false); }
-    document.addEventListener("mousedown", handleClick);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, [open]);
-
-  const now = new Date();
-  const cy = now.getFullYear();
-  const cm = now.getMonth() + 1;
-  const curQStart = Math.floor((cm - 1) / 3) * 3 + 1;
-  const prevQStart = curQStart > 3 ? curQStart - 3 : 10;
-  const prevQYear = curQStart > 3 ? cy : cy - 1;
-  const prevM = cm === 1 ? 12 : cm - 1;
-  const prevMY = cm === 1 ? cy - 1 : cy;
-
-  const presets: Array<{ label: string } & PeriodSelection> = [
-    { label: "Текущий месяц",    year: cy,       month: cm,          rangeCount: 1  },
-    { label: "Текущий квартал",  year: cy,       month: curQStart,   rangeCount: 3  },
-    { label: "Текущий год",      year: cy,       month: 1,           rangeCount: 12 },
-    { label: "Прошлый месяц",    year: prevMY,   month: prevM,       rangeCount: 1  },
-    { label: "Прошлый квартал",  year: prevQYear,month: prevQStart,  rangeCount: 3  },
-    { label: "Прошлый год",      year: cy - 1,   month: 1,           rangeCount: 12 },
-  ];
-
-  const apply = (v: PeriodSelection) => { onChange(v); setOpen(false); };
-
-  const dropdown = open ? (
-    <div
-      ref={dropRef}
-      className="rounded-xl shadow-2xl p-4"
-      style={{
-        position: "fixed",
-        top: dropPos.top,
-        left: dropPos.left,
-        zIndex: 9999,
-        background: "var(--app-card-bg)",
-        border: "1px solid var(--app-border)",
-        minWidth: 310,
-      }}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Быстрый выбор</p>
-      <div className="grid grid-cols-3 gap-1.5 mb-4">
-        {presets.map(p => (
-          <button
-            key={p.label}
-            onClick={() => apply(p)}
-            className="text-[11px] font-medium px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--app-accent-weak)]"
-            style={{ color: "var(--t-secondary)", border: "1px solid var(--app-border)" }}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--t-faint)" }}>Произвольный период</p>
-        <div className="flex items-center gap-2">
-          <select value={cYear} onChange={e => setCYear(+e.target.value)}
-            className="h-8 px-2 rounded-lg text-[12px] flex-1"
-            style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
-            {[cy-3,cy-2,cy-1,cy,cy+1,cy+2].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <select value={cMonth} onChange={e => setCMonth(+e.target.value)}
-            className="h-8 px-2 rounded-lg text-[12px] flex-1"
-            style={{ background: "var(--app-bg)", border: "1px solid var(--app-border)", color: "var(--t-primary)" }}>
-            {MONTHS_RU.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-1.5 mt-2">
-          <span className="text-[11px] shrink-0" style={{ color: "var(--t-faint)" }}>Периодов:</span>
-          <div className="flex gap-px">
-            {[1,2,3,4,6,12].map(n => (
-              <button key={n} onClick={() => setCCount(n)}
-                className={clsx("w-7 h-6 text-[11px] font-medium rounded transition-colors",
-                  cCount === n ? "bg-[var(--app-accent)] text-[#fff]" : "hover:bg-[var(--app-accent-light)]")}
-                style={cCount !== n ? { color: "var(--t-muted)" } : undefined}>
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button
-          onClick={() => apply({ year: cYear, month: cMonth, rangeCount: cCount })}
-          className="mt-3 w-full py-2 text-[12px] font-semibold rounded-lg bg-[var(--app-accent)] text-[#fff] hover:brightness-110 transition-colors"
-        >
-          Применить
-        </button>
-      </div>
-    </div>
-  ) : null;
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={handleToggle}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors hover:bg-[var(--app-accent-weak)]"
-        style={{ color: "var(--t-primary)", border: "1px solid var(--app-border)", background: "var(--app-card-bg)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em" }}
-      >
-        {label}
-        <ChevronDown size={13} style={{ color: "var(--t-muted)", flexShrink: 0 }} />
-      </button>
-      {typeof window !== "undefined" && dropdown ? createPortal(dropdown, document.body) : null}
-    </>
-  );
-}
 
 // ── "Прочие" row (income / expense uncategorised) ────────────────────────────
 
@@ -2451,10 +2137,12 @@ export default function BudgetMatrixPage() {
     setInlineValue(getEditableValue(nextKey));
   }
 
-  const periods = data?.periods ?? [];
+  // В useMemo, иначе новый массив на каждый рендер ломает мемоизацию
+  // всего, что ниже по дереву зависит от periods.
+  const periods = React.useMemo(() => data?.periods ?? [], [data]);
   // Один месяц на экране → показываем его колонками текущего месяца (П/Ф/Ост).
   // Ставим до любых вызовов getPeriodKind ниже (мемо/JSX/дочерние компоненты).
-  _singleMonthAsCurrent = periods.length === 1;
+  setSingleMonthAsCurrent(periods.length === 1);
 
   // Закрытые статьи/цели на период — «больше сюда не потрачу/не отложу»
   const { data: closuresData } = useQuery<{ entity_type: string; entity_id: number; year: number; month: number }[]>({
