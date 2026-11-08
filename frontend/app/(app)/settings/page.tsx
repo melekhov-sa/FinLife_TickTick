@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
-  ChevronRight, Smartphone, Send, Download, CheckCircle2, Zap, Sparkles,
+  ChevronRight, Smartphone, LayoutGrid, Send, Download, CheckCircle2, Zap, Sparkles,
   ScanFace } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
 import { Switch } from "@/components/primitives/Switch";
@@ -57,6 +57,7 @@ const SETTINGS_ITEMS = [
   { href: "/task-presets",       icon: Shield,     label: "Шаблоны задач",     desc: "Быстрое создание из шаблонов",                     color: "#06b6d4" },
   { href: "/settings/theme",     icon: Palette,    label: "Тема оформления",   desc: "Obsidian, Graphite, Midnight, Snow, Emerald",      color: "#ec4899" },
   { href: "/settings/caldav",    icon: Smartphone, label: "iPhone Reminders",  desc: "CalDAV-синхронизация задач с Напоминаниями",        color: "#10b981" },
+  { href: "/settings/widget",    icon: LayoutGrid, label: "Виджеты на iPhone", desc: "Кэшбеки и задачи на домашнем экране",               color: "#8b5cf6" },
 ];
 
 // ── Page ─────────────────────────────────────────────────────────────────────
