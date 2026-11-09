@@ -205,6 +205,16 @@ def suggest_fin_categories(
         except (InvalidOperation, ValueError):
             target = None
 
+    # Служебные статьи («Прочие расходы» и подобные) из подсказок исключаем:
+    # это свалка для неразобранного, туда попадает много операций, но
+    # осознанно её не выбирают — наверху списка она только мешает.
+    system_ids = {
+        cid for (cid,) in db.query(CategoryInfo.category_id).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.is_system == True,  # noqa: E712
+        ).all()
+    }
+
     since = datetime.now() - timedelta(days=90)
     rows = (
         db.query(TransactionFeed.category_id, TransactionFeed.amount, TransactionFeed.occurred_at)
@@ -216,6 +226,7 @@ def suggest_fin_categories(
         )
         .all()
     )
+    rows = [r for r in rows if r[0] not in system_ids]
 
     now = datetime.now()
     prepared = [
@@ -244,8 +255,18 @@ def list_fin_categories(
     # Top-5 frequent per type (last 30 days)
     since = date.today() - timedelta(days=30)
 
+    # Служебные статьи («Прочие расходы» и подобные) в «частые» не берём:
+    # туда сваливается неразобранное, по количеству они легко обходят
+    # настоящие статьи, а выбирают их не осознанно.
+    _system_ids = {
+        cid for (cid,) in db.query(CategoryInfo.category_id).filter(
+            CategoryInfo.account_id == user_id,
+            CategoryInfo.is_system == True,  # noqa: E712
+        ).all()
+    }
+
     def _top5(op_type: str) -> set:
-        rows = (
+        q = (
             db.query(TransactionFeed.category_id, func.count().label("cnt"))
             .filter(
                 TransactionFeed.account_id == user_id,
@@ -255,10 +276,10 @@ def list_fin_categories(
             )
             .group_by(TransactionFeed.category_id)
             .order_by(func.count().desc())
-            .limit(5)
-            .all()
         )
-        return {r.category_id for r in rows}
+        if _system_ids:
+            q = q.filter(TransactionFeed.category_id.notin_(_system_ids))
+        return {r.category_id for r in q.limit(5).all()}
 
     freq_ids = _top5("INCOME") | _top5("EXPENSE")
 

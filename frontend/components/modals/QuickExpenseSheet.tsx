@@ -156,6 +156,14 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
         const c = byId.get(categoryId);
         if (c) ordered.push(c);
       }
+      // Дополняем частыми: закреплённый список со временем отстаёт от жизни,
+      // и статьи, которыми реально пользуются, в чипы не попадали вовсе.
+      // Закреплённые остаются первыми — порядок выбран пользователем.
+      for (const id of baseOrder ?? []) {
+        if (ordered.length >= 10) break;
+        const c = byId.get(id);
+        if (c && !ordered.some((x) => x.category_id === c.category_id)) ordered.push(c);
+      }
       return ordered;
     }
 
