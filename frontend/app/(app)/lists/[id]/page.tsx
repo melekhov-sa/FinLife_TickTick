@@ -155,6 +155,8 @@ export default function ListDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<ListItem | null>(null);
   const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ id: number; title: string } | null>(null);
   const [copiedSlug, setCopiedSlug] = useState(false);
+  // id элемента, у которого открыто меню статуса в режиме списка
+  const [statusMenuFor, setStatusMenuFor] = useState<number | null>(null);
   const [showStatusManager, setShowStatusManager] = useState(false);
   const [newStatusLabel, setNewStatusLabel] = useState("");
   const [newStatusColor, setNewStatusColor] = useState("slate");
@@ -445,6 +447,48 @@ export default function ListDetailPage() {
             </p>
           )}
         </div>
+
+        {/* Статус в строке — например, уровень желанности покупки. Раньше он
+            был доступен только в колоночном режиме: там и показывался, и
+            назначался. Показываем лишь когда у списка настроены свои
+            статусы, чтобы обычные списки остались чистыми. */}
+        {!!list?.custom_statuses?.length && (() => {
+          const st = statuses.find((x) => x.key === item.status) ?? statuses[0];
+          const sc = getStatusStyle(st.color);
+          const open = statusMenuFor === item.id;
+          return (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setStatusMenuFor(open ? null : item.id)}
+                onBlur={() => setTimeout(() => setStatusMenuFor((v) => (v === item.id ? null : v)), 150)}
+                className={clsx("px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors", sc.bg, sc.text)}
+              >
+                {st.label}
+              </button>
+              {open && (
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-[#0f1221] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl overflow-hidden w-52">
+                  {statuses.map((sOpt) => {
+                    const ssc = getStatusStyle(sOpt.color);
+                    return (
+                      <button
+                        key={sOpt.key}
+                        onMouseDown={() => { updateItem({ itemId: item.id, status: sOpt.key }); setStatusMenuFor(null); }}
+                        className={clsx(
+                          "w-full text-left px-3 py-2 text-[12px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04] flex items-center gap-2",
+                          item.status === sOpt.key && "font-bold",
+                        )}
+                        style={{ color: "var(--t-primary)" }}
+                      >
+                        <span className={clsx("w-2 h-2 rounded-full shrink-0", ssc.dot)} />
+                        {sOpt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {item.price && <span className="text-[13px] font-semibold tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>{parseFloat(item.price).toLocaleString("ru-RU")} ₽</span>}
         {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--app-accent-weak)]" style={{ color: "var(--t-faint)" }}><ExternalLink size={13} /></a>}
@@ -1122,7 +1166,9 @@ export default function ListDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 ml-auto">
-                  {viewMode === "kanban" && (
+                  {/* Во всех режимах, а не только в колоночном: статусы
+                      нужны и в списке — например, шкала желанности покупок. */}
+                  {(
                     <button onClick={() => setShowStatusManager(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium border border-slate-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] hover:bg-slate-50" style={{ color: "var(--t-secondary)" }}>
                       <Tags size={13} /><span className="hidden md:inline">Статусы</span>
                     </button>
