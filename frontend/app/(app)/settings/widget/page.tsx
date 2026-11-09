@@ -171,7 +171,7 @@ export default function WidgetSettingsPage() {
                 </p>
                 <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
                   <code className="font-mono" style={{ color: "var(--app-accent)" }}>today</code>
-                  {" — фокус дня: просроченные и сегодняшние задачи"}
+                  {" — задачи на сегодня, без просроченных"}
                 </p>
               </div>
             </Step>

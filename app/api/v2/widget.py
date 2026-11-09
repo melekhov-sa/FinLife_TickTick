@@ -158,16 +158,10 @@ def _build_cashback(db: Session, account_id: int, today: date) -> WidgetOut:
 def _build_today(db: Session, account_id: int, today: date) -> WidgetOut:
     block = DashboardService(db).get_today_block(account_id, today)
 
+    # Только сегодняшние. Просроченные намеренно НЕ показываем: про них
+    # пользователь и так знает, а в виджете на 6 строк они вытесняют то,
+    # ради чего в него смотрят.
     rows: list[WidgetRow] = []
-    for item in block.get("overdue", []):
-        emoji = item.get("category_emoji") or ""
-        rows.append(
-            WidgetRow(
-                left=f"{emoji} {item['title']}".strip(),
-                right="просрочено",
-                tone="warn",
-            )
-        )
     for item in block.get("active", []):
         emoji = item.get("category_emoji") or ""
         rows.append(
@@ -177,9 +171,8 @@ def _build_today(db: Session, account_id: int, today: date) -> WidgetOut:
             )
         )
 
-    left_count = (block.get("progress") or {}).get("left", len(rows))
     return WidgetOut(
-        title=f"Фокус дня · осталось {left_count}",
+        title=f"Сегодня · осталось {len(rows)}",
         rows=rows,
         empty="На сегодня всё закрыто",
         url=f"{PUBLIC_BASE}/plan",
