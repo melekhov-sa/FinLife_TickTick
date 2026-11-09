@@ -358,6 +358,22 @@ export default function ListDetailPage() {
     setNewStatusColor("slate");
   }
 
+  // Готовая шкала желанности: уровни желания и «куплено» одним списком.
+  // Отдельное поле заводить не стали — у элемента один статус, и если
+  // желанность держать рядом с ним, пропадёт отметка о покупке.
+  const WISH_SCALE: StatusDef[] = [
+    { key: "want5", label: "Самый желанный ❤️❤️❤️❤️❤️", color: "red" },
+    { key: "want4", label: "Очень хочу ❤️❤️❤️❤️",       color: "red" },
+    { key: "want3", label: "Нужно, но не срочно ❤️❤️❤️", color: "amber" },
+    { key: "want2", label: "Всегда приятно ❤️❤️",        color: "violet" },
+    { key: "want1", label: "Просто идея ❤️",             color: "slate" },
+    { key: "done",  label: "Куплено",                    color: "emerald" },
+  ];
+
+  function applyWishScale() {
+    toggleStatuses(WISH_SCALE);
+  }
+
   function removeStatus(key: string) {
     if (statuses.length <= 1) return;
     toggleStatuses(statuses.filter((s) => s.key !== key));
@@ -1031,6 +1047,14 @@ export default function ListDetailPage() {
                   +
                 </button>
               </div>
+
+              <button
+                onClick={applyWishScale}
+                className="mt-2 text-[11px] font-medium underline underline-offset-2 text-slate-500 hover:text-[var(--app-accent)] transition-colors"
+                title="Заменит текущие статусы шкалой желанности и «Куплено»"
+              >
+                Подставить шкалу желанности
+              </button>
 
               {/* Color picker */}
               <div className="flex gap-1.5 mt-2">
