@@ -8,9 +8,9 @@ import Link from "next/link";
 import {
   User, Bell, Database, Shield, Users, Palette,
   ChevronRight, Smartphone, LayoutGrid, Send, Download, CheckCircle2, Zap, Sparkles,
-  ScanFace, HardDriveDownload } from "lucide-react";
+  ScanFace, HardDriveDownload, AlertTriangle } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
-import type { BackupStatus } from "@/types/api";
+import type { BackupStatus, SystemErrors } from "@/types/api";
 import { Switch } from "@/components/primitives/Switch";
 import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess, notificationDiagnostics, testLocalNotification } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
@@ -174,6 +174,45 @@ function AiDigestToggle() {
             {isPending ? "..." : enabled ? "Включено" : "Выключено"}
           </span>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+function SystemErrorsCard() {
+  const { data } = useQuery<SystemErrors>({
+    queryKey: ["system-errors"],
+    queryFn: () => api.get<SystemErrors>("/api/v2/system/errors"),
+    retry: false,            // не админу придёт 403 — просто молчим
+    staleTime: 10 * 60 * 1000,
+  });
+
+  if (!data) return null;
+
+  const clean = data.count_24h === 0;
+  const last = data.recent[0];
+  return (
+    <Card padding="md" className="flex items-start gap-4">
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: clean ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.12)" }}
+      >
+        <AlertTriangle size={18} style={{ color: clean ? "#10b981" : "#dc2626" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Ошибки бэкенда
+        </p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
+          {clean
+            ? "За сутки ни одной — всё спокойно"
+            : `За сутки: ${data.count_24h}. Последняя — ${last.method} ${last.path}`}
+        </p>
+        {!clean && last && (
+          <p className="text-[11px] mt-1 font-mono break-words" style={{ color: "var(--t-muted)" }}>
+            {last.message}
+          </p>
+        )}
       </div>
     </Card>
   );
@@ -421,6 +460,9 @@ export default function SettingsPage() {
 
           {/* ── Состояние бэкапа (только админ) ── */}
           <BackupStatusCard />
+
+          {/* ── Ошибки бэкенда (только админ) ── */}
+          <SystemErrorsCard />
 
           {/* ── AI Digest Toggle ── */}
           <Card padding="lg">

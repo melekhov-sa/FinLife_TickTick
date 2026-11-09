@@ -1,20 +1,22 @@
-"""API v2 — состояние системы.
+"""API v2 — состояние системы: бэкапы и ошибки бэкенда.
 
-Пока здесь только состояние бэкапа. Смысл: сделать тихие сбои заметными.
-Выгрузка бэкапов однажды сломалась и прожила так месяцами — скрипт честно
-писал об этом в лог, но в лог никто не смотрит. Приложение смотрят каждый день.
+Смысл один: сделать тихие сбои заметными. Выгрузка бэкапов сломалась и
+прожила так месяцами, а исключения уходили в stdout — и то, и другое
+исправно сообщало о себе в логи, которые никто не читает. Приложение
+читают каждый день.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.session import get_db
-from app.infrastructure.db.models import BackupStatusModel, User
+from app.infrastructure.db.models import BackupStatusModel, ErrorEventModel, User
 
 router = APIRouter()
 
@@ -74,4 +76,55 @@ def backup_status(db: Session = Depends(get_db), user_id: int = Depends(get_user
         size_text=row.size_text,
         offsite_ok=row.offsite_ok,
         config_ok=row.config_ok,
+    )
+
+
+# ── Ошибки бэкенда ────────────────────────────────────────────────────────────
+
+class ErrorItem(BaseModel):
+    occurred_at: datetime
+    method: str
+    path: str
+    message: str
+
+
+class ErrorsOut(BaseModel):
+    count_24h: int
+    recent: list[ErrorItem]
+
+
+@router.get("/system/errors", response_model=ErrorsOut)
+def recent_errors(db: Session = Depends(get_db), user_id: int = Depends(get_user_id)):
+    """Необработанные исключения за сутки. Только для админа.
+
+    Они и раньше писались в stdout, но туда никто не смотрит — поломку
+    статистики бюджета так и нашли, случайно наткнувшись на пустую страницу.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_admin:
+        raise HTTPException(403, "Доступно только администратору")
+
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    count = (
+        db.query(func.count(ErrorEventModel.id))
+        .filter(ErrorEventModel.occurred_at >= since)
+        .scalar()
+    ) or 0
+    rows = (
+        db.query(ErrorEventModel)
+        .order_by(ErrorEventModel.occurred_at.desc())
+        .limit(5)
+        .all()
+    )
+    return ErrorsOut(
+        count_24h=count,
+        recent=[
+            ErrorItem(
+                occurred_at=r.occurred_at,
+                method=r.method,
+                path=r.path,
+                message=r.message[:200],
+            )
+            for r in rows
+        ],
     )

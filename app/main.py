@@ -52,6 +52,27 @@ def create_app() -> FastAPI:
     from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.responses import Response
 
+    def _record_error(method: str, path: str, exc: Exception) -> None:
+        """Сохранить ошибку в БД, чтобы она была видна в приложении.
+
+        Лога в stdout недостаточно: туда никто не смотрит, и поломки живут
+        месяцами. Любой сбой самой записи глушим — middleware не имеет права
+        превратить одну ошибку в две (например, когда недоступна сама БД).
+        """
+        try:
+            from app.infrastructure.db.session import get_session_factory
+            from app.infrastructure.db.models import ErrorEventModel
+
+            with get_session_factory()() as db:
+                db.add(ErrorEventModel(
+                    method=method[:10],
+                    path=path[:255],
+                    message=f"{type(exc).__name__}: {exc}"[:2000],
+                ))
+                db.commit()
+        except Exception:  # noqa: BLE001 — намеренно глухо
+            logger.warning("не удалось записать ошибку в БД", exc_info=False)
+
     class ErrorLoggingMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             try:
@@ -60,6 +81,7 @@ def create_app() -> FastAPI:
             except Exception as exc:
                 tb_str = traceback.format_exc()
                 logger.error(f"\n{'='*60}\nERROR on {request.method} {request.url.path}\n{tb_str}{'='*60}")
+                _record_error(request.method, request.url.path, exc)
                 return Response(content=f"Internal Server Error: {exc}", status_code=500)
 
     app.add_middleware(ErrorLoggingMiddleware)

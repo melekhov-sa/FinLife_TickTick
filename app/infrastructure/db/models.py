@@ -2503,3 +2503,21 @@ class BackupStatusModel(Base):
     offsite_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     config_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ErrorEventModel(Base):
+    """Необработанные исключения бэкенда — чтобы их было видно в приложении.
+
+    Они и раньше ловились middleware, но уходили в stdout, то есть в docker
+    logs, куда никто не смотрит. Поломку статистики бюджета так и нашли —
+    случайно, по пустой странице.
+    """
+    __tablename__ = "error_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    occurred_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    path: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)

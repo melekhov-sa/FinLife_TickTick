@@ -764,3 +764,15 @@ export interface BackupStatus {
   offsite_ok: boolean;
   config_ok: boolean;
 }
+
+export interface SystemErrorItem {
+  occurred_at: string;
+  method: string;
+  path: string;
+  message: string;
+}
+
+export interface SystemErrors {
+  count_24h: number;
+  recent: SystemErrorItem[];
+}
