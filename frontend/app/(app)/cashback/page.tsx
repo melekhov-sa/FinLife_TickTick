@@ -99,9 +99,9 @@ export default function CashbackPage() {
             description="Кэшбек ведётся только по обычным кошелькам. Добавь кошелёк, чтобы вносить ставки."
           />
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-3 stagger-rise">
             {cards.map((card) => (
-              <div key={card.wallet_id}>
+              <div key={card.wallet_id} className="dash-card p-3.5 md:p-4">
                 <CashbackRows
                   cards={[card]}
                   onEntryClick={(id, value) => {
@@ -112,7 +112,7 @@ export default function CashbackPage() {
                 <button
                   type="button"
                   onClick={() => setAddFor(card.wallet_id)}
-                  className="mt-2 ml-6 inline-flex items-center gap-1 text-[12px]"
+                  className="mt-2.5 ml-6 inline-flex items-center gap-1 text-[12px] font-medium transition-opacity hover:opacity-70"
                   style={{ color: "var(--app-accent)" }}
                 >
                   <Plus size={13} /> Добавить кэшбек
