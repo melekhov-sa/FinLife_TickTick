@@ -36,7 +36,9 @@ def poll_telegram_updates(db: Session) -> int:
         resp = tg_api(token, "getUpdates", {
             "offset": (tg.poll_offset or 0) + 1,
             "timeout": 0,
-            "allowed_updates": ["message"],
+            # callback_query обязателен: без него Telegram не пришлёт нажатия
+            # кнопок под предложенной операцией, и подтверждение не сработает.
+            "allowed_updates": ["message", "callback_query"],
         }, timeout=15)
         if resp is None:
             continue

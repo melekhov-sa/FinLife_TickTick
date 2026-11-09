@@ -196,7 +196,9 @@ def telegram_save(body: TelegramIn, request: Request, db: Session = Depends(get_
             base = os.getenv("PUBLIC_BASE_URL", "https://centricore.ru").rstrip("/")
             resp = tg_api(raw_token, "setWebhook", {
                 "url": f"{base}/api/v2/telegram/webhook/{tg.webhook_secret}",
-                "allowed_updates": ["message"],
+                # callback_query обязателен: без него Telegram не пришлёт нажатия
+                # кнопок под предложенной операцией, и подтверждение не сработает.
+                "allowed_updates": ["message", "callback_query"],
             })
             webhook_ok = bool(resp is not None and resp.status_code == 200
                               and (resp.json() or {}).get("ok"))

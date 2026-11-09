@@ -155,15 +155,30 @@ def _cmd_balance(db: Session, user_id: int) -> str:
 
 def handle_update(db: Session, tg: TelegramSettings, update: dict) -> None:
     """Обработать один апдейт бота (из вебхука или getUpdates)."""
+    if not tg.bot_token:
+        return
+    bot_token = decrypt(tg.bot_token)
+    if not bot_token:
+        return
+
+    # Нажата кнопка под предложенной операцией
+    cq = update.get("callback_query")
+    if cq:
+        bound = decrypt(tg.chat_id) if tg.chat_id else None
+        cq_chat = ((cq.get("message") or {}).get("chat") or {}).get("id")
+        if tg.connected and bound == str(cq_chat):
+            from app.application.telegram_ops import handle_callback
+            try:
+                handle_callback(db, tg.user_id, bot_token, cq)
+            except Exception:
+                logger.exception("Telegram callback failed for user_id=%s", tg.user_id)
+        return
+
     msg = update.get("message") or update.get("edited_message") or {}
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
     text = (msg.get("text") or "").strip()
-    if not chat_id or not text or not tg.bot_token:
-        return
-
-    bot_token = decrypt(tg.bot_token)
-    if not bot_token:
+    if not chat_id or not text:
         return
 
     def reply(t: str):
@@ -195,6 +210,11 @@ def handle_update(db: Session, tg: TelegramSettings, update: dict) -> None:
             reply(_cmd_budget(db, tg.user_id))
         elif cmd == "/balance":
             reply(_cmd_balance(db, tg.user_id))
+        elif not text.startswith("/"):
+            # Не команда — скорее всего это запись операции
+            from app.application.telegram_ops import offer_from_text
+            if not offer_from_text(db, tg.user_id, bot_token, chat_id, text):
+                reply("Не понял, что это за операция. " + HELP_TEXT)
         else:
             reply(HELP_TEXT)
     except Exception:
