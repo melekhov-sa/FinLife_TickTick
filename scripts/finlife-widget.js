@@ -4,6 +4,7 @@
 // в поле "Parameter" при настройке виджета на домашнем экране:
 //   cashback — лучшие кэшбеки по категориям
 //   today    — задачи на сегодня (без просроченных)
+//   payments — ближайшие плановые платежи
 //
 // ── РЕЖИМ ТЕСТА ─────────────────────────────────────────────────────────────
 // Пока MOCK = true, скрипт рисует зашитые примеры и НИКУДА НЕ ХОДИТ — это
@@ -123,7 +124,7 @@ async function loadData(kind) {
 const LIMITS = { small: 3, medium: 6, large: 10, extraLarge: 10 };
 
 // Через сколько минут просить обновление. Для задач часто, для кэшбеков нет.
-const REFRESH_MIN = { today: 15, cashback: 180 };
+const REFRESH_MIN = { today: 15, payments: 60, cashback: 180 };
 const REFRESH_DEFAULT = 60;
 
 function buildWidget(data, family, kind) {

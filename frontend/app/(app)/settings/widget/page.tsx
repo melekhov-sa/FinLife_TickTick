@@ -173,6 +173,10 @@ export default function WidgetSettingsPage() {
                   <code className="font-mono" style={{ color: "var(--app-accent)" }}>today</code>
                   {" — задачи на сегодня, без просроченных"}
                 </p>
+                <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+                  <code className="font-mono" style={{ color: "var(--app-accent)" }}>payments</code>
+                  {" — ближайшие плановые платежи с суммами"}
+                </p>
               </div>
             </Step>
 

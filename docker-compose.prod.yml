@@ -79,7 +79,10 @@ services:
     image: teddysun/xray:latest
     container_name: centricore_xray
     restart: unless-stopped
-    profiles: ["proxy"]
+    # Профиля здесь намеренно НЕТ: с ним обычный `docker compose up -d` не
+    # поднимал прокси, и он жил только потому, что когда-то был запущен
+    # вручную. После перезагрузки сервера все уведомления тихо умерли бы —
+    # api.telegram.org доступен с этой машины только через него.
     volumes:
       - ./xray/config.json:/etc/xray/config.json:ro
     networks:

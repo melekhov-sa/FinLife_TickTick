@@ -179,9 +179,47 @@ def _build_today(db: Session, account_id: int, today: date) -> WidgetOut:
     )
 
 
+def _build_payments(db: Session, account_id: int, today: date) -> WidgetOut:
+    """Ближайшие плановые операции: что и через сколько дней.
+
+    Просрочку здесь, в отличие от задач, показываем: пропущенный платёж —
+    это не «я и так помню», а деньги.
+    """
+    rows = DashboardService(db).get_upcoming_payments(account_id, today, limit=10)
+
+    def when(days: int) -> tuple[str, str]:
+        if days < 0:
+            return f"просрочен {-days} дн.", "warn"
+        if days == 0:
+            return "сегодня", "accent"
+        if days == 1:
+            return "завтра", "accent"
+        return f"через {days} дн.", "normal"
+
+    widget_rows: list[WidgetRow] = []
+    for r in rows:
+        label, tone = when(int(r.get("days_until") or 0))
+        widget_rows.append(
+            WidgetRow(
+                left=r.get("title") or "Платёж",
+                right=r.get("amount_formatted") or "",
+                note=label,
+                tone=tone,
+            )
+        )
+
+    return WidgetOut(
+        title="Ближайшие платежи",
+        rows=widget_rows,
+        empty="Ближайших платежей нет",
+        url=f"{PUBLIC_BASE}/planned-ops",
+    )
+
+
 _BUILDERS = {
     "cashback": _build_cashback,
     "today": _build_today,
+    "payments": _build_payments,
 }
 
 
