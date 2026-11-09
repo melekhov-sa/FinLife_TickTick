@@ -104,7 +104,7 @@ class GoalWalletBalancesProjector(BaseProjector):
             orig = self.db.query(EventLog).filter(
                 EventLog.account_id == payload["account_id"],
                 EventLog.event_type == "transaction_created",
-                EventLog.payload_json["transaction_id"].astext == str(payload["transaction_id"]),
+                EventLog.payload_json["transaction_id"].as_string() == str(payload["transaction_id"]),
             ).first()
             if orig:
                 payload["from_goal_id"] = orig.payload_json.get("from_goal_id")

@@ -436,7 +436,7 @@ class CreateTransactionUseCase:
         max_feed = self.db.query(func.max(TransactionFeed.transaction_id)).scalar() or 0
         max_event = (
             self.db.query(
-                func.max(cast(EventLog.payload_json["transaction_id"].astext, Integer))
+                func.max(cast(EventLog.payload_json["transaction_id"].as_string(), Integer))
             )
             .filter(EventLog.event_type == "transaction_created")
             .scalar()

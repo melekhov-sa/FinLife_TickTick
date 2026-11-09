@@ -987,7 +987,9 @@ class TestExtendSubscription:
 # ======================================================================
 
 class TestCompensateSubscription:
-    _FUTURE = date(2027, 6, 30)
+    # Относительно сегодня, а не фиксированная дата: бизнес-правило требует
+    # будущую дату, и зашитая однажды протухает (так и случилось в ноябре 2026).
+    _FUTURE = date.today() + timedelta(days=365)
 
     def test_compensate_creates_income_and_updates_paid_until(self, db_session, wallet, subscription, member):
         result = CompensateSubscriptionUseCase(db_session).execute(
@@ -1064,7 +1066,9 @@ class TestCompensateSubscription:
         assert "Иван" in tx.description  # contact name from fixture
 
     def test_compensate_date_advances_paid_until(self, db_session, wallet, subscription, member):
-        member.paid_until = date(2026, 3, 31)
+        start = date.today() + timedelta(days=30)
+        advanced = date.today() + timedelta(days=60)
+        member.paid_until = start
         db_session.commit()
 
         result = CompensateSubscriptionUseCase(db_session).execute(
@@ -1073,19 +1077,19 @@ class TestCompensateSubscription:
             wallet_id=wallet.wallet_id,
             amount=Decimal("300"),
             member_id=member.id,
-            new_paid_until=date(2026, 4, 30),
+            new_paid_until=advanced,
             actor_user_id=ACCOUNT,
         )
 
         db_session.refresh(member)
-        assert member.paid_until == date(2026, 4, 30)
+        assert member.paid_until == advanced
 
         cov = db_session.query(SubscriptionCoverageModel).filter(
             SubscriptionCoverageModel.member_id == member.id,
             SubscriptionCoverageModel.payer_type == "MEMBER",
         ).first()
         assert cov is not None
-        assert cov.start_date == date(2026, 4, 1)  # day after old paid_until
+        assert cov.start_date == start + timedelta(days=1)  # day after old paid_until
 
     def test_compensate_date_must_be_later_than_current(self, db_session, wallet, subscription, member):
         member.paid_until = date.today() + timedelta(days=30)

@@ -130,7 +130,11 @@ def test_reschedule_occurrence_happy_path(db, client):
 
     db.expire_all()
     updated = db.get(OperationOccurrence, occ.id)
-    assert updated.scheduled_date == date(2026, 4, 25)
+    # Перенос пишется в display_date, а scheduled_date остаётся исходной:
+    # на неё навешен уникальный индекс uq_operation_occurrence, а показывается
+    # пользователю coalesce(display_date, scheduled_date).
+    assert updated.display_date == date(2026, 4, 25)
+    assert updated.scheduled_date == date(2026, 4, 20)
 
 
 def test_reschedule_bad_date_format_returns_400(db, client):
