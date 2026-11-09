@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import WalletBalance, CategoryInfo, TransactionFeed, MandatoryCategory
+from app.application.category_suggest import rank_categories
 
 router = APIRouter()
 
@@ -178,6 +179,54 @@ class FinCategoryItemFull(BaseModel):
     is_mandatory: bool = False
     color: str | None = None
     emoji: str | None = None
+
+
+@router.get("/fin-categories/suggest", response_model=list[int])
+def suggest_fin_categories(
+    request: Request,
+    db: Session = Depends(get_db),
+    op_type: str = Query("EXPENSE", pattern="^(EXPENSE|INCOME)$"),
+    amount: str | None = Query(None),
+    limit: int = Query(6, ge=1, le=20),
+):
+    """Статьи по убыванию уместности — для подстановки наверх списка.
+
+    Отличие от флага is_frequent (он считает голое количество за 30 дней):
+    здесь свежие операции весят больше старых, а главное — учитывается сумма.
+    300 рублей и 120 тысяч почти наверняка разные статьи, даже если обе
+    популярны.
+    """
+    user_id = get_user_id(request, db)
+
+    target: Decimal | None = None
+    if amount:
+        try:
+            target = Decimal(amount)
+        except (InvalidOperation, ValueError):
+            target = None
+
+    since = datetime.now() - timedelta(days=90)
+    rows = (
+        db.query(TransactionFeed.category_id, TransactionFeed.amount, TransactionFeed.occurred_at)
+        .filter(
+            TransactionFeed.account_id == user_id,
+            TransactionFeed.operation_type == op_type,
+            TransactionFeed.category_id.isnot(None),
+            TransactionFeed.occurred_at >= since,
+        )
+        .all()
+    )
+
+    now = datetime.now()
+    prepared = [
+        (
+            cid,
+            amt,
+            max(0.0, (now - (occurred.replace(tzinfo=None) if occurred.tzinfo else occurred)).days),
+        )
+        for cid, amt, occurred in rows
+    ]
+    return rank_categories(prepared, target_amount=target, limit=limit)
 
 
 @router.get("/fin-categories", response_model=list[FinCategoryItemFull])
