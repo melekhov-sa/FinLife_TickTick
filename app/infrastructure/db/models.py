@@ -2521,3 +2521,22 @@ class ErrorEventModel(Base):
     method: Mapped[str] = mapped_column(String(10), nullable=False)
     path: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class NotificationFailureModel(Base):
+    """Неудачные отправки уведомлений — чтобы обрыв было видно в приложении.
+
+    Поводом стал реальный случай: пользователь заблокировал своего бота в
+    Telegram, уведомления перестали доходить, и месяцами никто не знал —
+    приложение исправно писало «Telegram send failed» в лог, который не читают.
+    """
+    __tablename__ = "notification_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    occurred_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)   # telegram
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)      # task_reminder и т.п.
+    error: Mapped[str] = mapped_column(Text, nullable=False)

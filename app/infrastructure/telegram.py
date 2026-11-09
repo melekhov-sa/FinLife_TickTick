@@ -78,6 +78,44 @@ def get_user_bot(db: Session, user_id: int) -> tuple[str, str] | None:
     return token, chat_id
 
 
+def _tg_error_text(resp) -> str:
+    """Понятная причина отказа Telegram вместо голого кода.
+
+    Именно текст вроде «bot was blocked by the user» и объясняет пользователю,
+    что делать: код 403 сам по себе ему ничего не говорит.
+    """
+    if resp is None:
+        return "сеть недоступна (таймаут или прокси)"
+    try:
+        body = resp.json() or {}
+        desc = body.get("description")
+        if desc:
+            return f"{resp.status_code}: {desc}"
+    except Exception:  # noqa: BLE001 — тело может быть не JSON
+        pass
+    return f"HTTP {resp.status_code}"
+
+
+def _record_failure(db: Session, user_id: int, kind: str, reason: str) -> None:
+    """Сохранить сбой доставки, чтобы он был виден в приложении.
+
+    Лога недостаточно: заблокированный бот прожил так месяцами. Любая
+    ошибка самой записи глушится — уведомление не должно падать из-за учёта.
+    """
+    try:
+        from app.infrastructure.db.models import NotificationFailureModel
+
+        db.add(NotificationFailureModel(
+            user_id=user_id, channel="telegram", kind=kind, error=reason[:500],
+        ))
+        db.commit()
+    except Exception:  # noqa: BLE001
+        try:
+            db.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def send_tg(db: Session, user_id: int, text: str, kind: str, html: bool = True) -> bool:
     """
     Отправить уведомление вида `kind` с учётом настроек юзера.
@@ -109,9 +147,11 @@ def send_tg(db: Session, user_id: int, text: str, kind: str, html: bool = True) 
 
     resp = tg_api(token, "sendMessage", payload)
     if resp is None or resp.status_code != 200:
+        reason = _tg_error_text(resp)
         logger.warning(
-            "Telegram send failed for user_id=%s kind=%s status=%s",
-            user_id, kind, getattr(resp, "status_code", "network"),
+            "Telegram send failed for user_id=%s kind=%s status=%s reason=%s",
+            user_id, kind, getattr(resp, "status_code", "network"), reason,
         )
+        _record_failure(db, user_id, kind, reason)
         return False
     return True

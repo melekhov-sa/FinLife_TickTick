@@ -16,7 +16,14 @@ from sqlalchemy.orm import Session
 
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.session import get_db
-from app.infrastructure.db.models import BackupStatusModel, ErrorEventModel, User
+from app.infrastructure.db.models import (
+    BackupStatusModel,
+    ErrorEventModel,
+    NotificationFailureModel,
+    TelegramSettings,
+    User,
+    UserNotificationSettings,
+)
 
 router = APIRouter()
 
@@ -127,4 +134,76 @@ def recent_errors(db: Session = Depends(get_db), user_id: int = Depends(get_user
             )
             for r in rows
         ],
+    )
+
+
+# ── Доставка уведомлений ──────────────────────────────────────────────────────
+
+class NotifyHealthOut(BaseModel):
+    healthy: bool
+    problem: str | None = None
+    hint: str | None = None
+    telegram_connected: bool
+    channel_enabled: bool
+    failures_24h: int
+    last_error: str | None = None
+    last_error_at: datetime | None = None
+
+
+@router.get("/system/notifications", response_model=NotifyHealthOut)
+def notifications_health(db: Session = Depends(get_db), user_id: int = Depends(get_user_id)):
+    """Доходят ли уведомления. Для каждого пользователя свой ответ — у всех
+    свой бот, и обрыв у одного не виден другому.
+
+    Повод: заблокированный в Telegram бот месяцами ронял все уведомления, а
+    приложение показывало, что всё нормально.
+    """
+    settings = (
+        db.query(UserNotificationSettings)
+        .filter(UserNotificationSettings.user_id == user_id)
+        .first()
+    )
+    tg = db.query(TelegramSettings).filter(TelegramSettings.user_id == user_id).first()
+
+    channel_enabled = bool((settings.channels_json or {}).get("telegram")) if settings else False
+    connected = bool(tg and tg.bot_token and tg.chat_id)
+
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    failures = (
+        db.query(NotificationFailureModel)
+        .filter(
+            NotificationFailureModel.user_id == user_id,
+            NotificationFailureModel.occurred_at >= since,
+        )
+        .order_by(NotificationFailureModel.occurred_at.desc())
+        .all()
+    )
+
+    problem: str | None = None
+    hint: str | None = None
+    if settings is not None and not settings.enabled:
+        problem = "Уведомления выключены полностью"
+        hint = "Включить можно здесь же, в настройках уведомлений"
+    elif not connected:
+        problem = "Telegram не подключён"
+        hint = "Настройки → Уведомления → подключить бота"
+    elif not channel_enabled:
+        # Ровно этот случай был у второго пользователя: бот подключён,
+        # а канал выключен, поэтому не приходило вообще ничего.
+        problem = "Бот подключён, но канал Telegram выключен"
+        hint = "Включить переключатель Telegram в настройках уведомлений"
+    elif failures:
+        problem = f"Не доходят: {failures[0].error}"
+        if "blocked" in failures[0].error.lower():
+            hint = "Открой чат с ботом в Telegram и нажми «Разблокировать», затем /start"
+
+    return NotifyHealthOut(
+        healthy=problem is None,
+        problem=problem,
+        hint=hint,
+        telegram_connected=connected,
+        channel_enabled=channel_enabled,
+        failures_24h=len(failures),
+        last_error=failures[0].error if failures else None,
+        last_error_at=failures[0].occurred_at if failures else None,
     )

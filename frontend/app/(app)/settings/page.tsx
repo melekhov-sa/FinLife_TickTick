@@ -10,7 +10,7 @@ import {
   ChevronRight, Smartphone, LayoutGrid, Send, Download, CheckCircle2, Zap, Sparkles,
   ScanFace, HardDriveDownload, AlertTriangle } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
-import type { BackupStatus, SystemErrors } from "@/types/api";
+import type { BackupStatus, SystemErrors, NotifyHealth } from "@/types/api";
 import { Switch } from "@/components/primitives/Switch";
 import { isNative, biometryAvailable, bioLockEnabled, setBioLockEnabled, hapticSuccess, notificationDiagnostics, testLocalNotification } from "@/lib/native";
 import { Button } from "@/components/primitives/Button";
@@ -211,6 +211,48 @@ function SystemErrorsCard() {
         {!clean && last && (
           <p className="text-[11px] mt-1 font-mono break-words" style={{ color: "var(--t-muted)" }}>
             {last.message}
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function NotifyHealthCard() {
+  const { data } = useQuery<NotifyHealth>({
+    queryKey: ["notify-health"],
+    queryFn: () => api.get<NotifyHealth>("/api/v2/system/notifications"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (!data) return null;
+
+  const ok = data.healthy;
+  return (
+    <Card padding="md" className="flex items-start gap-4">
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: ok ? "rgba(16,185,129,0.10)" : "rgba(245,158,11,0.12)" }}
+      >
+        <Send size={18} style={{ color: ok ? "#10b981" : "#d97706" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          Доставка уведомлений
+        </p>
+        <p className="text-[12px] mt-1 leading-relaxed" style={{ color: ok ? "var(--t-faint)" : "var(--t-secondary)" }}>
+          {ok
+            ? "Уведомления доходят"
+            : data.problem}
+        </p>
+        {!ok && data.hint && (
+          <p className="text-[12px] mt-1 leading-relaxed" style={{ color: "var(--t-faint)" }}>
+            {data.hint}
+          </p>
+        )}
+        {ok && data.failures_24h > 0 && (
+          <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+            Сбоев за сутки: {data.failures_24h}
           </p>
         )}
       </div>
@@ -457,6 +499,9 @@ export default function SettingsPage() {
 
           {/* ── Диагностика уведомлений (нативное) ── */}
           <NotifDiagCard />
+
+          {/* ── Доставка уведомлений (всем) ── */}
+          <NotifyHealthCard />
 
           {/* ── Состояние бэкапа (только админ) ── */}
           <BackupStatusCard />

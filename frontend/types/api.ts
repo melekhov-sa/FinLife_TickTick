@@ -776,3 +776,14 @@ export interface SystemErrors {
   count_24h: number;
   recent: SystemErrorItem[];
 }
+
+export interface NotifyHealth {
+  healthy: boolean;
+  problem: string | null;
+  hint: string | null;
+  telegram_connected: boolean;
+  channel_enabled: boolean;
+  failures_24h: number;
+  last_error: string | null;
+  last_error_at: string | null;
+}
