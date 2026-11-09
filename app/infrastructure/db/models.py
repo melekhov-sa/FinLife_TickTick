@@ -2540,3 +2540,31 @@ class NotificationFailureModel(Base):
     channel: Mapped[str] = mapped_column(String(16), nullable=False)   # telegram
     kind: Mapped[str] = mapped_column(String(32), nullable=False)      # task_reminder и т.п.
     error: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ReminderDeliveryModel(Base):
+    """Отметка, что напоминание на конкретное время уже отправлено.
+
+    Без неё напоминание жило ровно два минуты: диспетчер срабатывает раз в
+    2 минуты и отправлял, только попав точно в это окно. Пропущенный тик —
+    перезапуск контейнера, деплой, подвисшая база — терял напоминание
+    навсегда, и система даже не знала, что должна была его отправить.
+
+    С этой отметкой окно можно расширить: пропущенное догонит при следующем
+    тике, а дубля не будет.
+    """
+    __tablename__ = "reminder_deliveries"
+    __table_args__ = (
+        UniqueConstraint("account_id", "kind", "entity_id", "fire_at",
+                         name="uq_reminder_delivery"),
+        Index("ix_reminder_deliveries_fire_at", "fire_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)      # task | event | habit
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    fire_at: Mapped[DateTime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    sent_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )

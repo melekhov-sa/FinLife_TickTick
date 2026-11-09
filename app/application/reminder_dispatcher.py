@@ -45,6 +45,52 @@ def dispatch_due_reminders(db: Session) -> int:
     return total_sent
 
 
+# ── Догоняем пропущенное ──────────────────────────────────────────────────────
+# Диспетчер просыпается раз в 2 минуты, и раньше отправка происходила, только
+# если он попал ровно в это окно. Пропущенный тик (перезапуск, деплой,
+# подвисшая база) терял напоминание навсегда — система даже не знала, что
+# должна была его отправить.
+#
+# Час — компромисс: пропущенное догонит при следующем тике, но не свалится
+# через сутки приветом из прошлого. Дубли исключает отметка о доставке.
+CATCHUP_WINDOW = timedelta(hours=1)
+
+
+def _should_send(
+    db: Session, account_id: int, kind: str, entity_id: int,
+    fire_at: datetime, now: datetime,
+) -> bool:
+    """Пора ли отправлять и не отправляли ли уже."""
+    if not (fire_at <= now and fire_at > now - CATCHUP_WINDOW):
+        return False
+    from app.infrastructure.db.models import ReminderDeliveryModel
+    exists = (
+        db.query(ReminderDeliveryModel.id)
+        .filter(
+            ReminderDeliveryModel.account_id == account_id,
+            ReminderDeliveryModel.kind == kind,
+            ReminderDeliveryModel.entity_id == entity_id,
+            ReminderDeliveryModel.fire_at == fire_at,
+        )
+        .first()
+    )
+    return exists is None
+
+
+def _mark_sent(
+    db: Session, account_id: int, kind: str, entity_id: int, fire_at: datetime,
+) -> None:
+    """Записать факт отправки. Гонку ловит уникальный индекс."""
+    from app.infrastructure.db.models import ReminderDeliveryModel
+    try:
+        db.add(ReminderDeliveryModel(
+            account_id=account_id, kind=kind, entity_id=entity_id, fire_at=fire_at,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
 def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
     """Send push for task reminders that are due."""
     sent = 0
@@ -81,7 +127,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
             ref_time = task.due_time or task.due_start_time
             if ref_time:
                 fire_at = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
-                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
                     n = send_push_to_user(db, task.account_id, {
                         "title": f"⏰ {task.title}",
                         "body": f"Запланировано на {ref_time.strftime('%H:%M')}",
@@ -91,6 +137,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     send_tg(db, task.account_id,
                             f"⏰ <b>{task.title}</b>\nЗапланировано на {ref_time.strftime('%H:%M')}",
                             "task_reminder")
+                    _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
             continue
 
         for rem in reminders:
@@ -102,7 +149,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                 fire_at = datetime.combine(
                     task.due_date, _time(hour, minute), tzinfo=MSK
                 )
-                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
                     n = send_push_to_user(db, task.account_id, {
                         "title": f"⏰ {task.title}",
                         "body": f"Напоминание ({hour:02d}:{minute:02d})",
@@ -112,6 +159,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     send_tg(db, task.account_id,
                             f"⏰ <b>{task.title}</b>\nНапоминание ({hour:02d}:{minute:02d})",
                             "task_reminder")
+                    _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
             else:
                 # OFFSET kind — fire relative to due datetime, or midnight for date-only tasks
                 ref_time = task.due_time or task.due_start_time
@@ -121,7 +169,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     # Date-only task: treat midnight of due date as reference
                     due_dt = datetime.combine(task.due_date, _time(0, 0), tzinfo=MSK)
                 fire_at = due_dt + timedelta(minutes=rem.offset_minutes)  # offset is <= 0
-                if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+                if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
                     n = send_push_to_user(db, task.account_id, {
                         "title": f"⏰ {task.title}",
                         "body": _format_task_time(due_dt, rem.offset_minutes),
@@ -131,6 +179,7 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     send_tg(db, task.account_id,
                             f"⏰ <b>{task.title}</b>\n{_format_task_time(due_dt, rem.offset_minutes)}",
                             "task_reminder")
+                    _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
 
     return sent
 
@@ -198,7 +247,7 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
 
         # Время начала есть, напоминаний нет → авто-напоминание в момент начала
         if not combined and occ.start_time and not occ.is_completed:
-            if start_dt <= now_msk and start_dt > now_msk - timedelta(minutes=2):
+            if _should_send(db, occ.account_id, "event", occ.id, start_dt, now_msk):
                 event = event_map.get(occ.event_id)
                 title = event.title if event else "Событие"
                 time_str = occ.start_time.strftime("%H:%M")
@@ -211,6 +260,7 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                 send_tg(db, occ.account_id,
                         f"📅 <b>{title}</b>\nНачало в {time_str}",
                         "event_reminder")
+                _mark_sent(db, occ.account_id, "event", occ.id, start_dt)
             continue
 
         for rem in combined:
@@ -228,7 +278,7 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
             else:
                 continue
 
-            if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+            if _should_send(db, occ.account_id, "event", occ.id, fire_at, now_msk):
                 event = event_map.get(occ.event_id)
                 title = event.title if event else "Событие"
                 time_str = occ.start_time.strftime("%H:%M") if occ.start_time else ""
@@ -242,6 +292,7 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                 send_tg(db, occ.account_id,
                         f"📅 <b>{title}</b>\n" + (f"Сегодня в {time_str}" if time_str else "Сегодня"),
                         "event_reminder")
+                _mark_sent(db, occ.account_id, "event", occ.id, fire_at)
 
     return sent
 
@@ -283,7 +334,7 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
             continue
 
         fire_at = datetime.combine(today, habit.reminder_time, tzinfo=MSK)
-        if fire_at <= now_msk and fire_at > now_msk - timedelta(minutes=2):
+        if _should_send(db, habit.account_id, "habit", habit.habit_id, fire_at, now_msk):
             n = send_push_to_user(db, habit.account_id, {
                 "title": f"\U0001f504 {habit.title}",
                 "body": "Пора выполнить привычку",
@@ -293,6 +344,7 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
             send_tg(db, habit.account_id,
                     f"🔄 <b>{habit.title}</b>\nПора выполнить привычку",
                     "habit_reminder")
+            _mark_sent(db, habit.account_id, "habit", habit.habit_id, fire_at)
 
     return sent
 
