@@ -123,7 +123,11 @@ async function loadData(kind) {
 
 const LIMITS = { small: 3, medium: 6, large: 10, extraLarge: 10 };
 
-function buildWidget(data, family) {
+// Через сколько минут просить обновление. Для задач часто, для кэшбеков нет.
+const REFRESH_MIN = { today: 15, cashback: 180 };
+const REFRESH_DEFAULT = 60;
+
+function buildWidget(data, family, kind) {
   const limit = LIMITS[family] || 6;
   const compact = family === "small";
 
@@ -131,8 +135,9 @@ function buildWidget(data, family) {
   w.backgroundColor = C.bg;
   w.setPadding(12, 14, 12, 14);
   if (data.url) w.url = data.url;
-  // Данные меняются редко (кэшбеки — раз в месяц), чаще опрашивать незачем.
-  w.refreshAfterDate = new Date(Date.now() + 60 * 60 * 1000);
+  // Частоту в итоге решает iOS, refreshAfterDate — лишь пожелание. Но просить
+  // стоит по делу: задачи меняются в течение дня, кэшбеки — раз в месяц.
+  w.refreshAfterDate = new Date(Date.now() + (REFRESH_MIN[kind] || REFRESH_DEFAULT) * 60 * 1000);
 
   const title = w.addText(data.stale ? `${data.title} ·` : data.title);
   title.font = Font.semiboldSystemFont(compact ? 11 : 12);
@@ -192,7 +197,7 @@ function buildWidget(data, family) {
 const kind = (args.widgetParameter || "cashback").trim();
 const data = await loadData(kind);
 const family = config.widgetFamily || "medium";
-const widget = buildWidget(data, family);
+const widget = buildWidget(data, family, kind);
 
 if (config.runsInWidget) {
   Script.setWidget(widget);
