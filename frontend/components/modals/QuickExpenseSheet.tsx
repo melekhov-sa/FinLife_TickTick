@@ -99,6 +99,16 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
     staleTime: 300_000,
   });
 
+  // Базовый порядок статей по истории. Нужен именно ДО ввода суммы:
+  // подсказка по сумме (/transactions/suggest-category) до этого момента
+  // возвращает пусто, и хвост списка раньше шёл в произвольном порядке —
+  // из-за чего наверх попадали статьи, которыми пользуются раз в год.
+  const { data: baseOrder } = useQuery<number[]>({
+    queryKey: ["fin-categories-baseline", opType],
+    queryFn: () => api.get<number[]>(`/api/v2/fin-categories/suggest?op_type=${opType}&limit=12`),
+    staleTime: 10 * 60 * 1000,
+  });
+
   const sortedWallets = useMemo(() => {
     let list = (wallets ?? [])
       .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
@@ -157,12 +167,17 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
     for (const c of forType.filter((c) => c.is_frequent)) {
       if (!ordered.some((x) => x.category_id === c.category_id)) ordered.push(c);
     }
-    for (const c of forType) {
+    // Хвост — по истории использования, а не в порядке справочника
+    const tail = [
+      ...(baseOrder ?? []).map((id) => byId.get(id)).filter(Boolean) as FinCategoryItem[],
+      ...forType,
+    ];
+    for (const c of tail) {
       if (ordered.length >= 8) break;
       if (!ordered.some((x) => x.category_id === c.category_id)) ordered.push(c);
     }
     return ordered.slice(0, 8);
-  }, [leafCats, opType, suggested, prefs.categories, categoryId]);
+  }, [leafCats, opType, suggested, prefs.categories, categoryId, baseOrder]);
 
   // Подсказка категории по сумме (тот же движок, что в полной форме)
   useEffect(() => {
