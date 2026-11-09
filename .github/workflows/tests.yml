@@ -1,0 +1,65 @@
+name: Тесты и сборка
+
+# Зачем: в репозитории 211 тестов, но до ноября 2026 их никто не запускал —
+# ни CI, ни деплой, а локально они не идут (битый .venv). Сетка была, но не
+# ловила. Сборка фронта здесь по той же причине: она падала два месяца и
+# блокировала деплой, а обнаружилось это случайно.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Тесты бэкенда
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # как в Dockerfile
+          cache: pip
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      # Отдельной базы не нужно: conftest поднимает SQLite в памяти
+      # и подменяет JSONB на JSON.
+      - name: pytest
+        run: pytest
+
+  frontend:
+    name: Типы и сборка фронта
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Проверка типов
+        run: npx tsc --noEmit
+
+      # Ключи ненастоящие и нужны только чтобы собрался модуль клиента
+      # Supabase: без них сборка падает на этапе генерации страниц.
+      # В браузер эти значения не попадают — прод собирается на сервере
+      # со своими build-args.
+      - name: Сборка
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-dummy-anon-key
+        run: npm run build
