@@ -124,6 +124,7 @@ const TABS = [
 const RANGES = [
   { value: 1,  label: "День" },
   { value: 7,  label: "Неделя" },
+  { value: 14, label: "2 недели" },
   { value: 30, label: "Месяц" },
   { value: 90, label: "3 мес." },
 ];
@@ -910,7 +911,8 @@ function formatMonthLabel(d: Date): string {
 
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done">("active");
-  const [range, setRange] = useState(7);
+  // По умолчанию две недели: недели мало, чтобы планировать наперёд.
+  const [range, setRange] = useState(14);
   const [createTaskDate, setCreateTaskDate] = useState<string | null>(null);
   const [createEventDate, setCreateEventDate] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -1342,7 +1344,7 @@ export default function PlanPage() {
           <div className="flex flex-col gap-2 mb-3">
           <div className="flex flex-wrap items-center gap-2">
             {(() => {
-              const isDefaultFilter = tab === "active" && range === 7 && viewMode === "list";
+              const isDefaultFilter = tab === "active" && range === 14 && viewMode === "list";
               const seg = (activeVal: boolean) =>
                 clsx(
                   "px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all",
@@ -1389,7 +1391,7 @@ export default function PlanPage() {
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>Период</p>
                           <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
-                            {RANGES.filter(r => r.value === 7 || r.value === 30).map((r) => (
+                            {RANGES.filter(r => r.value === 7 || r.value === 14 || r.value === 30).map((r) => (
                               <button key={r.value} onClick={() => setRange(r.value)} className={clsx(seg(range === r.value), "flex-1")}>
                                 {r.label}
                               </button>

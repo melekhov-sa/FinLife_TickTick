@@ -61,26 +61,6 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               </span>
             </div>
 
-            {/* Кэшбеки — быстрый просмотр перед покупкой */}
-            <button
-              type="button"
-              onClick={() => setCashbackOpen(true)}
-              className="w-full flex items-baseline justify-between gap-2 text-left"
-            >
-              <span
-                className="text-[12px] md:text-[13px] inline-flex items-center gap-1"
-                style={{ color: "var(--t-muted)" }}
-              >
-                <BadgePercent size={12} /> Кэшбеки
-              </span>
-              <span
-                className="text-[13px] md:text-[14px] font-semibold"
-                style={{ color: "var(--app-accent)" }}
-              >
-                смотреть
-              </span>
-            </button>
-
             {/* Личные долги — только ненулевые */}
             {debtLent > 0 && (
               <Link href="/debts" className="flex items-baseline justify-between gap-2">
@@ -168,6 +148,17 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             <a href="/budget" className="text-[11px] md:text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
               Бюджет →
             </a>
+            {/* Кэшбеки открываются шторкой, поэтому кнопка, а не ссылка */}
+            <button
+              type="button"
+              onClick={() => setCashbackOpen(true)}
+              className="inline-flex items-center gap-1 text-[11px] md:text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors"
+              style={{ color: "var(--t-muted)" }}
+              title="Кэшбеки по картам за этот месяц"
+            >
+              <BadgePercent size={12} />
+              Кэшбек
+            </button>
             <a
               href="/net-worth"
               className="ml-auto inline-flex items-center gap-1 text-[11px] md:text-[12px] font-semibold transition-opacity hover:opacity-80"
