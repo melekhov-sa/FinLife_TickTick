@@ -87,7 +87,7 @@ export function TaskAttachments({ taskId, disabled }: { taskId: number; disabled
           {attachments.map((att) => (
             <div
               key={att.id}
-              className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] group transition-colors"
+              className="flex items-center gap-2 py-1.5 px-2 -mx-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[0.03] group transition-colors"
             >
               {fileIcon(att.mime_type)}
               <a
@@ -127,7 +127,7 @@ export function TaskAttachments({ taskId, disabled }: { taskId: number; disabled
         <button
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full py-3 rounded-xl border border-dashed border-white/[0.08] text-[12px] font-medium hover:bg-white/[0.03] hover:border-white/[0.12] transition-colors disabled:opacity-50"
+          className="w-full py-3 rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08] text-[12px] font-medium hover:bg-slate-50 dark:hover:bg-white/[0.03] hover:border-slate-200 dark:hover:border-white/[0.12] transition-colors disabled:opacity-50"
           style={{ color: "var(--t-faint)" }}
         >
           <Paperclip size={13} className="inline mr-1.5 -mt-0.5" />

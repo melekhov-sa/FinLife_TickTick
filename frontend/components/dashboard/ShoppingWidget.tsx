@@ -134,7 +134,7 @@ export function ShoppingWidget({ listId, items }: Props) {
         </div>
       )}
 
-      <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
         <a
           href={`/lists/${listId}`}
           className="text-xs font-medium hover:text-[var(--app-accent)] transition-colors"

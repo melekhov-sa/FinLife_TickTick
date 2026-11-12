@@ -2323,7 +2323,7 @@ export default function BudgetMatrixPage() {
             <Tooltip content="Назад">
               <button
                 onClick={goBack}
-                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                 style={{ color: "var(--t-secondary)" }}
               >
                 <ChevronLeft size={16} />
@@ -2343,7 +2343,7 @@ export default function BudgetMatrixPage() {
             <Tooltip content="Вперёд">
               <button
                 onClick={goForward}
-                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                 style={{ color: "var(--t-secondary)" }}
               >
                 <ChevronRight size={16} />

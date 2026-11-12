@@ -126,7 +126,7 @@ export default function AnalyticsPage() {
         {/* Add tab */}
         <button
           onClick={addTab}
-          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ml-0.5 hover:bg-white/[0.08]"
+          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ml-0.5 hover:bg-slate-100 dark:hover:bg-white/[0.08]"
           style={{ color: "var(--t-faint)" }}
           title="Новая вкладка"
         >

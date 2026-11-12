@@ -116,7 +116,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-faint)" }}
           >
             <X size={15} />
@@ -218,7 +218,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
                     setEndTime("");
                     update({ eventId: template.event_id, data: { default_start_time: null, default_end_time: null } });
                   }}
-                  className="mt-5 p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                  className="mt-5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                   title="Сбросить время"
                 >
                   <RotateCcw size={12} style={{ color: "var(--t-faint)" }} />
@@ -304,7 +304,7 @@ export function EventTemplatePanel({ template, onClose }: Props) {
               onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
               placeholder="Добавить описание..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

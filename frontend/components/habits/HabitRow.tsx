@@ -105,7 +105,7 @@ export function HabitRow({ habit, onComplete, onIncrement, onDecrement, onOpen, 
           onClick={(e) => { e.stopPropagation(); onDecrement?.(); }}
           onPointerDown={(e) => e.stopPropagation()}
           aria-label="Отменить последнее"
-          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-all hover:bg-white/[0.08]"
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
           style={{ color: "var(--t-faint)" }}
         >
           <Minus size={11} />

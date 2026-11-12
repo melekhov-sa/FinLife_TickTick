@@ -78,7 +78,7 @@ function CopyBox({ value, mono = true }: { value: string; mono?: boolean }) {
       </pre>
       <button
         onClick={handleCopy}
-        className="shrink-0 p-1 rounded-lg hover:bg-white/[0.06] transition-colors"
+        className="shrink-0 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
         title="Скопировать"
       >
         {copied ? (

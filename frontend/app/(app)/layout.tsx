@@ -368,7 +368,7 @@ function NativeBioLock() {
       >
         <span className="text-white text-xl font-bold tracking-tight">FL</span>
       </div>
-      <p className="text-white/80 text-[14px]">Приложение заблокировано</p>
+      <p className="text-slate-800 dark:text-white/80 text-[14px]">Приложение заблокировано</p>
       <button
         type="button"
         onClick={unlock}

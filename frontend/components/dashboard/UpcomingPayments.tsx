@@ -37,7 +37,7 @@ function PaymentRow({ p }: { p: UpcomingPayment }) {
   const d = new Date(p.scheduled_date);
   const hasAmount = p.amount_formatted && p.amount_formatted !== "—";
   return (
-    <div className="flex items-center gap-2.5 py-2 border-b border-white/[0.05] last:border-0 hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
+    <div className="flex items-center gap-2.5 py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
       {/* Мини-календарь с датой САМОГО платежа (эмодзи 📅 всегда рисовал «17») */}
       <span
         className="w-8 h-8 rounded-lg flex flex-col items-center justify-center shrink-0"
@@ -108,7 +108,7 @@ export function UpcomingPayments({ payments }: Props) {
         </div>
       )}
 
-      <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
         <a href="/planned-ops" className="text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
           Все плановые →
         </a>

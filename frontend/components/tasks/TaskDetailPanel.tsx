@@ -154,7 +154,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-faint)" }}
           >
             <X size={15} />
@@ -197,7 +197,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
           {task.is_recurring ? (
             <a
               href="/legacy/tasks?mode=recurring"
-              className="flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors text-[12px] font-medium"
+              className="flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors text-[12px] font-medium"
               style={{ color: "var(--t-faint)" }}
             >
               Управление →
@@ -277,7 +277,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
                 value={dueDate}
                 onChange={(e) => saveDueDate(e.target.value)}
                 disabled={isDone || isArchived}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark] disabled:opacity-50"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark] disabled:opacity-50"
                 style={{ color: "var(--t-secondary)" }}
               />
               {dateLabel && (

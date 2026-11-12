@@ -65,13 +65,13 @@ function QuickMenu({ onOpen, onAddMember }: { onOpen: () => void; onAddMember: (
     <div ref={ref} className="relative" onClick={(e) => e.preventDefault()}>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/[0.08]"
+        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.08]"
         style={{ color: "var(--t-muted)" }}
       >
         <MoreHorizontal size={15} />
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[160px]">
+        <div className="absolute right-0 top-8 z-50 bg-[#1a2233] border border-slate-200 dark:border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[160px]">
           {[
             { label: "Открыть", action: () => { onOpen(); setOpen(false); } },
             { label: "Добавить участника", action: () => { onAddMember(); setOpen(false); } },
@@ -79,7 +79,7 @@ function QuickMenu({ onOpen, onAddMember }: { onOpen: () => void; onAddMember: (
             <button
               key={item.label}
               onClick={(e) => { e.stopPropagation(); item.action(); }}
-              className="w-full text-left block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-white/[0.05] hover:text-white/90"
+              className="w-full text-left block px-4 py-2 text-[13px] font-medium transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.05] hover:text-slate-900 dark:hover:text-white/90"
               style={{ color: "var(--t-secondary)" }}
             >
               {item.label}
@@ -252,7 +252,7 @@ export function SubscriptionsTab() {
             <div className="flex flex-wrap items-center gap-4">
               <Checkbox checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} label="Архивные" size="sm" />
               {!showArchived && (
-                <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
+                <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-1">
                   {FILTERS.map((f) => (
                     <button
                       key={f.value}

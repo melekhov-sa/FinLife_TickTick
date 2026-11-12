@@ -71,7 +71,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div className="w-full max-w-sm mx-4 bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/[0.09] rounded-2xl shadow-2xl p-6 max-h-[calc(100dvh-48px)] overflow-y-auto overscroll-contain">
-        <h2 className="text-[15px] font-semibold text-white/90 mb-5">Добавить участника</h2>
+        <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white/90 mb-5">Добавить участника</h2>
 
         <div className="space-y-4">
           <div>
@@ -121,7 +121,7 @@ export function AddMemberModal({ subId, onClose }: Props) {
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:bg-white/[0.08] transition-colors"
+            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-white/68 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors"
           >
             Отмена
           </button>

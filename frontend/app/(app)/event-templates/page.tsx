@@ -118,16 +118,16 @@ function TemplateRow({
         <Tooltip content="Редактировать шаблон">
           <button
             onClick={onSelect}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
           >
-            <Pencil size={13} className="text-white/40" />
+            <Pencil size={13} className="text-slate-400 dark:text-white/40" />
           </button>
         </Tooltip>
         {item.is_archived ? (
           <Tooltip content="Восстановить">
             <button
               onClick={onRestore}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             >
               <RotateCcw size={13} className="text-[var(--app-accent)]/60" />
             </button>
@@ -136,9 +136,9 @@ function TemplateRow({
           <Tooltip content="В архив">
             <button
               onClick={onArchive}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             >
-              <Archive size={13} className="text-white/30" />
+              <Archive size={13} className="text-slate-300 dark:text-white/30" />
             </button>
           </Tooltip>
         )}
@@ -238,7 +238,7 @@ export default function EventTemplatesPage() {
       <main className="flex-1 p-3 md:p-6 w-full">
         {/* Tabs + count */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
+          <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06] rounded-lg md:rounded-xl p-0.5 md:p-1">
             {TABS.map(({ value, label }) => (
               <button
                 key={String(value)}
@@ -256,7 +256,7 @@ export default function EventTemplatesPage() {
 
           {totalShown > 0 && (
             <span
-              className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.06]"
+              className="text-[10px] md:text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/[0.06]"
               style={{ color: "var(--t-faint)" }}
             >
               {totalShown}
@@ -319,8 +319,8 @@ export default function EventTemplatesPage() {
             <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-xl md:rounded-2xl overflow-hidden">
               {filteredMain.length === 0 && filteredPast.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 md:py-16 text-center px-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
-                    <CalendarDays size={18} className="text-white/30" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center mb-2.5 md:mb-3">
+                    <CalendarDays size={18} className="text-slate-300 dark:text-white/30" />
                   </div>
                   <p className="text-[13px] md:text-sm font-medium" style={{ color: "var(--t-muted)" }}>
                     {catFilter !== null ? "Нет событий в этой категории" : archived ? "Нет архивных событий" : "Нет активных событий"}
@@ -347,7 +347,7 @@ export default function EventTemplatesPage() {
               <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-xl md:rounded-2xl overflow-hidden">
                 {/* Header */}
                 <div
-                  className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.02] transition-colors"
+                  className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 dark:border-white/[0.05] cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
                   onClick={() => setShowPast((v) => !v)}
                 >
                   <div className="flex items-center gap-2">
@@ -369,7 +369,7 @@ export default function EventTemplatesPage() {
                   {showPast && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleArchiveAllPast(); }}
-                      className="text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-colors hover:bg-white/[0.04]"
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]"
                       style={{ color: "var(--t-faint)", borderColor: "var(--app-border)" }}
                     >
                       Архивировать все

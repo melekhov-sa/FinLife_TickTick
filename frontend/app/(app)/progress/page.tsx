@@ -294,14 +294,14 @@ function HeatmapCard({ data }: { data: TasksOverview }) {
   };
 
   return (
-    <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 md:p-5 overflow-x-auto">
+    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4 md:p-5 overflow-x-auto">
       <div className="flex items-center justify-between mb-4 min-w-0">
         <div>
           <p className="text-[12px] font-semibold" style={{ color: "var(--t-secondary)" }}>
             Активность · {subtitles[view]}
           </p>
         </div>
-        <div className="flex rounded-lg overflow-hidden border border-white/[0.08] shrink-0">
+        <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-white/[0.08] shrink-0">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -372,8 +372,8 @@ function HabitRow({ habit }: { habit: TasksOverview["habits"][0] }) {
     : 0;
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] last:border-0">
-      <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 text-sm">
+    <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-white/[0.05] last:border-0">
+      <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center shrink-0 text-sm">
         {habit.emoji ?? "🎯"}
       </div>
       <div className="flex-1 min-w-0">
@@ -451,7 +451,7 @@ export default function ProgressPage() {
 
             {/* ── KPI row ─────────────────────────────────────────────── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4">
                 <p className="text-[11px] font-medium mb-1" style={{ color: "var(--t-faint)" }}>Закрыто в месяце</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[28px] font-bold tabular-nums leading-none" style={{ color: "var(--t-primary)" }}>
@@ -464,7 +464,7 @@ export default function ProgressPage() {
                 </p>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4">
                 <p className="text-[11px] font-medium mb-1" style={{ color: "var(--t-faint)" }}>В среднем в день</p>
                 <span className="text-[28px] font-bold tabular-nums leading-none" style={{ color: "var(--t-primary)" }}>
                   {data.kpi.avg_per_day}
@@ -472,7 +472,7 @@ export default function ProgressPage() {
                 <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>задач/день</p>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4">
                 <p className="text-[11px] font-medium mb-1" style={{ color: "var(--t-faint)" }}>Закрытых в срок</p>
                 <span className="text-[28px] font-bold tabular-nums leading-none" style={{ color: "var(--t-primary)" }}>
                   {data.kpi.completion_rate != null ? `${data.kpi.completion_rate}%` : "—"}
@@ -480,7 +480,7 @@ export default function ProgressPage() {
                 <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>этот месяц</p>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4">
                 <p className="text-[11px] font-medium mb-1" style={{ color: "var(--t-faint)" }}>Вовремя (30д)</p>
                 <span
                   className="text-[28px] font-bold tabular-nums leading-none"
@@ -502,7 +502,7 @@ export default function ProgressPage() {
 
             {/* ── Categories + Weekday side-by-side ────────────────────── */}
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 md:p-5">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4 md:p-5">
                 <p className="text-[12px] font-semibold mb-3" style={{ color: "var(--t-secondary)" }}>
                   По категориям · 30 дней
                 </p>
@@ -521,7 +521,7 @@ export default function ProgressPage() {
                           {cat.count} · {cat.pct}%
                         </span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-white/[0.06]">
+                      <div className="h-1.5 rounded-full bg-slate-100 dark:bg-white/[0.06]">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{ width: `${cat.pct}%`, background: "var(--app-accent-gradient)" }}
@@ -532,7 +532,7 @@ export default function ProgressPage() {
                 </div>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 md:p-5">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4 md:p-5">
                 <p className="text-[12px] font-semibold mb-3" style={{ color: "var(--t-secondary)" }}>
                   Ритм по дням недели
                 </p>
@@ -545,7 +545,7 @@ export default function ProgressPage() {
 
             {/* ── Habits ───────────────────────────────────────────────── */}
             {data.habits.length > 0 && (
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4 md:p-5">
+              <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-4 md:p-5">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[12px] font-semibold" style={{ color: "var(--t-secondary)" }}>
                     Привычки

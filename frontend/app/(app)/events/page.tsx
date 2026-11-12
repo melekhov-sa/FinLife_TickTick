@@ -90,14 +90,14 @@ function QuickMenu({ onOpen, onDuplicate, onDelete }: {
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/[0.08]"
+        className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
         style={{ color: "var(--t-faint)" }}
       >
         <MoreHorizontal size={14} />
       </button>
       {open && (
         <div
-          className="absolute right-0 top-7 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[150px]"
+          className="absolute right-0 top-7 z-50 bg-[#1a2233] border border-slate-200 dark:border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[150px]"
           onMouseLeave={() => setTimeout(() => setOpen(false), 150)}
         >
           {[
@@ -167,7 +167,7 @@ function EventRow({ event, onOpen, onDuplicate, onDelete, onComplete, onUncomple
         >
           {isCompleted
             ? <CheckCircle2 size={16} className="text-emerald-400" />
-            : <Circle size={16} className="text-white/20 group-hover:text-white/40" />
+            : <Circle size={16} className="text-slate-300 dark:text-white/20 group-hover:text-slate-400 dark:group-hover:text-white/40" />
           }
         </button>
       )}
@@ -523,7 +523,7 @@ export default function EventsPage() {
                   </button>
                 ) : undefined}
               />
-              <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1">
+              <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-1">
                 {DAYS_OPTIONS.map((d) => (
                   <button
                     key={d}
@@ -632,7 +632,7 @@ export default function EventsPage() {
                             {holiday.icon} {holiday.name}
                           </span>
                         )}
-                        <div className="flex-1 h-px bg-white/[0.04]" />
+                        <div className="flex-1 h-px bg-slate-50 dark:bg-white/[0.04]" />
                         <span className="text-[11px] tabular-nums" style={{ color: "var(--t-faint)" }}>{g.items.length}</span>
                       </div>
 

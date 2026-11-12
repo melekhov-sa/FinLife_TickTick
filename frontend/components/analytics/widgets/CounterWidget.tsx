@@ -111,7 +111,7 @@ function SetupForm({
             <button
               key={c.id}
               onClick={() => onDone(c.id)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-white/[0.06] transition-colors border border-transparent hover:border-white/[0.08]"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/[0.08]"
             >
               <span className="text-lg shrink-0">{c.emoji ?? "🔢"}</span>
               <div className="flex-1 min-w-0">
@@ -133,14 +133,14 @@ function SetupForm({
               value={emoji}
               onChange={(e) => setEmoji(e.target.value)}
               placeholder="🔢"
-              className="w-10 text-center text-lg bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
+              className="w-10 text-center text-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
             />
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Название счётчика"
               autoFocus
-              className="flex-1 px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
+              className="flex-1 px-2.5 py-1.5 text-[13px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)]"
               style={{ color: "var(--t-primary)" }}
             />
           </div>
@@ -167,7 +167,7 @@ function SetupForm({
             <select
               value={sourceCatId}
               onChange={(e) => setSourceCatId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full px-2.5 py-1.5 text-[13px] bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] [color-scheme:dark]"
+              className="w-full px-2.5 py-1.5 text-[13px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             >
               <option value="">— Категория —</option>
@@ -243,19 +243,19 @@ function CounterDisplay({
         </span>
         <button
           onClick={() => setShowMenu((v) => !v)}
-          className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.08] transition-colors shrink-0"
+          className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors shrink-0"
           style={{ color: "var(--t-faint)" }}
         >
           <Settings size={11} />
         </button>
         {showMenu && (
           <div
-            className="absolute top-6 right-0 z-20 bg-slate-800 border border-white/[0.10] rounded-xl shadow-xl overflow-hidden"
+            className="absolute top-6 right-0 z-20 bg-slate-800 border border-slate-200 dark:border-white/[0.10] rounded-xl shadow-xl overflow-hidden"
             style={{ minWidth: 160 }}
           >
             <button
               onClick={() => { onDetach(); setShowMenu(false); }}
-              className="w-full text-left px-3 py-2 text-[12px] hover:bg-white/[0.06] transition-colors"
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
               style={{ color: "var(--t-secondary)" }}
             >
               <RefreshCw size={11} className="inline mr-2 opacity-60" />
@@ -317,7 +317,7 @@ function CounterDisplay({
           <button
             onClick={() => decrement(counter.id)}
             disabled={decPending || counter.current_count <= 0}
-            className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/[0.10] hover:bg-white/[0.06] disabled:opacity-30 transition-all"
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-slate-200 dark:border-white/[0.10] hover:bg-slate-100 dark:hover:bg-white/[0.06] disabled:opacity-30 transition-all"
             style={{ color: "var(--t-secondary)" }}
           >
             <Minus size={16} />

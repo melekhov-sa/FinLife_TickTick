@@ -150,7 +150,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
             <Tooltip content="Дублировать">
               <button
                 onClick={() => { duplicate(event.occurrence_id); onClose(); }}
-                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                 style={{ color: "var(--t-faint)" }}
               >
                 <Copy size={13} />
@@ -158,7 +158,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
             </Tooltip>
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
               style={{ color: "var(--t-faint)" }}
             >
               <X size={15} />
@@ -170,7 +170,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
         <div className="flex items-center justify-between w-full">
           <a
             href={`/legacy/events/${event.event_id}/edit`}
-            className="text-[12px] font-medium hover:text-white/90 transition-colors"
+            className="text-[12px] font-medium hover:text-slate-900 dark:hover:text-white/90 transition-colors"
             style={{ color: "var(--t-faint)" }}
           >
             Расширенные настройки →
@@ -183,7 +183,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
             className="min-w-[240px] p-3"
             trigger={
               <button
-                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                 style={{ color: "var(--t-secondary)" }}
               >
                 <Trash2 size={13} />
@@ -240,7 +240,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); saveField("start_date", e.target.value); }}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
                 style={{ color: "var(--t-secondary)" }}
               />
               <span className="text-[12px]" style={{ color: "var(--t-faint)" }}>–</span>
@@ -248,7 +248,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); saveField("end_date", e.target.value); }}
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
                 style={{ color: "var(--t-secondary)" }}
               />
             </div>
@@ -316,7 +316,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
                   update({ occurrenceId: event.occurrence_id, data: { birth_year: valid ? y : null } });
                 }}
                 placeholder="напр. 1985"
-                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors w-32"
+                className="px-2.5 py-1.5 text-[13px] rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors w-32"
                 style={{ color: "var(--t-secondary)" }}
               />
               {birthYear && (() => {
@@ -364,7 +364,7 @@ export function EventDetailPanel({ event, onClose }: Props) {
               onChange={(e) => { setDesc(e.target.value); debounceSave("description", e.target.value); }}
               placeholder="Добавить описание..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

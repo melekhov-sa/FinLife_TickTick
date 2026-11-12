@@ -171,7 +171,7 @@ function PresetRow({
 
   if (editing) {
     return (
-      <div className="px-4 py-3 border-b border-white/[0.05] space-y-2">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] space-y-2">
         <div className="flex gap-2">
           <Input
             ref={nameRef}
@@ -213,7 +213,7 @@ function PresetRow({
           onChange={(e) => setEditDesc(e.target.value)}
           placeholder="Описание (необязательно)"
           rows={2}
-          className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
+          className="w-full text-[12px] bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.1] rounded-lg px-2.5 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
           style={{ color: "var(--t-secondary)" }}
         />
         <Select
@@ -226,7 +226,7 @@ function PresetRow({
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors group/row">
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.05] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group/row">
       <div className="flex-1 min-w-0">
         <p
           className="text-[14px] font-medium truncate"
@@ -362,7 +362,7 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
   return (
     <form
       onSubmit={submit}
-      className="px-4 py-3 bg-white/[0.03] border-t border-white/[0.06] space-y-2"
+      className="px-4 py-3 bg-slate-50 dark:bg-white/[0.03] border-t border-slate-100 dark:border-white/[0.06] space-y-2"
     >
       <div className="flex gap-2">
         <Input
@@ -405,7 +405,7 @@ function AddPresetForm({ onDone }: { onDone: () => void }) {
         onChange={(e) => setDesc(e.target.value)}
         placeholder="Описание (необязательно)"
         rows={2}
-        className="w-full text-[12px] bg-white/[0.06] border border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
+        className="w-full text-[12px] bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.1] rounded-lg px-3 py-1.5 outline-none focus:border-[var(--app-accent)] resize-none"
         style={{ color: "var(--t-secondary)" }}
       />
       <Select
@@ -486,7 +486,7 @@ export default function TaskPresetsPage() {
         {isError && (
           <div className="text-center py-12">
             <p className="text-red-400/70 text-sm">Не удалось загрузить шаблоны</p>
-            {error && <p className="text-[11px] text-white/30 mt-2">{String(error)}</p>}
+            {error && <p className="text-[11px] text-slate-300 dark:text-white/30 mt-2">{String(error)}</p>}
           </div>
         )}
 
@@ -525,7 +525,7 @@ export default function TaskPresetsPage() {
               ) : (
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors border-t border-slate-100 dark:border-white/[0.05]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <Plus size={13} />

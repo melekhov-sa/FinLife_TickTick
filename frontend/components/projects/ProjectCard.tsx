@@ -31,11 +31,11 @@ export function ProjectCard({ project }: Props) {
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="block bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-5 transition-all hover:-translate-y-px group"
+      className="block bg-slate-50 dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.06] border border-slate-200 dark:border-white/[0.07] hover:border-slate-200 dark:hover:border-white/[0.12] rounded-2xl p-5 transition-all hover:-translate-y-px group"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h3 className="text-sm font-semibold text-white/85 group-hover:text-white/95 transition-colors line-clamp-2"
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-white/85 group-hover:text-slate-900 dark:group-hover:text-white/95 transition-colors line-clamp-2"
           style={{ letterSpacing: "-0.01em" }}>
           {project.title}
         </h3>
@@ -51,12 +51,12 @@ export function ProjectCard({ project }: Props) {
 
       {/* Description */}
       {project.description && (
-        <p className="text-xs text-white/65 line-clamp-2 mb-4">{project.description}</p>
+        <p className="text-xs text-slate-700 dark:text-white/65 line-clamp-2 mb-4">{project.description}</p>
       )}
 
       {/* Progress bar */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-[10px] font-medium text-white/60">
+        <div className="flex justify-between text-[10px] font-medium text-slate-600 dark:text-white/60">
           <span>{project.done_tasks} / {project.total_tasks} задач</span>
           <span className="tabular-nums">{pct}%</span>
         </div>
@@ -70,7 +70,7 @@ export function ProjectCard({ project }: Props) {
 
       {/* Due date */}
       {project.due_date && (
-        <p className="text-[10px] text-white/55 mt-3 tabular-nums">Срок: {project.due_date}</p>
+        <p className="text-[10px] text-slate-600 dark:text-white/55 mt-3 tabular-nums">Срок: {project.due_date}</p>
       )}
     </Link>
   );

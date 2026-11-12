@@ -64,14 +64,14 @@ function QuickMenu({ task, onOpen }: { task: TaskItem; onOpen?: (t: TaskItem) =>
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-100 transition-all hover:bg-white/[0.08]"
+        className="w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
         style={{ color: "var(--t-faint)" }}
         title="Действия"
       >
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 bg-[#1a2233] border border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[150px]">
+        <div className="absolute right-0 top-7 z-50 bg-[#1a2233] border border-slate-200 dark:border-white/[0.10] rounded-xl shadow-xl py-1 min-w-[150px]">
           {items.map((item) => (
             <button
               key={item.label}

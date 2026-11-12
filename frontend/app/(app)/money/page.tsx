@@ -592,10 +592,10 @@ export default function MoneyPage() {
 
         {data && data.items.length === 0 && !isLoading && (
           <div className="flex flex-col items-center py-12 md:py-16 text-center">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-3 md:mb-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center mb-3 md:mb-4">
               <span className="text-lg md:text-xl">💳</span>
             </div>
-            <p className="text-white/60 text-[13px] md:text-sm font-medium">Нет операций по заданным фильтрам</p>
+            <p className="text-slate-600 dark:text-white/60 text-[13px] md:text-sm font-medium">Нет операций по заданным фильтрам</p>
           </div>
         )}
 
@@ -789,7 +789,7 @@ export default function MoneyPage() {
                 >
                   <ChevronLeft size={16} />
                 </Button>
-                <span className="text-[11px] md:text-xs font-medium text-white/65 tabular-nums">
+                <span className="text-[11px] md:text-xs font-medium text-slate-700 dark:text-white/65 tabular-nums">
                   {page} / {data.pages}
                 </span>
                 <Button

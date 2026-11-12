@@ -299,7 +299,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
       >
         Отмена
       </button>
@@ -489,7 +489,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
         <button
           type="button"
           onClick={() => setShowExtra((v) => !v)}
-          className="flex items-center gap-1.5 py-1 text-[12px] font-medium transition-colors hover:text-white/60"
+          className="flex items-center gap-1.5 py-1 text-[12px] font-medium transition-colors hover:text-slate-600 dark:hover:text-white/60"
           style={{ color: "var(--t-faint)" }}
         >
           <ChevronDown
@@ -673,7 +673,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Необязательно"
                 rows={2}
-                className="w-full px-3 py-2.5 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
+                className="w-full px-3 py-2.5 text-base md:text-sm rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
                 style={{ minHeight: 56, maxHeight: 160 }}
               />
             </div>
@@ -683,7 +683,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
               <label className={labelCls}>Задачи к событию</label>
               <div className="space-y-1.5">
                 {stagedTemplates.map((tpl, idx) => (
-                  <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+                  <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07]">
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium truncate" style={{ color: "var(--t-secondary)" }}>{tpl.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -703,7 +703,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                     <button
                       type="button"
                       onClick={() => setStagedTemplates((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-white/30 hover:text-red-400 transition-colors"
+                      className="text-slate-300 dark:text-white/30 hover:text-red-400 transition-colors"
                     >
                       <XIcon size={13} />
                     </button>
@@ -717,7 +717,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                       value={tplTitle}
                       onChange={(e) => setTplTitle(e.target.value)}
                       placeholder="Название задачи"
-                      className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
+                      className="w-full px-3 h-9 text-[13px] rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
                       onKeyDown={(e) => { if (e.key === "Escape") setShowTemplateAdd(false); }}
                     />
                     <div className="flex items-center gap-1.5">
@@ -728,7 +728,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                         max={365}
                         value={tplDays}
                         onChange={(e) => setTplDays(e.target.value)}
-                        className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
+                        className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
                       />
                       <span className="text-[11px]" style={{ color: "var(--t-faint)" }}>дней до события</span>
                     </div>
@@ -767,7 +767,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                       <button
                         type="button"
                         onClick={() => { setShowTemplateAdd(false); setTplTitle(""); setTplDays("7"); setTplReminder(null); }}
-                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/55 hover:bg-white/[0.08] transition-colors"
+                        className="px-3 py-1.5 text-[12px] font-medium rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/55 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors"
                       >
                         Отмена
                       </button>
@@ -777,7 +777,7 @@ export function CreateEventModal({ onClose, initialDate, initialTitle }: Props) 
                   <button
                     type="button"
                     onClick={() => setShowTemplateAdd(true)}
-                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
+                    className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-slate-200 dark:border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
                     style={{ color: "var(--t-faint)" }}
                   >
                     <Plus size={12} />

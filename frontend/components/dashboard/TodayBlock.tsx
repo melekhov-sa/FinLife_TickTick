@@ -1010,7 +1010,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
                         {count > 0 && (
                           <button
                             onClick={() => decrementHabit(habitId)}
-                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover/ch:opacity-100 transition-all hover:bg-white/[0.08]"
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md opacity-0 group-hover/ch:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
                             style={{ color: "var(--t-faint)" }}
                             aria-label="Отменить +1"
                           >

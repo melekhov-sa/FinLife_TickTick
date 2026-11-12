@@ -27,7 +27,7 @@ export function HabitHeatmap({ cells }: Props) {
   if (cells.length === 0) return null;
 
   return (
-    <div className="bg-white/[0.03] rounded-[14px] border border-white/[0.06] p-5">
+    <div className="bg-slate-50 dark:bg-white/[0.03] rounded-[14px] border border-slate-100 dark:border-white/[0.06] p-5">
       <h2 className="text-sm font-semibold mb-3" style={{ letterSpacing: "-0.01em", color: "var(--t-primary)" }}>
         Привычки
       </h2>

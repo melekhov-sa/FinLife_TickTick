@@ -173,7 +173,7 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
               <Tooltip content="Изменить">
                 <button
                   onClick={startEdit}
-                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-white/[0.08] transition-colors opacity-0 group-hover/row:opacity-100"
+                  className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors opacity-0 group-hover/row:opacity-100"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <Pencil size={12} />
@@ -183,7 +183,7 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
             {cat.is_archived ? (
               <button
                 onClick={() => restore(cat.category_id)}
-                className="flex items-center gap-1 py-1 px-2 rounded-lg border border-white/[0.07] text-[11px] hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all"
+                className="flex items-center gap-1 py-1 px-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-[11px] hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400 transition-all"
                 style={{ color: "var(--t-faint)" }}
                 title="Восстановить"
               >
@@ -193,7 +193,7 @@ function WorkCategoryRow({ cat }: { cat: WorkCategory }) {
             ) : (
               <button
                 onClick={() => archive(cat.category_id)}
-                className="flex items-center gap-1 py-1 px-2 rounded-lg border border-white/[0.07] text-[11px] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all"
+                className="flex items-center gap-1 py-1 px-2 rounded-lg border border-slate-200 dark:border-white/[0.07] text-[11px] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all"
                 style={{ color: "var(--t-faint)" }}
                 title="В архив"
               >
@@ -235,7 +235,7 @@ function AddCategoryForm({ onDone }: { onDone: () => void }) {
   return (
     <form
       onSubmit={submit}
-      className="flex items-center gap-2 px-4 py-3 bg-white/[0.03] border-t border-white/[0.06]"
+      className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-white/[0.03] border-t border-slate-100 dark:border-white/[0.06]"
     >
       <Input
         value={emoji}
@@ -332,7 +332,7 @@ export default function WorkCategoriesPage() {
         {isError && (
           <div className="text-center py-12">
             <p className="text-red-400/70 text-sm">Не удалось загрузить категории</p>
-            {error && <p className="text-[11px] text-white/30 mt-2">{String(error)}</p>}
+            {error && <p className="text-[11px] text-slate-300 dark:text-white/30 mt-2">{String(error)}</p>}
           </div>
         )}
 
@@ -358,7 +358,7 @@ export default function WorkCategoriesPage() {
               ) : (
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-white/[0.03] transition-colors border-t border-white/[0.05]"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors border-t border-slate-100 dark:border-white/[0.05]"
                   style={{ color: "var(--t-faint)" }}
                 >
                   <Plus size={13} />

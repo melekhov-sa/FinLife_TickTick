@@ -67,7 +67,7 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
   }
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.05] last:border-0">
+    <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-white/[0.05] last:border-0">
       <div className="w-9 h-9 rounded-full bg-[var(--app-accent-light)] flex items-center justify-center text-[11px] font-bold text-[var(--app-accent-ink)]/80 shrink-0">
         {getInitials(member.contact_name)}
       </div>
@@ -85,13 +85,13 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
               onBlur={saveDateVal}
               onKeyDown={(e) => { if (e.key === "Enter") saveDateVal(); if (e.key === "Escape") setEditDate(false); }}
               autoFocus
-              className="text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none [color-scheme:dark]"
+              className="text-[12px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             />
           ) : (
             <button
               onClick={() => setEditDate(true)}
-              className="flex items-center gap-1 text-[11px] hover:text-white/80 transition-colors"
+              className="flex items-center gap-1 text-[11px] hover:text-slate-800 dark:hover:text-white/80 transition-colors"
               style={{ color: "var(--t-faint)" }}
             >
               <Calendar size={11} />
@@ -109,14 +109,14 @@ function MemberRow({ member, subId }: { member: SubscriptionMember; subId: numbe
               onBlur={savePayVal}
               onKeyDown={(e) => { if (e.key === "Enter") savePayVal(); if (e.key === "Escape") setEditPay(false); }}
               autoFocus
-              className="w-24 text-[12px] px-2 py-0.5 rounded-md bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none"
+              className="w-24 text-[12px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] outline-none"
               style={{ color: "var(--t-secondary)" }}
               placeholder="сумма/мес"
             />
           ) : (
             <button
               onClick={() => setEditPay(true)}
-              className="flex items-center gap-1 text-[11px] hover:text-white/80 transition-colors"
+              className="flex items-center gap-1 text-[11px] hover:text-slate-800 dark:hover:text-white/80 transition-colors"
               style={{ color: "var(--t-faint)" }}
             >
               <DollarSign size={11} />
@@ -226,7 +226,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/[0.06] active:bg-white/[0.1] transition-colors touch-manipulation"
+            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] active:bg-slate-200 dark:active:bg-white/[0.1] transition-colors touch-manipulation"
             style={{ color: "var(--t-faint)" }}
           >
             <X size={15} />
@@ -242,7 +242,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
           className="min-w-[240px] p-3"
           trigger={
             <button
-              className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+              className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
               style={{ color: "var(--t-secondary)" }}
             >
               <Trash2 size={13} />
@@ -286,11 +286,11 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
         {/* Stats */}
         <div className={clsx("grid gap-3", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
           {isAdmin && (
-            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
+            <div className="bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
               <Stat label="Участников" value={sub.total_members} align="center" size="lg" />
             </div>
           )}
-          <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
+          <div className="bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] rounded-xl p-3 flex items-center justify-center">
             <Stat
               label="/ месяц"
               value={monthlyTotal > 0 ? `${monthlyTotal.toLocaleString("ru-RU")} ₽` : "—"}
@@ -314,7 +314,7 @@ export function SubscriptionDetailPanel({ sub, onClose }: Props) {
                 setPaidUntil(e.target.value);
                 debounceSavePaidUntil(e.target.value);
               }}
-              className="px-2.5 py-1.5 text-[13px] rounded-lg bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
+              className="px-2.5 py-1.5 text-[13px] rounded-lg bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] transition-colors [color-scheme:dark]"
               style={{ color: "var(--t-secondary)" }}
             />
             {paidUntil && sub.days_left_self !== null && (

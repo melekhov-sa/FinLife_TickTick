@@ -78,7 +78,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
           {isError && (
             <div className="text-center py-20">
               <p className="text-4xl mb-4">📄</p>
-              <p className="text-white/65 text-sm mb-5">Статья не найдена</p>
+              <p className="text-slate-700 dark:text-white/65 text-sm mb-5">Статья не найдена</p>
               <Link
                 href="/knowledge"
                 className="inline-flex items-center gap-1.5 text-xs text-[var(--app-accent)]/70 hover:text-[var(--app-accent)] transition-colors"
@@ -93,20 +93,20 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               {/* Back link */}
               <Link
                 href="/knowledge"
-                className="inline-flex items-center gap-1.5 text-xs text-white/55 hover:text-white/55 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-white/55 hover:text-slate-600 dark:hover:text-white/55 transition-colors"
               >
                 <ArrowLeft size={12} /> Все статьи
               </Link>
 
               {/* Header card */}
-              <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-5">
+              <div className="bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-5">
                 {/* Meta row */}
                 <div className="flex items-center gap-2 flex-wrap mb-3">
                   <span className="text-base">{data.type_emoji}</span>
-                  <span className="text-[10px] font-semibold text-white/65 uppercase tracking-widest">
+                  <span className="text-[10px] font-semibold text-slate-700 dark:text-white/65 uppercase tracking-widest">
                     {data.type_label}
                   </span>
-                  <span className="text-white/15">·</span>
+                  <span className="text-slate-300 dark:text-white/15">·</span>
                   <Badge variant={STATUS_VARIANTS[data.status] ?? "neutral"} size="sm">
                     {data.status_label}
                   </Badge>
@@ -118,19 +118,19 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                 </div>
 
                 {/* Title */}
-                <h1 className="text-xl font-bold text-white/92 mb-1" style={{ letterSpacing: "-0.02em" }}>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white/92 mb-1" style={{ letterSpacing: "-0.02em" }}>
                   {data.title}
                 </h1>
 
                 {/* Date */}
-                <div className="flex items-center gap-1.5 text-[11px] text-white/55">
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-white/55">
                   <Calendar size={11} />
                   <span>Обновлено {formatDate(data.updated_at)}</span>
                 </div>
 
                 {/* Tags */}
                 {data.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/[0.05]">
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100 dark:border-white/[0.05]">
                     {data.tags.map((t) => (
                       <span
                         key={t.id}
@@ -147,7 +147,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               <div>
                 <a
                   href={`/legacy/knowledge/${data.id}/edit`}
-                  className="inline-flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/68 hover:text-white/70 hover:border-white/[0.12] transition-all"
+                  className="inline-flex items-center gap-2 text-xs px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-slate-700 dark:text-white/68 hover:text-slate-700 dark:hover:text-white/70 hover:border-slate-200 dark:hover:border-white/[0.12] transition-all"
                 >
                   <Pencil size={11} /> Редактировать
                 </a>
@@ -157,20 +157,20 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
               <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl p-6">
                 {data.content_md ? (
                   <div
-                    className="text-sm text-white/60 leading-relaxed"
+                    className="text-sm text-slate-600 dark:text-white/60 leading-relaxed"
                     dangerouslySetInnerHTML={{
                       __html: `<p class="text-white/60 text-sm leading-relaxed mb-3 mt-0">${renderMarkdown(data.content_md)}</p>`,
                     }}
                   />
                 ) : (
-                  <p className="text-white/50 text-sm italic text-center py-8">Содержимое отсутствует</p>
+                  <p className="text-slate-600 dark:text-white/50 text-sm italic text-center py-8">Содержимое отсутствует</p>
                 )}
               </div>
 
               {/* Linked projects */}
               {data.linked_projects.length > 0 && (
                 <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl p-5">
-                  <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-3">
+                  <p className="text-[10px] font-semibold text-slate-600 dark:text-white/60 uppercase tracking-widest mb-3">
                     Связанные проекты
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -178,7 +178,7 @@ export default function KnowledgeArticlePage({ params }: { params: Promise<{ id:
                       <Link
                         key={p.id}
                         href={`/projects/${p.id}`}
-                        className="text-xs px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-white/72 hover:text-white/75 hover:border-white/[0.12] transition-all"
+                        className="text-xs px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] text-slate-700 dark:text-white/72 hover:text-slate-800 dark:hover:text-white/75 hover:border-slate-200 dark:hover:border-white/[0.12] transition-all"
                       >
                         {p.title}
                       </Link>

@@ -174,12 +174,12 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Название задачи"
-        className="w-full px-3 h-9 text-[13px] rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
+        className="w-full px-3 h-9 text-[13px] rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)]"
         onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
       />
 
       {/* Direction toggle */}
-      <div className="flex rounded-lg overflow-hidden border border-white/[0.08]">
+      <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-white/[0.08]">
         <button
           type="button"
           onClick={() => setDirection("before")}
@@ -219,7 +219,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
               max={365}
               value={daysBefore}
               onChange={(e) => setDaysBefore(e.target.value)}
-              className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
+              className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
             />
             <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>дней до события</span>
           </div>
@@ -240,7 +240,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
       {/* After: mode + offset */}
       {direction === "after" && (
         <>
-          <div className="flex rounded-lg overflow-hidden border border-white/[0.08]">
+          <div className="flex rounded-lg overflow-hidden border border-slate-200 dark:border-white/[0.08]">
             <button
               type="button"
               onClick={() => setAfterMode("minutes")}
@@ -276,7 +276,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
                 max={1440}
                 value={minutesAfter}
                 onChange={(e) => setMinutesAfter(e.target.value)}
-                className="w-16 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
+                className="w-16 px-2 h-8 text-[13px] text-center rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
               />
               <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>
                 мин после окончания
@@ -291,7 +291,7 @@ function AddForm({ onSave, onCancel, saving }: AddFormProps) {
                 max={365}
                 value={daysAfter}
                 onChange={(e) => setDaysAfter(e.target.value)}
-                className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-white/[0.08] bg-white/[0.05] text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
+                className="w-14 px-2 h-8 text-[13px] text-center rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.05] text-slate-800 dark:text-white/85 focus:outline-none focus:border-[var(--app-accent)]"
               />
               <span className="text-[11px] font-medium" style={{ color: "var(--t-faint)" }}>дней после события</span>
             </div>
@@ -335,7 +335,7 @@ function TemplateRow({
   const acLabel = !tpl.is_after_event ? autoCompleteLabel(tpl.auto_complete_mode) : "";
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] group">
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06] group">
       {/* Direction icon */}
       <div className="shrink-0" style={{ color: tpl.is_after_event ? "rgb(167 139 250 / 0.6)" : "rgb(99 102 241 / 0.6)" }}>
         {tpl.is_after_event ? <ArrowRight size={11} /> : <ArrowLeft size={11} />}
@@ -459,7 +459,7 @@ export function EventTaskTemplates({ eventId }: Props) {
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
+          className="flex items-center gap-1.5 w-full px-2.5 py-1.5 rounded-xl text-[12px] font-medium border border-dashed border-slate-200 dark:border-white/[0.10] hover:border-[color-mix(in_srgb,var(--app-accent)_30%,transparent)] hover:bg-[var(--app-accent-weak)]0/[0.04] transition-colors"
           style={{ color: "var(--t-faint)" }}
         >
           <Plus size={12} />

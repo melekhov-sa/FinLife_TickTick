@@ -112,7 +112,7 @@ function SetupForm({
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Название, напр. «Теннис»"
         autoFocus
-        className="w-full px-2.5 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] text-[13px]"
+        className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-[var(--app-accent)] text-[13px]"
         style={{ color: "var(--t-primary)" }}
       />
 
@@ -288,19 +288,19 @@ function AggregateDisplay({
         </span>
         <button
           onClick={() => setShowMenu((v) => !v)}
-          className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.08] transition-colors shrink-0"
+          className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors shrink-0"
           style={{ color: "var(--t-faint)" }}
         >
           <Settings size={11} />
         </button>
         {showMenu && (
           <div
-            className="absolute top-6 right-0 z-20 bg-slate-800 border border-white/[0.10] rounded-xl shadow-xl overflow-hidden"
+            className="absolute top-6 right-0 z-20 bg-slate-800 border border-slate-200 dark:border-white/[0.10] rounded-xl shadow-xl overflow-hidden"
             style={{ minWidth: 170 }}
           >
             <button
               onClick={() => { onReset(); setShowMenu(false); }}
-              className="w-full text-left px-3 py-2 text-[12px] hover:bg-white/[0.06] transition-colors"
+              className="w-full text-left px-3 py-2 text-[12px] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
               style={{ color: "var(--t-secondary)" }}
             >
               <RefreshCw size={11} className="inline mr-2 opacity-60" />

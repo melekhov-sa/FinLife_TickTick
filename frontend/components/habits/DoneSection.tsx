@@ -19,7 +19,7 @@ export function DoneSection({ habits, onOpen }: Props) {
     <div className="bg-[var(--dash-card-bg)] border border-[var(--dash-card-border)] shadow-[var(--dash-card-shadow)] rounded-2xl overflow-hidden">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors"
       >
         <span
           className="font-medium"
@@ -40,7 +40,7 @@ export function DoneSection({ habits, onOpen }: Props) {
             <div
               key={habit.habit_id}
               onClick={() => onOpen(habit)}
-              className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-white/[0.04] cursor-pointer transition-colors opacity-50 hover:opacity-70"
+              className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors opacity-50 hover:opacity-70"
             >
               <span className="text-base shrink-0">{habit.category_emoji ?? "🔄"}</span>
               <p

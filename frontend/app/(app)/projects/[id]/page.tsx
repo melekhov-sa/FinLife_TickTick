@@ -94,7 +94,7 @@ function ProjectSettingsPopover({
         trigger={
           <Tooltip content="Настройки проекта">
             <button
-              className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/70 hover:bg-white/[0.07] transition-colors"
+              className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center text-slate-600 dark:text-white/55 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors"
             >
               <Settings size={13} />
             </button>
@@ -134,7 +134,7 @@ function ProjectSettingsPopover({
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 text-[12px] bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] rounded-lg px-2 py-1 outline-none"
+                      className="flex-1 text-[12px] bg-slate-100 dark:bg-white/[0.06] border border-[color-mix(in_srgb,var(--app-accent)_40%,transparent)] rounded-lg px-2 py-1 outline-none"
                       style={{ color: "var(--t-primary)" }}
                       autoFocus
                     />
@@ -150,7 +150,7 @@ function ProjectSettingsPopover({
                     <button onClick={() => updateTag({ id: tag.id, name: editName, color: editColor })} className="text-[var(--app-accent)] hover:text-[var(--app-accent)]">
                       <Check size={12} />
                     </button>
-                    <button onClick={() => setEditingTagId(null)} className="text-white/40 hover:text-white/60">
+                    <button onClick={() => setEditingTagId(null)} className="text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60">
                       <X size={12} />
                     </button>
                   </div>
@@ -160,13 +160,13 @@ function ProjectSettingsPopover({
                     <span className="text-[12px] flex-1" style={{ color: "var(--t-secondary)" }}>{tag.name}</span>
                     <button
                       onClick={() => { setEditingTagId(tag.id); setEditName(tag.name); setEditColor(tag.color ?? "gray"); }}
-                      className="opacity-0 group-hover/tag:opacity-100 text-white/40 hover:text-white/70 transition-all text-[10px] px-1"
+                      className="opacity-0 group-hover/tag:opacity-100 text-slate-400 dark:text-white/40 hover:text-slate-700 dark:hover:text-white/70 transition-all text-[10px] px-1"
                     >
                       ✎
                     </button>
                     <button
                       onClick={() => setDeleteTagTarget(tag)}
-                      className="opacity-0 group-hover/tag:opacity-100 text-white/30 hover:text-red-400 transition-all"
+                      className="opacity-0 group-hover/tag:opacity-100 text-slate-300 dark:text-white/30 hover:text-red-400 transition-all"
                     >
                       <X size={10} />
                     </button>
@@ -176,13 +176,13 @@ function ProjectSettingsPopover({
             </div>
 
             {/* Add new tag */}
-            <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06]">
+            <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
               <input
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && newTagName.trim()) createTag({ name: newTagName.trim(), color: newTagColor }); }}
                 placeholder="Новый тег..."
-                className="flex-1 text-[12px] bg-white/[0.05] border border-white/[0.08] rounded-lg px-2 py-1 outline-none focus:border-[var(--app-accent)] placeholder-white/25"
+                className="flex-1 text-[12px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1 outline-none focus:border-[var(--app-accent)] placeholder-white/25"
                 style={{ color: "var(--t-primary)" }}
               />
               <div className="flex gap-0.5">
@@ -254,10 +254,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     <>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Project header */}
-        <div className="px-6 pt-5 pb-4 border-b border-white/[0.05] flex items-center gap-4 shrink-0">
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-4 shrink-0">
           <Link
             href="/projects"
-            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/68 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
+            className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center text-slate-700 dark:text-white/68 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors shrink-0"
           >
             <ArrowLeft size={14} />
           </Link>
@@ -265,7 +265,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
               <h1
-                className="text-base font-semibold text-white/90 truncate"
+                className="text-base font-semibold text-slate-900 dark:text-white/90 truncate"
                 style={{ letterSpacing: "-0.025em" }}
               >
                 {project.title}
@@ -280,16 +280,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </span>
             </div>
             {project.description && (
-              <p className="text-xs text-white/65 mt-0.5 truncate">{project.description}</p>
+              <p className="text-xs text-slate-700 dark:text-white/65 mt-0.5 truncate">{project.description}</p>
             )}
           </div>
 
           {/* Progress */}
           <div className="flex items-center gap-4 shrink-0">
             <div className="text-right">
-              <p className="text-xs font-medium text-white/68">
-                <span className="text-white/75 font-semibold tabular-nums">{project.done_tasks}</span>
-                <span className="text-white/55 mx-1">/</span>
+              <p className="text-xs font-medium text-slate-700 dark:text-white/68">
+                <span className="text-slate-800 dark:text-white/75 font-semibold tabular-nums">{project.done_tasks}</span>
+                <span className="text-slate-600 dark:text-white/55 mx-1">/</span>
                 <span className="tabular-nums">{project.total_tasks}</span>
                 <span className="ml-1">выполнено</span>
               </p>
@@ -306,7 +306,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 href={`/legacy/projects/${project.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/55 hover:text-white/55 hover:bg-white/[0.07] transition-colors"
+                className="w-7 h-7 rounded-lg bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center text-slate-600 dark:text-white/55 hover:text-slate-600 dark:hover:text-white/55 hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors"
               >
                 <ExternalLink size={13} />
               </a>

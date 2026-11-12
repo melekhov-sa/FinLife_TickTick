@@ -40,7 +40,7 @@ function LifeScoreRing({ score }: { score: number }) {
   return (
     <svg width="148" height="148" className="mx-auto drop-shadow-lg">
       <circle cx="74" cy="74" r={r} fill="none" stroke="currentColor"
-        strokeWidth="10" className="text-white/[0.06]" />
+        strokeWidth="10" className="border-slate-100 dark:text-white/[0.06]" />
       <circle cx="74" cy="74" r={r} fill="none" stroke={color}
         strokeWidth="10" strokeDasharray={circ} strokeDashoffset={offset}
         strokeLinecap="round" transform="rotate(-90 74 74)"

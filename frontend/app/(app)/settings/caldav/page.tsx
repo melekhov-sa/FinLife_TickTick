@@ -65,7 +65,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
         </span>
         <button
           onClick={handleCopy}
-          className="shrink-0 p-1 rounded-lg hover:bg-white/[0.06] transition-colors"
+          className="shrink-0 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
         >
           {copied ? (
             <Check size={14} style={{ color: "#10b981" }} />

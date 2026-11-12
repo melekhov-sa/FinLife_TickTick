@@ -42,21 +42,21 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
   return (
     <a
       href={`/knowledge/${article.id}`}
-      className="flex items-start gap-3.5 py-3.5 px-4 hover:bg-white/[0.03] transition-colors group border-b border-white/[0.04] last:border-0"
+      className="flex items-start gap-3.5 py-3.5 px-4 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group border-b border-slate-100 dark:border-white/[0.04] last:border-0"
     >
-      <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.06] flex items-center justify-center text-base shrink-0 mt-0.5">
+      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-100 dark:border-white/[0.06] flex items-center justify-center text-base shrink-0 mt-0.5">
         {article.type_emoji}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           {article.pinned && <span className="text-xs text-amber-400">📌</span>}
-          <span className="text-sm font-medium text-white/85 group-hover:text-white transition-colors truncate" style={{ letterSpacing: "-0.01em" }}>
+          <span className="text-sm font-medium text-slate-800 dark:text-white/85 group-hover:text-white transition-colors truncate" style={{ letterSpacing: "-0.01em" }}>
             {article.title}
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant={statusVariant} size="sm">{article.status_label}</Badge>
-          <span className="text-[10px] font-semibold text-white/55 uppercase tracking-widest">{article.type_label}</span>
+          <span className="text-[10px] font-semibold text-slate-600 dark:text-white/55 uppercase tracking-widest">{article.type_label}</span>
           {article.tags.map((t) => (
             <span key={t.id} className="text-[10px] font-medium text-[var(--app-accent)]/80 bg-[var(--app-accent-light)] border border-[color-mix(in_srgb,var(--app-accent)_15%,transparent)] px-1.5 py-0.5 rounded-full">
               #{t.name}
@@ -64,7 +64,7 @@ function ArticleRow({ article }: { article: ArticleListItem }) {
           ))}
         </div>
       </div>
-      <div className="text-[11px] font-medium text-white/55 shrink-0 mt-1">{timeAgo(article.updated_at)}</div>
+      <div className="text-[11px] font-medium text-slate-600 dark:text-white/55 shrink-0 mt-1">{timeAgo(article.updated_at)}</div>
     </a>
   );
 }
@@ -120,7 +120,7 @@ export default function KnowledgePage() {
           </div>
         )}
         {isError && (
-          <div className="text-white/68 text-sm text-center mt-12">Не удалось загрузить статьи</div>
+          <div className="text-slate-700 dark:text-white/68 text-sm text-center mt-12">Не удалось загрузить статьи</div>
         )}
         {data && data.length === 0 && (
           <EmptyState
@@ -160,7 +160,7 @@ export default function KnowledgePage() {
                 </div>
               </div>
             )}
-            <div className="text-[10px] font-semibold text-white/55 uppercase tracking-widest text-center pt-1">
+            <div className="text-[10px] font-semibold text-slate-600 dark:text-white/55 uppercase tracking-widest text-center pt-1">
               {data.length} {data.length === 1 ? "статья" : data.length < 5 ? "статьи" : "статей"}
             </div>
           </div>

@@ -118,7 +118,7 @@ export default function ThemeSettingsPage() {
                   style={selected ? { borderColor: `${theme.preview.accent}55`, background: `${theme.preview.accent}0f` } : {}}
                 >
                   {/* Preview swatch */}
-                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/[0.08] relative" style={{ background: theme.preview.bg }}>
+                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-white/[0.08] relative" style={{ background: theme.preview.bg }}>
                     {/* Sidebar bar */}
                     <div className="absolute left-0 top-0 bottom-0 w-3" style={{ background: theme.preview.sidebar }} />
                     {/* Card area */}
@@ -127,7 +127,7 @@ export default function ThemeSettingsPage() {
                     <div className="absolute right-2 bottom-2 w-2.5 h-2.5 rounded-full" style={{ background: theme.preview.accent }} />
                     {/* Mode icon */}
                     <div className="absolute left-[14px] bottom-1.5">
-                      {theme.mode === "dark" ? <Moon size={8} className="text-white/40" /> : <Sun size={8} className="text-black/40" />}
+                      {theme.mode === "dark" ? <Moon size={8} className="text-slate-400 dark:text-white/40" /> : <Sun size={8} className="text-black/40" />}
                     </div>
                   </div>
 

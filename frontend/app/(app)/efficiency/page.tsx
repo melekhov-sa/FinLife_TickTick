@@ -44,7 +44,7 @@ function ScoreRing({ score }: { score: number }) {
         fill="none"
         stroke="currentColor"
         strokeWidth="10"
-        className="text-white/[0.06]"
+        className="border-slate-100 dark:text-white/[0.06]"
       />
       <circle
         cx="74" cy="74" r={r}
@@ -90,23 +90,23 @@ function MetricCardRow({ card }: { card: MetricCard }) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
+            <span className="text-sm font-semibold text-slate-800 dark:text-white/85" style={{ letterSpacing: "-0.01em" }}>
               {card.label}
             </span>
             <Badge variant={badge.variant} size="sm">{badge.label}</Badge>
           </div>
-          <p className="text-xs text-white/68 leading-snug">{card.description}</p>
+          <p className="text-xs text-slate-700 dark:text-white/68 leading-snug">{card.description}</p>
         </div>
         <div className="ml-4 text-right shrink-0">
-          <div className="text-lg font-semibold text-white/90 tabular-nums" style={{ letterSpacing: "-0.03em" }}>
+          <div className="text-lg font-semibold text-slate-900 dark:text-white/90 tabular-nums" style={{ letterSpacing: "-0.03em" }}>
             {formatRaw(card)}
           </div>
-          <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-0.5">
+          <div className="text-[10px] font-semibold text-slate-600 dark:text-white/60 uppercase tracking-widest mt-0.5">
             {Math.round(card.weight * 100)}% веса
           </div>
         </div>
       </div>
-      <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${subScoreBarColor(card.sub_score)}`}
           style={{
@@ -143,7 +143,7 @@ export default function EfficiencyPage() {
         )}
 
         {isError && (
-          <div className="text-white/68 text-sm text-center mt-12">
+          <div className="text-slate-700 dark:text-white/68 text-sm text-center mt-12">
             Не удалось загрузить данные
           </div>
         )}
@@ -160,7 +160,7 @@ export default function EfficiencyPage() {
                   ? "Есть куда расти"
                   : "Требует внимания"}
               </div>
-              <div className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mt-2">
+              <div className="text-[10px] font-semibold text-slate-600 dark:text-white/60 uppercase tracking-widest mt-2">
                 Снимок за {new Date(data.snapshot_date).toLocaleDateString("ru-RU")}
               </div>
             </div>
@@ -180,7 +180,7 @@ export default function EfficiencyPage() {
             {/* Settings link */}
             <a
               href="/legacy/efficiency/settings"
-              className="block text-center text-xs font-medium text-white/60 hover:text-white/55 transition-colors py-2"
+              className="block text-center text-xs font-medium text-slate-600 dark:text-white/60 hover:text-slate-600 dark:hover:text-white/55 transition-colors py-2"
             >
               Настроить пороги и веса →
             </a>

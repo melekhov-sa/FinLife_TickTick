@@ -41,7 +41,7 @@ export function WeekEventsCard({ events }: Props) {
             return (
               <div
                 key={ev.occurrence_id}
-                className="flex items-start gap-2.5 py-2 border-b border-white/[0.04] last:border-0"
+                className="flex items-start gap-2.5 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0"
               >
                 <div
                   className={clsx(
@@ -100,7 +100,7 @@ export function WeekEventsCard({ events }: Props) {
         </div>
       )}
 
-      <div className="mt-3 pt-2.5 border-t border-white/[0.05]">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.05]">
         <a href="/events" className="text-xs font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
           Все события →
         </a>

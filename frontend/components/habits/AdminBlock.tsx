@@ -40,7 +40,7 @@ function QuickMenu({
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/[0.08]"
+        className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-slate-100 dark:hover:bg-white/[0.08]"
         style={{ color: "var(--t-faint)" }}
       >
         <MoreHorizontal size={14} />
@@ -169,7 +169,7 @@ export function AdminBlock({ habits, archivedHabits, onOpen, onCreateNew }: Admi
         </div>
       </div>
       {!showArchived && (
-        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 w-fit mb-3">
+        <div className="flex items-center gap-1 bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.06] rounded-xl p-1 w-fit mb-3">
           {FILTERS.map(({ value, label }) => (
             <button key={value} onClick={() => setFilter(value)} className={clsx("px-3 py-1 rounded-lg font-medium transition-colors", filter === value ? "bg-white/[0.09] text-white shadow-sm" : "text-white/55 hover:text-white/80")} style={{ fontSize: "var(--fs-caption)" }}>
               {label}

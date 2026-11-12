@@ -57,17 +57,17 @@ export default function NewProjectPage() {
       <main className="flex-1 p-6 flex items-start justify-center">
         <div className="w-full max-w-[500px]">
           {/* Card */}
-          <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl overflow-hidden">
+          <div className="bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-2xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-white/[0.06]">
+            <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="w-9 h-9 rounded-xl bg-[var(--app-accent-light)] flex items-center justify-center shrink-0">
                 <FolderPlus size={16} className="text-[var(--app-accent)]" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-white/85" style={{ letterSpacing: "-0.01em" }}>
+                <h2 className="text-sm font-semibold text-slate-800 dark:text-white/85" style={{ letterSpacing: "-0.01em" }}>
                   Создать проект
                 </h2>
-                <p className="text-xs text-white/60 mt-0.5">Заполните основную информацию</p>
+                <p className="text-xs text-slate-600 dark:text-white/60 mt-0.5">Заполните основную информацию</p>
               </div>
             </div>
 

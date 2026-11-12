@@ -228,8 +228,8 @@ function KanbanColumn({
       )}
     >
       {/* Column header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
-        <span className="text-[10px] font-semibold text-white/72 uppercase tracking-widest">
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+        <span className="text-[10px] font-semibold text-slate-700 dark:text-white/72 uppercase tracking-widest">
           {column.label}
         </span>
         <span
@@ -256,7 +256,7 @@ function KanbanColumn({
             if (e.key === "Enter") handleCreate();
           }}
           placeholder="+ Добавить задачу..."
-          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-white/[0.08] focus:border-[var(--app-accent)] focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
+          className="w-full px-2.5 py-2 text-[13px] rounded-lg bg-transparent border border-transparent hover:border-slate-200 dark:hover:border-white/[0.08] focus:border-[var(--app-accent)] focus:bg-slate-50 dark:focus:bg-white/[0.03] placeholder-white/30 outline-none transition-colors"
           style={{ color: "var(--t-primary)" }}
         />
       </div>
@@ -276,8 +276,8 @@ function KanbanColumn({
             />
           ))}
           {tasks.length === 0 && (
-            <div className="h-32 rounded-xl border border-dashed border-white/[0.10] flex items-center justify-center">
-              <span className="text-xs text-white/20">Перетащить сюда</span>
+            <div className="h-32 rounded-xl border border-dashed border-slate-200 dark:border-white/[0.10] flex items-center justify-center">
+              <span className="text-xs text-slate-300 dark:text-white/20">Перетащить сюда</span>
             </div>
           )}
         </div>

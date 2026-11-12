@@ -144,7 +144,7 @@ export function BudgetCategoryPanel({ stats, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/[0.06] transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-secondary)" }}
           >
             <X size={16} />

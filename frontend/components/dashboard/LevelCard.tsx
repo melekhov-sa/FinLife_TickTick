@@ -38,7 +38,7 @@ export function LevelCard({ level }: Props) {
       </div>
 
       {/* XP progress bar with glow */}
-      <div className="h-2 bg-white/[0.07] rounded-full overflow-hidden mb-3">
+      <div className="h-2 bg-slate-100 dark:bg-white/[0.07] rounded-full overflow-hidden mb-3">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{

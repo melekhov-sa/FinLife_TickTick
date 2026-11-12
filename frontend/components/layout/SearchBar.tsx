@@ -253,7 +253,7 @@ export function SearchBar() {
                 inputRef.current?.focus();
               }}
               aria-label="Очистить"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors text-white/80"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/20 transition-colors text-slate-800 dark:text-white/80"
             >
               <X size={12} strokeWidth={2.2} />
             </button>
@@ -280,7 +280,7 @@ export function SearchBar() {
         type="button"
         onClick={() => setMobileOpen(true)}
         aria-label="Поиск"
-        className="sm:hidden relative w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/15 text-white"
+        className="sm:hidden relative w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-slate-100 dark:hover:bg-white/15 text-white"
       >
         <Search size={17} strokeWidth={1.9} />
       </button>
@@ -307,7 +307,7 @@ export function SearchBar() {
                 setDebouncedQuery("");
               }}
               aria-label="Закрыть"
-              className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center hover:bg-white/15 text-white"
+              className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/15 text-white"
             >
               <X size={18} strokeWidth={1.9} />
             </button>
@@ -315,7 +315,7 @@ export function SearchBar() {
               <Search
                 size={15}
                 strokeWidth={1.9}
-                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/75"
+                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-800 dark:text-white/75"
               />
               <input
                 ref={mobileInputRef}
@@ -324,7 +324,7 @@ export function SearchBar() {
                 placeholder="Поиск"
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                className="h-9 w-full rounded-lg pl-9 pr-3 text-[14px] bg-white/15 focus:bg-white/25 text-white placeholder-white/60 outline-none"
+                className="h-9 w-full rounded-lg pl-9 pr-3 text-[14px] bg-slate-100 dark:bg-white/15 focus:bg-slate-100 dark:focus:bg-white/25 text-white placeholder-white/60 outline-none"
               />
             </div>
           </div>

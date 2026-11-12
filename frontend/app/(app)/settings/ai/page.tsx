@@ -323,7 +323,7 @@ export default function AISettingsPage() {
               <button
                 onClick={() => { setTestResult(null); testMut.mutate(); }}
                 disabled={testMut.isPending || !config?.has_key}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold border transition-all hover:bg-white/[0.04] disabled:opacity-40"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold border transition-all hover:bg-slate-50 dark:hover:bg-white/[0.04] disabled:opacity-40"
                 style={{ borderColor: cardBorder, color: "var(--t-secondary)" }}
               >
                 <Wifi size={14} />

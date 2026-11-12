@@ -206,7 +206,7 @@ export function OnboardingModal({ onComplete }: Props) {
         {/* Header */}
         <div className="pt-6 pb-2 px-8">
           {step < 0
-            ? <div className="flex justify-center"><div className="h-1.5 w-1.5 rounded-full bg-white/10" /></div>
+            ? <div className="flex justify-center"><div className="h-1.5 w-1.5 rounded-full bg-slate-100 dark:bg-white/10" /></div>
             : <StepDots current={step} total={5} />
           }
         </div>
@@ -274,7 +274,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     value={walletName}
                     onChange={(e) => setWalletName(e.target.value)}
                     placeholder="Карта Сбербанк"
-                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                     style={{ color: "var(--t-primary, #E6EAF2)" }}
                   />
                 </div>
@@ -285,7 +285,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     onChange={(e) => setWalletBalance(e.target.value)}
                     type="number"
                     placeholder="0"
-                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                     style={{ color: "var(--t-primary, #E6EAF2)" }}
                   />
                 </div>
@@ -343,14 +343,14 @@ export function OnboardingModal({ onComplete }: Props) {
                     value={newCatTitle}
                     onChange={(e) => setNewCatTitle(e.target.value)}
                     placeholder="Своя категория..."
-                    className="flex-1 px-2.5 py-1.5 rounded-md text-[12px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                    className="flex-1 px-2.5 py-1.5 rounded-md text-[12px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                     style={{ color: "var(--t-primary, #E6EAF2)" }}
                     onKeyDown={(e) => e.key === "Enter" && addCat()}
                   />
                   <select
                     value={newCatType}
                     onChange={(e) => setNewCatType(e.target.value as "INCOME" | "EXPENSE")}
-                    className="px-2 py-1.5 rounded-md text-[11px] bg-white/[0.05] border border-white/[0.08]"
+                    className="px-2 py-1.5 rounded-md text-[11px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08]"
                     style={{ color: "var(--t-secondary, #9AA3B2)" }}
                   >
                     <option value="EXPENSE">Расход</option>
@@ -386,7 +386,7 @@ export function OnboardingModal({ onComplete }: Props) {
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-lg p-0.5">
+                <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-lg p-0.5">
                   {(["INCOME", "EXPENSE"] as const).map((t) => (
                     <button
                       key={t}
@@ -405,7 +405,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     onChange={(e) => setOpAmount(e.target.value)}
                     type="number"
                     placeholder="1000"
-                    className="w-full px-3 py-2.5 rounded-lg text-[18px] font-bold bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                    className="w-full px-3 py-2.5 rounded-lg text-[18px] font-bold bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                     style={{ color: "var(--t-primary, #E6EAF2)" }}
                     autoFocus
                   />
@@ -416,7 +416,7 @@ export function OnboardingModal({ onComplete }: Props) {
                     value={opDesc}
                     onChange={(e) => setOpDesc(e.target.value)}
                     placeholder={opType === "INCOME" ? "Зарплата за март" : "Продукты в магазине"}
-                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                    className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                     style={{ color: "var(--t-primary, #E6EAF2)" }}
                   />
                 </div>
@@ -451,7 +451,7 @@ export function OnboardingModal({ onComplete }: Props) {
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="Например: Разобрать почту"
-                  className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                  className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                   style={{ color: "var(--t-primary, #E6EAF2)" }}
                   autoFocus
                 />
@@ -483,7 +483,7 @@ export function OnboardingModal({ onComplete }: Props) {
                   value={habitTitle}
                   onChange={(e) => setHabitTitle(e.target.value)}
                   placeholder="Например: Зарядка утром"
-                  className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-white/[0.05] border border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-white/20"
+                  className="w-full px-3 py-2.5 rounded-lg text-[14px] bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] focus:outline-none focus:border-[var(--app-accent)] placeholder:text-slate-300 dark:placeholder:text-white/20"
                   style={{ color: "var(--t-primary, #E6EAF2)" }}
                   autoFocus
                 />

@@ -125,7 +125,7 @@ function AnimatedSection({
 
   return (
     <div
-      className="digest-section-animate rounded-2xl border border-white/[0.07] p-4 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+      className="digest-section-animate rounded-2xl border border-slate-200 dark:border-white/[0.07] p-4 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
       style={{
         background: "rgba(255,255,255,0.02)",
         opacity: reduced ? 1 : 0,
@@ -159,7 +159,7 @@ function StatRow({
   animateDuration?: number;
 }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+    <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0">
       <span className="text-[13px]" style={{ color: "var(--t-secondary)" }}>
         {label}
       </span>
@@ -305,7 +305,7 @@ function DigestContent({ digest }: { digest: DigestDetail }) {
         <StatRow label="Просрочено (открытые)" value={tasks.overdue_open} />
         <StatRow label="Перенесено" value={tasks.rescheduled} />
         {tasks.by_category_top.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-white/[0.05]">
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.05]">
             <p
               className="text-[11px] uppercase tracking-wider mb-2"
               style={{ color: "var(--t-faint)" }}
@@ -330,7 +330,7 @@ function DigestContent({ digest }: { digest: DigestDetail }) {
           />
         )}
         {habits.broken_streaks.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-white/[0.05]">
+          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.05]">
             <p
               className="text-[11px] uppercase tracking-wider mb-2"
               style={{ color: "var(--t-faint)" }}

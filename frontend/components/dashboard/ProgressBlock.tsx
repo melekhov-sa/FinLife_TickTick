@@ -66,7 +66,7 @@ export function ProgressBlock({ level, efficiency, cells }: Props) {
                   {fmt(level.current_level_xp)} / {fmt(level.xp_to_next_level)}
                 </span>
               </div>
-              <div className="mt-auto h-1 md:h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
+              <div className="mt-auto h-1 md:h-1.5 bg-slate-100 dark:bg-white/[0.07] rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{

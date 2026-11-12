@@ -433,7 +433,7 @@ export default function NotificationSettingsPage() {
                   <CheckCircle2 size={10} /> Подключён
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-[10px] font-medium text-white/40 bg-white/5 px-2 py-0.5 rounded-md">
+                <span className="flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-white/40 bg-slate-50 dark:bg-white/5 px-2 py-0.5 rounded-md">
                   <XCircle size={10} /> Не подключён
                 </span>
               )}

@@ -91,7 +91,7 @@ export function GoalFormModal({ goal, onClose, onSubmit }: Props) {
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-white/68 hover:text-slate-700 dark:hover:text-white/65 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
       >
         Отмена
       </button>

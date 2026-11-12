@@ -78,7 +78,7 @@ export function CreateWalletModal({ onClose }: Props) {
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-white/68 hover:text-slate-700 dark:hover:text-white/65 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
       >
         Отмена
       </button>
@@ -127,7 +127,7 @@ export function CreateWalletModal({ onClose }: Props) {
           maxLength={3}
           className={inputCls}
         />
-        <p className="text-[10px] text-white/40 mt-1">
+        <p className="text-[10px] text-slate-400 dark:text-white/40 mt-1">
           3 заглавные буквы: RUB, USD, EUR…
         </p>
       </div>
@@ -144,7 +144,7 @@ export function CreateWalletModal({ onClose }: Props) {
           className={inputCls}
         />
         {walletType === "CREDIT" && (
-          <p className="text-[10px] text-white/40 mt-1">
+          <p className="text-[10px] text-slate-400 dark:text-white/40 mt-1">
             Для кредитного кошелька начальный баланс должен быть 0 или отрицательным
           </p>
         )}

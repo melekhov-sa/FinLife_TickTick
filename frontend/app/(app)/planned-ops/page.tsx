@@ -158,13 +158,13 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
       {editing && (
         <PlannedOpEditModal template={item} onClose={() => setEditing(false)} />
       )}
-      <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/row">
+      <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/row">
         <div className={clsx("w-1 self-stretch rounded-full shrink-0", s.bg, s.text.replace("text-", "bg-").replace("/400", "/60"))} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>{item.title}</span>
             <KindBadge kind={item.kind} />
-            {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
+            {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             {walletLabel && <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>{walletLabel}</span>}
@@ -175,11 +175,11 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
         <div className="flex items-center gap-1 shrink-0">
           {!isArchived && (
             <Tooltip content="Редактировать">
-              <button onClick={() => setEditing(true)} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}><Pencil size={11} /></button>
+              <button onClick={() => setEditing(true)} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}><Pencil size={11} /></button>
             </Tooltip>
           )}
           <Tooltip content={isArchived ? "Восстановить" : "В архив"}>
-            <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
+            <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
               {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
             </button>
           </Tooltip>
@@ -209,7 +209,7 @@ function OccurrenceRow({
     : "bg-white/[0.06] border-white/10";
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-white/[0.03] transition-colors group/occ">
+    <div className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-white/[0.06] last:border-0 px-2 -mx-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group/occ">
       {/* Date badge */}
       <div className={clsx("shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border text-center gap-0.5", dateCls)}>
         <span className="text-[18px] font-bold leading-none tabular-nums">
@@ -270,7 +270,7 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
   return (
     <div className="space-y-5">
       {/* Sub-tabs */}
-      <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1 self-start w-fit">
+      <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-1 self-start w-fit">
         {[
           { value: false, label: "Активные" },
           { value: true,  label: "Архив" },
@@ -307,8 +307,8 @@ function TemplatesTab({ onCreateOp }: { onCreateOp: () => void }) {
 
       {data && data.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-            <LayoutList size={20} className="text-white/35" />
+          <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] flex items-center justify-center">
+            <LayoutList size={20} className="text-slate-400 dark:text-white/35" />
           </div>
           <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
             {archived ? "Архив пуст" : "Нет плановых операций"}
@@ -426,8 +426,8 @@ function UpcomingTab() {
 
       {data && data.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center">
-            <CalendarClock size={20} className="text-white/35" />
+          <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] flex items-center justify-center">
+            <CalendarClock size={20} className="text-slate-400 dark:text-white/35" />
           </div>
           <p className="text-sm font-medium" style={{ color: "var(--t-muted)" }}>
             Нет предстоящих операций на 90 дней
@@ -489,7 +489,7 @@ export default function PlannedOpsPage() {
           </div>
 
           {/* Main tabs */}
-          <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.07] rounded-xl p-1 w-fit mb-6">
+          <div className="flex items-center gap-0.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] rounded-xl p-1 w-fit mb-6">
             {MAIN_TABS.map((t) => (
               <button
                 key={t.value}

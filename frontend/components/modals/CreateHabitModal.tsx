@@ -166,7 +166,7 @@ export function CreateHabitModal({ onClose }: Props) {
       <button
         type="button"
         onClick={onClose}
-        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/68 hover:text-white/65 hover:bg-white/[0.08] transition-colors hidden md:block"
+        className="px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-white/68 hover:text-slate-700 dark:hover:text-white/65 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors hidden md:block"
       >
         Отмена
       </button>
@@ -351,7 +351,7 @@ export function CreateHabitModal({ onClose }: Props) {
             value={activeUntil}
             onChange={setActiveUntil}
           />
-          <p className="mt-1 text-[10px] text-white/40">Оставьте пустым для бессрочного действия</p>
+          <p className="mt-1 text-[10px] text-slate-400 dark:text-white/40">Оставьте пустым для бессрочного действия</p>
         </div>
       </div>
 
@@ -393,7 +393,7 @@ export function CreateHabitModal({ onClose }: Props) {
           onChange={(e) => setNote(e.target.value)}
           placeholder="Необязательно"
           rows={2}
-          className="w-full px-3 py-2 text-base md:text-sm rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
+          className="w-full px-3 py-2 text-base md:text-sm rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] text-slate-800 dark:text-white/85 placeholder-white/25 focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none"
         />
       </div>
 

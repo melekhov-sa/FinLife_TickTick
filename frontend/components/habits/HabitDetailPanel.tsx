@@ -90,7 +90,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
       header={
         <>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/[0.07] flex items-center justify-center text-base">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.07] flex items-center justify-center text-base">
               {habit.category_emoji ?? "🔄"}
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--t-faint)" }}>
@@ -99,7 +99,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.06] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
             style={{ color: "var(--t-faint)" }}
           >
             <X size={15} />
@@ -115,7 +115,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
           className="min-w-[240px] p-3"
           trigger={
             <button
-              className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+              className="flex items-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[12px] font-medium bg-slate-50 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
               style={{ color: "var(--t-secondary)" }}
             >
               <Trash2 size={13} />
@@ -163,7 +163,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
             { icon: <Trophy size={14} />, value: habit.best_streak, label: "Рекорд", color: "text-[var(--app-accent)]" },
             { value: `${habit.done_count_30d}/30`, label: "За 30 дней", color: "text-emerald-400" },
           ].map((stat, i) => (
-            <div key={i} className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
+            <div key={i} className="bg-slate-50 dark:bg-white/[0.04] border border-slate-100 dark:border-white/[0.06] rounded-xl p-3 text-center">
               {stat.icon && <div className={clsx("flex justify-center mb-1", stat.color)} style={{ color: !stat.color ? "var(--t-faint)" : undefined }}>{stat.icon}</div>}
               <div className={clsx("text-lg font-bold tabular-nums leading-none", stat.color)} style={{ color: !stat.color ? "var(--t-primary)" : undefined, letterSpacing: "-0.03em" }}>
                 {stat.value}
@@ -274,7 +274,7 @@ export function HabitDetailPanel({ habit, onClose }: Props) {
               onChange={(e) => { setNote(e.target.value); debounceSave("note", e.target.value); }}
               placeholder="Добавить заметку..."
               rows={3}
-              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-white/[0.04] border border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
+              className="w-full px-3 py-2.5 text-[14px] rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] focus:outline-none focus:border-[var(--app-accent)] transition-colors resize-none placeholder-white/25"
               style={{ color: "var(--t-secondary)" }}
             />
           </div>

@@ -109,7 +109,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
           </div>
 
           {/* Financial result */}
-          <div className="border-t border-white/[0.06] mt-2.5 md:mt-3 pt-2.5 md:pt-3 flex items-baseline justify-between gap-2">
+          <div className="border-t border-slate-100 dark:border-white/[0.06] mt-2.5 md:mt-3 pt-2.5 md:pt-3 flex items-baseline justify-between gap-2">
             <span className="text-[12px] md:text-[13px]" style={{ color: "var(--t-muted)" }}>Фин. результат</span>
             <span className={clsx("text-[13px] md:text-[14px] font-semibold tabular-nums", resultPositive ? "money-income" : "money-expense")}>
               {resultPositive ? "" : "\u2212"}{fmt(Math.abs(result))} ₽
@@ -144,7 +144,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
               flex-wrap + whitespace-nowrap обязательны: на десктопе этот блок
               стоит в колонке 260px, и четыре ссылки в строку не влезают —
               без переноса ломался текст внутри самих ссылок. */}
-          <div className="border-t border-white/[0.05] mt-2.5 md:mt-3 pt-2 md:pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div className="border-t border-slate-100 dark:border-white/[0.05] mt-2.5 md:mt-3 pt-2 md:pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <a href="/wallets" className="text-[11px] md:text-[12px] font-medium whitespace-nowrap hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
               Кошельки →
             </a>
