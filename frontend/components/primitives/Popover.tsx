@@ -85,15 +85,27 @@ export function Popover({
   // Keep the popover inside the viewport horizontally (mobile edge clamping).
   // marginLeft composes with the CSS transforms used for alignment.
   const [shiftX, setShiftX] = useState(0);
+  // Вертикальный переворот: без него меню у нижнего края экрана уезжало за
+  // границу, и нижние пункты становились недостижимы — выглядело так, будто
+  // их просто нет.
+  const [flipY, setFlipY] = useState(false);
   useLayoutEffect(() => {
     if (!open) {
       setShiftX(0);
+      setFlipY(false);
       return;
     }
     const el = popRef.current;
     if (!el || typeof window === "undefined") return;
     const rect = el.getBoundingClientRect();
     const pad = 8;
+
+    if (side === "bottom" || side === "top") {
+      const overflowsBelow = rect.bottom > window.innerHeight - pad;
+      const roomAbove = rect.top - rect.height > pad;
+      setFlipY(side === "bottom" ? overflowsBelow && roomAbove : false);
+    }
+
     let shift = 0;
     if (rect.right > window.innerWidth - pad) {
       shift = window.innerWidth - pad - rect.right; // negative → move left
@@ -101,7 +113,7 @@ export function Popover({
       shift = pad - rect.left; // positive → move right
     }
     if (shift !== 0) setShiftX(shift);
-  }, [open]);
+  }, [open, side]);
 
   // Outside click + Escape
   useEffect(() => {
@@ -189,7 +201,7 @@ export function Popover({
             "max-w-[calc(100vw-16px)] max-h-[80vh] overflow-y-auto overscroll-contain",
             "animate-in fade-in zoom-in-95 duration-150",
             "bg-white border-slate-200 dark:bg-[#1a1d23] dark:border-white/[0.08]",
-            positionMap[side][align],
+            positionMap[flipY ? "top" : side][align],
             className,
           )}
         >

@@ -252,7 +252,7 @@ function RowMenu({
       side="bottom"
       align="end"
       closeOnClickInside
-      className="!p-0 w-44 overflow-hidden"
+      className="!p-0 w-44"   /* без overflow-hidden: он перебивал прокрутку меню */
       trigger={
         <button
           onClick={(e) => e.stopPropagation()}
