@@ -15,6 +15,7 @@ import {
   type FieldErrors,
 } from "@/lib/formErrors";
 import { api } from "@/lib/api";
+import { sortWalletsByUsage } from "@/lib/walletOrder";
 import { budgetMonthOptions } from "@/lib/budgetMonth";
 import { getCategoryColor } from "@/lib/categoryColor";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
@@ -164,10 +165,9 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
   const freqCats = finCats?.filter((c) => c.category_type === opType && c.is_frequent) ?? [];
 
-  const visibleWallets = (wallets ?? [])
-    .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
-    .slice()
-    .sort((a, b) => b.operations_count_30d - a.operations_count_30d);
+  const visibleWallets = sortWalletsByUsage(
+    (wallets ?? []).filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS")),
+  );
 
   const selectedFromWallet = (wallets ?? []).find((w) => w.wallet_id === fromWalletId);
   const selectedToWallet = (wallets ?? []).find((w) => w.wallet_id === toWalletId);

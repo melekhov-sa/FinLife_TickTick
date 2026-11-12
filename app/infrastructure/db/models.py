@@ -142,6 +142,9 @@ class WalletBalance(Base):
 
     # Dynamics fields for wallets list
     balance_30d_ago: Mapped[Decimal | None] = mapped_column(Numeric(precision=20, scale=2), nullable=True)
+    # ВНИМАНИЕ: не заполняется ничем — проектор её не трогает, всегда 0.
+    # Не сортировать по ней. Частота использования считается на лету:
+    # app/application/wallet_usage.py (поле operations_count_90d в API).
     operations_count_30d: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     last_operation_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 

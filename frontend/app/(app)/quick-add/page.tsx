@@ -17,6 +17,7 @@ import {
   Loader2, CreditCard, Plus, X, ChevronDown, ChevronRight, Copy,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { sortWalletsByUsage } from "@/lib/walletOrder";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
 import { Button } from "@/components/primitives/Button";
@@ -110,7 +111,10 @@ function QuickAddInner() {
     queryFn: () => api.get<GoalItem[]>("/api/v2/goals"),
   });
 
-  const activeWallets = (wallets ?? []).filter((w) => !w.is_archived);
+  // Частые кошельки наверх во всех селектах разбора.
+  const activeWallets = sortWalletsByUsage(
+    (wallets ?? []).filter((w) => !w.is_archived),
+  );
   const savingsWallets = activeWallets.filter((w) => w.wallet_type === "SAVINGS");
 
   // iOS-шорткат / share: /quick-add?text=... — подставить и сразу разобрать

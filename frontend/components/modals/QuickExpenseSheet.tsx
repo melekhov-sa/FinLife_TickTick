@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { X, Delete, Check, Settings2, ChevronLeft } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { sortWalletsByUsage } from "@/lib/walletOrder";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { getCategoryColor } from "@/lib/categoryColor";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
@@ -110,10 +111,9 @@ export function QuickExpenseSheet({ onClose }: { onClose: () => void }) {
   });
 
   const sortedWallets = useMemo(() => {
-    let list = (wallets ?? [])
-      .filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS"))
-      .slice()
-      .sort((a, b) => b.operations_count_30d - a.operations_count_30d);
+    let list = sortWalletsByUsage(
+      (wallets ?? []).filter((w) => !(opType === "EXPENSE" && w.wallet_type === "SAVINGS")),
+    );
     if (prefs.wallets && prefs.wallets.length > 0) {
       const allowed = new Set(prefs.wallets);
       const filtered = list.filter((w) => allowed.has(w.wallet_id));

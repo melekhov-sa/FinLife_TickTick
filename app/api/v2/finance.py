@@ -16,6 +16,7 @@ from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
 from app.infrastructure.db.models import WalletBalance, CategoryInfo, TransactionFeed, MandatoryCategory
 from app.application.category_suggest import rank_categories
+from app.application.wallet_usage import wallet_usage_counts
 
 router = APIRouter()
 
@@ -29,7 +30,8 @@ class WalletItem(BaseModel):
     wallet_type: str
     balance: str
     delta_30d: str
-    operations_count_30d: int
+    # Operations through the wallet over 90 days: pickers raise frequent ones.
+    operations_count_90d: int
     last_operation_at: str | None
     is_archived: bool
 
@@ -45,6 +47,9 @@ def list_wallets(
     if not include_archived:
         q = q.filter(WalletBalance.is_archived == False)
     wallets = q.order_by(WalletBalance.title).all()
+    # Order stays alphabetical: the wallets page reads as a ledger.
+    # Frequent-first is applied by the frontend, and only in pickers.
+    usage = wallet_usage_counts(db, user_id)
     return [
         WalletItem(
             wallet_id=w.wallet_id,
@@ -53,7 +58,7 @@ def list_wallets(
             wallet_type=w.wallet_type,
             balance=str(w.balance),
             delta_30d=str(w.balance - (w.balance_30d_ago or w.balance)),
-            operations_count_30d=w.operations_count_30d,
+            operations_count_90d=usage.get(w.wallet_id, 0),
             last_operation_at=w.last_operation_at.isoformat() if w.last_operation_at else None,
             is_archived=w.is_archived,
         )

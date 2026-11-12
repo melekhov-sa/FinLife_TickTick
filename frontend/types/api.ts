@@ -465,7 +465,8 @@ export interface WalletItem {
   wallet_type: string;
   balance: string;
   delta_30d: string;
-  operations_count_30d: number;
+  /** Операций за 90 дней. Используется для сортировки в пикерах. */
+  operations_count_90d: number;
   last_operation_at: string | null;
   is_archived: boolean;
 }

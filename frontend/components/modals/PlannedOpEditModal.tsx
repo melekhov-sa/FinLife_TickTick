@@ -10,6 +10,7 @@ import type { SelectOption } from "@/components/ui/Select";
 import { Button } from "@/components/primitives/Button";
 import { Input } from "@/components/primitives/Input";
 import { api } from "@/lib/api";
+import { sortWalletsByUsage } from "@/lib/walletOrder";
 
 interface GoalOption {
   goal_id: number;
@@ -100,18 +101,21 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
   const showFromGoal = isTransfer && selectedFromWallet?.wallet_type === "SAVINGS";
   const showToGoal = isTransfer && selectedToWallet?.wallet_type === "SAVINGS";
 
+  // Частые кошельки наверх — иначе нужный приходится искать в длинном списке.
+  const rankedWallets = useMemo(() => sortWalletsByUsage(wallets ?? []), [wallets]);
+
   const allWalletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— кошелёк —" },
-    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} · ${fmtBalance(w.balance, w.currency)}` })),
-  ], [wallets]);
+    ...rankedWallets.map((w) => ({ value: String(w.wallet_id), label: `${w.title} · ${fmtBalance(w.balance, w.currency)}` })),
+  ], [rankedWallets]);
 
   const expenseWalletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— кошелёк —" },
-    ...(wallets ?? []).filter((w) => w.wallet_type !== "SAVINGS").map((w) => ({
+    ...rankedWallets.filter((w) => w.wallet_type !== "SAVINGS").map((w) => ({
       value: String(w.wallet_id),
       label: `${w.title} · ${fmtBalance(w.balance, w.currency)}`,
     })),
-  ], [wallets]);
+  ], [rankedWallets]);
 
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];

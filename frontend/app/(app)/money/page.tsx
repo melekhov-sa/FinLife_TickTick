@@ -15,6 +15,7 @@ import { clsx } from "clsx";
 import { SlidersHorizontal, X, Pencil, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 import { api } from "@/lib/api";
+import { sortWalletsByUsage } from "@/lib/walletOrder";
 import { budgetMonthOptions, budgetMonthDiffers, budgetMonthShort } from "@/lib/budgetMonth";
 import { buildCategoryColorMap } from "@/lib/categoryColor";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
@@ -100,7 +101,7 @@ function EditTransactionModal({
 
   const walletOptions: SelectOption[] = useMemo(() => [
     { value: "", label: "— кошелёк —" },
-    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
+    ...sortWalletsByUsage(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} (${w.currency})` })),
   ], [wallets]);
 
   const categoryOptions: SelectOption[] = useMemo(() => {
@@ -398,7 +399,7 @@ export default function MoneyPage() {
 
   const walletOptions = useMemo(() => [
     { value: "", label: "Все кошельки" },
-    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: w.title })),
+    ...sortWalletsByUsage(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: w.title })),
   ], [wallets]);
 
   const categoryOptions = useMemo(() => [
