@@ -210,9 +210,16 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
               align="end"
               className="min-w-[240px] p-3"
               trigger={
+                /* Цвета через переменные: раньше стояли bg-white/[0.04] и
+                   border-white/[0.07] без светлого варианта, и в светлой теме
+                   кнопка оставалась без фона и рамки — видна была одна иконка. */
                 <button
-                  className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium bg-white/[0.04] border-white/[0.07] hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
-                  style={{ color: "var(--t-secondary)" }}
+                  className="flex items-center gap-1.5 py-2.5 px-3.5 rounded-xl border transition-all text-[13px] font-medium hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                  style={{
+                    color: "var(--t-secondary)",
+                    background: "var(--app-card-bg)",
+                    borderColor: "var(--app-border)",
+                  }}
                   title="Удалить"
                 >
                   <Trash2 size={14} />
