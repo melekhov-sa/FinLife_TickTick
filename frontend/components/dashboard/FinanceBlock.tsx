@@ -140,19 +140,22 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             </div>
           )}
 
-          {/* Quick links */}
-          <div className="border-t border-white/[0.05] mt-2.5 md:mt-3 pt-2 md:pt-2.5 flex gap-4">
-            <a href="/wallets" className="text-[11px] md:text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
+          {/* Quick links.
+              flex-wrap + whitespace-nowrap обязательны: на десктопе этот блок
+              стоит в колонке 260px, и четыре ссылки в строку не влезают —
+              без переноса ломался текст внутри самих ссылок. */}
+          <div className="border-t border-white/[0.05] mt-2.5 md:mt-3 pt-2 md:pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <a href="/wallets" className="text-[11px] md:text-[12px] font-medium whitespace-nowrap hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
               Кошельки →
             </a>
-            <a href="/budget" className="text-[11px] md:text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
+            <a href="/budget" className="text-[11px] md:text-[12px] font-medium whitespace-nowrap hover:text-[var(--app-accent)] transition-colors" style={{ color: "var(--t-muted)" }}>
               Бюджет →
             </a>
             {/* Кэшбеки открываются шторкой, поэтому кнопка, а не ссылка */}
             <button
               type="button"
               onClick={() => setCashbackOpen(true)}
-              className="inline-flex items-center gap-1 text-[11px] md:text-[12px] font-medium hover:text-[var(--app-accent)] transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] md:text-[12px] font-medium whitespace-nowrap hover:text-[var(--app-accent)] transition-colors"
               style={{ color: "var(--t-muted)" }}
               title="Кэшбеки по картам за этот месяц"
             >
@@ -161,7 +164,7 @@ export function FinanceBlock({ finState, financialSummary }: Props) {
             </button>
             <a
               href="/net-worth"
-              className="ml-auto inline-flex items-center gap-1 text-[11px] md:text-[12px] font-semibold transition-opacity hover:opacity-80"
+              className="ml-auto inline-flex items-center gap-1 text-[11px] md:text-[12px] font-semibold whitespace-nowrap transition-opacity hover:opacity-80"
               style={{ color: "var(--app-accent)" }}
               title="График капитала"
             >
