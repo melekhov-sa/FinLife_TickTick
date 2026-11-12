@@ -36,7 +36,7 @@ import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKi
 import { useToast } from "@/components/primitives/Toast";
 import { useUndoFab } from "@/components/primitives/UndoFab";
 import { clsx } from "clsx";
-import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle, Archive } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
@@ -217,7 +217,6 @@ function formatDayHeader(iso: string): string {
 interface RowMenuProps {
   entry: PlanEntry;
   onReschedule: () => void;
-  onArchiveTask: () => void;
   onDeleteTask: () => void;
   onSkipTaskOcc: () => void;
   onSkipEvent: () => void;
@@ -228,7 +227,6 @@ interface RowMenuProps {
 function RowMenu({
   entry,
   onReschedule,
-  onArchiveTask,
   onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
@@ -270,13 +268,13 @@ function RowMenu({
             <CalendarDays size={13} className="inline mr-2 opacity-60" />
             Перенести
           </button>
-          <button className={itemCls} style={dangerStyle} onClick={onArchiveTask}>
-            <Archive size={12} className="inline mr-2 opacity-60" />
-            Архивировать
-          </button>
-          {/* Удаление отдельно от архивации: архив прячет задачу, но она
-              остаётся. Ненужную задачу раньше приходилось закрывать как
-              выполненную, что портило статистику. */}
+          {/* «Архивировать» здесь было, но срабатывало мгновенно, без
+              подтверждения и без отмены: задача молча исчезала со страницы,
+              и это читалось как баг. Архивация задачи осталась в карточке
+              задачи (TaskDetailPanel) и на странице «Задачи».
+              Удаление необратимо, поэтому со спросом: ненужную задачу
+              раньше приходилось закрывать как выполненную, что портило
+              статистику. */}
           <button className={itemCls} style={dangerStyle} onClick={onDeleteTask}>
             <Trash2 size={12} className="inline mr-2 opacity-60" />
             Удалить
@@ -342,7 +340,6 @@ function EntryRow({
   onReschedule,
   onExecuteOp,
   onSkipOp,
-  onArchiveTask,
   onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
@@ -355,7 +352,6 @@ function EntryRow({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
-  onArchiveTask: (entry: PlanEntry) => void;
   onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
@@ -558,7 +554,6 @@ function EntryRow({
         <RowMenu
           entry={entry}
           onReschedule={() => onReschedule(entry)}
-          onArchiveTask={() => onArchiveTask(entry)}
           onDeleteTask={() => onDeleteTask(entry)}
           onSkipTaskOcc={() => onSkipTaskOcc(entry)}
           onSkipEvent={() => onSkipEvent(entry)}
@@ -633,7 +628,6 @@ function DayGroupCard({
   onReschedule,
   onExecuteOp,
   onSkipOp,
-  onArchiveTask,
   onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
@@ -648,7 +642,6 @@ function DayGroupCard({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
-  onArchiveTask: (entry: PlanEntry) => void;
   onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
@@ -818,7 +811,7 @@ function DayGroupCard({
       {grouped.map((g) => (
         <div key={g.type} className="[&:not(:first-of-type)]:mt-1.5">
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -833,7 +826,6 @@ function DoneTodayBlock({
   onReschedule,
   onExecuteOp,
   onSkipOp,
-  onArchiveTask,
   onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
@@ -846,7 +838,6 @@ function DoneTodayBlock({
   onReschedule: (entry: PlanEntry) => void;
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
-  onArchiveTask: (entry: PlanEntry) => void;
   onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
@@ -875,7 +866,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       )}
@@ -1031,15 +1022,6 @@ export default function PlanPage() {
     },
   });
 
-  const { mutate: archiveTask, isPending: archivePending } = useMutation({
-    mutationFn: (taskId: number) =>
-      api.post(`/api/v2/tasks/${taskId}/archive`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["plan"] });
-      qc.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-  });
-
   const { mutate: deleteTask, isPending: deletePending } = useMutation({
     mutationFn: (taskId: number) => api.delete(`/api/v2/tasks/${taskId}`),
     onSuccess: () => {
@@ -1074,11 +1056,6 @@ export default function PlanPage() {
   function handleSkipOp(entry: PlanEntry) {
     const occurrenceId = entry.meta.occurrence_id as number | undefined;
     if (occurrenceId) skipOp(occurrenceId);
-  }
-
-  function handleArchiveTask(entry: PlanEntry) {
-    if (archivePending) return;
-    archiveTask(entry.id);
   }
 
   function handleDeleteTask(entry: PlanEntry) {
@@ -1579,7 +1556,6 @@ export default function PlanPage() {
               onReschedule={setRescheduleEntry}
               onExecuteOp={setExecuteEntry}
               onSkipOp={handleSkipOp}
-              onArchiveTask={handleArchiveTask}
               onDeleteTask={handleDeleteTask}
               onSkipTaskOcc={handleSkipTaskOcc}
               onSkipEvent={handleSkipEvent}
@@ -1607,7 +1583,6 @@ export default function PlanPage() {
                     onReschedule={setRescheduleEntry}
                     onExecuteOp={setExecuteEntry}
                     onSkipOp={handleSkipOp}
-                    onArchiveTask={handleArchiveTask}
                     onDeleteTask={handleDeleteTask}
                     onSkipTaskOcc={handleSkipTaskOcc}
                     onSkipEvent={handleSkipEvent}
