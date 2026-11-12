@@ -19,7 +19,8 @@ import {
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { SwipeRow } from "@/components/primitives/SwipeRow";
-import { SlidersHorizontal, X as XIcon } from "lucide-react";
+import { SlidersHorizontal, X as XIcon, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { PullToRefresh } from "@/components/primitives/PullToRefresh";
 import { getHolidayRU } from "@/lib/holidays";
 import { pluralizeYears } from "@/lib/utils";
@@ -217,6 +218,7 @@ interface RowMenuProps {
   entry: PlanEntry;
   onReschedule: () => void;
   onArchiveTask: () => void;
+  onDeleteTask: () => void;
   onSkipTaskOcc: () => void;
   onSkipEvent: () => void;
   onExecuteOp: () => void;
@@ -227,6 +229,7 @@ function RowMenu({
   entry,
   onReschedule,
   onArchiveTask,
+  onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
   onExecuteOp,
@@ -270,6 +273,13 @@ function RowMenu({
           <button className={itemCls} style={dangerStyle} onClick={onArchiveTask}>
             <Archive size={12} className="inline mr-2 opacity-60" />
             Архивировать
+          </button>
+          {/* Удаление отдельно от архивации: архив прячет задачу, но она
+              остаётся. Ненужную задачу раньше приходилось закрывать как
+              выполненную, что портило статистику. */}
+          <button className={itemCls} style={dangerStyle} onClick={onDeleteTask}>
+            <Trash2 size={12} className="inline mr-2 opacity-60" />
+            Удалить
           </button>
         </>
       )}
@@ -333,6 +343,7 @@ function EntryRow({
   onExecuteOp,
   onSkipOp,
   onArchiveTask,
+  onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
   onEntryClick,
@@ -345,6 +356,7 @@ function EntryRow({
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
+  onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
   onEntryClick?: (entry: PlanEntry) => void;
@@ -547,6 +559,7 @@ function EntryRow({
           entry={entry}
           onReschedule={() => onReschedule(entry)}
           onArchiveTask={() => onArchiveTask(entry)}
+          onDeleteTask={() => onDeleteTask(entry)}
           onSkipTaskOcc={() => onSkipTaskOcc(entry)}
           onSkipEvent={() => onSkipEvent(entry)}
           onExecuteOp={() => onExecuteOp(entry)}
@@ -621,6 +634,7 @@ function DayGroupCard({
   onExecuteOp,
   onSkipOp,
   onArchiveTask,
+  onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
   onAddTask,
@@ -635,6 +649,7 @@ function DayGroupCard({
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
+  onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
   onAddTask: () => void;
@@ -803,7 +818,7 @@ function DayGroupCard({
       {grouped.map((g) => (
         <div key={g.type} className="[&:not(:first-of-type)]:mt-1.5">
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -819,6 +834,7 @@ function DoneTodayBlock({
   onExecuteOp,
   onSkipOp,
   onArchiveTask,
+  onDeleteTask,
   onSkipTaskOcc,
   onSkipEvent,
   onEntryClick,
@@ -831,6 +847,7 @@ function DoneTodayBlock({
   onExecuteOp: (entry: PlanEntry) => void;
   onSkipOp: (entry: PlanEntry) => void;
   onArchiveTask: (entry: PlanEntry) => void;
+  onDeleteTask: (entry: PlanEntry) => void;
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
   onEntryClick: (entry: PlanEntry) => void;
@@ -858,7 +875,7 @@ function DoneTodayBlock({
       {expanded && (
         <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
           {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onArchiveTask={onArchiveTask} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       )}
@@ -918,6 +935,7 @@ export default function PlanPage() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [confirmEntry, setConfirmEntry] = useState<PlanEntry | null>(null);
+  const [deleteEntry, setDeleteEntry] = useState<PlanEntry | null>(null);
   const [rescheduleEntry, setRescheduleEntry] = useState<PlanEntry | null>(null);
   const [executeEntry, setExecuteEntry] = useState<PlanEntry | null>(null);
   const [activeEntry, setActiveEntry] = useState<PlanEntry | null>(null);
@@ -1022,6 +1040,14 @@ export default function PlanPage() {
     },
   });
 
+  const { mutate: deleteTask, isPending: deletePending } = useMutation({
+    mutationFn: (taskId: number) => api.delete(`/api/v2/tasks/${taskId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
   const { mutate: skipTaskOcc, isPending: skipTaskOccPending } = useMutation({
     mutationFn: (occurrenceId: number) =>
       api.post(`/api/v2/task-occurrences/${occurrenceId}/skip`, {}),
@@ -1053,6 +1079,10 @@ export default function PlanPage() {
   function handleArchiveTask(entry: PlanEntry) {
     if (archivePending) return;
     archiveTask(entry.id);
+  }
+
+  function handleDeleteTask(entry: PlanEntry) {
+    setDeleteEntry(entry);   // удаление необратимо — спрашиваем
   }
 
   function handleSkipTaskOcc(entry: PlanEntry) {
@@ -1313,6 +1343,19 @@ export default function PlanPage() {
           onClose={() => setExecuteEntry(null)}
         />
       )}
+      <ConfirmDialog
+        open={deleteEntry !== null}
+        title="Удалить задачу?"
+        description={deleteEntry ? `«${deleteEntry.title}» исчезнет из плана. Это действие нельзя отменить.` : ""}
+        confirmLabel="Удалить"
+        destructive
+        onConfirm={() => {
+          if (deleteEntry && !deletePending) deleteTask(deleteEntry.id);
+          setDeleteEntry(null);
+        }}
+        onCancel={() => setDeleteEntry(null)}
+      />
+
       {confirmEntry && isCompletable(confirmEntry.kind) && (
         <ConfirmCompleteModal
           kind={confirmEntry.kind as CompletableKind}
@@ -1537,6 +1580,7 @@ export default function PlanPage() {
               onExecuteOp={setExecuteEntry}
               onSkipOp={handleSkipOp}
               onArchiveTask={handleArchiveTask}
+              onDeleteTask={handleDeleteTask}
               onSkipTaskOcc={handleSkipTaskOcc}
               onSkipEvent={handleSkipEvent}
               onEntryClick={setDetailEntry}
@@ -1564,6 +1608,7 @@ export default function PlanPage() {
                     onExecuteOp={setExecuteEntry}
                     onSkipOp={handleSkipOp}
                     onArchiveTask={handleArchiveTask}
+                    onDeleteTask={handleDeleteTask}
                     onSkipTaskOcc={handleSkipTaskOcc}
                     onSkipEvent={handleSkipEvent}
                     onAddTask={() => setCreateTaskDate(g.date ?? "")}
