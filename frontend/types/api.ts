@@ -153,6 +153,10 @@ export interface ShoppingItem {
   title: string;
   status: string;
   sort_order: number;
+  price: number | null;
+  currency: string;
+  /** Дата, к которой хочется купить; в этот день заводится задача «Купить …». */
+  want_by: string | null;
 }
 
 export interface ExpiringDoc {

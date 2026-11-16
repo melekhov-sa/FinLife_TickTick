@@ -6,6 +6,18 @@ import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ShoppingItem } from "@/types/api";
 import { api } from "@/lib/api";
+import { ShoppingItemSheet } from "@/components/dashboard/ShoppingItemSheet";
+
+const MONEY = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
+
+/** «до 20.12», и «просрочено», если дата покупки уже прошла. */
+function wantByLabel(iso: string): { text: string; overdue: boolean } {
+  const target = new Date(iso + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const text = target.toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" });
+  return { text: `до ${text}`, overdue: target < today };
+}
 
 interface Props {
   listId: number;
@@ -16,6 +28,8 @@ export function ShoppingWidget({ listId, items }: Props) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
+  // Позиция, у которой правим цену и дату: тап по названию, не по галочке.
+  const [editing, setEditing] = useState<ShoppingItem | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const toggle = useMutation({
@@ -74,11 +88,13 @@ export function ShoppingWidget({ listId, items }: Props) {
         <div className="space-y-0.5">
           {items.slice(0, 5).map((item) => {
             const isDone = item.status === "done";
+            const due = item.want_by ? wantByLabel(item.want_by) : null;
+            const hasMeta = item.price != null || due !== null;
             return (
-              <label
+              <div
                 key={item.id}
                 className={clsx(
-                  "flex items-center gap-2.5 py-1.5 cursor-pointer group",
+                  "flex items-center gap-2.5 py-1.5 group",
                   toggle.isPending && "opacity-60 pointer-events-none",
                 )}
               >
@@ -88,20 +104,50 @@ export function ShoppingWidget({ listId, items }: Props) {
                   onChange={() =>
                     toggle.mutate({ id: item.id, status: isDone ? "open" : "done" })
                   }
+                  aria-label={isDone ? "Вернуть в список" : "Отметить купленным"}
                   className="w-4 h-4 rounded accent-[var(--app-accent)] shrink-0 cursor-pointer"
                 />
-                <span
-                  className={clsx(
-                    "text-[13px] leading-snug",
-                    isDone
-                      ? "line-through opacity-40"
-                      : "group-hover:opacity-80 transition-opacity",
-                  )}
-                  style={{ color: "var(--t-primary)" }}
+                {/* Тап по названию правит цену и дату. Галочка выше — отдельная
+                    цель, иначе «куплено» и «открыть» дрались бы за один тап. */}
+                <button
+                  type="button"
+                  onClick={() => setEditing(item)}
+                  className="flex-1 min-w-0 text-left"
+                  title="Цена и дата покупки"
                 >
-                  {item.title}
-                </span>
-              </label>
+                  <span
+                    className={clsx(
+                      "text-[13px] leading-snug block truncate",
+                      isDone
+                        ? "line-through opacity-40"
+                        : "group-hover:opacity-80 transition-opacity",
+                    )}
+                    style={{ color: "var(--t-primary)" }}
+                  >
+                    {item.title}
+                  </span>
+                  {!isDone && hasMeta && (
+                    <span className="text-[11px] leading-snug flex items-center gap-1.5">
+                      {item.price != null && (
+                        <span className="tabular-nums" style={{ color: "var(--t-muted)" }}>
+                          {MONEY.format(item.price)} ₽
+                        </span>
+                      )}
+                      {item.price != null && due && (
+                        <span style={{ color: "var(--t-faint)" }}>·</span>
+                      )}
+                      {due && (
+                        <span
+                          className="tabular-nums"
+                          style={{ color: due.overdue ? "var(--c-danger-ink)" : "var(--t-faint)" }}
+                        >
+                          {due.text}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </button>
+              </div>
             );
           })}
         </div>
@@ -143,6 +189,8 @@ export function ShoppingWidget({ listId, items }: Props) {
           {items.length > 5 ? `Открыть список · ещё ${items.length - 5}` : "Открыть список"} →
         </a>
       </div>
+
+      <ShoppingItemSheet item={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

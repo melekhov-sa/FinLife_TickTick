@@ -1,4 +1,5 @@
 """Service for Shared Lists (wishlist, giftlist, roadmap, trip)."""
+import logging
 import secrets
 from datetime import datetime, timezone, date as date_type
 from decimal import Decimal
@@ -8,9 +9,20 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import SharedList, SharedListGroup, SharedListItem, ListPlanItem, TaskModel, TransactionFeed
 
+logger = logging.getLogger(__name__)
+
 
 def _generate_slug() -> str:
     return secrets.token_urlsafe(8)  # ~11 chars, URL-safe
+
+
+def _parse_date(value) -> date_type | None:
+    """Дата из API приходит строкой "YYYY-MM-DD"; пусто/None — сбросить."""
+    if not value:
+        return None
+    if isinstance(value, date_type):
+        return value
+    return date_type.fromisoformat(value)
 
 
 class SharedListService:
@@ -173,6 +185,7 @@ class SharedListService:
             image_url=kwargs.get("image_url"),
             price=Decimal(str(kwargs["price"])) if kwargs.get("price") else None,
             currency=kwargs.get("currency", "RUB"),
+            want_by=_parse_date(kwargs.get("want_by")),
             sort_order=max_sort,
         )
         self.db.add(item)
@@ -192,7 +205,12 @@ class SharedListService:
                 setattr(item, key, kwargs[key])
         if "price" in kwargs:
             item.price = Decimal(str(kwargs["price"])) if kwargs["price"] else None
+        if "want_by" in kwargs:
+            item.want_by = _parse_date(kwargs["want_by"])
+
+        became_done = False
         if "status" in kwargs:
+            became_done = kwargs["status"] == "done" and item.status != "done"
             item.status = kwargs["status"]
             if kwargs["status"] == "done" and not item.completed_at:
                 item.completed_at = datetime.now(timezone.utc)
@@ -200,6 +218,16 @@ class SharedListService:
                 item.completed_at = None
 
         self.db.commit()
+
+        # Отметили купленным — закрываем и задачу «Купить …», чтобы список
+        # и план не расходились. См. app/application/shopping_tasks.py
+        if became_done and item.task_id is not None:
+            from app.application.shopping_tasks import complete_task_for_item
+            try:
+                complete_task_for_item(self.db, account_id, item)
+            except Exception:
+                logger.exception("failed to close purchase task for item_id=%s", item.id)
+
         return self._serialize_item(item)
 
     def delete_item(self, account_id: int, item_id: int) -> bool:
@@ -437,6 +465,8 @@ class SharedListService:
             "image_url": item.image_url,
             "price": str(item.price) if item.price else None,
             "currency": item.currency,
+            "want_by": item.want_by.isoformat() if item.want_by else None,
+            "task_id": item.task_id,
             "status": item.status,
             "reserved_by": item.reserved_by,
             "planned_op_template_id": item.planned_op_template_id,

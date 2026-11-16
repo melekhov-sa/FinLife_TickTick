@@ -185,6 +185,14 @@ class ShoppingItem(BaseModel):
     title: str
     status: str
     sort_order: int
+    price: Decimal | None = None
+    currency: str = "RUB"
+    # Дата, к которой хочется купить; в этот день заводится задача «Купить …»
+    want_by: date | None = None
+
+    @field_serializer("want_by")
+    def serialize_want_by(self, v: date | None) -> str | None:
+        return v.isoformat() if v else None
 
 
 class ExpiringDoc(BaseModel):
@@ -528,7 +536,10 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
                 .all()
             )
             shopping_items = [
-                ShoppingItem(id=r.id, title=r.title, status=r.status, sort_order=r.sort_order)
+                ShoppingItem(
+                    id=r.id, title=r.title, status=r.status, sort_order=r.sort_order,
+                    price=r.price, currency=r.currency, want_by=r.want_by,
+                )
                 for r in rows
             ]
     except Exception:

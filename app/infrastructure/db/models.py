@@ -2085,6 +2085,11 @@ class SharedListItem(Base):
     price: Mapped[Decimal | None] = mapped_column(Numeric(precision=14, scale=2), nullable=True)
     currency: Mapped[str] = mapped_column(String(8), nullable=False, server_default="RUB")
     status: Mapped[str] = mapped_column(String(32), nullable=False, server_default="open")  # open | done | reserved
+    # Дата, к которой хочется купить. В этот день заводится задача «Купить …».
+    want_by: Mapped[date_type | None] = mapped_column(Date, nullable=True, index=True)
+    # Та самая задача: защищает от повторного создания и связывает
+    # её выполнение с отметкой «куплено». См. app/application/shopping_tasks.py
+    task_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     reserved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     planned_op_template_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # -> operation_templates
     sort_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")

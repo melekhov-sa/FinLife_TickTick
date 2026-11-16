@@ -1,4 +1,6 @@
 """Task use cases - one-off tasks"""
+import logging
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 
@@ -8,6 +10,9 @@ from app.domain.task import Task
 from app.readmodels.projectors.tasks import TasksProjector
 from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
+
+
+logger = logging.getLogger(__name__)
 
 
 class TaskValidationError(ValueError):
@@ -204,6 +209,15 @@ class CompleteTaskUseCase:
         TasksProjector(self.db).run(account_id, event_types=["task_completed"])
         XpProjector(self.db).run(account_id, event_types=["task_completed"])
         ActivityProjector(self.db).run(account_id, event_types=["task_completed"])
+
+        # Задача «Купить …» заведена из списка покупок — гасим и позицию,
+        # чтобы не отмечать одно и то же дважды. Сбой здесь не должен
+        # ронять уже состоявшееся выполнение задачи.
+        from app.application.shopping_tasks import complete_item_for_task
+        try:
+            complete_item_for_task(self.db, account_id, task_id)
+        except Exception:
+            logger.exception("failed to mark shopping item bought for task_id=%s", task_id)
 
 
 class ArchiveTaskUseCase:

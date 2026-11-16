@@ -66,6 +66,7 @@ class CreateItemRequest(BaseModel):
     image_url: str | None = None
     price: float | None = None
     currency: str = "RUB"
+    want_by: str | None = None  # ISO "YYYY-MM-DD"
 
 
 class UpdateItemRequest(BaseModel):
@@ -76,6 +77,7 @@ class UpdateItemRequest(BaseModel):
     image_url: str | None = None
     price: float | None = None
     currency: str | None = None
+    want_by: str | None = None  # ISO "YYYY-MM-DD", null — убрать дату
     status: str | None = None
     sort_order: int | None = None
 

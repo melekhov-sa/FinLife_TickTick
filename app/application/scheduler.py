@@ -5,6 +5,7 @@ Jobs:
   - Morning digest (08:00 MSK / 05:00 UTC)
   - Evening digest (21:00 MSK / 18:00 UTC)
   - Reminder dispatcher (every 2 minutes)
+  - Purchase tasks from the shopping list (05:00 MSK / 02:00 UTC)
   - Subscription notifications (09:00 MSK / 06:00 UTC)
   - Notification engine (09:30 MSK / 06:30 UTC)
 """
@@ -56,6 +57,23 @@ def _run_reminders():
         dispatch_due_reminders(db)
     except Exception:
         logger.exception("Reminder dispatch job failed")
+    finally:
+        db.close()
+
+
+def _run_purchase_tasks():
+    """Завести задачи «Купить …» для позиций, у которых наступила дата."""
+    from app.infrastructure.db.session import get_session_factory
+    from app.application.shopping_tasks import create_due_purchase_tasks
+
+    Session = get_session_factory()
+    db = Session()
+    try:
+        n = create_due_purchase_tasks(db)
+        if n:
+            logger.info("purchase tasks created: %s", n)
+    except Exception:
+        logger.exception("purchase task job failed")
     finally:
         db.close()
 
@@ -271,6 +289,17 @@ def start_scheduler():
         "interval",
         minutes=2,
         id="reminders",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
+    # Purchase tasks from the shopping list — 05:00 MSK (02:00 UTC),
+    # до утренних уведомлений: задача должна уже существовать к рассылке.
+    scheduler.add_job(
+        _run_purchase_tasks,
+        CronTrigger(hour=2, minute=0, timezone="UTC"),
+        id="purchase_tasks",
         replace_existing=True,
         max_instances=1,
         coalesce=True,
