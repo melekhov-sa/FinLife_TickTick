@@ -27,6 +27,8 @@ from app.infrastructure.db.models import (
 # Constants
 # ---------------------------------------------------------------------------
 
+from app.application.event_status import is_event_overdue as _event_is_overdue
+
 KIND_SORT = {"event": 1, "task": 2, "task_occ": 2, "planned_op": 3, "habit": 4, "wish": 5}
 _TIME_MAX = time(23, 59, 59)
 
@@ -433,24 +435,6 @@ def _query_event_occurrences(
 
 
 _JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
-
-
-MANUAL_COMPLETION = "manual"
-
-
-def _event_is_overdue(occ: EventOccurrenceModel, ev: CalendarEventModel, today: date) -> bool:
-    """Просрочено только то, что закрывается руками и ещё не закрыто.
-
-    У режимов end_of_day и at_event_end событие считается состоявшимся само
-    по факту наступления даты — им просрочка не нужна. А manual существует
-    ровно затем, чтобы висеть, пока не отметишь.
-    """
-    if ev.completion_mode != MANUAL_COMPLETION:
-        return False
-    if occ.is_completed or occ.is_cancelled:
-        return False
-    last_day = occ.end_date or occ.start_date
-    return last_day < today
 
 
 def _event_occ_to_item(

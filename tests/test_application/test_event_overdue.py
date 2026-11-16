@@ -11,7 +11,8 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from app.application.plan import _event_is_overdue, _query_event_occurrences
+from app.application.event_status import is_event_overdue as _event_is_overdue
+from app.application.plan import _query_event_occurrences
 from app.infrastructure.db.models import CalendarEventModel, EventOccurrenceModel
 
 ACCT = 1
@@ -138,3 +139,63 @@ class TestPlanVisibility:
         _occ(db_session, ev, start=date(2026, 11, 14), oid=288)
 
         assert 288 not in {i["id"] for i in _active(db_session)}
+
+
+class TestDashboardTodayBlock:
+    """Блок «Сегодня» на главной показывает просрочку наравне с задачами."""
+
+    def _today_block(self, db):
+        from app.application.dashboard import DashboardService
+        return DashboardService(db).get_today_block(ACCT, TODAY)
+
+    def test_unmarked_manual_event_from_the_past_is_shown(self, db_session):
+        ev = _event(db_session)
+        _occ(db_session, ev, start=date(2026, 11, 14), oid=288)
+        db_session.commit()
+
+        block = self._today_block(db_session)
+        item = next((i for i in block["events"] if i["id"] == 288), None)
+
+        assert item is not None, "просроченное событие не попало в блок «Сегодня»"
+        assert item["is_overdue"] is True
+        assert item["is_done"] is False
+
+    def test_todays_event_is_not_marked_overdue(self, db_session):
+        ev = _event(db_session)
+        _occ(db_session, ev, start=TODAY, oid=300)
+        db_session.commit()
+
+        block = self._today_block(db_session)
+        item = next(i for i in block["events"] if i["id"] == 300)
+
+        assert item["is_overdue"] is False
+
+    def test_past_auto_closing_event_stays_out(self, db_session):
+        """end_of_day закрывается сам — в сегодняшнем блоке ему не место."""
+        ev = _event(db_session, mode="end_of_day")
+        _occ(db_session, ev, start=date(2026, 11, 14), oid=288)
+        db_session.commit()
+
+        block = self._today_block(db_session)
+
+        assert all(i["id"] != 288 for i in block["events"])
+
+    def test_completed_manual_event_stays_out(self, db_session):
+        ev = _event(db_session)
+        _occ(db_session, ev, start=date(2026, 11, 14), completed=True, oid=288)
+        db_session.commit()
+
+        block = self._today_block(db_session)
+
+        assert all(i["id"] != 288 for i in block["events"])
+
+    def test_ongoing_multiday_event_is_not_overdue(self, db_session):
+        ev = _event(db_session)
+        occ = _occ(db_session, ev, start=date(2026, 11, 10), oid=301)
+        occ.end_date = date(2026, 11, 20)
+        db_session.commit()
+
+        block = self._today_block(db_session)
+        item = next(i for i in block["events"] if i["id"] == 301)
+
+        assert item["is_overdue"] is False

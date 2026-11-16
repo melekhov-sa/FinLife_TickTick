@@ -26,6 +26,7 @@ from app.infrastructure.db.models import (
     TaskDueChangeLog, CollectionItem,
 )
 from app.utils.money import format_money
+from app.application.event_status import is_event_overdue
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
 _JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
@@ -52,7 +53,9 @@ class DashboardService:
             overdue:  list[item]   — tasks + planned ops that are overdue (scheduled < today)
             active:   list[item]   — today's active items (tasks, ops, habits)
             done:     list[item]   — items completed today (tasks, ops, habits)
-            events:   list[item]   — today's events (separate, NOT in progress)
+            events:   list[item]   — today's events + непройденные события с
+                                     ручным закрытием из прошлого (separate,
+                                     NOT in progress)
             progress: {total, done, left}  — tasks-only progress (events excluded)
         """
         wc_map = self._load_wc_map(account_id)
@@ -389,6 +392,13 @@ class DashboardService:
                     EventOccurrenceModel.end_date != None,  # noqa: E711
                     EventOccurrenceModel.end_date >= today,
                 ),
+                # Прошедшие неотмеченные — кандидаты в просрочку. Широкое
+                # условие сужается ниже через is_event_overdue: сюда попадут
+                # только события с ручным закрытием.
+                and_(
+                    EventOccurrenceModel.start_date < today,
+                    EventOccurrenceModel.is_completed == False,  # noqa: E712
+                ),
             ),
         ).all()
 
@@ -424,6 +434,13 @@ class DashboardService:
                 ).first()
             ev = ev_cache[occ.event_id]
             if ev and ev.is_active:
+                overdue_ev = is_event_overdue(occ, ev, today)
+                # Прошедшее событие показываем, только если оно ждёт ручной
+                # отметки. Остальные прошедшие (end_of_day, at_event_end)
+                # закрываются сами — в сегодняшнем блоке им не место.
+                last_day = occ.end_date or occ.start_date
+                if last_day < today and not overdue_ev:
+                    continue
                 event_time = occ.start_time.strftime("%H:%M") if occ.start_time else None
                 person_age: int | None = None
                 is_jubilee = False
@@ -439,7 +456,7 @@ class DashboardService:
                     # Ongoing multi-day event (ends in the future) isn't "done" —
                     # don't strike through e.g. an active «Отпуск».
                     "is_done": occ.is_completed and not (occ.end_date and occ.end_date > today),
-                    "is_overdue": False,
+                    "is_overdue": overdue_ev,
                     "category_emoji": self._wc_emoji(wc_map, ev.category_id),
                     "category_name": self._wc_name(wc_map, ev.category_id),
                     "meta": {
