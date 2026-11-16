@@ -132,15 +132,15 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
   );
 }
 
-/* Название, бейдж и кнопка в одну строку не влезают на телефон: бейдж
-   «110 дн. назад» и кнопка съедали около 180pt из ~337pt доступных, и
-   название обрезалось прямо посреди даты. Поэтому дата переехала во
-   вторую строку к контакту, а бейдж ужат до «−110 дн.»: минус отличает
-   просрочку от «через 5 дн.» не хуже слова «назад». */
+/* Ширины на телефоне впритык: из ~333pt содержимого карточки бейдж
+   забирает ~60. Поэтому дата живёт во второй строке у контакта, бейдж
+   ужат до «−110 дн.» (минус отличает просрочку от «через 5 дн.» не хуже
+   слова «назад»), а кнопка продления — круглая иконка на 32pt вместо
+   подписи на 82pt: с подписью строка вылезала за край карточки. */
 function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
   const expired = sub.days_left < 0;
   return (
-    <div className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
+    <div className="flex items-center gap-2 min-w-0 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
       <div className="min-w-0 flex-1">
         <p className="t-main font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
           {sub.subscription_title}
@@ -165,13 +165,12 @@ function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
       <button
         type="button"
         onClick={onRenew}
-        aria-label={`Продлить: ${sub.subscription_title}`}
-        className="tap-grow shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-opacity hover:opacity-80"
+        aria-label={`Продлить подписку: ${sub.subscription_title}`}
+        className="tap-grow shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full transition-opacity hover:opacity-80"
         style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
         title="Продлить подписку"
       >
-        <RotateCw size={12} />
-        Продлить
+        <RotateCw size={15} strokeWidth={2.4} />
       </button>
     </div>
   );
