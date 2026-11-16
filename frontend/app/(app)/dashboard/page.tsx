@@ -95,7 +95,7 @@ export default function DashboardPage() {
             </div>
 
             {/* < xl: single column */}
-            <div className="xl:hidden space-y-3 md:space-y-4">
+            <div className="xl:hidden space-y-3 md:space-y-4 min-w-0">
               <TodayBlock
                 today={data.today}
                 plannedOps={data.upcoming_payments.filter((p) => p.days_until === 0)}

@@ -239,9 +239,17 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
             state={onlineStatus}
             onRetry={() => window.location.reload()}
           />
+          {/* overflow-auto прокручивал обе оси: стоило одному элементу
+              вылезти за ширину хоть на пиксель (отрицательный margin, тень,
+              округление), и всю страницу можно было таскать вбок, а топбар
+              с нижней навигацией при этом оставались на месте — выглядело
+              как съехавшая вёрстка. По горизонтали прокрутка выключена:
+              широкие таблицы и ленты живут в собственных overflow-x-auto
+              контейнерах и продолжают скроллиться. По вертикали ничего не
+              трогаем — там pull-to-refresh. */}
           <div
             id="app-scroll"
-            className="flex-1 min-h-0 flex flex-col overflow-auto scroll-slim"
+            className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden overscroll-x-none scroll-slim"
           >
             {children}
           </div>
