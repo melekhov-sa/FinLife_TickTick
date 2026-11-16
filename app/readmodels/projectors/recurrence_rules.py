@@ -36,6 +36,9 @@ class RecurrenceRulesProjector(BaseProjector):
             by_month=payload.get("by_month"),
             by_monthday_for_year=payload.get("by_monthday_for_year"),
             dates_json=payload.get("dates_json"),
+            # События, записанные до ноября 2026, поля не содержат —
+            # для них режим календарный, как и был.
+            anchor=payload.get("anchor", "SCHEDULE"),
         )
         self.db.add(rule)
         self.db.flush()
@@ -48,7 +51,8 @@ class RecurrenceRulesProjector(BaseProjector):
         if not rule:
             return
         for key in ("freq", "interval", "count", "by_weekday", "by_monthday",
-                     "monthday_clip_to_last_day", "by_month", "by_monthday_for_year", "dates_json"):
+                     "monthday_clip_to_last_day", "by_month", "by_monthday_for_year", "dates_json",
+                     "anchor"):
             if key in payload:
                 setattr(rule, key, payload[key])
         if "start_date" in payload:

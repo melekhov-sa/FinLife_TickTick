@@ -16,6 +16,15 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
+import { Checkbox } from "@/components/primitives/Checkbox";
+
+/** Короткая единица срока для режима «от выполнения». */
+function unitShort(freq: string): string {
+  const map: Record<string, string> = {
+    DAILY: "дн.", WEEKLY: "нед.", MONTHLY: "мес.", YEARLY: "г.",
+  };
+  return map[freq] ?? freq;
+}
 
 const RU_MONTHS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -111,6 +120,7 @@ function TemplateRow({
   const [editFreq, setEditFreq] = useState(item.freq);
   const [editInterval, setEditInterval] = useState(String(item.interval));
   const [editActiveUntil, setEditActiveUntil] = useState(item.active_until ?? "");
+  const [editFromCompletion, setEditFromCompletion] = useState(item.anchor === "COMPLETION");
 
   const { mutate: update, isPending } = useUpdateTemplate();
 
@@ -129,6 +139,7 @@ function TemplateRow({
     setEditFreq(item.freq);
     setEditInterval(String(item.interval));
     setEditActiveUntil(item.active_until ?? "");
+    setEditFromCompletion(item.anchor === "COMPLETION");
     setEditing(true);
   }
 
@@ -143,6 +154,7 @@ function TemplateRow({
       freq: editFreq,
       interval: Number(editInterval) || 1,
       active_until: editActiveUntil || null,
+      anchor: editFromCompletion ? "COMPLETION" : "SCHEDULE",
     });
     setEditing(false);
   }
@@ -208,6 +220,14 @@ function TemplateRow({
           />
         </div>
 
+        <Checkbox
+          checked={editFromCompletion}
+          onChange={(e) => setEditFromCompletion(e.target.checked)}
+          size="sm"
+          label="Считать срок от выполнения"
+          description="Одна активная задача: следующая создаётся при закрытии текущей, просрочка не копится."
+        />
+
         <div className="flex gap-2">
           <Select
             value={editCatId}
@@ -244,7 +264,9 @@ function TemplateRow({
           {item.title}
         </p>
         <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
-          {item.interval > 1
+          {item.anchor === "COMPLETION"
+            ? `Через ${item.interval} ${unitShort(item.freq)} после выполнения`
+            : item.interval > 1
             ? `Каждые ${item.interval} (${freqLabel(item.freq).toLowerCase()})`
             : freqLabel(item.freq)}
           {" · "}
@@ -262,7 +284,9 @@ function TemplateRow({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <Badge variant="accent" size="sm">{freqLabel(item.freq)}</Badge>
+        <Badge variant="accent" size="sm">
+          {item.anchor === "COMPLETION" ? "От выполнения" : freqLabel(item.freq)}
+        </Badge>
         {!archived && (
           <Tooltip content="Редактировать">
             <button

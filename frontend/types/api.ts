@@ -481,6 +481,8 @@ export interface TaskTemplateItem {
   category_emoji: string | null;
   freq: string;
   interval: number;
+  /** SCHEDULE — по календарю; COMPLETION — через interval после выполнения. */
+  anchor: string;
   active_from: string;
   active_until: string | null;
   is_archived: boolean;

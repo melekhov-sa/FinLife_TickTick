@@ -19,6 +19,7 @@ class RecurrenceRule:
         by_month: int | None = None,
         by_monthday_for_year: int | None = None,
         dates_json: str | None = None,
+        anchor: str = "SCHEDULE",
     ) -> Dict[str, Any]:
         return {
             "rule_id": rule_id,
@@ -34,6 +35,7 @@ class RecurrenceRule:
             "by_month": by_month,
             "by_monthday_for_year": by_monthday_for_year,
             "dates_json": dates_json,
+            "anchor": anchor,
             "created_at": datetime.utcnow().isoformat()
         }
 
@@ -42,7 +44,7 @@ class RecurrenceRule:
         payload: Dict[str, Any] = {"rule_id": rule_id, "updated_at": datetime.utcnow().isoformat()}
         allowed = ("freq", "interval", "start_date", "until_date", "count",
                     "by_weekday", "by_monthday", "monthday_clip_to_last_day",
-                    "by_month", "by_monthday_for_year", "dates_json")
+                    "by_month", "by_monthday_for_year", "dates_json", "anchor")
         for key in allowed:
             if key in changes:
                 payload[key] = changes[key]

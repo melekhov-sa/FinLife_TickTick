@@ -1,4 +1,5 @@
 """Task Template use cases - recurring tasks"""
+from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -11,6 +12,11 @@ from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 from app.application.occurrence_generator import OccurrenceGenerator
+from app.application.chained_recurrence import (
+    ANCHOR_COMPLETION,
+    ensure_next_after_completion,
+    seed_first_occurrence,
+)
 
 
 class TaskTemplateValidationError(ValueError):
@@ -34,18 +40,27 @@ class CreateTaskTemplateUseCase:
         category_id: int | None = None,
         by_weekday: str | None = None,
         by_monthday: int | None = None,
+        anchor: str = "SCHEDULE",
         actor_user_id: int | None = None,
     ) -> int:
         title = title.strip()
         if not title:
             raise TaskTemplateValidationError("Название шаблона не может быть пустым")
 
-        if freq == "WEEKLY" and not by_weekday:
-            raise TaskTemplateValidationError("Для еженедельной задачи выберите хотя бы один день недели")
-        if freq == "MONTHLY" and by_monthday is None:
-            raise TaskTemplateValidationError("Для ежемесячной задачи укажите день месяца")
-        if freq == "MONTHLY" and by_monthday is not None and (by_monthday < 1 or by_monthday > 31):
-            raise TaskTemplateValidationError("День месяца должен быть от 1 до 31")
+        chained = anchor == ANCHOR_COMPLETION
+        if chained:
+            # freq здесь — единица измерения срока, а не расписание. «Через две
+            # недели после выполнения» не привязано ни к дню недели, ни к числу
+            # месяца, поэтому эти уточнения не спрашиваются и не сохраняются.
+            by_weekday = None
+            by_monthday = None
+        else:
+            if freq == "WEEKLY" and not by_weekday:
+                raise TaskTemplateValidationError("Для еженедельной задачи выберите хотя бы один день недели")
+            if freq == "MONTHLY" and by_monthday is None:
+                raise TaskTemplateValidationError("Для ежемесячной задачи укажите день месяца")
+            if freq == "MONTHLY" and by_monthday is not None and (by_monthday < 1 or by_monthday > 31):
+                raise TaskTemplateValidationError("День месяца должен быть от 1 до 31")
 
         rule_uc = CreateRecurrenceRuleUseCase(self.db)
         rule_id = rule_uc.execute(
@@ -56,6 +71,7 @@ class CreateTaskTemplateUseCase:
             until_date=active_until,
             by_weekday=by_weekday,
             by_monthday=by_monthday,
+            anchor=anchor,
             actor_user_id=actor_user_id,
         )
 
@@ -79,7 +95,12 @@ class CreateTaskTemplateUseCase:
         )
         self.db.commit()
         TaskTemplatesProjector(self.db).run(account_id, event_types=["task_template_created"])
-        OccurrenceGenerator(self.db).generate_task_occurrences(account_id)
+        if chained:
+            # Генератор такие шаблоны не обслуживает, поэтому первое звено
+            # цепочки создаём здесь — иначе задача была бы без единого вхождения.
+            seed_first_occurrence(self.db, account_id, template_id, date.fromisoformat(start_date))
+        else:
+            OccurrenceGenerator(self.db).generate_task_occurrences(account_id)
         return template_id
 
     def _generate_id(self) -> int:
@@ -115,6 +136,9 @@ class CompleteTaskOccurrenceUseCase:
         TaskTemplatesProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
         XpProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
         ActivityProjector(self.db).run(account_id, event_types=["task_occurrence_completed"])
+        # Цепочечное повторение: следующая задача отмеряется от этого закрытия.
+        # Строго после проекторов — им нужно успеть проставить completed_at.
+        ensure_next_after_completion(self.db, account_id, occurrence_id)
 
 
 class SkipTaskOccurrenceUseCase:

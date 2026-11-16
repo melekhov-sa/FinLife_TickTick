@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
+from app.domain.recurrence import CHAINABLE_FREQ
 from app.infrastructure.db.models import TaskModel, WorkCategory, TaskTemplateModel, TaskOccurrence, RecurrenceRuleModel, TaskProjectTagModel
 
 router = APIRouter()
@@ -334,6 +335,9 @@ class CreateTaskRequest(BaseModel):
     active_until: str | None = None
     by_weekday: str | None = None  # "MO,TU,FR" or "0,1,4"
     by_monthday: int | None = None  # 1-31
+    # SCHEDULE — даты по календарю; COMPLETION — следующая задача через
+    # interval единиц freq после закрытия предыдущей (одна активная за раз).
+    anchor: str = "SCHEDULE"
 
 
 @router.post("/tasks", status_code=201)
@@ -355,6 +359,7 @@ def create_task(body: CreateTaskRequest, request: Request, db: Session = Depends
                 category_id=body.category_id,
                 by_weekday=body.by_weekday,
                 by_monthday=body.by_monthday,
+                anchor=body.anchor,
                 actor_user_id=user_id,
             )
         except TaskTemplateValidationError as e:
@@ -953,6 +958,7 @@ class TaskTemplateItem(BaseModel):
     category_emoji: str | None
     freq: str
     interval: int
+    anchor: str
     active_from: date
     active_until: date | None
     is_archived: bool
@@ -1010,6 +1016,7 @@ def list_task_templates(request: Request, db: Session = Depends(get_db), archive
             category_emoji=emoji_map.get(t.category_id) if t.category_id else None,
             freq=rule.freq if rule else "DAILY",
             interval=rule.interval if rule else 1,
+            anchor=rule.anchor if rule else "SCHEDULE",
             active_from=t.active_from,
             active_until=t.active_until,
             is_archived=t.is_archived,
@@ -1027,6 +1034,7 @@ class UpdateTaskTemplateRequest(BaseModel):
     active_until: str | None = None   # "YYYY-MM-DD" or "" to clear
     freq: str | None = None
     interval: int | None = None
+    anchor: str | None = None
 
 
 @router.patch("/task-templates/{template_id}")
@@ -1054,7 +1062,7 @@ def update_task_template(
     if "active_until" in fields:
         template.active_until = date.fromisoformat(body.active_until) if body.active_until else None
 
-    if ("freq" in fields or "interval" in fields) and template.rule_id:
+    if ("freq" in fields or "interval" in fields or "anchor" in fields) and template.rule_id:
         rule = db.query(RecurrenceRuleModel).filter(
             RecurrenceRuleModel.rule_id == template.rule_id
         ).first()
@@ -1063,6 +1071,21 @@ def update_task_template(
                 rule.freq = body.freq
             if "interval" in fields and body.interval is not None:
                 rule.interval = max(1, body.interval)
+            if "anchor" in fields and body.anchor:
+                if body.anchor not in ("SCHEDULE", "COMPLETION"):
+                    raise HTTPException(status_code=400, detail=f"Неверный режим отсчёта: {body.anchor}")
+                if body.anchor == "COMPLETION":
+                    if rule.freq not in CHAINABLE_FREQ:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Отсчёт от даты выполнения возможен только для повторений "
+                                   "раз в день/неделю/месяц/год",
+                        )
+                    # freq становится единицей измерения срока, уточнения дня
+                    # недели и числа месяца теряют смысл.
+                    rule.by_weekday = None
+                    rule.by_monthday = None
+                rule.anchor = body.anchor
 
     db.commit()
     return {"ok": True}

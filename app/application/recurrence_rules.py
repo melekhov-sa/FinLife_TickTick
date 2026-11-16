@@ -5,7 +5,7 @@ from sqlalchemy import func
 from app.infrastructure.eventlog.repository import EventLogRepository
 from app.infrastructure.db.models import RecurrenceRuleModel, EventLog
 from app.domain.recurrence_rule import RecurrenceRule
-from app.domain.recurrence import VALID_FREQ
+from app.domain.recurrence import VALID_FREQ, CHAINABLE_FREQ
 from app.readmodels.projectors.recurrence_rules import RecurrenceRulesProjector
 
 
@@ -32,12 +32,20 @@ class CreateRecurrenceRuleUseCase:
         by_month: int | None = None,
         by_monthday_for_year: int | None = None,
         dates_json: str | None = None,
+        anchor: str = "SCHEDULE",
         actor_user_id: int | None = None,
     ) -> int:
         if freq not in VALID_FREQ:
             raise RecurrenceRuleValidationError(f"Неверная частота: {freq}")
         if interval < 1:
             raise RecurrenceRuleValidationError("Интервал должен быть >= 1")
+        if anchor not in ("SCHEDULE", "COMPLETION"):
+            raise RecurrenceRuleValidationError(f"Неверный режим отсчёта: {anchor}")
+        if anchor == "COMPLETION" and freq not in CHAINABLE_FREQ:
+            raise RecurrenceRuleValidationError(
+                "Отсчёт от даты выполнения возможен только для повторений "
+                "раз в день/неделю/месяц/год"
+            )
 
         rule_id = self._generate_id()
         payload = RecurrenceRule.create(
@@ -54,6 +62,7 @@ class CreateRecurrenceRuleUseCase:
             by_month=by_month,
             by_monthday_for_year=by_monthday_for_year,
             dates_json=dates_json,
+            anchor=anchor,
         )
 
         self.event_repo.append_event(

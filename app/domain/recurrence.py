@@ -50,6 +50,33 @@ def add_months(d: date, n: int) -> date:
     return date(year, month, day)
 
 
+# Единицы, в которых можно отмерить срок от даты выполнения. MULTI_DATE и
+# ONETIME сюда не входят: «через один явный список дат» смысла не имеет.
+CHAINABLE_FREQ = frozenset({"DAILY", "INTERVAL_DAYS", "WEEKLY", "MONTHLY", "YEARLY"})
+
+
+def shift_by_freq(d: date, freq: str, interval: int) -> date:
+    """Сдвинуть дату на interval единиц freq.
+
+    Для режима anchor=COMPLETION freq означает единицу, а не расписание:
+    MONTHLY+2 это «через два месяца», а не «во вторник каждого второго месяца».
+    Месяцы и годы считаются календарно, поэтому 31 января + 1 месяц = 28/29
+    февраля (add_months прижимает к последнему дню), а 29 февраля + 1 год =
+    28 февраля. Для подорожника это важно: иначе дата ползёт.
+    """
+    if interval < 1:
+        raise ValueError("interval must be >= 1")
+    if freq in ("DAILY", "INTERVAL_DAYS"):
+        return d + timedelta(days=interval)
+    if freq == "WEEKLY":
+        return d + timedelta(weeks=interval)
+    if freq == "MONTHLY":
+        return add_months(d, interval)
+    if freq == "YEARLY":
+        return add_months(d, interval * 12)
+    raise ValueError(f"freq {freq} cannot be measured from a completion date")
+
+
 def _validate_rule(rule: RuleSpec, window_start: date, window_end: date) -> None:
     if rule.interval < 1:
         raise ValueError("interval must be >= 1")

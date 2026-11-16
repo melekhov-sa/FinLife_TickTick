@@ -235,6 +235,7 @@ function RowMenu({
 }: RowMenuProps) {
   const isTask = entry.kind === 'task';
   const isTaskOcc = entry.kind === 'task_occ';
+  const isChained = entry.meta.is_chained === true;
   const isOp = entry.kind === 'planned_op';
   const isEvent = entry.kind === 'event';
 
@@ -288,10 +289,17 @@ function RowMenu({
             <CalendarDays size={13} className="inline mr-2 opacity-60" />
             Перенести
           </button>
-          <button className={itemCls} style={dangerStyle} onClick={onSkipTaskOcc}>
-            <SkipForward size={12} className="inline mr-2 opacity-60" />
-            Пропустить
-          </button>
+          {/* У цепочечного повторения активна ровно одна задача, и следующая
+              рождается только из её закрытия. Пропуск оборвал бы цепочку
+              молча — не выполнено, не запланировано, напоминать нечему.
+              Не нужна сейчас — переноси; не нужна совсем — выключи
+              повторение на странице «Повторяющиеся задачи». */}
+          {!isChained && (
+            <button className={itemCls} style={dangerStyle} onClick={onSkipTaskOcc}>
+              <SkipForward size={12} className="inline mr-2 opacity-60" />
+              Пропустить
+            </button>
+          )}
         </>
       )}
 

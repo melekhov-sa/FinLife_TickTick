@@ -112,6 +112,10 @@ class OccurrenceGenerator:
             ).first()
             if not rule:
                 continue
+            # Цепочечные повторения вперёд не генерируются: следующее вхождение
+            # создаётся при закрытии текущего — app/application/chained_recurrence.py
+            if rule.anchor == "COMPLETION":
+                continue
 
             ws = max(window_start, tmpl.active_from)
             we = window_end

@@ -284,6 +284,11 @@ class RecurrenceRuleModel(Base):
 
     freq: Mapped[str] = mapped_column(String(32), nullable=False)  # DAILY/WEEKLY/MONTHLY/YEARLY/INTERVAL_DAYS/MULTI_DATE
     interval: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    # SCHEDULE — даты из календаря (поведение по умолчанию и единственное до ноября 2026).
+    # COMPLETION — цепочка: вхождения вперёд не генерируются, следующее создаётся
+    # при закрытии текущего с датой «дата выполнения + interval единиц freq».
+    # См. app/application/chained_recurrence.py
+    anchor: Mapped[str] = mapped_column(String(16), nullable=False, server_default="SCHEDULE")
     start_date: Mapped[date_type] = mapped_column(Date, nullable=False)
     until_date: Mapped[date_type | None] = mapped_column(Date, nullable=True)
     count: Mapped[int | None] = mapped_column(Integer, nullable=True)

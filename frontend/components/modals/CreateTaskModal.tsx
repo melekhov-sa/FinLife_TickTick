@@ -75,6 +75,22 @@ const FREQS = [
   { value: "YEARLY", label: "Ежегодно" },
 ];
 
+/** «через 2 месяца», «через 10 дней» — для подсказки под переключателем. */
+function unitPhrase(freq: string, n: number): string {
+  const forms: Record<string, [string, string, string]> = {
+    DAILY: ["день", "дня", "дней"],
+    WEEKLY: ["неделю", "недели", "недель"],
+    MONTHLY: ["месяц", "месяца", "месяцев"],
+    YEARLY: ["год", "года", "лет"],
+  };
+  const f = forms[freq] ?? forms.DAILY;
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} ${f[0]}`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} ${f[1]}`;
+  return `${n} ${f[2]}`;
+}
+
 const WEEKDAYS = [
   { value: "MO", label: "Пн" },
   { value: "TU", label: "Вт" },
@@ -144,6 +160,8 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
 
   // Recurring fields
   const [freq, setFreq] = useState("DAILY");
+  // Отсчитывать срок не от календаря, а от даты закрытия предыдущей задачи.
+  const [fromCompletion, setFromCompletion] = useState(false);
   const [interval, setInterval] = useState<number>(1);
   const [weekdays, setWeekdays] = useState<string[]>([]);
   const [byMonthday, setByMonthday] = useState<string>("");
@@ -282,8 +300,11 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
         interval,
         start_date: startDate || null,
         active_until: activeUntil || null,
-        by_weekday: freq === "WEEKLY" ? weekdays.join(",") : null,
-        by_monthday: freq === "MONTHLY" ? Number(byMonthday) || null : null,
+        anchor: fromCompletion ? "COMPLETION" : "SCHEDULE",
+        // В режиме «от выполнения» freq — это единица срока, а не
+        // расписание: день недели и число месяца не спрашиваются.
+        by_weekday: !fromCompletion && freq === "WEEKLY" ? weekdays.join(",") : null,
+        by_monthday: !fromCompletion && freq === "MONTHLY" ? Number(byMonthday) || null : null,
       };
     }
     return {
@@ -332,10 +353,10 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
       }
     } else {
       if (!freq) custom.freq = "Выберите частоту";
-      if (freq === "WEEKLY" && weekdays.length === 0) {
+      if (!fromCompletion && freq === "WEEKLY" && weekdays.length === 0) {
         custom.by_weekday = "Выберите хотя бы один день недели";
       }
-      if (freq === "MONTHLY") {
+      if (!fromCompletion && freq === "MONTHLY") {
         const day = Number(byMonthday);
         if (!byMonthday || isNaN(day) || day < 1 || day > 31) {
           custom.by_monthday = "Укажите день месяца от 1 до 31";
@@ -833,8 +854,26 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
               />
             </FormRow>
 
+            {/* Отсчёт от выполнения: одна активная задача, просрочка не копится */}
+            <FormRow label="">
+              <Checkbox
+                checked={fromCompletion}
+                onChange={(e) => {
+                  setFromCompletion(e.target.checked);
+                  clearFieldError("by_weekday");
+                  clearFieldError("by_monthday");
+                }}
+                label="Считать срок от выполнения"
+                description={
+                  fromCompletion
+                    ? `Следующая появится через ${unitPhrase(freq, interval)} после того, как закроешь текущую. Активной всегда одна.`
+                    : "Сейчас даты берутся из календаря: пропущенная задача остаётся просроченной, а следующие продолжают появляться."
+                }
+              />
+            </FormRow>
+
             {/* Weekday chips (WEEKLY only) */}
-            {freq === "WEEKLY" && (
+            {!fromCompletion && freq === "WEEKLY" && (
               <FormRow label="Дни недели" required error={fieldErrors.by_weekday}>
                 <div className="flex gap-1.5 flex-wrap">
                   {WEEKDAYS.map((d) => (
@@ -854,7 +893,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
             )}
 
             {/* Monthday (MONTHLY only) */}
-            {freq === "MONTHLY" && (
+            {!fromCompletion && freq === "MONTHLY" && (
               <FormRow label="День месяца" required error={fieldErrors.by_monthday}>
                 <Input
                   type="number"

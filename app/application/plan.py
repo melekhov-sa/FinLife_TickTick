@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.application.production_calendar import get_day_types
 from app.application.holidays import get_holiday_ru
 from app.infrastructure.db.models import (
-    TaskModel, TaskTemplateModel, TaskOccurrence,
+    TaskModel, TaskTemplateModel, TaskOccurrence, RecurrenceRuleModel,
     HabitModel, HabitOccurrence,
     OperationTemplateModel, OperationOccurrence,
     CalendarEventModel, EventOccurrenceModel,
@@ -255,6 +255,19 @@ def _query_task_occurrences(
             ).first()
         return tmpl_cache[template_id]
 
+    anchor_cache: dict[int, str] = {}
+
+    def _get_anchor(tmpl: TaskTemplateModel | None) -> str:
+        """SCHEDULE или COMPLETION — фронту нужно, чтобы убрать «Пропустить»."""
+        if tmpl is None:
+            return "SCHEDULE"
+        if tmpl.rule_id not in anchor_cache:
+            row = db.query(RecurrenceRuleModel.anchor).filter(
+                RecurrenceRuleModel.rule_id == tmpl.rule_id
+            ).first()
+            anchor_cache[tmpl.rule_id] = row.anchor if row else "SCHEDULE"
+        return anchor_cache[tmpl.rule_id]
+
     _task_eff = func.coalesce(TaskOccurrence.display_date, TaskOccurrence.scheduled_date)
 
     if tab == "active":
@@ -268,7 +281,7 @@ def _query_task_occurrences(
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
-                items.append(_task_occ_to_item(occ, tmpl, today, wc_map))
+                items.append(_task_occ_to_item(occ, tmpl, today, wc_map, _get_anchor(tmpl)))
 
         # Overdue (effective date is in the past)
         overdue = db.query(TaskOccurrence).filter(
@@ -279,7 +292,7 @@ def _query_task_occurrences(
         for occ in overdue:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and not tmpl.is_archived:
-                items.append(_task_occ_to_item(occ, tmpl, today, wc_map))
+                items.append(_task_occ_to_item(occ, tmpl, today, wc_map, _get_anchor(tmpl)))
 
     elif tab == "done":
         rows = db.query(TaskOccurrence).filter(
@@ -291,7 +304,7 @@ def _query_task_occurrences(
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl:
-                items.append(_task_occ_to_item(occ, tmpl, today, wc_map))
+                items.append(_task_occ_to_item(occ, tmpl, today, wc_map, _get_anchor(tmpl)))
 
     elif tab == "archive":
         # All occurrences from archived templates
@@ -301,12 +314,13 @@ def _query_task_occurrences(
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
             if tmpl and tmpl.is_archived:
-                items.append(_task_occ_to_item(occ, tmpl, today, wc_map))
+                items.append(_task_occ_to_item(occ, tmpl, today, wc_map, _get_anchor(tmpl)))
 
     return items
 
 
-def _task_occ_to_item(occ: TaskOccurrence, tmpl: TaskTemplateModel, today: date, wc_map: dict) -> dict:
+def _task_occ_to_item(occ: TaskOccurrence, tmpl: TaskTemplateModel, today: date,
+                      wc_map: dict, anchor: str = "SCHEDULE") -> dict:
     effective_date = occ.display_date or occ.scheduled_date
     is_overdue = occ.status == "ACTIVE" and effective_date < today
     return {
@@ -320,7 +334,13 @@ def _task_occ_to_item(occ: TaskOccurrence, tmpl: TaskTemplateModel, today: date,
         "status": occ.status,
         "category_emoji": _wc_emoji(wc_map, tmpl.category_id),
         "category_title": _wc_title(wc_map, tmpl.category_id),
-        "meta": {"occurrence_id": occ.id, "template_id": occ.template_id},
+        "meta": {
+            "occurrence_id": occ.id,
+            "template_id": occ.template_id,
+            # Цепочечную задачу нельзя пропускать: пропуск оборвал бы
+            # цепочку молча, активных вхождений не осталось бы вовсе.
+            "is_chained": anchor == "COMPLETION",
+        },
     }
 
 
