@@ -132,6 +132,42 @@ const RANGES = [
 
 // ── Reschedule Modal ──────────────────────────────────────────────────────────
 
+/**
+ * Перенос записи. Ручка зависит от типа, и это важно: у записи kind="task"
+ * в поле id лежит task_id, а у task_occ / event / planned_op — id ВХОЖДЕНИЯ.
+ * Модалка раньше всегда била в PATCH /tasks/{entry.id}, поэтому перенос
+ * повторяющейся задачи не работал вовсе, а при совпадении номеров мог молча
+ * подвинуть постороннюю задачу.
+ *
+ * Время сохраняется только у обычной задачи: у остальных ручек в теле
+ * запроса есть лишь new_date, да и колонки времени у вхождений нет.
+ */
+function rescheduleEntryRequest(
+  kind: string,
+  id: number,
+  newDate: string,
+  newTime?: string | null,
+) {
+  if (kind === "task") {
+    return api.patch(`/api/v2/tasks/${id}`, { due_date: newDate, due_time: newTime || null });
+  }
+  if (kind === "task_occ") {
+    return api.post(`/api/v2/task-occurrences/${id}/reschedule`, { new_date: newDate });
+  }
+  if (kind === "event") {
+    return api.post(`/api/v2/events/occurrences/${id}/reschedule`, { new_date: newDate });
+  }
+  if (kind === "planned_op") {
+    return api.patch(`/api/v2/planned-ops/occurrences/${id}`, { scheduled_date: newDate });
+  }
+  throw new Error("Unsupported kind: " + kind);
+}
+
+/** Время переносится только у обычной задачи — см. rescheduleEntryRequest. */
+function supportsTime(kind: string): boolean {
+  return kind === "task";
+}
+
 function RescheduleModal({
   entry,
   onClose,
@@ -150,11 +186,9 @@ function RescheduleModal({
     setSaving(true);
     setError(null);
     try {
-      await api.patch(`/api/v2/tasks/${entry.id}`, {
-        due_date: date || null,
-        due_time: time || null,
-      });
+      await rescheduleEntryRequest(entry.kind, entry.id, date, time);
       qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       onClose();
     } catch {
       setError("Не удалось сохранить");
@@ -187,9 +221,11 @@ function RescheduleModal({
         <FormRow label="Дата" required>
           <DateInput value={date} onChange={setDate} />
         </FormRow>
-        <FormRow label="Время" hint="Необязательно">
-          <TimeInput value={time} onChange={setTime} />
-        </FormRow>
+        {supportsTime(entry.kind) && (
+          <FormRow label="Время" hint="Необязательно">
+            <TimeInput value={time} onChange={setTime} />
+          </FormRow>
+        )}
       </div>
 
       {error && (
@@ -1093,21 +1129,8 @@ export default function PlanPage() {
   }
 
   const rescheduleMutation = useMutation({
-    mutationFn: async ({ kind, id, newDate }: { kind: string; id: number; newDate: string }) => {
-      if (kind === "task") {
-        return api.patch(`/api/v2/tasks/${id}`, { due_date: newDate });
-      }
-      if (kind === "event") {
-        return api.post(`/api/v2/events/occurrences/${id}/reschedule`, { new_date: newDate });
-      }
-      if (kind === "planned_op") {
-        return api.patch(`/api/v2/planned-ops/occurrences/${id}`, { scheduled_date: newDate });
-      }
-      if (kind === "task_occ") {
-        return api.post(`/api/v2/task-occurrences/${id}/reschedule`, { new_date: newDate });
-      }
-      throw new Error("Unsupported kind: " + kind);
-    },
+    mutationFn: async ({ kind, id, newDate }: { kind: string; id: number; newDate: string }) =>
+      rescheduleEntryRequest(kind, id, newDate),
     onMutate: async ({ kind, id, newDate }) => {
       await qc.cancelQueries({ queryKey: ["plan"] });
       const snapshot = qc.getQueryData<PlanData>(["plan", tab, range]);

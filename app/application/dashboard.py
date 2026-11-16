@@ -259,11 +259,17 @@ class DashboardService:
                 ).first()
             return tmpl_cache[tid]
 
+        # Перенос вхождения пишется в display_date, scheduled_date остаётся
+        # прежним ради идемпотентности генератора. Значит сравнивать с
+        # сегодня надо именно эффективную дату — иначе перенесённая задача
+        # продолжает висеть на старом числе и уезжает в просрочку.
+        eff_date = func.coalesce(TaskOccurrence.display_date, TaskOccurrence.scheduled_date)
+
         # Overdue
         rows = self.db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "ACTIVE",
-            TaskOccurrence.scheduled_date < today,
+            eff_date < today,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -274,7 +280,7 @@ class DashboardService:
         rows = self.db.query(TaskOccurrence).filter(
             TaskOccurrence.account_id == account_id,
             TaskOccurrence.status == "ACTIVE",
-            TaskOccurrence.scheduled_date == today,
+            eff_date == today,
         ).all()
         for occ in rows:
             tmpl = _get_tmpl(occ.template_id)
@@ -298,7 +304,7 @@ class DashboardService:
             "kind": "task_occ",
             "id": occ.id,
             "title": tmpl.title,
-            "date": occ.scheduled_date,
+            "date": occ.display_date or occ.scheduled_date,
             "is_done": is_done or occ.status == "DONE",
             "is_overdue": is_overdue,
             "category_emoji": self._wc_emoji(wc_map, tmpl.category_id),

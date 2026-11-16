@@ -741,11 +741,15 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
         TaskModel.status == "ACTIVE",
         TaskModel.due_date == today,
     ).scalar() or 0
+    # Счётчики считают по эффективной дате — той же, по которой строится
+    # список. Иначе перенесённое вхождение попадёт в одно, но не в другое.
+    _occ_eff = func.coalesce(TaskOccurrence.display_date, TaskOccurrence.scheduled_date)
+
     # task occurrences for today, active, non-archived template
     task_occ_today = db.query(TaskOccurrence).filter(
         TaskOccurrence.account_id == account_id,
         TaskOccurrence.status == "ACTIVE",
-        TaskOccurrence.scheduled_date == today,
+        _occ_eff == today,
     ).all()
     for occ in task_occ_today:
         tmpl = db.query(TaskTemplateModel).filter(TaskTemplateModel.template_id == occ.template_id).first()
@@ -796,8 +800,8 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
     task_occ_week = db.query(TaskOccurrence).filter(
         TaskOccurrence.account_id == account_id,
         TaskOccurrence.status == "ACTIVE",
-        TaskOccurrence.scheduled_date >= today,
-        TaskOccurrence.scheduled_date <= week_end,
+        _occ_eff >= today,
+        _occ_eff <= week_end,
     ).all()
     for occ in task_occ_week:
         tmpl = db.query(TaskTemplateModel).filter(TaskTemplateModel.template_id == occ.template_id).first()
@@ -842,7 +846,7 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
     overdue_task_occs = db.query(TaskOccurrence).filter(
         TaskOccurrence.account_id == account_id,
         TaskOccurrence.status == "ACTIVE",
-        TaskOccurrence.scheduled_date < today,
+        _occ_eff < today,
     ).all()
     for occ in overdue_task_occs:
         tmpl = db.query(TaskTemplateModel).filter(TaskTemplateModel.template_id == occ.template_id).first()
