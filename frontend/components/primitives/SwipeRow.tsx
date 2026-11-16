@@ -109,8 +109,14 @@ export function SwipeRow({
     setDx(0);
   }
 
+  // overflow-hidden нужен ТОЛЬКО пока строку тянут: он прячет уезжающее
+  // содержимое за границами строки. В покое он обрезал всё, что строка
+  // рисует наружу, — прежде всего меню по кнопке «⋮»: от него оставалась
+  // полоска с первым пунктом, а «Удалить» было не достать вовсе.
+  const clipping = dragging || dx !== 0;
+
   return (
-    <div className={`relative overflow-hidden ${className ?? ""}`}>
+    <div className={`relative ${clipping ? "overflow-hidden" : ""} ${className ?? ""}`}>
       {dx > 0 && left && (
         <div
           className="absolute inset-0 flex items-center pl-5 text-white"
