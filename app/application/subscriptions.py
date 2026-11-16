@@ -193,6 +193,47 @@ class UnarchiveMemberUseCase:
         self.db.commit()
 
 
+class RenewSubscriptionUseCase:
+    """Продление: меняется только срок, больше ничего.
+
+    member_id=None — своя часть подписки (paid_until_self), иначе участник.
+    Расход не создаётся: оплата вносится отдельно, и сумма на момент
+    продления обычно ещё неизвестна.
+    """
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def execute(
+        self,
+        sub_id: int,
+        account_id: int,
+        paid_until: date,
+        member_id: int | None = None,
+    ) -> date:
+        sub = self.db.query(SubscriptionModel).filter(
+            SubscriptionModel.id == sub_id,
+            SubscriptionModel.account_id == account_id,
+        ).first()
+        if not sub:
+            raise SubscriptionValidationError("Подписка не найдена")
+
+        if member_id is None:
+            sub.paid_until_self = paid_until
+        else:
+            member = self.db.query(SubscriptionMemberModel).filter(
+                SubscriptionMemberModel.id == member_id,
+                SubscriptionMemberModel.subscription_id == sub_id,
+                SubscriptionMemberModel.account_id == account_id,
+            ).first()
+            if not member:
+                raise SubscriptionValidationError("Участник не найден")
+            member.paid_until = paid_until
+
+        self.db.commit()
+        return paid_until
+
+
 class UpdateMemberPaymentUseCase:
     def __init__(self, db: Session):
         self.db = db

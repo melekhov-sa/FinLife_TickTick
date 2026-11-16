@@ -138,7 +138,9 @@ export interface WeekEvent {
 }
 
 export interface ExpiringSub {
-  member_id: number;
+  subscription_id: number;
+  /** null — своя часть подписки, иначе конкретный участник. */
+  member_id: number | null;
   contact_name: string;
   subscription_title: string;
   paid_until: string;

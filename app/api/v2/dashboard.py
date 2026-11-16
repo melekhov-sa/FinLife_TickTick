@@ -165,7 +165,11 @@ class WeekEvent(BaseModel):
 
 
 class ExpiringSub(BaseModel):
-    member_id: int
+    subscription_id: int
+    # None — своя часть подписки (paid_until_self), иначе конкретный участник.
+    # Раньше для своей части слали member_id=0, и две такие подписки
+    # получали на фронте одинаковый React-ключ.
+    member_id: int | None
     contact_name: str
     subscription_title: str
     paid_until: date
@@ -375,6 +379,7 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
             sub = sub_cache.get(m.subscription_id)
             if contact and sub:
                 expiring_subs.append(ExpiringSub(
+                    subscription_id=sub.id,
                     member_id=m.id,
                     contact_name=contact.name,
                     subscription_title=sub.name,
@@ -384,7 +389,8 @@ def get_dashboard(request: Request, db: Session = Depends(get_db)):
 
         for s in self_rows:
             expiring_subs.append(ExpiringSub(
-                member_id=0,
+                subscription_id=s.id,
+                member_id=None,
                 contact_name="Вы",
                 subscription_title=s.name,
                 paid_until=s.paid_until_self,

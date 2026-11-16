@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { ExpiringSub, ExpiringDoc } from "@/types/api";
 import { Badge } from "@/components/primitives/Badge";
-import { AlarmClock, FileBadge2 } from "lucide-react";
+import { AlarmClock, FileBadge2, RotateCw } from "lucide-react";
+import { RenewSubSheet } from "@/components/dashboard/RenewSubSheet";
 
 interface Props {
   subs: ExpiringSub[];
@@ -15,13 +17,24 @@ function formatDate(iso: string) {
   });
 }
 
+/** Ключ строки: своя часть подписки приходит с member_id = null. */
+function subKey(s: ExpiringSub): string {
+  return `sub-${s.subscription_id}-${s.member_id ?? "self"}`;
+}
+
 export function ExpiringSubsCard({ subs, docs = [] }: Props) {
-  // Истёкшее — в одну строку-сводку; впереди только ближайшие 7 дней (подписки)
-  const expiredCount =
-    subs.filter((s) => s.days_left < 0).length + docs.filter((d) => d.days_left < 0).length;
+  const [renewing, setRenewing] = useState<ExpiringSub | null>(null);
+
+  // Просроченные подписки показываем поимённо и с кнопкой: раньше они
+  // сворачивались в счётчик «Истекло: N», по которому нельзя было ничего
+  // сделать — приходилось идти на страницу подписок и править дату руками.
+  const expiredSubs = subs.filter((s) => s.days_left < 0);
   const upcomingSubs = subs.filter((s) => s.days_left >= 0 && s.days_left <= 7);
+  const expiredDocsCount = docs.filter((d) => d.days_left < 0).length;
   const upcomingDocs = docs.filter((d) => d.days_left >= 0);
-  const hasAnything = upcomingSubs.length > 0 || upcomingDocs.length > 0 || expiredCount > 0;
+  const hasAnything =
+    upcomingSubs.length > 0 || upcomingDocs.length > 0 ||
+    expiredSubs.length > 0 || expiredDocsCount > 0;
 
   return (
     <div className="dash-card p-4">
@@ -34,13 +47,16 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
         <p className="text-[13px] py-1" style={{ color: "var(--t-faint)" }}>Всё в порядке</p>
       ) : (
         <div className="space-y-0.5">
-          {expiredCount > 0 && (
+          {expiredSubs.map((s) => (
+            <SubRow key={subKey(s)} sub={s} onRenew={() => setRenewing(s)} />
+          ))}
+          {expiredDocsCount > 0 && (
             <a
-              href="/trackers?tab=subscriptions"
+              href="/trackers?tab=documents"
               className="flex items-center justify-between gap-2 py-2 border-b border-slate-100 dark:border-white/[0.04] group"
             >
               <span className="text-[13px] font-medium" style={{ color: "var(--c-danger-ink)" }}>
-                ⚠️ Истекло: {expiredCount}
+                ⚠️ Истекло документов: {expiredDocsCount}
               </span>
               <span className="text-[11px] group-hover:text-[var(--app-accent)]" style={{ color: "var(--t-faint)" }}>
                 открыть →
@@ -78,26 +94,7 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
           ))}
 
           {upcomingSubs.map((s) => (
-            <div
-              key={`sub-${s.member_id}`}
-              className="flex items-start justify-between gap-3 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0"
-            >
-              <div className="min-w-0">
-                <p className="t-main font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
-                  {s.subscription_title}
-                  {" "}
-                  <span className="text-xs font-normal" style={{ color: "var(--t-muted)" }}>до {formatDate(s.paid_until)}</span>
-                </p>
-                <p className="t-secondary mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>{s.contact_name}</p>
-              </div>
-              <Badge
-                variant={s.days_left <= 3 ? "danger" : s.days_left <= 14 ? "warning" : "neutral"}
-                size="sm"
-                className="tabular-nums shrink-0"
-              >
-                {s.days_left === 0 ? "сегодня" : `${s.days_left} дн.`}
-              </Badge>
-            </div>
+            <SubRow key={subKey(s)} sub={s} onRenew={() => setRenewing(s)} />
           ))}
         </div>
       )}
@@ -110,6 +107,51 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
           Документы →
         </a>
       </div>
+
+      <RenewSubSheet sub={renewing} onClose={() => setRenewing(null)} />
+    </div>
+  );
+}
+
+function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
+  const expired = sub.days_left < 0;
+  return (
+    <div className="flex items-center justify-between gap-2 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
+      <div className="min-w-0 flex-1">
+        <p className="t-main font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
+          {sub.subscription_title}
+          {" "}
+          <span className="text-xs font-normal" style={{ color: "var(--t-muted)" }}>
+            до {formatDate(sub.paid_until)}
+          </span>
+        </p>
+        <p className="t-secondary mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>
+          {sub.contact_name}
+        </p>
+      </div>
+
+      <Badge
+        variant={expired || sub.days_left <= 3 ? "danger" : sub.days_left <= 14 ? "warning" : "neutral"}
+        size="sm"
+        className="tabular-nums shrink-0"
+      >
+        {expired
+          ? `${-sub.days_left} дн. назад`
+          : sub.days_left === 0
+          ? "сегодня"
+          : `${sub.days_left} дн.`}
+      </Badge>
+
+      <button
+        type="button"
+        onClick={onRenew}
+        className="tap-grow shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-80"
+        style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
+        title="Продлить подписку"
+      >
+        <RotateCw size={12} />
+        Продлил
+      </button>
     </div>
   );
 }

@@ -219,6 +219,42 @@ def update_member(
     return {"ok": True}
 
 
+class RenewRequest(BaseModel):
+    """Продление одним действием: меняется только срок.
+
+    member_id = None — своя часть подписки (paid_until_self),
+    иначе — конкретный участник.
+    """
+    member_id: int | None = None
+    paid_until: str  # ISO "YYYY-MM-DD"
+
+
+@router.post("/subscriptions/{sub_id}/renew")
+def renew_subscription(
+    sub_id: int, body: RenewRequest, request: Request, db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+
+    try:
+        new_until = date.fromisoformat(body.paid_until)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Неверная дата")
+
+    from app.application.subscriptions import (
+        RenewSubscriptionUseCase, SubscriptionValidationError,
+    )
+    try:
+        saved = RenewSubscriptionUseCase(db).execute(
+            sub_id=sub_id,
+            account_id=user_id,
+            paid_until=new_until,
+            member_id=body.member_id,
+        )
+    except SubscriptionValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"ok": True, "paid_until": saved.isoformat()}
+
+
 class CompensateRequest(BaseModel):
     member_id: int
     wallet_id: int

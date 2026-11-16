@@ -13,6 +13,7 @@ from app.application.subscriptions import (
     ArchiveSubscriptionUseCase, UnarchiveSubscriptionUseCase,
     AddSubscriptionMemberUseCase, ArchiveMemberUseCase, UnarchiveMemberUseCase,
     UpdateMemberPaymentUseCase,
+    RenewSubscriptionUseCase,
     CreateSubscriptionCoverageUseCase, CreateInitialCoverageUseCase,
     ExtendSubscriptionUseCase, CompensateSubscriptionUseCase,
     SubscriptionValidationError,
@@ -1310,3 +1311,92 @@ class TestSubscriptionAnalytics:
         # Cumulative check
         assert analytics["timeline"][-1]["cum_expense"] == 300.0
         assert analytics["timeline"][-1]["cum_net"] == 300.0
+
+
+# ============================================================================
+# Renew — продление одной кнопкой с дашборда
+# ============================================================================
+
+
+class TestRenewSubscription:
+    """Продление меняет только срок: ни операций, ни покрытий не создаётся."""
+
+    def test_renews_own_part(self, db_session, subscription):
+        subscription.paid_until_self = date(2026, 10, 15)
+        db_session.flush()
+
+        RenewSubscriptionUseCase(db_session).execute(
+            sub_id=subscription.id, account_id=ACCOUNT,
+            paid_until=date(2027, 10, 15),
+        )
+
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2027, 10, 15)
+
+    def test_renews_member(self, db_session, subscription, member):
+        member.paid_until = date(2026, 10, 15)
+        db_session.flush()
+
+        RenewSubscriptionUseCase(db_session).execute(
+            sub_id=subscription.id, account_id=ACCOUNT,
+            paid_until=date(2027, 10, 15), member_id=member.id,
+        )
+
+        db_session.refresh(member)
+        assert member.paid_until == date(2027, 10, 15)
+
+    def test_member_renewal_does_not_touch_own_part(self, db_session, subscription, member):
+        subscription.paid_until_self = date(2026, 1, 1)
+        member.paid_until = date(2026, 10, 15)
+        db_session.flush()
+
+        RenewSubscriptionUseCase(db_session).execute(
+            sub_id=subscription.id, account_id=ACCOUNT,
+            paid_until=date(2027, 10, 15), member_id=member.id,
+        )
+
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 1, 1)
+
+    def test_expired_subscription_can_be_renewed(self, db_session, subscription):
+        """Главный сценарий: подписка давно истекла, продлеваем задним числом."""
+        subscription.paid_until_self = date(2025, 9, 15)
+        db_session.flush()
+
+        RenewSubscriptionUseCase(db_session).execute(
+            sub_id=subscription.id, account_id=ACCOUNT,
+            paid_until=date(2026, 9, 15),
+        )
+
+        db_session.refresh(subscription)
+        assert subscription.paid_until_self == date(2026, 9, 15)
+
+    def test_creates_no_transactions(self, db_session, subscription):
+        subscription.paid_until_self = date(2026, 10, 15)
+        db_session.flush()
+        before = db_session.query(TransactionFeed).count()
+
+        RenewSubscriptionUseCase(db_session).execute(
+            sub_id=subscription.id, account_id=ACCOUNT,
+            paid_until=date(2027, 10, 15),
+        )
+
+        assert db_session.query(TransactionFeed).count() == before
+
+    def test_foreign_subscription_is_rejected(self, db_session, subscription):
+        with pytest.raises(SubscriptionValidationError):
+            RenewSubscriptionUseCase(db_session).execute(
+                sub_id=subscription.id, account_id=ACCOUNT + 999,
+                paid_until=date(2027, 10, 15),
+            )
+
+    def test_member_from_another_subscription_is_rejected(self, db_session, subscription, member):
+        other_id = CreateSubscriptionUseCase(db_session).execute(
+            account_id=ACCOUNT, name="Spotify",
+            expense_category_id=10, income_category_id=20,
+        )
+        with pytest.raises(SubscriptionValidationError):
+            RenewSubscriptionUseCase(db_session).execute(
+                sub_id=other_id, account_id=ACCOUNT,
+                paid_until=date(2027, 10, 15), member_id=member.id,
+            )
