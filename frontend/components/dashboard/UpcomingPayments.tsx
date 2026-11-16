@@ -1,8 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { clsx } from "clsx";
 import { CalendarClock } from "lucide-react";
 import type { UpcomingPayment } from "@/types/api";
+import {
+  CreateOperationModal,
+  type CreateOperationInitialValues,
+} from "@/components/modals/CreateOperationModal";
 
 interface Props {
   payments: UpcomingPayment[];
@@ -32,12 +37,16 @@ function formatDate(iso: string) {
 
 const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
-function PaymentRow({ p }: { p: UpcomingPayment }) {
+function PaymentRow({ p, onPay }: { p: UpcomingPayment; onPay: () => void }) {
   const colorCls = KIND_COLOR[p.kind] ?? "";
   const d = new Date(p.scheduled_date);
   const hasAmount = p.amount_formatted && p.amount_formatted !== "—";
   return (
-    <div className="flex items-center gap-2.5 py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
+    <button
+      type="button"
+      onClick={onPay}
+      title="Провести платёж"
+      className="w-full text-left flex items-center gap-2.5 py-2 border-b border-slate-100 dark:border-white/[0.05] last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.03] rounded-lg px-1.5 -mx-1.5 transition-colors">
       {/* Мини-календарь с датой САМОГО платежа (эмодзи 📅 всегда рисовал «17») */}
       <span
         className="w-8 h-8 rounded-lg flex flex-col items-center justify-center shrink-0"
@@ -68,11 +77,28 @@ function PaymentRow({ p }: { p: UpcomingPayment }) {
           {p.amount_formatted}
         </span>
       )}
-    </div>
+    </button>
   );
 }
 
+/** Предзаполнение операции — ровно то же, что на странице «План»
+ *  при нажатии на плановую операцию: тип, сумма, кошелёк, статья. */
+function initialValuesFor(p: UpcomingPayment): CreateOperationInitialValues {
+  return {
+    opType: p.kind as "INCOME" | "EXPENSE" | "TRANSFER",
+    amount: p.amount != null ? String(p.amount) : undefined,
+    walletId: p.wallet_id ?? undefined,
+    fromWalletId: p.wallet_id ?? undefined,
+    toWalletId: p.destination_wallet_id ?? undefined,
+    categoryId: p.category_id ?? undefined,
+  };
+}
+
 export function UpcomingPayments({ payments }: Props) {
+  // Платёж, который проводим: модалка открывается предзаполненной, а
+  // occurrenceId закрывает плановую операцию, как и на странице «План».
+  const [paying, setPaying] = useState<UpcomingPayment | null>(null);
+
   // Group by kind label
   const groups: Record<string, UpcomingPayment[]> = {};
   for (const p of payments) {
@@ -93,7 +119,7 @@ export function UpcomingPayments({ payments }: Props) {
         <p className="text-[13px] py-2" style={{ color: "var(--t-faint)" }}>Нет платежей на ближайшие 30 дней</p>
       ) : groupEntries.length === 1 ? (
         <div>
-          {payments.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
+          {payments.map((p) => <PaymentRow key={p.occurrence_id} p={p} onPay={() => setPaying(p)} />)}
         </div>
       ) : (
         <div className="space-y-3">
@@ -102,7 +128,7 @@ export function UpcomingPayments({ payments }: Props) {
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--t-faint)" }}>
                 {label}
               </p>
-              {items.map((p) => <PaymentRow key={p.occurrence_id} p={p} />)}
+              {items.map((p) => <PaymentRow key={p.occurrence_id} p={p} onPay={() => setPaying(p)} />)}
             </div>
           ))}
         </div>
@@ -113,6 +139,14 @@ export function UpcomingPayments({ payments }: Props) {
           Все плановые →
         </a>
       </div>
+
+      {paying && (
+        <CreateOperationModal
+          initialValues={initialValuesFor(paying)}
+          occurrenceId={paying.occurrence_id}
+          onClose={() => setPaying(null)}
+        />
+      )}
     </div>
   );
 }

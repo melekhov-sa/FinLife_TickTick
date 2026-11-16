@@ -60,7 +60,8 @@ export interface UpcomingPayment {
   scheduled_date: string;
   kind: string;
   kind_label: string;
-  amount: number;
+  /** null у шаблона без заданной суммы. */
+  amount: number | null;
   amount_formatted: string;
   days_until: number;
   wallet_id: number | null;
