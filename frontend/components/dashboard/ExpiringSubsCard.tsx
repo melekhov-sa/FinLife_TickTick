@@ -22,8 +22,15 @@ function subKey(s: ExpiringSub): string {
   return `sub-${s.subscription_id}-${s.member_id ?? "self"}`;
 }
 
+/* Просроченных может быть много (у списка общих подписок — десяток и
+   больше). Разворачивать их все значит отдать им весь экран, поэтому
+   показываем первые несколько, остальные — по кнопке. Сворачивать в один
+   счётчик, как было раньше, нельзя: по счётчику не продлить. */
+const EXPIRED_PREVIEW = 3;
+
 export function ExpiringSubsCard({ subs, docs = [] }: Props) {
   const [renewing, setRenewing] = useState<ExpiringSub | null>(null);
+  const [showAllExpired, setShowAllExpired] = useState(false);
 
   // Просроченные подписки показываем поимённо и с кнопкой: раньше они
   // сворачивались в счётчик «Истекло: N», по которому нельзя было ничего
@@ -47,9 +54,21 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
         <p className="text-[13px] py-1" style={{ color: "var(--t-faint)" }}>Всё в порядке</p>
       ) : (
         <div className="space-y-0.5">
-          {expiredSubs.map((s) => (
+          {(showAllExpired ? expiredSubs : expiredSubs.slice(0, EXPIRED_PREVIEW)).map((s) => (
             <SubRow key={subKey(s)} sub={s} onRenew={() => setRenewing(s)} />
           ))}
+          {expiredSubs.length > EXPIRED_PREVIEW && (
+            <button
+              type="button"
+              onClick={() => setShowAllExpired((v) => !v)}
+              className="w-full text-left py-2 text-[12px] font-medium transition-opacity hover:opacity-70"
+              style={{ color: "var(--app-accent)" }}
+            >
+              {showAllExpired
+                ? "Свернуть"
+                : `Ещё ${expiredSubs.length - EXPIRED_PREVIEW} просроченных`}
+            </button>
+          )}
           {expiredDocsCount > 0 && (
             <a
               href="/trackers?tab=documents"
@@ -113,20 +132,21 @@ export function ExpiringSubsCard({ subs, docs = [] }: Props) {
   );
 }
 
+/* Название, бейдж и кнопка в одну строку не влезают на телефон: бейдж
+   «110 дн. назад» и кнопка съедали около 180pt из ~337pt доступных, и
+   название обрезалось прямо посреди даты. Поэтому дата переехала во
+   вторую строку к контакту, а бейдж ужат до «−110 дн.»: минус отличает
+   просрочку от «через 5 дн.» не хуже слова «назад». */
 function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
   const expired = sub.days_left < 0;
   return (
-    <div className="flex items-center justify-between gap-2 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
+    <div className="flex items-center gap-2 py-2 border-b border-slate-100 dark:border-white/[0.04] last:border-0">
       <div className="min-w-0 flex-1">
         <p className="t-main font-semibold truncate leading-snug" style={{ color: "var(--t-primary)" }}>
           {sub.subscription_title}
-          {" "}
-          <span className="text-xs font-normal" style={{ color: "var(--t-muted)" }}>
-            до {formatDate(sub.paid_until)}
-          </span>
         </p>
         <p className="t-secondary mt-0.5 truncate" style={{ color: "var(--t-muted)" }}>
-          {sub.contact_name}
+          {sub.contact_name} · до {formatDate(sub.paid_until)}
         </p>
       </div>
 
@@ -136,7 +156,7 @@ function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
         className="tabular-nums shrink-0"
       >
         {expired
-          ? `${-sub.days_left} дн. назад`
+          ? `−${-sub.days_left} дн.`
           : sub.days_left === 0
           ? "сегодня"
           : `${sub.days_left} дн.`}
@@ -145,12 +165,13 @@ function SubRow({ sub, onRenew }: { sub: ExpiringSub; onRenew: () => void }) {
       <button
         type="button"
         onClick={onRenew}
-        className="tap-grow shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-80"
+        aria-label={`Продлить: ${sub.subscription_title}`}
+        className="tap-grow shrink-0 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-opacity hover:opacity-80"
         style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
         title="Продлить подписку"
       >
         <RotateCw size={12} />
-        Продлил
+        Продлить
       </button>
     </div>
   );
