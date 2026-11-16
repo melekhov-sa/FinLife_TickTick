@@ -6,7 +6,7 @@ DELETE /api/v2/events/occurrences/{id}             — cancel occurrence
 POST   /api/v2/events/occurrences/{id}/duplicate   — duplicate occurrence
 POST   /api/v2/events/occurrences/{id}/reschedule  — reschedule a single occurrence
 """
-from datetime import date, time as t_time, timedelta
+from datetime import date, datetime, time as t_time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from pydantic import BaseModel
@@ -590,6 +590,7 @@ def complete_occurrence(occurrence_id: int, request: Request, db: Session = Depe
     if occ.is_cancelled:
         raise HTTPException(status_code=400, detail="Нельзя выполнить отменённое событие")
     occ.is_completed = True
+    occ.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
 
@@ -605,6 +606,7 @@ def uncomplete_occurrence(occurrence_id: int, request: Request, db: Session = De
     if not occ:
         raise HTTPException(status_code=404, detail="Occurrence not found")
     occ.is_completed = False
+    occ.completed_at = None
     db.commit()
     return {"ok": True}
 

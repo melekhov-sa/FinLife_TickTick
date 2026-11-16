@@ -382,7 +382,22 @@ def _query_event_occurrences(
         for occ in rows:
             ev = _get_ev(occ.event_id)
             if ev and ev.is_active:
-                items.append(_event_occ_to_item(occ, ev, wc_map))
+                items.append(_event_occ_to_item(occ, ev, wc_map, today))
+
+        # Непройденные события с ручным закрытием тянем из прошлого, как
+        # задачи. Без этого событие просто исчезало, когда его дата уходила
+        # за левую границу диапазона: выполненным оно не становилось, но и
+        # напомнить о себе больше не могло.
+        stale = db.query(EventOccurrenceModel).filter(
+            EventOccurrenceModel.account_id == account_id,
+            EventOccurrenceModel.is_cancelled == False,  # noqa: E712
+            EventOccurrenceModel.is_completed == False,  # noqa: E712
+            EventOccurrenceModel.start_date < date_from,
+        ).all()
+        for occ in stale:
+            ev = _get_ev(occ.event_id)
+            if ev and ev.is_active and _event_is_overdue(occ, ev, today):
+                items.append(_event_occ_to_item(occ, ev, wc_map, today))
 
     elif tab == "done":
         # Past events = "done"
@@ -397,8 +412,13 @@ def _query_event_occurrences(
         ).all()
         for occ in rows:
             ev = _get_ev(occ.event_id)
-            if ev and ev.is_active:
-                items.append(_event_occ_to_item(occ, ev, wc_map))
+            if not ev or not ev.is_active:
+                continue
+            # Прошедшее событие с ручным закрытием, которое не отметили,
+            # выполненным не считается — его место в просрочке.
+            if _event_is_overdue(occ, ev, today):
+                continue
+            items.append(_event_occ_to_item(occ, ev, wc_map, today))
 
     elif tab == "archive":
         rows = db.query(EventOccurrenceModel).filter(
@@ -407,7 +427,7 @@ def _query_event_occurrences(
         for occ in rows:
             ev = _get_ev(occ.event_id)
             if ev and not ev.is_active:
-                items.append(_event_occ_to_item(occ, ev, wc_map))
+                items.append(_event_occ_to_item(occ, ev, wc_map, today))
 
     return items
 
@@ -415,7 +435,27 @@ def _query_event_occurrences(
 _JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
 
 
-def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map: dict) -> dict:
+MANUAL_COMPLETION = "manual"
+
+
+def _event_is_overdue(occ: EventOccurrenceModel, ev: CalendarEventModel, today: date) -> bool:
+    """Просрочено только то, что закрывается руками и ещё не закрыто.
+
+    У режимов end_of_day и at_event_end событие считается состоявшимся само
+    по факту наступления даты — им просрочка не нужна. А manual существует
+    ровно затем, чтобы висеть, пока не отметишь.
+    """
+    if ev.completion_mode != MANUAL_COMPLETION:
+        return False
+    if occ.is_completed or occ.is_cancelled:
+        return False
+    last_day = occ.end_date or occ.start_date
+    return last_day < today
+
+
+def _event_occ_to_item(
+    occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map: dict, today: date | None = None
+) -> dict:
     person_age: int | None = None
     is_jubilee = False
     if ev.birth_year and occ.start_date:
@@ -431,7 +471,7 @@ def _event_occ_to_item(occ: EventOccurrenceModel, ev: CalendarEventModel, wc_map
         "date": occ.start_date,
         "time": occ.start_time,
         "is_done": occ.is_completed,
-        "is_overdue": False,
+        "is_overdue": _event_is_overdue(occ, ev, today) if today else False,
         "status": "CANCELLED" if occ.is_cancelled else "ACTIVE",
         "category_emoji": wc.emoji if wc else None,
         "category_title": wc.title if wc else None,
@@ -807,7 +847,7 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
         if habit and not habit.is_archived:
             wc += 1
 
-    # --- overdue_count: tasks + planned_ops only ---
+    # --- overdue_count: tasks + planned_ops + ручные события ---
     oc = 0
     oc += db.query(func.count(TaskModel.task_id)).filter(
         TaskModel.account_id == account_id,
@@ -832,6 +872,20 @@ def _compute_summary(db: Session, account_id: int, today: date, wc_map: dict) ->
     for occ in overdue_op_occs:
         tmpl = db.query(OperationTemplateModel).filter(OperationTemplateModel.template_id == occ.template_id).first()
         if tmpl and not tmpl.is_archived:
+            oc += 1
+    # События с ручным закрытием теперь тоже висят в просрочке, пока их не
+    # отметят, — значит и считать их надо, иначе счётчик разойдётся со списком.
+    stale_events = db.query(EventOccurrenceModel).filter(
+        EventOccurrenceModel.account_id == account_id,
+        EventOccurrenceModel.is_cancelled == False,  # noqa: E712
+        EventOccurrenceModel.is_completed == False,  # noqa: E712
+        EventOccurrenceModel.start_date < today,
+    ).all()
+    for occ in stale_events:
+        ev = db.query(CalendarEventModel).filter(
+            CalendarEventModel.event_id == occ.event_id
+        ).first()
+        if ev and ev.is_active and _event_is_overdue(occ, ev, today):
             oc += 1
 
     # --- done_today_count ---

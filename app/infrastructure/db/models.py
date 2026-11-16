@@ -661,6 +661,9 @@ class EventOccurrenceModel(Base):
 
     is_cancelled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Когда отметили выполненным. Раньше хранился только флаг, и ответить
+    # «когда я это закрыл» было нечем: updated_at ниже объявлен без onupdate.
+    completed_at: Mapped[DateTime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     source: Mapped[str] = mapped_column(String(16), nullable=False, server_default="'manual'")  # 'manual' | 'rule'
 
     created_at: Mapped[DateTime] = mapped_column(
