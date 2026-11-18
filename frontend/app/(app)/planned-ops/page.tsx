@@ -30,6 +30,7 @@ interface PlannedOpItem {
   from_goal_id: number | null;
   to_goal_id: number | null;
   freq: string | null;
+  interval: number;
   active_from: string;
   active_until: string | null;
   is_archived: boolean;
@@ -67,6 +68,15 @@ const FREQ_LABELS: Record<string, string> = {
   INTERVAL_DAYS: "Через N дней",
   MULTI_DATE:    "По датам",
 };
+
+/** «Ежемесячно» при interval=1, иначе «Каждые 6 мес.». */
+function freqLabel(freq: string, interval: number): string {
+  if (interval <= 1) return FREQ_LABELS[freq] ?? freq;
+  const unit: Record<string, string> = {
+    DAILY: "дн.", WEEKLY: "нед.", MONTHLY: "мес.", YEARLY: "г.",
+  };
+  return unit[freq] ? `Каждые ${interval} ${unit[freq]}` : `${FREQ_LABELS[freq] ?? freq} ×${interval}`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -164,7 +174,7 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-medium leading-snug truncate" style={{ color: "var(--t-primary)" }}>{item.title}</span>
             <KindBadge kind={item.kind} />
-            {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{FREQ_LABELS[item.freq] ?? item.freq}</span>}
+            {item.freq && <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.06] leading-none" style={{ color: "var(--t-muted)" }}>{freqLabel(item.freq, item.interval ?? 1)}</span>}
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             {walletLabel && <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>{walletLabel}</span>}

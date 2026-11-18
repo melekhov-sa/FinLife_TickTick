@@ -17,6 +17,7 @@ from app.application.chained_recurrence import (
     ensure_next_after_completion,
     seed_first_occurrence,
 )
+from app.application.id_sequence import next_entity_id
 
 
 class TaskTemplateValidationError(ValueError):
@@ -104,10 +105,12 @@ class CreateTaskTemplateUseCase:
         return template_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['template_id'], TaskTemplateModel.template_id.type))
-        ).filter(EventLog.event_type == 'task_template_created').scalar() or 0
-        return max_id + 1
+        return next_entity_id(
+            self.db,
+            event_type='task_template_created',
+            payload_key='template_id',
+            column=TaskTemplateModel.template_id,
+        )
 
 
 class CompleteTaskOccurrenceUseCase:

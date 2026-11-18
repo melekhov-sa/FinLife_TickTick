@@ -51,6 +51,22 @@ const FREQ_OPTIONS: SelectOption[] = [
   { value: "YEARLY",  label: "Ежегодно" },
 ];
 
+/** «Каждые 6 месяцев», «Каждые 2 недели» — подсказка под полем. */
+function intervalHint(freq: string, n: number): string {
+  const forms: Record<string, [string, string, string]> = {
+    DAILY:   ["день", "дня", "дней"],
+    WEEKLY:  ["неделю", "недели", "недель"],
+    MONTHLY: ["месяц", "месяца", "месяцев"],
+    YEARLY:  ["год", "года", "лет"],
+  };
+  const f = forms[freq] ?? forms.MONTHLY;
+  if (n === 1) return `Каждый ${f[0]}`.replace("Каждый неделю", "Каждую неделю");
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  const word = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? f[1] : f[2];
+  return `Каждые ${n} ${word}`;
+}
+
 function fmtBalance(balance: string, currency: string): string {
   const n = parseFloat(balance);
   if (isNaN(n)) return balance;
@@ -66,6 +82,9 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
   const [title, setTitle] = useState(template?.title ?? "");
   const [amount, setAmount] = useState(template?.amount ?? "");
   const [freq, setFreq] = useState("MONTHLY");
+  // Каждые N периодов: freq — единица, interval — сколько их.
+  // «Каждые 6 месяцев» это MONTHLY + 6.
+  const [repeatEvery, setRepeatEvery] = useState("1");
   const [activeFrom, setActiveFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [walletId, setWalletId] = useState<number | "">(template?.wallet_id ?? "");
   const [destWalletId, setDestWalletId] = useState<number | "">(template?.destination_wallet_id ?? "");
@@ -172,6 +191,7 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
         title: title.trim(),
         amount: amount || null,
         freq,
+        interval: Math.max(1, Number(repeatEvery) || 1),
         active_from: activeFrom || undefined,
         active_until: activeUntil || null,
         category_id: categoryId || null,
@@ -271,11 +291,25 @@ export function PlannedOpEditModal({ template, onClose }: Props) {
         {/* Freq — create mode only */}
         {isCreate && (
           <FormRow label="Периодичность" required>
-            <Select
-              value={freq}
-              onChange={(v) => setFreq(v as string)}
-              options={FREQ_OPTIONS}
-            />
+            <div className="flex gap-2">
+              <Select
+                value={freq}
+                onChange={(v) => setFreq(v as string)}
+                options={FREQ_OPTIONS}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                min={1}
+                value={repeatEvery}
+                onChange={(e) => setRepeatEvery(e.target.value)}
+                className="w-20 text-center"
+                aria-label="Каждые N периодов"
+              />
+            </div>
+            <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+              {intervalHint(freq, Math.max(1, Number(repeatEvery) || 1))}
+            </p>
           </FormRow>
         )}
 

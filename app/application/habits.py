@@ -13,6 +13,7 @@ from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 from app.application.occurrence_generator import OccurrenceGenerator
+from app.application.id_sequence import next_entity_id
 
 TOGGLE_WINDOW_DAYS = 14
 
@@ -103,10 +104,12 @@ class CreateHabitUseCase:
         return habit_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['habit_id'], HabitModel.habit_id.type))
-        ).filter(EventLog.event_type == 'habit_created').scalar() or 0
-        return max_id + 1
+        return next_entity_id(
+            self.db,
+            event_type='habit_created',
+            payload_key='habit_id',
+            column=HabitModel.habit_id,
+        )
 
 
 class ArchiveHabitUseCase:

@@ -27,6 +27,7 @@ class PlannedOpItem(BaseModel):
     from_goal_id: int | None
     to_goal_id: int | None
     freq: str | None
+    interval: int = 1
     active_from: str
     active_until: str | None
     is_archived: bool
@@ -64,6 +65,9 @@ class PlannedOpCreate(BaseModel):
     title: str
     amount: str | None = None
     freq: str = "MONTHLY"
+    # Каждые N периодов: freq задаёт единицу, interval — сколько их.
+    # «Каждые 6 месяцев» это MONTHLY + 6.
+    interval: int = 1
     wallet_id: int | None = None
     destination_wallet_id: int | None = None
     category_id: int | None = None
@@ -142,6 +146,7 @@ def list_planned_ops(
             from_goal_id=t.from_goal_id,
             to_goal_id=t.to_goal_id,
             freq=rule_map[t.rule_id].freq if t.rule_id and t.rule_id in rule_map else None,
+            interval=rule_map[t.rule_id].interval if t.rule_id and t.rule_id in rule_map else 1,
             active_from=t.active_from.isoformat(),
             active_until=t.active_until.isoformat() if t.active_until else None,
             is_archived=t.is_archived,
@@ -258,7 +263,7 @@ def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Dep
     rule = RecurrenceRuleModel(
         account_id=user_id,
         freq=body.freq,
-        interval=1,
+        interval=max(1, body.interval),
         start_date=active_from,
         until_date=active_until,
         by_monthday=active_from.day if body.freq == "MONTHLY" else None,

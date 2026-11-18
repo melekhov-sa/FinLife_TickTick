@@ -7,6 +7,7 @@ from app.infrastructure.db.models import RecurrenceRuleModel, EventLog
 from app.domain.recurrence_rule import RecurrenceRule
 from app.domain.recurrence import VALID_FREQ, CHAINABLE_FREQ
 from app.readmodels.projectors.recurrence_rules import RecurrenceRulesProjector
+from app.application.id_sequence import next_entity_id
 
 
 class RecurrenceRuleValidationError(ValueError):
@@ -77,10 +78,12 @@ class CreateRecurrenceRuleUseCase:
         return rule_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['rule_id'], RecurrenceRuleModel.rule_id.type))
-        ).filter(EventLog.event_type == 'recurrence_rule_created').scalar() or 0
-        return max_id + 1
+        return next_entity_id(
+            self.db,
+            event_type='recurrence_rule_created',
+            payload_key='rule_id',
+            column=RecurrenceRuleModel.rule_id,
+        )
 
 
 class UpdateRecurrenceRuleUseCase:

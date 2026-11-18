@@ -10,6 +10,7 @@ from app.domain.task import Task
 from app.readmodels.projectors.tasks import TasksProjector
 from app.readmodels.projectors.xp import XpProjector
 from app.readmodels.projectors.activity import ActivityProjector
+from app.application.id_sequence import next_entity_id
 
 
 logger = logging.getLogger(__name__)
@@ -84,10 +85,12 @@ class CreateTaskUseCase:
         if self.db.bind.dialect.name == "postgresql":
             return self.db.execute(text("SELECT nextval('task_id_seq')")).scalar()
         # SQLite test fallback — MAX-based (no sequence support)
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['task_id'], TaskModel.task_id.type))
-        ).filter(EventLog.event_type == 'task_created').scalar() or 0
-        return max_id + 1
+        return next_entity_id(
+            self.db,
+            event_type='task_created',
+            payload_key='task_id',
+            column=TaskModel.task_id,
+        )
 
 
 class UpdateTaskUseCase:

@@ -11,6 +11,7 @@ from app.domain.operation_occurrence import OperationOccurrenceEvent
 from app.readmodels.projectors.operation_templates import OperationTemplatesProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 from app.application.transactions import CreateTransactionUseCase
+from app.application.id_sequence import next_entity_id
 
 
 class OperationTemplateValidationError(ValueError):
@@ -128,10 +129,12 @@ class CreateOperationTemplateUseCase:
         return template_id
 
     def _generate_id(self) -> int:
-        max_id = self.db.query(
-            func.max(func.cast(EventLog.payload_json['template_id'], OperationTemplateModel.template_id.type))
-        ).filter(EventLog.event_type == 'operation_template_created').scalar() or 0
-        return max_id + 1
+        return next_entity_id(
+            self.db,
+            event_type='operation_template_created',
+            payload_key='template_id',
+            column=OperationTemplateModel.template_id,
+        )
 
 
 class UpdateOperationTemplateUseCase:
