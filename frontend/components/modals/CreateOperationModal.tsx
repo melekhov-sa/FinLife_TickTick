@@ -40,6 +40,25 @@ interface GoalItem {
   wallets: GoalWalletItem[];
 }
 
+/**
+ * Список кошельков для селекта: три самых используемых отдельной группой,
+ * остальные ниже. Порядок задаёт вызывающий (sortWalletsByUsage), здесь
+ * только раскладка по группам — одна на все селекты модалки.
+ */
+function buildWalletOptions(list: WalletItem[], placeholder: string): SelectOption[] {
+  const opts: SelectOption[] = [{ value: "", label: placeholder }];
+  const label = (w: WalletItem) => `${w.title} · ${fmtBalance(w.balance, w.currency)}`;
+  const top3 = list.slice(0, 3);
+  const rest = list.slice(3);
+  if (rest.length > 0) {
+    top3.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "★ Частые" }));
+    rest.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "Все кошельки" }));
+  } else {
+    list.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w) }));
+  }
+  return opts;
+}
+
 export interface CreateOperationInitialValues {
   opType?: OpType;
   amount?: string;
@@ -211,24 +230,18 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
     };
   }, [opType, categoryId, amount, budgetData]);
 
-  const walletOptions: SelectOption[] = useMemo(() => {
-    const opts: SelectOption[] = [{ value: "", label: "— выберите кошелёк —" }];
-    const top3 = visibleWallets.slice(0, 3);
-    const rest = visibleWallets.slice(3);
-    const label = (w: WalletItem) => `${w.title} · ${fmtBalance(w.balance, w.currency)}`;
-    if (rest.length > 0) {
-      top3.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "★ Частые" }));
-      rest.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w), group: "Все кошельки" }));
-    } else {
-      visibleWallets.forEach((w) => opts.push({ value: String(w.wallet_id), label: label(w) }));
-    }
-    return opts;
-  }, [visibleWallets]);
+  const walletOptions: SelectOption[] = useMemo(
+    () => buildWalletOptions(visibleWallets, "— выберите кошелёк —"),
+    [visibleWallets],
+  );
 
-  const allWalletOptions: SelectOption[] = useMemo(() => [
-    { value: "", label: "— кошелёк —" },
-    ...(wallets ?? []).map((w) => ({ value: String(w.wallet_id), label: `${w.title} · ${fmtBalance(w.balance, w.currency)}` })),
-  ], [wallets]);
+  // «Откуда» и «Куда» у перевода. Раньше строились из несортированного
+  // списка, поэтому сортировка по частоте до переводов не доходила вовсе.
+  // Накопительные кошельки здесь нужны, поэтому фильтра как у расхода нет.
+  const allWalletOptions: SelectOption[] = useMemo(
+    () => buildWalletOptions(sortWalletsByUsage(wallets ?? []), "— кошелёк —"),
+    [wallets],
+  );
 
   const categoryOptions: SelectOption[] = useMemo(() => {
     const opts: SelectOption[] = [{ value: "", label: "— без категории —" }];

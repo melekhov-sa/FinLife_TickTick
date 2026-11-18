@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { SectionHeader } from "@/components/primitives/SectionHeader";
 import { Stat } from "@/components/primitives/Stat";
+import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,9 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
   const amountSign = item.kind === "INCOME" ? "+" : item.kind === "EXPENSE" ? "−" : "↔";
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  // Архивация останавливает создание операций по шаблону, а кнопка
+  // стоит вплотную к «Редактировать» — спрашиваем подтверждение.
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   const { mutate: archiveOp } = useMutation({
     mutationFn: () => api.post(`/api/v2/planned-ops/${item.template_id}/archive`),
@@ -189,12 +193,30 @@ function TemplateRow({ item, archived: isArchived }: { item: PlannedOpItem; arch
             </Tooltip>
           )}
           <Tooltip content={isArchived ? "Восстановить" : "В архив"}>
-            <button onClick={() => isArchived ? restoreOp() : archiveOp()} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
+            <button onClick={() => setConfirmArchive(true)} className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all" style={{ color: "var(--t-faint)" }}>
               {isArchived ? <RotateCcw size={11} /> : <Archive size={11} />}
             </button>
           </Tooltip>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmArchive}
+        title={isArchived ? "Вернуть из архива?" : "В архив?"}
+        description={
+          isArchived
+            ? `«${item.title}» снова начнёт создавать плановые операции по расписанию.`
+            : `«${item.title}» перестанет создавать новые операции и пропадёт из списка. Уже созданные останутся.`
+        }
+        confirmLabel={isArchived ? "Вернуть" : "В архив"}
+        destructive={!isArchived}
+        onConfirm={() => {
+          if (isArchived) restoreOp();
+          else archiveOp();
+          setConfirmArchive(false);
+        }}
+        onCancel={() => setConfirmArchive(false)}
+      />
     </>
   );
 }

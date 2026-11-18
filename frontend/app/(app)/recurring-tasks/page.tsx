@@ -17,6 +17,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { CreateTaskModal } from "@/components/modals/CreateTaskModal";
 import { Checkbox } from "@/components/primitives/Checkbox";
+import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 
 /** Короткая единица срока для режима «от выполнения». */
 function unitShort(freq: string): string {
@@ -121,6 +122,9 @@ function TemplateRow({
   const [editInterval, setEditInterval] = useState(String(item.interval));
   const [editActiveUntil, setEditActiveUntil] = useState(item.active_until ?? "");
   const [editFromCompletion, setEditFromCompletion] = useState(item.anchor === "COMPLETION");
+  // Архивация прячет шаблон и останавливает создание задач по нему,
+  // а кнопка стоит вплотную к «Редактировать» — спрашиваем.
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   const { mutate: update, isPending } = useUpdateTemplate();
 
@@ -300,7 +304,7 @@ function TemplateRow({
         )}
         <Tooltip content={archived ? "Восстановить" : "В архив"}>
           <button
-            onClick={() => archived ? restoreTemplate() : archiveTemplate()}
+            onClick={() => setConfirmArchive(true)}
             className="w-6 h-6 flex items-center justify-center rounded-md md:opacity-0 md:group-hover/row:opacity-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all"
             style={{ color: "var(--t-faint)" }}
           >
@@ -308,6 +312,24 @@ function TemplateRow({
           </button>
         </Tooltip>
       </div>
+
+      <ConfirmDialog
+        open={confirmArchive}
+        title={archived ? "Вернуть из архива?" : "В архив?"}
+        description={
+          archived
+            ? `«${item.title}» снова начнёт создавать задачи по расписанию.`
+            : `«${item.title}» перестанет создавать новые задачи и пропадёт из списка. Уже созданные задачи останутся.`
+        }
+        confirmLabel={archived ? "Вернуть" : "В архив"}
+        destructive={!archived}
+        onConfirm={() => {
+          if (archived) restoreTemplate();
+          else archiveTemplate();
+          setConfirmArchive(false);
+        }}
+        onCancel={() => setConfirmArchive(false)}
+      />
     </div>
   );
 }
