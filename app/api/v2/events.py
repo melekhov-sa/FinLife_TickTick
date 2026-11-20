@@ -137,6 +137,68 @@ def get_events(
     return result
 
 
+class RecurrenceInput(BaseModel):
+    """Повторение события в терминах интерфейса.
+
+    freq = None означает «не повторять»: правило отвязывается, будущие
+    порождённые им вхождения удаляются.
+    """
+    freq: str | None = None              # daily, weekly, monthly, yearly, interval
+    start_date_rule: str | None = None
+    start_date: str | None = None
+    until_date: str | None = None
+    rec_weekdays: str | None = None
+    rec_day: int | None = None
+    rec_month: int | None = None
+    rec_day_yearly: int | None = None
+    rec_interval: int | None = None
+
+
+def build_rule_fields(body) -> dict:
+    """UI-термины → поля recurrence_rules.
+
+    Общая для создания и правки: разъедься они, одно и то же повторение
+    означало бы разные даты в зависимости от того, как его завели.
+    """
+    from datetime import date as _date
+    today = _date.today()
+    kind = body.freq
+    out = {
+        "freq": None, "interval": 1, "start_date": None,
+        "by_weekday": None, "by_monthday": None,
+        "by_month": None, "by_monthday_for_year": None,
+    }
+    if kind == "yearly":
+        out["freq"] = "YEARLY"
+        out["by_month"] = body.rec_month
+        out["by_monthday_for_year"] = body.rec_day_yearly
+        if body.rec_month and body.rec_day_yearly:
+            out["start_date"] = f"{today.year}-{body.rec_month:02d}-{body.rec_day_yearly:02d}"
+    elif kind == "monthly":
+        out["freq"] = "MONTHLY"
+        out["by_monthday"] = body.rec_day
+        out["start_date"] = today.isoformat()
+    elif kind == "weekly":
+        out["freq"] = "WEEKLY"
+        out["by_weekday"] = body.rec_weekdays
+        out["start_date"] = body.start_date_rule or body.start_date or today.isoformat()
+    elif kind == "interval":
+        out["freq"] = "INTERVAL_DAYS"
+        out["interval"] = body.rec_interval or 1
+        out["start_date"] = body.start_date_rule or body.start_date or today.isoformat()
+    elif kind == "daily":
+        out["freq"] = "DAILY"
+        out["start_date"] = body.start_date_rule or body.start_date or today.isoformat()
+    return out
+
+
+# Обратное преобразование — чтобы форма правки открывалась заполненной.
+_FREQ_TO_UI = {
+    "YEARLY": "yearly", "MONTHLY": "monthly", "WEEKLY": "weekly",
+    "INTERVAL_DAYS": "interval", "DAILY": "daily",
+}
+
+
 class CreateEventRequest(BaseModel):
     title: str
     start_date: str
@@ -204,39 +266,17 @@ def create_event(body: CreateEventRequest, request: Request, db: Session = Depen
                 actor_user_id=user_id,
             )
         else:
-            from datetime import date as _date
-            today = _date.today()
-            freq_val: str | None = None
-            interval: int = 1
-            rule_start_date: str | None = None
-            by_weekday: str | None = None
-            by_monthday: int | None = None
-            by_month: int | None = None
-            by_monthday_for_year: int | None = None
-
-            if recurrence_type == "yearly":
-                freq_val = "YEARLY"
-                by_month = body.rec_month
-                by_monthday_for_year = body.rec_day_yearly
-                if body.rec_month and body.rec_day_yearly:
-                    rule_start_date = f"{today.year}-{body.rec_month:02d}-{body.rec_day_yearly:02d}"
-            elif recurrence_type == "monthly":
-                freq_val = "MONTHLY"
-                by_monthday = body.rec_day
-                rule_start_date = today.isoformat()
-            elif recurrence_type == "weekly":
-                freq_val = "WEEKLY"
-                by_weekday = body.rec_weekdays
-                # Use the user's chosen event start date so the recurrence aligns
-                # with the selected weekdays from the very first week
-                rule_start_date = body.start_date_rule or body.start_date or today.isoformat()
-            elif recurrence_type == "interval":
-                freq_val = "INTERVAL_DAYS"
-                interval = body.rec_interval or 1
-                rule_start_date = body.start_date_rule or body.start_date
-            elif recurrence_type == "daily":
-                freq_val = "DAILY"
-                rule_start_date = body.start_date_rule or body.start_date
+            # Тот же конвертер, что и у правки повторения: иначе одно и то
+            # же расписание означало бы разные даты в зависимости от того,
+            # завели его при создании события или поменяли потом.
+            _f = build_rule_fields(body)
+            freq_val = _f["freq"]
+            interval = _f["interval"]
+            rule_start_date = _f["start_date"]
+            by_weekday = _f["by_weekday"]
+            by_monthday = _f["by_monthday"]
+            by_month = _f["by_month"]
+            by_monthday_for_year = _f["by_monthday_for_year"]
 
             event_id = CreateEventUseCase(db).execute(
                 account_id=user_id,
@@ -575,6 +615,111 @@ def update_event(event_id: int, body: UpdateEventRequest, request: Request, db: 
         event.default_end_time = t_time.fromisoformat(body.default_end_time) if body.default_end_time else None
     db.commit()
     return {"ok": True}
+
+
+# ── Повторение события ───────────────────────────────────────────────────────
+
+@router.get("/events/{event_id}/recurrence")
+def get_event_recurrence(event_id: int, request: Request, db: Session = Depends(get_db)):
+    """Текущее повторение в терминах формы — чтобы она открывалась заполненной."""
+    user_id = get_user_id(request, db)
+    event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+
+    empty = {
+        "freq": None, "start_date_rule": None, "until_date": None,
+        "rec_weekdays": None, "rec_day": None, "rec_month": None,
+        "rec_day_yearly": None, "rec_interval": None,
+    }
+    if not event.repeat_rule_id:
+        return empty
+
+    from app.infrastructure.db.models import RecurrenceRuleModel
+    rule = db.query(RecurrenceRuleModel).filter_by(rule_id=event.repeat_rule_id).first()
+    if not rule:
+        return empty
+
+    return {
+        "freq": _FREQ_TO_UI.get(rule.freq),
+        "start_date_rule": rule.start_date.isoformat() if rule.start_date else None,
+        "until_date": rule.until_date.isoformat() if rule.until_date else None,
+        "rec_weekdays": rule.by_weekday,
+        "rec_day": rule.by_monthday,
+        "rec_month": rule.by_month,
+        "rec_day_yearly": rule.by_monthday_for_year,
+        "rec_interval": rule.interval,
+    }
+
+
+@router.put("/events/{event_id}/recurrence")
+def set_event_recurrence(
+    event_id: int, body: RecurrenceInput, request: Request, db: Session = Depends(get_db),
+):
+    """Задать или изменить повторение события.
+
+    Существующие вхождения сохраняются избирательно: удаляются только
+    будущие, порождённые правилом и не отменённые. Прошлое остаётся
+    историей, перенесённые вручную переживают смену правила, отменённые
+    не воскресают. Эта семантика уже была в rebuild_event_occurrences —
+    здесь она просто становится доступна новому интерфейсу.
+    """
+    from datetime import date as _date
+    from app.application.events import (
+        UpdateEventUseCase, EventValidationError, rebuild_event_occurrences,
+    )
+    from app.application.recurrence_rules import (
+        CreateRecurrenceRuleUseCase, UpdateRecurrenceRuleUseCase,
+        RecurrenceRuleValidationError,
+    )
+    from app.application.occurrence_generator import OccurrenceGenerator
+
+    user_id = get_user_id(request, db)
+    event = db.query(CalendarEventModel).filter_by(event_id=event_id, account_id=user_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+
+    if body.freq == "weekly" and not body.rec_weekdays:
+        raise HTTPException(status_code=422, detail="Для еженедельного события выберите хотя бы один день недели")
+
+    today = _date.today()
+    fields = build_rule_fields(body)
+
+    try:
+        # «Не повторять»: отвязываем правило и убираем будущие вхождения.
+        if fields["freq"] is None:
+            if event.repeat_rule_id:
+                UpdateEventUseCase(db).execute(
+                    event_id=event_id, account_id=user_id,
+                    repeat_rule_id=None, actor_user_id=user_id,
+                )
+                rebuild_event_occurrences(db, event_id, user_id, today)
+            return {"ok": True, "freq": None}
+
+        if event.repeat_rule_id:
+            UpdateRecurrenceRuleUseCase(db).execute(
+                rule_id=event.repeat_rule_id, account_id=user_id,
+                actor_user_id=user_id,
+                until_date=body.until_date or None,
+                **fields,
+            )
+            rebuild_event_occurrences(db, event_id, user_id, today)
+        else:
+            rule_id = CreateRecurrenceRuleUseCase(db).execute(
+                account_id=user_id,
+                until_date=body.until_date or None,
+                actor_user_id=user_id,
+                **fields,
+            )
+            UpdateEventUseCase(db).execute(
+                event_id=event_id, account_id=user_id,
+                repeat_rule_id=rule_id, actor_user_id=user_id,
+            )
+            OccurrenceGenerator(db).generate_event_occurrences(user_id)
+    except (EventValidationError, RecurrenceRuleValidationError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"ok": True, "freq": body.freq}
 
 
 @router.post("/events/occurrences/{occurrence_id}/complete", status_code=200)

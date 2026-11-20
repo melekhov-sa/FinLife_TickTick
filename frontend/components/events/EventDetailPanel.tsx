@@ -8,6 +8,7 @@ import type { EventItem, WorkCategoryItem } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { useUpdateEvent, useDeleteEvent, useDuplicateEvent } from "@/hooks/useEvents";
+import { EventRecurrenceSheet } from "@/components/events/EventRecurrenceSheet";
 import { pluralizeYears } from "@/lib/utils";
 import { EventReminders } from "./EventReminders";
 import { EventTaskTemplates } from "./EventTaskTemplates";
@@ -74,6 +75,8 @@ export function EventDetailPanel({ event, onClose }: Props) {
 
   const titleRef    = useRef<HTMLInputElement>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Повторение правится здесь же: раньше за ним уходили в старый интерфейс.
+  const [repeatOpen, setRepeatOpen] = useState(false);
   const palette     = catPalette(event.category_id);
 
   const { mutate: update }    = useUpdateEvent();
@@ -168,13 +171,14 @@ export function EventDetailPanel({ event, onClose }: Props) {
       }
       footer={
         <div className="flex items-center justify-between w-full">
-          <a
-            href={`/legacy/events/${event.event_id}/edit`}
+          <button
+            type="button"
+            onClick={() => setRepeatOpen(true)}
             className="text-[12px] font-medium hover:text-slate-900 dark:hover:text-white/90 transition-colors"
             style={{ color: "var(--t-faint)" }}
           >
-            Расширенные настройки →
-          </a>
+            Повторение →
+          </button>
           <Popover
             open={deletePopoverOpen}
             onOpenChange={setDeletePopoverOpen}
@@ -370,6 +374,11 @@ export function EventDetailPanel({ event, onClose }: Props) {
           </div>
         </div>
       </div>
+      <EventRecurrenceSheet
+        eventId={event.event_id}
+        open={repeatOpen}
+        onClose={() => setRepeatOpen(false)}
+      />
     </SidePanel>
   );
 }
