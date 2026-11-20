@@ -196,7 +196,7 @@ export function TaskDetailPanel({ task, onClose, projectTags }: Props) {
           )}
           {task.is_recurring ? (
             <a
-              href="/legacy/tasks?mode=recurring"
+              href="/recurring-tasks"
               className="flex items-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.07] hover:bg-slate-100 dark:hover:bg-white/[0.07] transition-colors text-[12px] font-medium"
               style={{ color: "var(--t-faint)" }}
             >
