@@ -5,6 +5,7 @@ import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { CountUp } from "@/components/primitives/CountUp";
 import { Tabs } from "@/components/primitives/Tabs";
 import { api } from "@/lib/api";
 import type { WalletItem } from "@/types/api";
@@ -27,8 +28,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPE_ORDER = ["REGULAR", "CREDIT", "SAVINGS"];
 
-function formatAmount(amount: string) {
-  const n = parseFloat(amount);
+function formatNumber(n: number) {
   return n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -152,7 +152,7 @@ function WalletRow({ wallet }: { wallet: WalletItem }) {
           className={`text-[15px] font-semibold tabular-nums ${isNegative ? "text-red-600 dark:text-red-400" : ""}`}
           style={{ color: isNegative ? undefined : isZero ? "var(--t-faint)" : "var(--t-primary)" }}
         >
-          {formatAmount(wallet.balance)} {wallet.currency}
+          <CountUp value={parseFloat(wallet.balance) || 0} format={formatNumber} /> {wallet.currency}
         </span>
       </div>
 
@@ -367,22 +367,22 @@ export default function WalletsPage() {
             <div className="grid grid-cols-3 gap-2 mb-3">
               <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Деньги</p>
-                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-success-ink)" }}>{fmtK(money)} ₽</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-success-ink)" }}><CountUp value={money} format={fmtK} /> ₽</p>
               </div>
               <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Кредиты</p>
-                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-danger-ink)" }}>{fmtK(credit)} ₽</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: "var(--c-danger-ink)" }}><CountUp value={credit} format={fmtK} /> ₽</p>
               </div>
               <div className="rounded-xl border p-2.5" style={{ background: "var(--app-card-bg)", borderColor: "var(--app-card-border)" }}>
                 <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "var(--t-faint)" }}>Чистыми</p>
-                <p className="text-[14px] font-bold tabular-nums" style={{ color: money + credit >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}>{fmtK(money + credit)} ₽</p>
+                <p className="text-[14px] font-bold tabular-nums" style={{ color: money + credit >= 0 ? "var(--t-primary)" : "var(--c-danger-ink)" }}><CountUp value={money + credit} format={fmtK} /> ₽</p>
               </div>
             </div>
           );
         })()}
 
         {!isLoading && !isError && orderedGroups.length > 0 && (
-          <div className="rounded-2xl bg-white dark:bg-transparent border border-slate-200 dark:border-white/[0.06] overflow-hidden">
+          <div className="rounded-2xl bg-white dark:bg-transparent border border-slate-200 dark:border-white/[0.06] overflow-hidden stagger-rise">
             {orderedGroups.map(({ type, label, items }) => (
               <div key={type}>
                 {/* Group header */}
@@ -391,7 +391,10 @@ export default function WalletsPage() {
                     {label}
                   </span>
                   <span className="text-[11px] font-semibold tabular-nums" style={{ color: "var(--t-muted)" }}>
-                    {Math.round(items.reduce((sum, w) => sum + (parseFloat(w.balance) || 0), 0)).toLocaleString("ru-RU")}{" "}
+                    <CountUp
+                      value={items.reduce((sum, w) => sum + (parseFloat(w.balance) || 0), 0)}
+                      format={(n) => Math.round(n).toLocaleString("ru-RU")}
+                    />{" "}
                     {items.every((w) => w.currency === items[0].currency) ? (items[0].currency === "RUB" ? "₽" : items[0].currency) : ""}
                   </span>
                 </div>

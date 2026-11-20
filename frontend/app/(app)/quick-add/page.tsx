@@ -21,6 +21,7 @@ import { sortWalletsByUsage } from "@/lib/walletOrder";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 import type { WalletItem, FinCategoryItem } from "@/types/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -569,7 +570,7 @@ function HistoryTab() {
     queryFn: () => api.get<HistoryItem[]>("/api/v2/ai-ops/history"),
   });
 
-  if (isLoading) return <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>Загрузка…</p>;
+  if (isLoading) return <div className="space-y-2">{[...Array(3)].map((_, i) => (<Skeleton key={i} variant="rect" className="h-10 rounded-xl" />))}</div>;
   if (!items?.length) {
     return (
       <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>
@@ -637,7 +638,7 @@ function RulesTab({ cats }: { cats: FinCategoryItem[] }) {
     qc.invalidateQueries({ queryKey: ["ai-rules"] });
   }
 
-  if (isLoading) return <p className="text-[13px]" style={{ color: "var(--t-muted)" }}>Загрузка…</p>;
+  if (isLoading) return <div className="space-y-2">{[...Array(3)].map((_, i) => (<Skeleton key={i} variant="rect" className="h-10 rounded-xl" />))}</div>;
   if (!rules?.length) {
     return (
       <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>

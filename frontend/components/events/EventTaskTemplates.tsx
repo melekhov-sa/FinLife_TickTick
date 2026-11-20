@@ -12,6 +12,7 @@ import {
 import type { EventTaskTemplateItem } from "@/types/api";
 import { Popover } from "@/components/primitives/Popover";
 import { Button } from "@/components/primitives/Button";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 // ── Labels ────────────────────────────────────────────────────────────────────
 
@@ -430,7 +431,7 @@ export function EventTaskTemplates({ eventId }: Props) {
   return (
     <div className="space-y-1.5">
       {isLoading && (
-        <p className="text-[12px]" style={{ color: "var(--t-faint)" }}>Загрузка...</p>
+        <div className="space-y-2">{[...Array(3)].map((_, i) => (<Skeleton key={i} variant="rect" className="h-9 rounded-lg" />))}</div>
       )}
 
       {beforeTemplates.length > 0 && (

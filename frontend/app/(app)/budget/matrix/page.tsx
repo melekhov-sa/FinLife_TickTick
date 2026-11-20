@@ -400,7 +400,11 @@ function FactDetailModal({ target, onClose }: { target: FactDetailTarget; onClos
         {/* List */}
         <div className="flex-1 overflow-y-auto px-5 pb-4">
           {isPending && (
-            <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>Загрузка…</p>
+            <div className="space-y-2">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} variant="rect" className="h-10 rounded-xl" />
+              ))}
+            </div>
           )}
           {!isPending && items.length === 0 && (
             <p className="text-[13px] py-8 text-center" style={{ color: "var(--t-faint)" }}>Нет операций за этот период</p>

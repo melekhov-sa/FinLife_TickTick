@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Paperclip, Trash2, FileText, Image, FileSpreadsheet, Archive } from "lucide-react";
 import { clsx } from "clsx";
 import { useTaskAttachments, useUploadAttachment, useDeleteAttachment } from "@/hooks/useTasks";
+import { Skeleton } from "@/components/primitives/Skeleton";
 
 const MAX_FILES = 10;
 const ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.zip";
@@ -79,7 +80,7 @@ export function TaskAttachments({ taskId, disabled }: { taskId: number; disabled
       )}
 
       {isLoading && (
-        <div className="text-[12px] py-2" style={{ color: "var(--t-faint)" }}>Загрузка...</div>
+        <div className="py-2 space-y-2">{[...Array(2)].map((_, i) => (<Skeleton key={i} variant="rect" className="h-8 rounded-lg" />))}</div>
       )}
 
       {attachments && attachments.length > 0 && (

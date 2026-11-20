@@ -1036,6 +1036,19 @@ html.dark[data-color-theme="vivid"] {
 }
 
 /* ── Micro-interactions: entrance + tactile ──────────────────────────── */
+/* День закрыт: карточка «Сегодня» один раз обводится зелёным ореолом.
+   Играет только на переходе в 100%, не при открытии уже закрытого дня. */
+@keyframes day-closed-glow {
+  0%   { box-shadow: var(--dash-card-shadow), 0 0 0 0 rgba(16,185,129,0); }
+  30%  { box-shadow: var(--dash-card-shadow), 0 0 0 7px rgba(16,185,129,0.22), 0 0 26px rgba(16,185,129,0.22); }
+  100% { box-shadow: var(--dash-card-shadow), 0 0 0 0 rgba(16,185,129,0); }
+}
+.day-closed-glow { animation: day-closed-glow 1300ms cubic-bezier(0.22,1,0.36,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .day-closed-glow { animation: none; }
+}
+
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }

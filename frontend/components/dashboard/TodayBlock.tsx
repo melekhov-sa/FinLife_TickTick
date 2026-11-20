@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { clsx } from "clsx";
-import { CheckCircle2, Circle, SkipForward, Play, Plus, Bell, Minus, ListChecks, Repeat2, CalendarDays, Wallet, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Circle, SkipForward, Play, Plus, Bell, Minus, ListChecks, Repeat2, CalendarDays, Wallet, Sparkles, type LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import {
@@ -563,6 +563,20 @@ export function TodayBlock({ today, plannedOps }: Props) {
   const tomorrowGroup = tomorrowPlan?.day_groups?.[0];
   const tomorrowEntries = tomorrowGroup?.entries ?? [];
 
+  // День закрыт. Вспышка играет ровно один раз — на переходе в 100%,
+  // а не на каждом рендере и не при открытии уже закрытого дня.
+  const allDone = progress.total > 0 && progress.done >= progress.total;
+  const [justClosed, setJustClosed] = useState(false);
+  const wasAllDone = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (wasAllDone.current === false && allDone) {
+      setJustClosed(true);
+      const t = setTimeout(() => setJustClosed(false), 1400);
+      return () => clearTimeout(t);
+    }
+    wasAllDone.current = allDone;
+  }, [allDone]);
+
   const isEvening = useMemo(() => new Date().getHours() >= 18, []);
 
   const { activeTasks, doneTasks, activeHabits, doneHabits, doneOps, isEmpty } = useMemo(() => {
@@ -753,7 +767,7 @@ export function TodayBlock({ today, plannedOps }: Props) {
 {showOpModal && <CreateOperationModal onClose={() => setShowOpModal(false)} />}
 
       <div
-        className="rounded-2xl border p-3.5 md:p-5 relative"
+        className={clsx("rounded-2xl border p-3.5 md:p-5 relative", justClosed && "day-closed-glow")}
         style={
           today.vacation
             ? {
@@ -781,9 +795,24 @@ export function TodayBlock({ today, plannedOps }: Props) {
                 </span>
               </div>
               {progress.total > 0 && (
-                <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
-                  {progress.done} из {progress.total} выполнено
-                </p>
+                allDone ? (
+                  <p
+                    className="text-[13px] md:text-[14px] font-semibold mt-0.5 inline-flex items-center gap-1.5 animate-pop"
+                    style={{ color: "var(--c-success-ink)" }}
+                  >
+                    <Sparkles size={14} strokeWidth={2.2} />
+                    Всё на сегодня
+                    {tomorrowEntries.length > 0 && (
+                      <span className="font-medium" style={{ color: "var(--t-faint)" }}>
+                        · завтра {tomorrowEntries.length}
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-[13px] md:text-[14px] font-medium mt-0.5" style={{ color: "var(--t-muted)" }}>
+                    {progress.done} из {progress.total} выполнено
+                  </p>
+                )
               )}
             </div>
 

@@ -1602,9 +1602,9 @@ export default function PlanPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            {/* List view */}
+            {/* List view. stagger-rise — дни всплывают каскадом при открытии. */}
             {viewMode === "list" && filteredData && (
-              <div className="space-y-2">
+              <div className="space-y-2 stagger-rise">
                 {filteredData.day_groups.map((g, i) => (
                   <DayGroupCard
                     key={i}
