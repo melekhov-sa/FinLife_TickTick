@@ -28,6 +28,19 @@ interface BudgetData {
   expense_total: { plan: number; fact: number };
   income_rows: BudgetRow[];
   expense_rows: BudgetRow[];
+  /** Накопления: «Отложить» и «Взять из отложенного». В результат месяца
+   *  не входят — он остаётся доходами минус расходами. */
+  saving_total: { plan: number; fact: number };
+  saving_rows: GoalRow[];
+  withdrawal_total: { plan: number; fact: number };
+  withdrawal_rows: GoalRow[];
+}
+
+interface GoalRow {
+  goal_id: number;
+  title: string;
+  plan: number;
+  fact: number;
 }
 
 interface BudgetStatsData {
@@ -132,6 +145,55 @@ function CategoryRow({
       {clickable && (
         <ChevronRightIcon size={14} className="shrink-0 opacity-30" style={{ color: "var(--t-secondary)" }} />
       )}
+    </div>
+  );
+}
+
+/** Накопления: те же цифры, что и у статей, но строки — цели, а не
+ *  категории, и проваливаться в них некуда. Пустая секция не рисуется:
+ *  месяц без движений по накоплениям не должен занимать место. */
+function GoalSection({
+  label,
+  rows,
+  total,
+  accent = false,
+}: {
+  label: string;
+  rows: GoalRow[];
+  total: { plan: number; fact: number };
+  accent?: boolean;
+}) {
+  if (rows.length === 0 && !total.fact && !total.plan) return null;
+  return (
+    <div className="dash-card p-3.5 md:p-4">
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <h3 className="text-[13px] font-semibold" style={{ color: "var(--t-primary)" }}>
+          {label}
+        </h3>
+        <span
+          className="text-[13px] font-semibold tabular-nums"
+          style={{ color: accent ? "var(--c-warning-ink)" : "var(--t-secondary)" }}
+        >
+          {fmt(total.fact)}
+          {total.plan ? (
+            <span className="text-[11px] font-normal" style={{ color: "var(--t-faint)" }}>
+              {" "}/ {fmt(total.plan)}
+            </span>
+          ) : null}
+        </span>
+      </div>
+      <div className="space-y-1">
+        {rows.map((r) => (
+          <div key={r.goal_id} className="flex items-baseline justify-between gap-2">
+            <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-muted)" }}>
+              {r.title}
+            </span>
+            <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>
+              {fmt(r.fact)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -425,6 +487,20 @@ export default function BudgetPage() {
                   total={data.expense_total}
                   kind="expense"
                   onSelectRow={handleSelectRow}
+                />
+                {/* Накопления показывались только в расширенном бюджете, и
+                    снятие с цели пропадало бесследно: деньги в месяце
+                    появились, а откуда — по этому экрану не понять. */}
+                <GoalSection
+                  label="Отложить"
+                  rows={data.saving_rows}
+                  total={data.saving_total}
+                />
+                <GoalSection
+                  label="Взять из отложенного"
+                  rows={data.withdrawal_rows}
+                  total={data.withdrawal_total}
+                  accent
                 />
               </div>
             );

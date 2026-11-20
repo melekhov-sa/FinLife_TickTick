@@ -98,6 +98,7 @@ def compute_budget_insights(
         out.extend(_row_insights(row, cur, history, elapsed, days_total, is_open))
 
     out.extend(_total_insights(matrix, elapsed, days_total, is_open))
+    out.extend(_savings_insights(matrix))
 
     out.sort(key=lambda i: (SEVERITY_ORDER.get(i.severity, 9), i.title))
     return [i.as_dict() for i in out]
@@ -183,6 +184,39 @@ def _row_insights(
             ))
 
     return res
+
+
+def _savings_insights(matrix: dict) -> list[Insight]:
+    """Снятие из отложенного.
+
+    В «результат» месяца оно не входит — тот считается как доходы минус
+    расходы. Значит деньги в месяце появились, а по таблице непонятно,
+    откуда. Проговариваем прямо.
+    """
+    cells = _cells(matrix.get("withdrawal_totals", {}))
+    if not cells:
+        return []
+    taken = Decimal(str(cells[-1].get("fact") or 0))
+    if taken < MIN_AMOUNT:
+        return []
+
+    # Из каких целей именно — иначе непонятно, что трогали.
+    names = [
+        r["title"] for r in matrix.get("withdrawal_rows", [])
+        if _cells(r) and Decimal(str(_cells(r)[-1].get("fact") or 0)) >= MIN_AMOUNT
+    ]
+    whence = ", ".join(names[:3]) if names else "накоплений"
+
+    return [Insight(
+        code="withdrawn_from_savings",
+        severity="warning",
+        category_id=None,
+        title=f"Взято из отложенного: {_money(taken)}",
+        detail=(
+            f"Источник — {whence}. В результат месяца эта сумма не входит: "
+            f"он считается как доходы минус расходы, накопления идут отдельно."
+        ),
+    )]
 
 
 def _total_insights(

@@ -20,10 +20,12 @@ def _cell(plan=0, fact=0):
     return {"plan": plan, "fact": fact}
 
 
-def _matrix(expense_rows, totals=None):
+def _matrix(expense_rows, totals=None, withdrawals=None, withdrawal_rows=None):
     return {
         "expense_rows": expense_rows,
         "expense_totals": {"cells": totals or [_cell()]},
+        "withdrawal_totals": {"cells": withdrawals or [_cell()]},
+        "withdrawal_rows": withdrawal_rows or [],
     }
 
 
@@ -139,3 +141,35 @@ def test_most_severe_comes_first():
     res = _run(_matrix(rows, totals=[_cell(), _cell(100000, 70000)]), today=date(2026, 11, 10))
 
     assert res[0]["severity"] == "danger"
+
+
+class TestSavingsWithdrawal:
+    """Снятие из отложенного раньше пропадало: в результат оно не входит,
+    а отдельной строки в обычном бюджете не было вовсе."""
+
+    def test_withdrawal_is_called_out(self):
+        res = _run(
+            _matrix(
+                [],
+                withdrawals=[_cell(), _cell(0, 40000)],
+                withdrawal_rows=[{"goal_id": 1, "title": "Подушка",
+                                  "cells": [_cell(), _cell(0, 40000)]}],
+            ),
+            today=date(2026, 11, 20),
+        )
+
+        assert "withdrawn_from_savings" in _codes(res)
+        item = next(i for i in res if i["code"] == "withdrawn_from_savings")
+        assert "40 000" in item["title"]
+        assert "Подушка" in item["detail"]
+
+    def test_tiny_withdrawal_is_ignored(self):
+        res = _run(
+            _matrix([], withdrawals=[_cell(), _cell(0, 100)]),
+            today=date(2026, 11, 20),
+        )
+        assert "withdrawn_from_savings" not in _codes(res)
+
+    def test_no_withdrawal_no_insight(self):
+        res = _run(_matrix([], withdrawals=[_cell(), _cell()]), today=date(2026, 11, 20))
+        assert _codes(res) == set()

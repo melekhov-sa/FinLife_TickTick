@@ -81,6 +81,23 @@ def budget_summary(
     inc_tot = _cell(matrix["income_totals"].get("cells", []))
     exp_tot = _cell(matrix["expense_totals"].get("cells", []))
 
+    # Накопления. Матрица их считала всегда, но обычный бюджет брал только
+    # доходы и расходы — и снятие с цели пропадало бесследно: деньги в
+    # месяце появились, а откуда, по этому экрану понять было нельзя.
+    # В «результат» они намеренно не входят: он остаётся операционным
+    # балансом (доходы минус расходы), накопления показываются отдельно.
+    def _goal_row(r):
+        c = _cell(r.get("cells", []))
+        return {
+            "goal_id": r["goal_id"],
+            "title": r["title"],
+            "plan": c["plan"],
+            "fact": c["fact"],
+        }
+
+    saving_rows = [_goal_row(r) for r in matrix.get("goal_rows", [])]
+    withdrawal_rows = [_goal_row(r) for r in matrix.get("withdrawal_rows", [])]
+
     return {
         "year": year,
         "month": month,
@@ -89,6 +106,10 @@ def budget_summary(
         "expense_total": exp_tot,
         "income_rows": income_rows,
         "expense_rows": expense_rows,
+        "saving_total": _cell(matrix.get("goal_totals", {}).get("cells", [])),
+        "saving_rows": saving_rows,
+        "withdrawal_total": _cell(matrix.get("withdrawal_totals", {}).get("cells", [])),
+        "withdrawal_rows": withdrawal_rows,
     }
 
 
