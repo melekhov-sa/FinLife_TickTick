@@ -31,7 +31,11 @@ export function FormRow({ label, required, hint, error, className, children }: F
         className
       )}
     >
-      <div className="text-[11px] md:text-xs font-medium uppercase tracking-wider mb-1.5 md:mb-0 md:pt-2.5 text-slate-500 dark:text-white/72">
+      {/* Без uppercase: кириллица в капсе теряет контур букв, и восемь
+          меток подряд читались как серый шум. Остальное приложение —
+          дашборд, списки — метки капсом не пишет, так что заодно свели
+          модалки к общему виду. */}
+      <div className="text-[12px] md:text-[12.5px] font-medium mb-1.5 md:mb-0 md:pt-2.5 text-slate-500 dark:text-white/72">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </div>

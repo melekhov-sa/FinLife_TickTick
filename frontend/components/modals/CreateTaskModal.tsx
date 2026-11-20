@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RichNoteEditor } from "@/components/ui/RichNoteEditorLazy";
 import { FormRow } from "@/components/ui/FormRow";
+import { FormDisclosure } from "@/components/ui/FormDisclosure";
 import { ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { CreateTaskRequestSchema } from "@/schemas/api.generated";
@@ -500,15 +501,27 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
         </FormRow>
 
         {/* ── Title + inline preset link ── */}
-        <FormRow label="Название" required error={fieldErrors.title}>
-          <Input
+        {/* Название — главное поле формы. Крупным текстом и без метки:
+            плейсхолдер говорит то же самое, а в общем ряду одинаковых коробок
+            название терялось среди второстепенных полей. */}
+        <div>
+          <input
             type="text"
             value={title}
             onChange={(e) => { setTitle(e.target.value); clearFieldError("title"); }}
             placeholder="Название задачи"
+            aria-label="Название задачи"
             aria-invalid={Boolean(fieldErrors.title) || undefined}
             autoFocus
+            className="w-full bg-transparent outline-none text-[19px] font-semibold leading-snug placeholder:font-normal placeholder:opacity-35 border-b pb-1.5 transition-colors focus:border-[var(--app-accent)]"
+            style={{
+              color: "var(--t-primary)",
+              borderColor: fieldErrors.title ? "rgb(239 68 68)" : "var(--app-border)",
+            }}
           />
+          {fieldErrors.title && (
+            <p role="alert" className="mt-1 text-[12px] text-red-500">{fieldErrors.title}</p>
+          )}
           {presets && presets.length > 0 && (
             <div className="relative mt-1.5">
               <button
@@ -540,7 +553,7 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
               )}
             </div>
           )}
-        </FormRow>
+        </div>
 
         {/* ── Category — select dropdown ── */}
         {categories && categories.length > 0 && (
@@ -926,15 +939,17 @@ export function CreateTaskModal({ onClose, initialDate, initialListId, defaultMo
           </>
         )}
 
-        {/* ── Note (always visible) ── */}
-        <FormRow label="Заметка">
+        {/* Редактор с двумя рядами кнопок форматирования занимал половину
+            формы ради заметки, которая обычно в одну строку. Открывается по
+            требованию; если текст уже есть — блок раскрыт сразу. */}
+        <FormDisclosure title="Заметка" defaultOpen={Boolean(note)}>
           <RichNoteEditor
             value={note}
             onChange={setNote}
             placeholder="Опишите задачу…"
             minHeight={100}
           />
-        </FormRow>
+        </FormDisclosure>
 
         {/* ── Global error ── */}
         {error && (

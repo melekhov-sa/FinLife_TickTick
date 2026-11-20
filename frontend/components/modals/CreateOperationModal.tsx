@@ -7,7 +7,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WalletItem, FinCategoryItem, SubscriptionItem, BudgetRow } from "@/types/api";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
+import { clsx } from "clsx";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { FormDisclosure } from "@/components/ui/FormDisclosure";
 import { FormRow } from "@/components/ui/FormRow";
 import { CreateTransactionRequestSchema } from "@/schemas/api.generated";
 import {
@@ -59,6 +61,10 @@ function buildWalletOptions(list: WalletItem[], placeholder: string): SelectOpti
   return opts;
 }
 
+const CURRENCY_SYMBOL: Record<string, string> = {
+  RUB: "₽", USD: "$", EUR: "€", GBP: "£", KZT: "₸", CNY: "¥", TRY: "₺",
+};
+
 export interface CreateOperationInitialValues {
   opType?: OpType;
   amount?: string;
@@ -94,10 +100,12 @@ const chipBaseCls = "px-3 py-1.5 text-xs font-medium rounded-lg border transitio
 const chipActiveCls = "bg-[var(--app-accent)] border-[var(--app-accent)] text-[#fff]";
 const chipInactiveCls = "bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/68 hover:bg-slate-50 dark:hover:bg-white/[0.05]";
 
+// Заливка приглушённая, цвет несёт текст и рамка. Сплошной красный делал
+// переключатель самым ярким пятном формы, хотя это не действие, а режим.
 const OP_TYPES: { value: OpType; label: string; activeColor: string }[] = [
-  { value: "INCOME",   label: "Доход",       activeColor: "bg-emerald-600 border-emerald-500 text-[#fff]" },
-  { value: "EXPENSE",  label: "Расход",       activeColor: "bg-red-600 border-red-500 text-[#fff]" },
-  { value: "TRANSFER", label: "Перемещение",  activeColor: "bg-blue-600 border-blue-500 text-[#fff]" },
+  { value: "INCOME",   label: "Доход",       activeColor: "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300" },
+  { value: "EXPENSE",  label: "Расход",      activeColor: "bg-red-50 dark:bg-red-500/15 border-red-500 text-red-700 dark:text-red-300" },
+  { value: "TRANSFER", label: "Перемещение", activeColor: "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300" },
 ];
 
 export function CreateOperationModal({ onClose, initialValues, occurrenceId, initialListId }: Props) {
@@ -229,6 +237,25 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
       overBy: projectedFact - row.total.plan,
     };
   }, [opType, categoryId, amount, budgetData]);
+
+  // Что уже заполнено внутри «Деталей» — иначе закрытый блок скрывает
+  // введённое, и это читается как потерянные данные.
+  const detailsBadge = useMemo(() => {
+    const parts: string[] = [];
+    if (description.trim()) parts.push("описание");
+    if (occurredAt) parts.push("дата");
+    if (budgetMonth) parts.push("бюджет");
+    if (listId) parts.push("поездка");
+    if (subSubscriptionId) parts.push("подписка");
+    return parts.length ? parts.join(", ") : null;
+  }, [description, occurredAt, budgetMonth, listId, subSubscriptionId]);
+
+  // Валюта у суммы — та же, что у выбранного кошелька; по умолчанию рубль.
+  const amountCurrencySymbol = useMemo(() => {
+    const id = opType === "TRANSFER" ? fromWalletId : walletId;
+    const cur = (wallets ?? []).find((w) => w.wallet_id === id)?.currency ?? "RUB";
+    return CURRENCY_SYMBOL[cur] ?? cur;
+  }, [wallets, walletId, fromWalletId, opType]);
 
   const walletOptions: SelectOption[] = useMemo(
     () => buildWalletOptions(visibleWallets, "— выберите кошелёк —"),
@@ -612,20 +639,45 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
 
         {opType && (
           <>
-            {/* Amount */}
-            <FormRow label="Сумма" required error={fieldErrors.amount}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
-                placeholder="0.00"
-                tabular
-                aria-invalid={Boolean(fieldErrors.amount) || undefined}
-                autoFocus={!initialValues?.amount}
-              />
-            </FormRow>
+            {/* Сумма — то, ради чего форма открыта. Без коробки и без метки:
+                крупное число понятно само, а в общем ряду полей оно было
+                неотличимо от «Месяц бюджета». Цвет повторяет тип операции,
+                поэтому переключателю сверху больше не нужно кричать. */}
+            <div className="pt-1 pb-2">
+              <div className="flex items-baseline justify-center gap-1.5">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0.01"
+                  value={amount}
+                  onChange={(e) => { setAmount(e.target.value); clearFieldError("amount"); }}
+                  placeholder="0"
+                  aria-label="Сумма"
+                  aria-invalid={Boolean(fieldErrors.amount) || undefined}
+                  autoFocus={!initialValues?.amount}
+                  className={clsx(
+                    "min-w-0 flex-1 max-w-[240px] bg-transparent outline-none text-right",
+                    "text-[34px] leading-none font-semibold tabular-nums",
+                    "placeholder:opacity-25 placeholder:font-normal",
+                    "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                    opType === "EXPENSE" ? "money-expense" : opType === "INCOME" ? "money-income" : "",
+                  )}
+                  style={opType === "TRANSFER" ? { color: "var(--t-primary)" } : undefined}
+                />
+                <span
+                  className="text-[22px] leading-none font-semibold shrink-0"
+                  style={{ color: "var(--t-faint)" }}
+                >
+                  {amountCurrencySymbol}
+                </span>
+              </div>
+              {fieldErrors.amount && (
+                <p role="alert" className="mt-2 text-center text-[12px] text-red-500">
+                  {fieldErrors.amount}
+                </p>
+              )}
+            </div>
 
             {/* Wallet(s) */}
             {opType !== "TRANSFER" ? (
@@ -777,130 +829,135 @@ export function CreateOperationModal({ onClose, initialValues, occurrenceId, ini
               </div>
             )}
 
-            {/* Trip list link */}
-            {tripLists && tripLists.length > 0 && (
-              <FormRow label="Поездка" hint="Опционально — привязать к списку поездки">
-                <Select
-                  value={listId}
-                  onChange={(v) => setListId(v ? Number(v) : "")}
-                  options={[
-                    { value: "", label: "— без списка —" },
-                    ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
-                  ]}
-                  placeholder="— без списка —"
+            {/* Редко заполняемое — под складной блок. Обычный расход это
+                сумма, кошелёк и категория; остальные пять полей занимали
+                столько же места и заставляли скроллить. */}
+            <FormDisclosure title="Детали" badge={detailsBadge}>
+              {/* Trip list link */}
+              {tripLists && tripLists.length > 0 && (
+                <FormRow label="Поездка" hint="Опционально — привязать к списку поездки">
+                  <Select
+                    value={listId}
+                    onChange={(v) => setListId(v ? Number(v) : "")}
+                    options={[
+                      { value: "", label: "— без списка —" },
+                      ...tripLists.map((l) => ({ value: String(l.id), label: l.title })),
+                    ]}
+                    placeholder="— без списка —"
+                  />
+                </FormRow>
+              )}
+
+              {/* Description */}
+              <FormRow label="Описание">
+                <Input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Необязательно"
                 />
               </FormRow>
-            )}
 
-            {/* Description */}
-            <FormRow label="Описание">
-              <Input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Необязательно"
-              />
-            </FormRow>
+              {/* Occurred at */}
+              <FormRow label="Дата и время">
+                <DateTimeInput
+                  value={occurredAt}
+                  onChange={setOccurredAt}
+                />
+              </FormRow>
 
-            {/* Occurred at */}
-            <FormRow label="Дата и время">
-              <DateTimeInput
-                value={occurredAt}
-                onChange={setOccurredAt}
-              />
-            </FormRow>
+              {/* Бюджетный месяц: зарплата 31-го числа может «по смыслу» быть следующим месяцем */}
+              <FormRow label="Месяц бюджета">
+                <Select
+                  value={budgetMonth}
+                  onChange={setBudgetMonth}
+                  options={budgetMonthOptions(occurredAt, budgetMonth)}
+                />
+                {budgetMonth && (
+                  <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
+                    В бюджете и статистике операция учтётся в выбранном месяце.
+                    Дата и балансы не меняются.
+                  </p>
+                )}
+              </FormRow>
 
-            {/* Бюджетный месяц: зарплата 31-го числа может «по смыслу» быть следующим месяцем */}
-            <FormRow label="Месяц бюджета">
-              <Select
-                value={budgetMonth}
-                onChange={setBudgetMonth}
-                options={budgetMonthOptions(occurredAt, budgetMonth)}
-              />
-              {budgetMonth && (
-                <p className="text-[11px] mt-1" style={{ color: "var(--t-faint)" }}>
-                  В бюджете и статистике операция учтётся в выбранном месяце.
-                  Дата и балансы не меняются.
-                </p>
-              )}
-            </FormRow>
+              {/* Subscription coverage (EXPENSE only) */}
+              {opType === "EXPENSE" && (
+                <FormRow label="Подписка">
+                  <div className="rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setSubOpen((v) => !v)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-white/68 hover:text-slate-800 dark:hover:text-white/85 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors text-left"
+                    >
+                      <span>{subOpen ? "▾" : "▸"}</span>
+                      <span>Привязать к подписке</span>
+                    </button>
 
-            {/* Subscription coverage (EXPENSE only) */}
-            {opType === "EXPENSE" && (
-              <FormRow label="Подписка">
-                <div className="rounded-xl border border-slate-200 dark:border-white/[0.08] overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setSubOpen((v) => !v)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-slate-600 dark:text-white/68 hover:text-slate-800 dark:hover:text-white/85 hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors text-left"
-                  >
-                    <span>{subOpen ? "▾" : "▸"}</span>
-                    <span>Привязать к подписке</span>
-                  </button>
-
-                  {subOpen && (
-                    <div className="px-3 pb-3 flex flex-col gap-3 border-t border-slate-200 dark:border-white/[0.08] pt-3">
-                      {/* Subscription select */}
-                      <div>
-                        <Select
-                          value={subSubscriptionId}
-                          onChange={(v) => { setSubSubscriptionId(v ? Number(v) : ""); setSubMemberId(""); }}
-                          options={subscriptionOptions}
-                          placeholder="— выберите подписку —"
-                        />
-                      </div>
-
-                      {/* Payer type chips */}
-                      <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Плательщик</div>
-                        <div className="flex gap-2">
-                          {(["SELF", "MEMBER"] as const).map((pt) => (
-                            <button
-                              key={pt}
-                              type="button"
-                              onClick={() => setSubPayerType(pt)}
-                              className={`${chipBaseCls} ${subPayerType === pt ? chipActiveCls : chipInactiveCls}`}
-                            >
-                              {pt === "SELF" ? "Сам" : "Участник"}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Member select (only when MEMBER payer type) */}
-                      {subPayerType === "MEMBER" && (
+                    {subOpen && (
+                      <div className="px-3 pb-3 flex flex-col gap-3 border-t border-slate-200 dark:border-white/[0.08] pt-3">
+                        {/* Subscription select */}
                         <div>
                           <Select
-                            value={subMemberId}
-                            onChange={(v) => setSubMemberId(v ? Number(v) : "")}
-                            options={memberOptions}
-                            placeholder="— участник —"
+                            value={subSubscriptionId}
+                            onChange={(v) => { setSubSubscriptionId(v ? Number(v) : ""); setSubMemberId(""); }}
+                            options={subscriptionOptions}
+                            placeholder="— выберите подписку —"
                           />
                         </div>
-                      )}
 
-                      {/* Coverage dates */}
-                      <div className="grid grid-cols-2 gap-3">
+                        {/* Payer type chips */}
                         <div>
-                          <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Начало периода</div>
-                          <DateInput
-                            value={subStartDate}
-                            onChange={setSubStartDate}
-                          />
+                          <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Плательщик</div>
+                          <div className="flex gap-2">
+                            {(["SELF", "MEMBER"] as const).map((pt) => (
+                              <button
+                                key={pt}
+                                type="button"
+                                onClick={() => setSubPayerType(pt)}
+                                className={`${chipBaseCls} ${subPayerType === pt ? chipActiveCls : chipInactiveCls}`}
+                              >
+                                {pt === "SELF" ? "Сам" : "Участник"}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Конец периода</div>
-                          <DateInput
-                            value={subEndDate}
-                            onChange={setSubEndDate}
-                          />
+
+                        {/* Member select (only when MEMBER payer type) */}
+                        {subPayerType === "MEMBER" && (
+                          <div>
+                            <Select
+                              value={subMemberId}
+                              onChange={(v) => setSubMemberId(v ? Number(v) : "")}
+                              options={memberOptions}
+                              placeholder="— участник —"
+                            />
+                          </div>
+                        )}
+
+                        {/* Coverage dates */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Начало периода</div>
+                            <DateInput
+                              value={subStartDate}
+                              onChange={setSubStartDate}
+                            />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-medium uppercase tracking-wider mb-1.5 text-slate-500 dark:text-white/55">Конец периода</div>
+                            <DateInput
+                              value={subEndDate}
+                              onChange={setSubEndDate}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </FormRow>
-            )}
+                    )}
+                  </div>
+                </FormRow>
+              )}
+            </FormDisclosure>
           </>
         )}
 
