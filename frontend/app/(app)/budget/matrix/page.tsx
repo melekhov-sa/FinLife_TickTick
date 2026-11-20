@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { BudgetInsights } from "@/components/budget/BudgetInsights";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { PeriodPicker } from "@/components/budget/PeriodPicker";
@@ -2389,6 +2390,12 @@ export default function BudgetMatrixPage() {
 
         {/* ── MOBILE VIEW ── */}
         <div className="md:hidden flex-1 min-h-0 overflow-auto" style={{ background: "var(--app-bg)" }}>
+          {/* Выводы только в мобильном виде: на десктопе матрица — рабочая
+              таблица во весь экран, и карточка отъедала бы у неё место. */}
+          <div className="p-3 pb-0">
+            <BudgetInsights year={year} month={month} />
+          </div>
+
           {isPending && (
             <div className="p-4 space-y-2">
               {[...Array(8)].map((_, i) => (

@@ -106,6 +106,54 @@ def generate_digest_comment(payload: dict, api_key: str | None = None) -> str | 
         return None
 
 
+_BUDGET_PROMPT = """Ты — финансовый помощник. Ниже бюджет месяца: план против факта
+по статьям и уже посчитанные наблюдения.
+
+Напиши короткий разбор по-русски, 3–4 абзаца, обычным языком и на «ты».
+
+Правила:
+- опирайся только на присланные числа, ничего не выдумывай;
+- не пересказывай таблицу — объясняй, что из неё следует;
+- если видишь закономерность (одна и та же статья перебирает из месяца
+  в месяц), скажи об этом прямо;
+- заканчивай одним конкретным действием на следующий месяц;
+- без вводных вроде «как видно из данных» и без морализаторства.
+
+Данные:
+{payload_json}
+"""
+
+
+def generate_budget_review(payload: dict, api_key: str | None = None) -> str | None:
+    """Разбор бюджета месяца текстом. None, если ключа нет или вызов не удался.
+
+    Не бросает исключений: разбор — приятное дополнение, из-за его
+    отсутствия страница бюджета падать не должна.
+    """
+    key = _resolve_key(api_key)
+    if not key:
+        return None
+
+    try:
+        from app.config import get_settings
+        model = get_settings().OPENAI_MODEL
+        client = get_openai_client(key)
+        prompt = _BUDGET_PROMPT.format(
+            payload_json=json.dumps(payload, ensure_ascii=False, indent=2)
+        )
+        response = _chat_completion_with_retry(
+            client,
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=700,
+        )
+        text = response.choices[0].message.content
+        return text.strip() if text else None
+    except Exception:
+        logger.exception("AI budget review failed")
+        return None
+
+
 def ping(api_key: str | None = None) -> dict:
     """
     Health-check: send a 'ping' to the configured OpenAI-compatible endpoint.

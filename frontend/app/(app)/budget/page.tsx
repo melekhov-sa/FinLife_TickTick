@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, TrendingUp
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
+import { BudgetInsights } from "@/components/budget/BudgetInsights";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { BudgetCategoryPanel, type BudgetCategoryStats } from "@/components/budget/BudgetCategoryPanel";
@@ -278,6 +279,9 @@ export default function BudgetPage() {
       />
 
       <main className="flex-1 p-3 md:p-6 w-full">
+        {/* Выводы по месяцу — выше таблицы: смысл важнее цифр */}
+        <BudgetInsights year={year} month={month} />
+
         {/* Top links */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           <Link

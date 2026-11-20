@@ -6,7 +6,7 @@ POST /api/v2/budget/plan              — save plan lines for a month.
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -403,6 +403,74 @@ def toggle_closure(body: ClosureToggleBody, request: Request, db: Session = Depe
 
 
 # ── Подсказка плана: типичная сумма (вес по похожести, устойчиво к выбросам) ─
+
+@router.get("/budget/insights")
+def budget_insights(
+    request: Request,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Выводы по бюджету месяца: темп, хронический перерасход, скачки.
+
+    Считаются из тех же данных, что и сам отчёт, — отдельной ручкой,
+    чтобы не утяжелять основной запрос: таблица нужна сразу, выводы
+    могут приехать следом.
+    """
+    from app.application.budget_insights import compute_budget_insights
+
+    user_id = get_user_id(request, db)
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+    return {"insights": compute_budget_insights(db, user_id, year, month)}
+
+
+@router.post("/budget/ai-review")
+def budget_ai_review(
+    request: Request,
+    year: int | None = Query(None),
+    month: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Разбор бюджета месяца текстом.
+
+    Модели отдаются уже посчитанные цифры и выводы, а не сырые операции:
+    так разбор опирается на те же числа, что видишь на экране, и не
+    может насочинять своих.
+    """
+    from app.application.budget_insights import compute_budget_insights
+    from app.application.app_config import get_openai_key
+    from app.infrastructure.ai import generate_budget_review
+
+    user_id = get_user_id(request, db)
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+
+    key = get_openai_key(db)
+    if not key:
+        raise HTTPException(
+            status_code=400,
+            detail="Не задан ключ OpenAI — добавьте его в настройках, тогда разбор заработает",
+        )
+
+    summary = budget_summary(request=request, year=year, month=month, db=db)
+    payload = {
+        "period": summary["period_label"],
+        "income_total": summary["income_total"],
+        "expense_total": summary["expense_total"],
+        "expense_rows": [
+            r for r in summary["expense_rows"] if r["plan"] or r["fact"]
+        ],
+        "observations": compute_budget_insights(db, user_id, year, month),
+    }
+
+    text = generate_budget_review(payload, api_key=key)
+    if not text:
+        raise HTTPException(status_code=502, detail="Не удалось получить разбор, попробуйте позже")
+    return {"review": text, "period_label": summary["period_label"]}
+
 
 @router.get("/budget/plan-suggestion")
 def plan_suggestion(
