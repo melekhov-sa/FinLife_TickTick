@@ -99,6 +99,9 @@ def compute_budget_insights(
 
     out.extend(_total_insights(matrix, elapsed, days_total, is_open))
     out.extend(_savings_insights(matrix))
+    out.extend(_withdrawn_but_not_spent(matrix, elapsed, days_total, is_open))
+    out.extend(_income_below_usual(matrix, elapsed, days_total, is_open))
+    out.extend(_biggest_change(matrix, is_open))
 
     out.sort(key=lambda i: (SEVERITY_ORDER.get(i.severity, 9), i.title))
     return [i.as_dict() for i in out]
@@ -215,6 +218,122 @@ def _savings_insights(matrix: dict) -> list[Insight]:
         detail=(
             f"Источник — {whence}. В результат месяца эта сумма не входит: "
             f"он считается как доходы минус расходы, накопления идут отдельно."
+        ),
+    )]
+
+
+def _median(values: list[Decimal]) -> Decimal:
+    """Медиана: одна крупная покупка полгода назад не должна задирать норму."""
+    vals = sorted(v for v in values if v > 0)
+    return vals[len(vals) // 2] if vals else Decimal(0)
+
+
+def _withdrawn_but_not_spent(
+    matrix: dict, elapsed: int, days_total: int, is_open: bool,
+) -> list[Insight]:
+    """Сняли с накоплений, но траты не выросли.
+
+    Значит деньги просто лежат на кошельке: либо покупка ещё впереди,
+    либо сняли зря. По таблице это не видно — расходы выглядят обычными,
+    а накопления уменьшились.
+    """
+    w_cells = _cells(matrix.get("withdrawal_totals", {}))
+    e_cells = _cells(matrix.get("expense_totals", {}))
+    if not w_cells or len(e_cells) < 2:
+        return []
+
+    taken = Decimal(str(w_cells[-1].get("fact") or 0))
+    if taken < MIN_AMOUNT:
+        return []
+
+    spent = Decimal(str(e_cells[-1].get("fact") or 0))
+    if is_open:
+        spent = spent / elapsed * days_total      # сравниваем сопоставимое
+    typical = _median([Decimal(str(c.get("fact") or 0)) for c in e_cells[:-1]])
+    if typical <= 0 or spent > typical * Decimal("1.1"):
+        return []
+
+    return [Insight(
+        code="withdrawn_not_spent",
+        severity="warning",
+        category_id=None,
+        title=f"Взято {_money(taken)}, а траты не выросли",
+        detail=(
+            f"Расходы месяца — {_money(spent)} против привычных {_money(typical)}. "
+            f"Похоже, деньги лежат на кошельке: либо покупка впереди, либо снимать не стоило."
+        ),
+    )]
+
+
+def _income_below_usual(
+    matrix: dict, elapsed: int, days_total: int, is_open: bool,
+) -> list[Insight]:
+    """Доход заметно ниже привычного.
+
+    В открытом месяце молчим до двадцатого числа: доход приходит разом,
+    и до зарплаты «просадка» означает только то, что она ещё не пришла.
+    """
+    cells = _cells(matrix.get("income_totals", {}))
+    if len(cells) < 2:
+        return []
+    if is_open and elapsed < 20:
+        return []
+
+    got = Decimal(str(cells[-1].get("fact") or 0))
+    typical = _median([Decimal(str(c.get("fact") or 0)) for c in cells[:-1]])
+    if typical < MIN_AMOUNT or got >= typical * Decimal("0.75"):
+        return []
+
+    tail = (
+        " Если что-то ещё не внесено — самое время, иначе итог месяца соврёт."
+        if is_open else ""
+    )
+    return [Insight(
+        code="income_below_usual",
+        severity="warning",
+        category_id=None,
+        title="Доход ниже обычного",
+        detail=f"{_money(got)} против привычных {_money(typical)}.{tail}",
+    )]
+
+
+def _biggest_change(matrix: dict, is_open: bool) -> list[Insight]:
+    """Чем этот месяц сильнее всего отличается от прошлого.
+
+    Только для закрытого месяца: сравнивать половину месяца с целым —
+    значит каждый раз объявлять «переменой» обычный ход дел.
+    """
+    if is_open:
+        return []
+
+    best = None
+    for row in matrix.get("expense_rows", []):
+        if row.get("category_id") is None:
+            continue
+        cells = _cells(row)
+        if len(cells) < 2:
+            continue
+        cur = Decimal(str(cells[-1].get("fact") or 0))
+        prev = Decimal(str(cells[-2].get("fact") or 0))
+        delta = cur - prev
+        if abs(delta) < MIN_AMOUNT:
+            continue
+        if best is None or abs(delta) > abs(best[0]):
+            best = (delta, row["title"], cur, prev)
+
+    if best is None:
+        return []
+
+    delta, title, cur, prev = best
+    direction = "больше" if delta > 0 else "меньше"
+    return [Insight(
+        code="biggest_change",
+        severity="info",
+        category_id=None,
+        title=f"Главное отличие от прошлого месяца — {title}",
+        detail=(
+            f"{_money(cur)} против {_money(prev)}: на {_money(abs(delta))} {direction}. "
+            f"Остальные статьи изменились слабее."
         ),
     )]
 

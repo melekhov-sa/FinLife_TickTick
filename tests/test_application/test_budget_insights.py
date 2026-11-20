@@ -20,12 +20,14 @@ def _cell(plan=0, fact=0):
     return {"plan": plan, "fact": fact}
 
 
-def _matrix(expense_rows, totals=None, withdrawals=None, withdrawal_rows=None):
+def _matrix(expense_rows, totals=None, withdrawals=None, withdrawal_rows=None,
+            incomes=None):
     return {
         "expense_rows": expense_rows,
         "expense_totals": {"cells": totals or [_cell()]},
         "withdrawal_totals": {"cells": withdrawals or [_cell()]},
         "withdrawal_rows": withdrawal_rows or [],
+        "income_totals": {"cells": incomes or [_cell()]},
     }
 
 
@@ -173,3 +175,90 @@ class TestSavingsWithdrawal:
     def test_no_withdrawal_no_insight(self):
         res = _run(_matrix([], withdrawals=[_cell(), _cell()]), today=date(2026, 11, 20))
         assert _codes(res) == set()
+
+
+class TestWithdrawnButNotSpent:
+    """Сняли с накоплений, а траты обычные — деньги лежат на кошельке.
+    Это и есть случай, который по таблице не виден."""
+
+    def test_money_taken_but_spending_is_normal(self):
+        res = _run(
+            _matrix(
+                [],
+                totals=[_cell(0, 100000), _cell(0, 98000), _cell(0, 99000)],
+                withdrawals=[_cell(), _cell(), _cell(0, 40000)],
+            ),
+            today=date(2026, 12, 5),
+        )
+        assert "withdrawn_not_spent" in _codes(res)
+
+    def test_silent_when_spending_actually_grew(self):
+        res = _run(
+            _matrix(
+                [],
+                totals=[_cell(0, 100000), _cell(0, 98000), _cell(0, 140000)],
+                withdrawals=[_cell(), _cell(), _cell(0, 40000)],
+            ),
+            today=date(2026, 12, 5),
+        )
+        assert "withdrawn_not_spent" not in _codes(res)
+
+    def test_silent_without_a_withdrawal(self):
+        res = _run(
+            _matrix([], totals=[_cell(0, 100000), _cell(0, 98000), _cell(0, 50000)]),
+            today=date(2026, 12, 5),
+        )
+        assert "withdrawn_not_spent" not in _codes(res)
+
+
+class TestIncomeBelowUsual:
+    def test_closed_month_well_below_typical(self):
+        res = _run(
+            _matrix([], incomes=[_cell(0, 140000), _cell(0, 145000), _cell(0, 80000)]),
+            today=date(2026, 12, 5),
+        )
+        assert "income_below_usual" in _codes(res)
+
+    def test_quiet_early_in_an_open_month(self):
+        """До двадцатого числа просадка означает лишь, что зарплата не пришла."""
+        res = _run(
+            _matrix([], incomes=[_cell(0, 140000), _cell(0, 145000), _cell(0, 0)]),
+            today=date(2026, 11, 10),
+        )
+        assert "income_below_usual" not in _codes(res)
+
+    def test_speaks_up_late_in_an_open_month(self):
+        res = _run(
+            _matrix([], incomes=[_cell(0, 140000), _cell(0, 145000), _cell(0, 0)]),
+            today=date(2026, 11, 25),
+        )
+        assert "income_below_usual" in _codes(res)
+
+    def test_silent_when_income_is_normal(self):
+        res = _run(
+            _matrix([], incomes=[_cell(0, 140000), _cell(0, 145000), _cell(0, 139000)]),
+            today=date(2026, 12, 5),
+        )
+        assert "income_below_usual" not in _codes(res)
+
+
+class TestBiggestChange:
+    def test_picks_the_largest_swing(self):
+        rows = [
+            {"category_id": 1, "title": "Продукты", "cells": [_cell(0, 30000), _cell(0, 32000)]},
+            {"category_id": 2, "title": "Авто", "cells": [_cell(0, 6000), _cell(0, 24200)]},
+        ]
+        res = _run(_matrix(rows), today=date(2026, 12, 5))
+
+        item = next(i for i in res if i["code"] == "biggest_change")
+        assert "Авто" in item["title"]
+        assert "18 200" in item["detail"]
+
+    def test_silent_on_an_open_month(self):
+        """Полмесяца против целого — не перемена, а обычный ход дел."""
+        rows = [{"category_id": 2, "title": "Авто", "cells": [_cell(0, 6000), _cell(0, 24200)]}]
+        assert "biggest_change" not in _codes(_run(_matrix(rows), today=date(2026, 11, 10)))
+
+    def test_silent_when_nothing_moved_much(self):
+        rows = [{"category_id": 1, "title": "Продукты", "cells": [_cell(0, 30000), _cell(0, 30200)]}]
+        assert "biggest_change" not in _codes(_run(_matrix(rows), today=date(2026, 12, 5)))
