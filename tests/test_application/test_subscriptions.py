@@ -1149,14 +1149,38 @@ class TestSubscriptionNotifications:
         check_subscription_notifications(db_session, today=date(2026, 2, 6))
         assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
 
-    def test_notification_does_not_fire_after_trigger(self, db_session, subscription):
-        """Notification should NOT fire after trigger day."""
+    def test_notification_does_not_fire_before_trigger(self, db_session, subscription):
+        """До дня напоминания — молчим."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 6))
+        assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_catches_up_after_a_missed_day(self, db_session, subscription):
+        """День напоминания — 7 февраля. Планировщик тогда не отработал.
+
+        Раньше условие было строгим равенством, и напоминание терялось
+        навсегда. Теперь оно догоняется в пределах окна.
+        """
         subscription.paid_until_self = date(2026, 2, 10)
         subscription.notify_enabled = True
         subscription.notify_days_before = 3
         db_session.commit()
 
         check_subscription_notifications(db_session, today=date(2026, 2, 8))
+        assert _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
+
+    def test_notification_gives_up_after_the_catchup_window(self, db_session, subscription):
+        """Через неделю после дня напоминания догонять уже поздно."""
+        subscription.paid_until_self = date(2026, 2, 10)
+        subscription.notify_enabled = True
+        subscription.notify_days_before = 3
+        db_session.commit()
+
+        check_subscription_notifications(db_session, today=date(2026, 2, 20))
         assert not _already_notified(db_session, subscription.id, None, date(2026, 2, 10))
 
     def test_notification_not_duplicated(self, db_session, subscription):

@@ -9,14 +9,13 @@ For each subscription with notify_enabled=True and notify_days_before set:
 import logging
 from datetime import date, timedelta
 
-from sqlalchemy import distinct
 from sqlalchemy.orm import Session
 
 from app.infrastructure.db.models import (
     SubscriptionModel, SubscriptionMemberModel, SubscriptionNotificationLog,
-    ContactModel, PushSubscription, User,
+    ContactModel, User,
 )
-from app.application.push_service import send_push_to_user
+from app.application.notify import VIA_NONE, deliver
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +51,17 @@ def check_subscription_notifications(db: Session, today: date | None = None) -> 
     return total_sent
 
 
+# На сколько дней назад догоняем пропущенное. Раньше условие было строгим
+# равенством, и день простоя планировщика терял напоминание навсегда.
+# От повторов внутри окна защищает subscription_notification_log.
+CATCHUP_DAYS = 7
+
+
+def _due(trigger_date: date, today: date) -> bool:
+    """Пора ли напомнить: в день X или в пределах окна догона после него."""
+    return trigger_date <= today <= trigger_date + timedelta(days=CATCHUP_DAYS)
+
+
 def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int:
     """Check a single subscription for expiring coverage. Returns notifications sent."""
     sent = 0
@@ -63,18 +73,18 @@ def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int
     # Check SELF paid_until
     if sub.paid_until_self:
         trigger_date = sub.paid_until_self - notify_date_offset
-        if today == trigger_date:
+        if _due(trigger_date, today):
             if not _already_notified(db, sub.id, None, sub.paid_until_self):
                 try:
-                    # Send push if possible
-                    if user_ids:
-                        payload = {
-                            "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
-                            "body": f"{sub.name}\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {sub.paid_until_self.strftime('%d.%m.%Y')}",
-                            "url": f"/subscriptions/{sub.id}",
-                        }
-                        for uid in user_ids:
-                            sent += send_push_to_user(db, uid, payload)
+                    for uid in user_ids:
+                        if deliver(
+                            db, uid,
+                            kind="subscription_expiring",
+                            title="⏰ Подписка скоро закончится",
+                            body=f"{sub.name}\nОплачено до {sub.paid_until_self.strftime('%d.%m.%Y')}",
+                            url=f"/subscriptions/{sub.id}",
+                        ) != VIA_NONE:
+                            sent += 1
                     # Always log to prevent duplicate checks
                     _log_notification(db, sub.id, None, sub.paid_until_self)
                 except Exception:
@@ -97,19 +107,20 @@ def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int
 
     for member in members:
         trigger_date = member.paid_until - notify_date_offset
-        if today == trigger_date:
+        if _due(trigger_date, today):
             if not _already_notified(db, sub.id, member.id, member.paid_until):
                 try:
-                    if user_ids:
-                        contact = contact_map.get(member.contact_id)
-                        contact_name = contact.name if contact else "?"
-                        payload = {
-                            "title": "\u23f0 \u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0441\u043a\u043e\u0440\u043e \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u0441\u044f",
-                            "body": f"{sub.name} ({contact_name})\n\u041e\u043f\u043b\u0430\u0447\u0435\u043d\u043e \u0434\u043e {member.paid_until.strftime('%d.%m.%Y')}",
-                            "url": f"/subscriptions/{sub.id}",
-                        }
-                        for uid in user_ids:
-                            sent += send_push_to_user(db, uid, payload)
+                    contact = contact_map.get(member.contact_id)
+                    contact_name = contact.name if contact else "?"
+                    for uid in user_ids:
+                        if deliver(
+                            db, uid,
+                            kind="subscription_expiring",
+                            title="⏰ Подписка скоро закончится",
+                            body=f"{sub.name} ({contact_name})\nОплачено до {member.paid_until.strftime('%d.%m.%Y')}",
+                            url=f"/subscriptions/{sub.id}",
+                        ) != VIA_NONE:
+                            sent += 1
                     _log_notification(db, sub.id, member.id, member.paid_until)
                 except Exception:
                     db.rollback()
@@ -121,16 +132,14 @@ def _check_subscription(db: Session, sub: SubscriptionModel, today: date) -> int
 
 
 def _get_account_user_ids(db: Session, account_id: int) -> list[int]:
-    """Get user IDs for an account that have push subscriptions.
+    """Кому доставлять.
 
-    In the current single-user-per-account model, account_id == user_id.
+    Раньше список собирался из подписок на web-push, и без неё уведомления
+    не уходили никому. Теперь основной канал — телеграм, который про push
+    ничего не знает, поэтому отдаём пользователя аккаунта как есть.
+    В текущей модели «один пользователь на аккаунт» account_id == user_id.
     """
-    rows = (
-        db.query(distinct(PushSubscription.user_id))
-        .filter(PushSubscription.user_id == account_id)
-        .all()
-    )
-    return [r[0] for r in rows]
+    return [account_id]
 
 
 def _already_notified(

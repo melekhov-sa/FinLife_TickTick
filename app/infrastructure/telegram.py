@@ -116,27 +116,34 @@ def _record_failure(db: Session, user_id: int, kind: str, reason: str) -> None:
             pass
 
 
-def send_tg(db: Session, user_id: int, text: str, kind: str, html: bool = True) -> bool:
+# Исход отправки. Раньше возвращался bool, где «доставлено» и «намеренно
+# пропущено» были неразличимы, — а именно это различие нужно, чтобы решать,
+# дублировать ли сообщение пушем.
+TG_SENT = "sent"        # дошло до телеграма
+TG_SKIPPED = "skipped"  # не отправляли: выключено настройками или бот не привязан
+TG_FAILED = "failed"    # пытались, но не доставилось
+
+
+def send_tg(db: Session, user_id: int, text: str, kind: str, html: bool = True) -> str:
     """
     Отправить уведомление вида `kind` с учётом настроек юзера.
-    Возвращает True, если сообщение доставлено (или намеренно пропущено
-    настройками — False только при реальной ошибке доставки).
+    Возвращает TG_SENT / TG_SKIPPED / TG_FAILED.
     """
     settings = db.query(UserNotificationSettings).filter_by(user_id=user_id).first()
     if settings is not None:
         if not settings.enabled:
-            return True
+            return TG_SKIPPED
         if not (settings.channels_json or {}).get("telegram", False):
-            return True
+            return TG_SKIPPED
         enabled, silent = get_pref(settings.rule_prefs_json, kind)
         if not enabled:
-            return True
+            return TG_SKIPPED
     else:
         silent = False
 
     creds = get_user_bot(db, user_id)
     if not creds:
-        return True  # телеграм не подключён — это не ошибка
+        return TG_SKIPPED  # телеграм не привязан — это не ошибка
     token, chat_id = creds
 
     payload: dict = {"chat_id": chat_id, "text": text}
@@ -153,5 +160,5 @@ def send_tg(db: Session, user_id: int, text: str, kind: str, html: bool = True) 
             user_id, kind, getattr(resp, "status_code", "network"), reason,
         )
         _record_failure(db, user_id, kind, reason)
-        return False
-    return True
+        return TG_FAILED
+    return TG_SENT

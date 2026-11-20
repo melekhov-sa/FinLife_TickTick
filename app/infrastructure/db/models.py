@@ -958,8 +958,11 @@ class SubscriptionModel(Base):
     paid_until_self: Mapped[date_type | None] = mapped_column(Date, nullable=True)
 
     # Notification settings
-    notify_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    notify_days_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Включено по умолчанию: раньше флаг не выставлялся нигде, оставался false,
+    # и ежедневное задание отсекало вообще все подписки — уведомления об
+    # окончании не приходили ни разу. 0 = напомнить в день окончания.
+    notify_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    notify_days_before: Mapped[int | None] = mapped_column(Integer, nullable=True, default=0, server_default="0")
 
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False

@@ -21,8 +21,8 @@ from app.infrastructure.db.models import (
     HabitModel, HabitOccurrence,
     TelegramSettings, UserNotificationSettings,
 )
-from app.application.push_service import send_push_to_user
-from app.infrastructure.telegram import send_tg
+from app.infrastructure.telegram import TG_SENT, send_tg
+from app.application.notify import VIA_NONE, deliver
 
 logger = logging.getLogger(__name__)
 MSK = timezone(timedelta(hours=3))
@@ -128,15 +128,15 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
             if ref_time:
                 fire_at = datetime.combine(task.due_date, ref_time, tzinfo=MSK)
                 if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
-                    n = send_push_to_user(db, task.account_id, {
-                        "title": f"⏰ {task.title}",
-                        "body": f"Запланировано на {ref_time.strftime('%H:%M')}",
-                        "url": "/tasks",
-                    })
-                    sent += n
-                    send_tg(db, task.account_id,
-                            f"⏰ <b>{task.title}</b>\nЗапланировано на {ref_time.strftime('%H:%M')}",
-                            "task_reminder")
+                    # Один канал на событие: телеграм, а push только если он не дошёл.
+                    if deliver(
+                        db, task.account_id,
+                        kind="task_reminder",
+                        title=f"⏰ {task.title}",
+                        body=f"Запланировано на {ref_time.strftime('%H:%M')}",
+                        url="/tasks",
+                    ) != VIA_NONE:
+                        sent += 1
                     _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
             continue
 
@@ -150,15 +150,15 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     task.due_date, _time(hour, minute), tzinfo=MSK
                 )
                 if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
-                    n = send_push_to_user(db, task.account_id, {
-                        "title": f"⏰ {task.title}",
-                        "body": f"Напоминание ({hour:02d}:{minute:02d})",
-                        "url": "/tasks",
-                    })
-                    sent += n
-                    send_tg(db, task.account_id,
-                            f"⏰ <b>{task.title}</b>\nНапоминание ({hour:02d}:{minute:02d})",
-                            "task_reminder")
+                    # Один канал на событие: телеграм, а push только если он не дошёл.
+                    if deliver(
+                        db, task.account_id,
+                        kind="task_reminder",
+                        title=f"⏰ {task.title}",
+                        body=f"Напоминание ({hour:02d}:{minute:02d})",
+                        url="/tasks",
+                    ) != VIA_NONE:
+                        sent += 1
                     _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
             else:
                 # OFFSET kind — fire relative to due datetime, or midnight for date-only tasks
@@ -170,15 +170,15 @@ def _dispatch_task_reminders(db: Session, now_msk: datetime) -> int:
                     due_dt = datetime.combine(task.due_date, _time(0, 0), tzinfo=MSK)
                 fire_at = due_dt + timedelta(minutes=rem.offset_minutes)  # offset is <= 0
                 if _should_send(db, task.account_id, "task", task.task_id, fire_at, now_msk):
-                    n = send_push_to_user(db, task.account_id, {
-                        "title": f"⏰ {task.title}",
-                        "body": _format_task_time(due_dt, rem.offset_minutes),
-                        "url": "/tasks",
-                    })
-                    sent += n
-                    send_tg(db, task.account_id,
-                            f"⏰ <b>{task.title}</b>\n{_format_task_time(due_dt, rem.offset_minutes)}",
-                            "task_reminder")
+                    # Один канал на событие: телеграм, а push только если он не дошёл.
+                    if deliver(
+                        db, task.account_id,
+                        kind="task_reminder",
+                        title=f"⏰ {task.title}",
+                        body=_format_task_time(due_dt, rem.offset_minutes),
+                        url="/tasks",
+                    ) != VIA_NONE:
+                        sent += 1
                     _mark_sent(db, task.account_id, "task", task.task_id, fire_at)
 
     return sent
@@ -251,15 +251,15 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                 event = event_map.get(occ.event_id)
                 title = event.title if event else "Событие"
                 time_str = occ.start_time.strftime("%H:%M")
-                n = send_push_to_user(db, occ.account_id, {
-                    "title": f"📅 {title}",
-                    "body": f"Начало в {time_str}",
-                    "url": "/events",
-                })
-                sent += n
-                send_tg(db, occ.account_id,
-                        f"📅 <b>{title}</b>\nНачало в {time_str}",
-                        "event_reminder")
+                # Один канал на событие: телеграм, а push только если он не дошёл.
+                if deliver(
+                    db, occ.account_id,
+                    kind="event_reminder",
+                    title=f"📅 {title}",
+                    body=f"Начало в {time_str}",
+                    url="/events",
+                ) != VIA_NONE:
+                    sent += 1
                 _mark_sent(db, occ.account_id, "event", occ.id, start_dt)
             continue
 
@@ -283,15 +283,15 @@ def _dispatch_event_reminders(db: Session, now_msk: datetime) -> int:
                 title = event.title if event else "Событие"
                 time_str = occ.start_time.strftime("%H:%M") if occ.start_time else ""
 
-                n = send_push_to_user(db, occ.account_id, {
-                    "title": f"📅 {title}",
-                    "body": f"Сегодня в {time_str}" if time_str else "Сегодня",
-                    "url": "/events",
-                })
-                sent += n
-                send_tg(db, occ.account_id,
-                        f"📅 <b>{title}</b>\n" + (f"Сегодня в {time_str}" if time_str else "Сегодня"),
-                        "event_reminder")
+                # Один канал на событие: телеграм, а push только если он не дошёл.
+                if deliver(
+                    db, occ.account_id,
+                    kind="event_reminder",
+                    title=f"📅 {title}",
+                    body=f"Сегодня в {time_str}" if time_str else "Сегодня",
+                    url="/events",
+                ) != VIA_NONE:
+                    sent += 1
                 _mark_sent(db, occ.account_id, "event", occ.id, fire_at)
 
     return sent
@@ -335,15 +335,15 @@ def _dispatch_habit_reminders(db: Session, now_msk: datetime) -> int:
 
         fire_at = datetime.combine(today, habit.reminder_time, tzinfo=MSK)
         if _should_send(db, habit.account_id, "habit", habit.habit_id, fire_at, now_msk):
-            n = send_push_to_user(db, habit.account_id, {
-                "title": f"\U0001f504 {habit.title}",
-                "body": "Пора выполнить привычку",
-                "url": "/habits",
-            })
-            sent += n
-            send_tg(db, habit.account_id,
-                    f"🔄 <b>{habit.title}</b>\nПора выполнить привычку",
-                    "habit_reminder")
+            # Один канал на событие: телеграм, а push только если он не дошёл.
+            if deliver(
+                db, habit.account_id,
+                kind="habit_reminder",
+                title=f"\U0001f504 {habit.title}",
+                body="Пора выполнить привычку",
+                url="/habits",
+            ) != VIA_NONE:
+                sent += 1
             _mark_sent(db, habit.account_id, "habit", habit.habit_id, fire_at)
 
     return sent
@@ -484,7 +484,7 @@ def _dispatch_hourly_summary(db: Session, now_msk: datetime) -> int:
                 lines.append(f"• {h.title} <i>(до {h.deadline_time.strftime('%H:%M')})</i>")
 
         text = "\n".join(lines)
-        if send_tg(db, user_id, text, "hourly_pending"):
+        if send_tg(db, user_id, text, "hourly_pending") == TG_SENT:
             sent += 1
 
     return sent

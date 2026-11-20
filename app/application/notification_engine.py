@@ -515,6 +515,18 @@ def _send_email(db: Session, notif: NotificationModel) -> bool:
     return False
 
 
+# Телеграм обрабатываем раньше остальных каналов: если сообщение дошло,
+# дублировать его колокольчиком и пушем незачем — об одном событии
+# сообщают трижды, и это раздражает больше, чем помогает.
+_CHANNEL_ORDER = {"telegram": 0, "email": 1, "inapp": 2}
+
+
+def _telegram_delivered(db: Session, notification_id: int) -> bool:
+    return db.query(NotificationDelivery).filter_by(
+        notification_id=notification_id, channel="telegram", status="sent",
+    ).first() is not None
+
+
 def dispatch_pending_deliveries(db: Session) -> None:
     """Process all pending deliveries, respecting quiet hours for external channels."""
     now = datetime.now(tz=ZoneInfo("Europe/Moscow"))
@@ -525,6 +537,7 @@ def dispatch_pending_deliveries(db: Session) -> None:
         .limit(500)
         .all()
     )
+    pending.sort(key=lambda d: (_CHANNEL_ORDER.get(d.channel, 9), d.id))
     for delivery in pending:
         try:
             notif = db.get(NotificationModel, delivery.notification_id)
@@ -533,6 +546,15 @@ def dispatch_pending_deliveries(db: Session) -> None:
             settings = db.query(UserNotificationSettings).filter_by(user_id=notif.user_id).first()
 
             if delivery.channel == "inapp":
+                if _telegram_delivered(db, delivery.notification_id):
+                    # Уже сказали в телеграме. Запись остаётся в списке как
+                    # история, но помечается прочитанной: бейдж не светит и
+                    # push не уходит.
+                    delivery.status = "skipped"
+                    delivery.sent_at = now
+                    notif.is_read = True
+                    db.commit()
+                    continue
                 delivery.status = "sending"
                 delivery.sent_at = now
                 db.commit()

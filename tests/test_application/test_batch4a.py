@@ -110,7 +110,7 @@ def test_event_fixed_time_reminder_fires(db_session):
     # now_msk = 09:01 on the event date — just inside the 2-minute window
     now_msk = datetime.combine(TODAY, time(9, 1), tzinfo=MSK)
 
-    with patch("app.application.reminder_dispatcher.send_push_to_user", return_value=1) as mock_send:
+    with patch("app.application.reminder_dispatcher.deliver", return_value="telegram") as mock_send:
         result = _dispatch_event_reminders(db_session, now_msk)
 
     assert result == 1
@@ -125,7 +125,7 @@ def test_event_fixed_time_reminder_too_early_does_not_fire(db_session):
 
     now_msk = datetime.combine(TODAY, time(8, 58), tzinfo=MSK)
 
-    with patch("app.application.reminder_dispatcher.send_push_to_user", return_value=1) as mock_send:
+    with patch("app.application.reminder_dispatcher.deliver", return_value="telegram") as mock_send:
         result = _dispatch_event_reminders(db_session, now_msk)
 
     assert result == 0
@@ -140,7 +140,7 @@ def test_event_fixed_time_reminder_skipped_when_no_fixed_time(db_session):
 
     now_msk = datetime.combine(TODAY, time(9, 1), tzinfo=MSK)
 
-    with patch("app.application.reminder_dispatcher.send_push_to_user", return_value=1) as mock_send:
+    with patch("app.application.reminder_dispatcher.deliver", return_value="telegram") as mock_send:
         result = _dispatch_event_reminders(db_session, now_msk)
 
     assert result == 0
@@ -156,7 +156,7 @@ def test_event_offset_reminder_still_fires(db_session):
 
     now_msk = datetime.combine(TODAY, time(9, 55, 30), tzinfo=MSK)
 
-    with patch("app.application.reminder_dispatcher.send_push_to_user", return_value=1) as mock_send:
+    with patch("app.application.reminder_dispatcher.deliver", return_value="telegram") as mock_send:
         result = _dispatch_event_reminders(db_session, now_msk)
 
     assert result == 1
