@@ -1558,6 +1558,8 @@ class UserActivityDaily(Base):
     ops_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     tasks_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     habits_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Своя колонка, а не плюс к задачам: подписи в графиках иначе врали бы.
+    events_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     goals_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     points: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     updated_at: Mapped[DateTime] = mapped_column(

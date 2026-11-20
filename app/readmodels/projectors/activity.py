@@ -23,6 +23,7 @@ _COUNTER_MAP: dict[str, str] = {
     "task_completed": "tasks",
     "task_occurrence_completed": "tasks",
     "habit_occurrence_completed": "habits",
+    "event_occurrence_completed": "events",
     "goal_achieved": "goals",
 }
 
@@ -60,6 +61,7 @@ class ActivityProjector(BaseProjector):
                 ops_count=0,
                 tasks_count=0,
                 habits_count=0,
+                events_count=0,
                 goals_count=0,
                 points=0,
             )
@@ -72,6 +74,8 @@ class ActivityProjector(BaseProjector):
             row.tasks_count += 1
         elif counter == "habits":
             row.habits_count += 1
+        elif counter == "events":
+            row.events_count += 1
         elif counter == "goals":
             row.goals_count += 1
 
@@ -79,6 +83,7 @@ class ActivityProjector(BaseProjector):
             2 * row.ops_count
             + row.tasks_count
             + row.habits_count
+            + row.events_count
             + 5 * row.goals_count
         )
         self.db.flush()

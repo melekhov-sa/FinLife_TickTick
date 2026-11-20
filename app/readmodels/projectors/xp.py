@@ -28,6 +28,8 @@ XP_RULES: dict[str, int] = {
     "task_completed": BASE_TASK_COMPLETED_XP,
     "task_occurrence_completed": 10,
     "habit_occurrence_completed": 3,
+    # Столько же, сколько привычка: событие закрывается одним действием.
+    "event_occurrence_completed": 3,
     "transaction_created": 5,
     "goal_achieved": 200,
 }

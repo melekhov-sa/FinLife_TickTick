@@ -26,7 +26,7 @@ from app.infrastructure.db.models import (
     TaskDueChangeLog, CollectionItem,
 )
 from app.utils.money import format_money
-from app.application.event_status import is_event_overdue
+from app.application.event_status import MANUAL_COMPLETION, is_event_overdue
 
 OP_KIND_LABEL = {"INCOME": "Доход", "EXPENSE": "Расход", "TRANSFER": "Перевод"}
 _JUBILEE_AGES = {30, 40, 50, 60, 70, 75, 80, 90, 100}
@@ -103,10 +103,17 @@ class DashboardService:
         done.sort(key=_sort)
         events.sort(key=lambda it: (it.get("time") or "", it["title"]))
 
-        # Progress: tasks only (active + done), events excluded, overdue excluded
-        _task_kinds = ("task", "task_occ", "planned_op", "habit")
-        total = len(active) + len(done)
-        done_count = len(done)
+        # Прогресс дня: активные и выполненные, просрочка не в счёт.
+        # События с ручным закрытием сюда входят — это такая же работа,
+        # которую надо сделать и отметить. Автозакрывающиеся (end_of_day,
+        # at_event_end) не входят: они случаются сами, отмечать нечего.
+        manual_events = [
+            e for e in events
+            if (e.get("meta") or {}).get("completion_mode") == MANUAL_COMPLETION
+            and not e.get("is_overdue")
+        ]
+        total = len(active) + len(done) + len(manual_events)
+        done_count = len(done) + sum(1 for e in manual_events if e.get("is_done"))
         progress = {"total": total, "done": done_count, "left": total - done_count}
 
         # Federal holiday for today (if any)

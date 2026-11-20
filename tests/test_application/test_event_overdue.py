@@ -199,3 +199,74 @@ class TestDashboardTodayBlock:
         item = next(i for i in block["events"] if i["id"] == 301)
 
         assert item["is_overdue"] is False
+
+
+class TestCompletionCountsEverywhere:
+    """Выполнение события должно считаться, а не пропадать в никуда."""
+
+    def _complete(self, db, occ_id):
+        from app.application.events import CompleteEventOccurrenceUseCase
+        CompleteEventOccurrenceUseCase(db).execute(
+            occurrence_id=occ_id, account_id=ACCT, actor_user_id=ACCT,
+        )
+
+    def test_completion_is_written_to_the_event_log(self, db_session):
+        from app.infrastructure.db.models import EventLog
+        ev = _event(db_session)
+        _occ(db_session, ev, start=TODAY, oid=400)
+        db_session.commit()
+
+        self._complete(db_session, 400)
+
+        row = db_session.query(EventLog).filter(
+            EventLog.event_type == "event_occurrence_completed"
+        ).one()
+        assert row.payload_json["occurrence_id"] == 400
+        assert row.payload_json["completed_at"]
+
+    def test_occurrence_is_marked_done(self, db_session):
+        ev = _event(db_session)
+        occ = _occ(db_session, ev, start=TODAY, oid=401)
+        db_session.commit()
+
+        self._complete(db_session, 401)
+
+        db_session.refresh(occ)
+        assert occ.is_completed is True
+        assert occ.completed_at is not None
+
+    def test_activity_counts_the_event(self, db_session):
+        from app.infrastructure.db.models import UserActivityDaily
+        ev = _event(db_session)
+        _occ(db_session, ev, start=TODAY, oid=402)
+        db_session.commit()
+
+        self._complete(db_session, 402)
+
+        row = db_session.query(UserActivityDaily).filter(
+            UserActivityDaily.user_id == ACCT
+        ).one()
+        assert row.events_count == 1
+        assert row.points >= 1
+
+    def test_second_completion_writes_nothing(self, db_session):
+        from app.infrastructure.db.models import EventLog
+        ev = _event(db_session)
+        _occ(db_session, ev, start=TODAY, oid=403)
+        db_session.commit()
+
+        self._complete(db_session, 403)
+        self._complete(db_session, 403)
+
+        assert db_session.query(EventLog).filter(
+            EventLog.event_type == "event_occurrence_completed"
+        ).count() == 1
+
+    def test_cancelled_occurrence_cannot_be_completed(self, db_session):
+        from app.application.events import EventValidationError
+        ev = _event(db_session)
+        _occ(db_session, ev, start=TODAY, cancelled=True, oid=404)
+        db_session.commit()
+
+        with pytest.raises(EventValidationError):
+            self._complete(db_session, 404)

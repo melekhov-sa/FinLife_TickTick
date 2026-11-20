@@ -1,5 +1,5 @@
 """EventOccurrence domain entity - generates events for event occurrence actions"""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 
@@ -34,6 +34,17 @@ class EventOccurrenceEvent:
             if key in changes:
                 payload[key] = changes[key]
         return payload
+
+    @staticmethod
+    def complete(event_id: int, occurrence_id: int) -> Dict[str, Any]:
+        """Отметка «выполнено». Раньше её вообще не было в журнале, поэтому
+        выполнение событий не видели ни активность, ни XP, ни история."""
+        return {
+            "event_id": event_id,
+            "occurrence_id": occurrence_id,
+            "is_completed": True,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     @staticmethod
     def cancel(event_id: int, occurrence_id: int) -> Dict[str, Any]:

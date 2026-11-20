@@ -1,5 +1,5 @@
 """EventsProjector - builds calendar events read model from events"""
-from datetime import date, time
+from datetime import date, datetime, time
 
 from app.readmodels.projectors.base import BaseProjector
 from app.infrastructure.db.models import (
@@ -22,6 +22,7 @@ class EventsProjector(BaseProjector):
             "event_occurrence_created": self._handle_occurrence_created,
             "event_occurrence_updated": self._handle_occurrence_updated,
             "event_occurrence_cancelled": self._handle_occurrence_cancelled,
+            "event_occurrence_completed": self._handle_occurrence_completed,
             "event_default_reminder_created": self._handle_default_reminder_created,
             "event_default_reminder_updated": self._handle_default_reminder_updated,
             "event_default_reminder_deleted": self._handle_default_reminder_deleted,
@@ -130,6 +131,22 @@ class EventsProjector(BaseProjector):
         ).first()
         if occ:
             occ.is_cancelled = True
+
+    def _handle_occurrence_completed(self, event: EventLog) -> None:
+        """Отметка «выполнено» теперь живёт в журнале.
+
+        Раньше она писалась прямо в read-model и при перестроении терялась,
+        а ещё её не видели ни активность, ни XP — выполнение события не
+        считалось нигде.
+        """
+        p = event.payload_json
+        occ = self.db.query(EventOccurrenceModel).filter(
+            EventOccurrenceModel.id == p["occurrence_id"]
+        ).first()
+        if occ:
+            occ.is_completed = True
+            if p.get("completed_at"):
+                occ.completed_at = datetime.fromisoformat(p["completed_at"])
 
     # --- Default Reminder handlers ---
 

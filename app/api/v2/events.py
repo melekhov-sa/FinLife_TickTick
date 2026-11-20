@@ -587,11 +587,15 @@ def complete_occurrence(occurrence_id: int, request: Request, db: Session = Depe
     ).first()
     if not occ:
         raise HTTPException(status_code=404, detail="Occurrence not found")
-    if occ.is_cancelled:
-        raise HTTPException(status_code=400, detail="Нельзя выполнить отменённое событие")
-    occ.is_completed = True
-    occ.completed_at = datetime.now(timezone.utc)
-    db.commit()
+    # Через use case, а не напрямую: отметка должна попасть в журнал,
+    # иначе её не увидят ни активность, ни XP, ни история.
+    from app.application.events import CompleteEventOccurrenceUseCase, EventValidationError
+    try:
+        CompleteEventOccurrenceUseCase(db).execute(
+            occurrence_id=occurrence_id, account_id=user_id, actor_user_id=user_id,
+        )
+    except EventValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}
 
 

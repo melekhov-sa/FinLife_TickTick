@@ -13,6 +13,8 @@ from app.infrastructure.db.models import (
 from app.domain.event import CalendarEvent
 from app.domain.event_occurrence import EventOccurrenceEvent
 from app.readmodels.projectors.events import EventsProjector
+from app.readmodels.projectors.activity import ActivityProjector
+from app.readmodels.projectors.xp import XpProjector
 from app.application.recurrence_rules import CreateRecurrenceRuleUseCase
 
 from app.application.occurrence_generator import OccurrenceGenerator
@@ -417,6 +419,43 @@ class UpdateEventOccurrenceUseCase:
         )
         self.db.commit()
         EventsProjector(self.db).run(account_id, event_types=["event_occurrence_updated"])
+
+
+class CompleteEventOccurrenceUseCase:
+    """Отметить вхождение события выполненным.
+
+    Раньше это делал роутер напрямую: менял флаг и коммитил. След не
+    оставался нигде — ни в журнале, ни в активности, ни в XP, и ответить
+    «когда я это закрыл» было нечем.
+    """
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.event_repo = EventLogRepository(db)
+
+    def execute(self, occurrence_id: int, account_id: int, actor_user_id: int | None = None) -> None:
+        occ = self.db.query(EventOccurrenceModel).filter(
+            EventOccurrenceModel.id == occurrence_id,
+            EventOccurrenceModel.account_id == account_id,
+        ).first()
+        if not occ:
+            raise EventValidationError(f"Occurrence #{occurrence_id} не найден")
+        if occ.is_cancelled:
+            raise EventValidationError("Нельзя выполнить отменённое событие")
+        if occ.is_completed:
+            return  # уже закрыто — второй записи в журнале не нужно
+
+        payload = EventOccurrenceEvent.complete(occ.event_id, occurrence_id)
+        self.event_repo.append_event(
+            account_id=account_id,
+            event_type="event_occurrence_completed",
+            payload=payload,
+            actor_user_id=actor_user_id,
+        )
+        self.db.commit()
+        EventsProjector(self.db).run(account_id, event_types=["event_occurrence_completed"])
+        ActivityProjector(self.db).run(account_id, event_types=["event_occurrence_completed"])
+        XpProjector(self.db).run(account_id, event_types=["event_occurrence_completed"])
 
 
 class CancelEventOccurrenceUseCase:
