@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { DaypartGlow } from "@/components/layout/DaypartGlow";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { AuthGuard } from "@/components/layout/AuthGuard";
@@ -231,9 +232,13 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Main column */}
         <main
-          className="flex-1 flex flex-col min-w-0 min-h-0"
+          className="relative flex-1 flex flex-col min-w-0 min-h-0"
           style={{ background: "var(--app-bg)" }}
         >
+          {/* Свечение по времени суток — на всё приложение, не только на
+              главную. Лежит в колонке, а не в прокручиваемой области,
+              поэтому не уезжает вместе со скроллом. */}
+          <DaypartGlow />
           <AppTopbar />
           <OfflineBanner
             state={onlineStatus}

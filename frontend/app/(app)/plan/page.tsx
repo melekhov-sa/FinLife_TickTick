@@ -227,6 +227,7 @@ function DayGroupCard({
   onSkipTaskOcc,
   onSkipEvent,
   onAddTask,
+  onRescheduleAll,
   onEntryClick,
   completingKey,
   doneToday = 0,
@@ -241,6 +242,8 @@ function DayGroupCard({
   onSkipTaskOcc: (entry: PlanEntry) => void;
   onSkipEvent: (entry: PlanEntry) => void;
   onAddTask: () => void;
+  /** Только у блока просрочки: перенести всё разом. */
+  onRescheduleAll?: (entries: PlanEntry[], target: "today" | "tomorrow") => void;
   onEntryClick: (entry: PlanEntry) => void;
   completingKey: string | null;
   doneToday?: number;
@@ -390,6 +393,27 @@ function DayGroupCard({
         <span className="text-[11px] font-semibold tabular-nums bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded-full" style={{ color: "var(--t-muted)" }}>
           {group.entries.length}
         </span>
+        {/* Переносить просрочку по одной задаче через «⋮» → «Перенести» —
+            это три тапа на каждую, а висит их обычно по четыре-шесть. */}
+        {group.is_overdue_group && onRescheduleAll && group.entries.length > 1 && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => onRescheduleAll(group.entries, "today")}
+              className="text-[11px] font-semibold px-2 py-1 rounded-md transition-colors hover:bg-red-100/60 dark:hover:bg-red-500/15"
+              style={{ color: "var(--c-danger-ink)" }}
+            >
+              Всё на сегодня
+            </button>
+            <button
+              onClick={() => onRescheduleAll(group.entries, "tomorrow")}
+              className="text-[11px] font-medium px-2 py-1 rounded-md transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+              style={{ color: "var(--t-muted)" }}
+            >
+              на завтра
+            </button>
+          </div>
+        )}
+
         {!group.is_overdue_group && (
           <button
             onClick={onAddTask}
@@ -613,6 +637,46 @@ export default function PlanPage() {
 
   function handleDeleteTask(entry: PlanEntry) {
     setDeleteEntry(entry);   // удаление необратимо — спрашиваем
+  }
+
+  /**
+   * Перенести всю просрочку разом.
+   *
+   * Диалога нет, зато есть отмена: переносим сразу, а исходные даты держим
+   * в памяти и по «Отменить» возвращаем каждую запись на своё место.
+   * Спрашивать подтверждение на обратимое действие — лишний тап.
+   */
+  async function handleRescheduleAll(entries: PlanEntry[], target: "today" | "tomorrow") {
+    const d = new Date();
+    if (target === "tomorrow") d.setDate(d.getDate() + 1);
+    const newDate = toISODate(d);
+
+    const moved = entries.filter((e) => e.date && e.date !== newDate);
+    if (moved.length === 0) return;
+
+    const before = moved.map((e) => ({ kind: e.kind, id: e.id, date: e.date as string }));
+
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ["plan"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    };
+
+    try {
+      await Promise.all(
+        moved.map((e) => rescheduleEntryRequest(e.kind, e.id, newDate)),
+      );
+    } catch {
+      toast({ title: "Не удалось перенести", variant: "danger" });
+      refresh();
+      return;
+    }
+    refresh();
+
+    showUndo(() => {
+      Promise.all(before.map((b) => rescheduleEntryRequest(b.kind, b.id, b.date)))
+        .then(refresh)
+        .catch(() => toast({ title: "Не удалось отменить", variant: "danger" }));
+    });
   }
 
   function handleSkipTaskOcc(entry: PlanEntry) {
@@ -1119,6 +1183,7 @@ export default function PlanPage() {
                     key={i}
                     group={g}
                     onComplete={handleOpenComplete}
+                    onRescheduleAll={handleRescheduleAll}
                     onCompleteEvent={handleCompleteEvent}
                     onReschedule={setRescheduleEntry}
                     onExecuteOp={setExecuteEntry}
