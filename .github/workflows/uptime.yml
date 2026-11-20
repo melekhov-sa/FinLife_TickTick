@@ -1,0 +1,96 @@
+name: Доступность сайта
+
+# Зачем: 18 ноября 2026 сервер был недоступен около суток, и узнал об этом
+# владелец сам, зайдя на сайт. Мониторинга не было — да он и не может жить
+# на самом сервере: падает вместе с ним. Эта проверка идёт снаружи,
+# из GitHub, поэтому переживает падение.
+#
+# Нужны секреты репозитория: TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID.
+# Без них проверка всё равно работает и падает видимым статусом,
+# просто без сообщения в телеграм.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+env:
+  # /manifest.json отдаёт 200 без авторизации и не требует базы:
+  # проверяем, что сайт вообще отвечает.
+  URL: https://centricore.ru/manifest.json
+  ISSUE_TITLE: "🔴 centricore.ru не отвечает"
+
+jobs:
+  check:
+    name: Проверка
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Запрос к сайту
+        id: probe
+        run: |
+          # Две попытки с паузой: одиночный таймаут бывает сетевой икотой
+          # на стороне раннера, а поднимать тревогу по ней не стоит.
+          ok=0
+          for attempt in 1 2; do
+            # curl сам печатает 000 при сетевой ошибке, запасной echo
+            # лишь склеивался бы с ним и путал лог.
+            code=$(curl -s -o /dev/null -m 20 -w "%{http_code}" "$URL" || true)
+            echo "попытка $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then ok=1; break; fi
+            [ "$attempt" = "1" ] && sleep 60
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Найти открытый инцидент
+        id: incident
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Репозиторий сам хранит состояние: пока инцидент открыт, повторных
+          # сообщений не шлём — иначе за сутки простоя их набежало бы полторы
+          # сотни.
+          num=$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+                  --json number --jq '.[0].number // empty')
+          echo "number=$num" >> "$GITHUB_OUTPUT"
+
+      - name: Сайт лёг — открыть инцидент и сообщить
+        if: steps.probe.outputs.ok == '0' && steps.incident.outputs.number == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          gh issue create --title "$ISSUE_TITLE" \
+            --body "Сайт не ответил на две проверки подряд. Проверка: $URL"
+          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+            curl -s -o /dev/null -X POST \
+              "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+              -d "chat_id=$TG_CHAT" \
+              -d "text=🔴 centricore.ru не отвечает. Две проверки подряд, $URL"
+          fi
+
+      - name: Сайт вернулся — закрыть инцидент и сообщить
+        if: steps.probe.outputs.ok == '1' && steps.incident.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          gh issue close "${{ steps.incident.outputs.number }}" \
+            --comment "Сайт снова отвечает."
+          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+            curl -s -o /dev/null -X POST \
+              "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+              -d "chat_id=$TG_CHAT" \
+              -d "text=🟢 centricore.ru снова отвечает"
+          fi
+
+      - name: Отметить падение статусом задания
+        if: steps.probe.outputs.ok == '0'
+        run: |
+          echo "Сайт не отвечает: $URL" >&2
+          exit 1
