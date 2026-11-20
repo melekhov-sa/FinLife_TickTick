@@ -10,6 +10,7 @@ import { AdminBlock } from "@/components/habits/AdminBlock";
 import { useHabits } from "@/hooks/useHabits";
 import type { HabitItem } from "@/types/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 export default function HabitsAllPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -53,7 +54,16 @@ export default function HabitsAllPage() {
           </p>
         )}
 
-        {!isPending && !isError && (
+        {!isPending && !isError && activeHabits.length === 0 && archivedHabits.length === 0 && (
+          <EmptyState
+            emoji="🔁"
+            title="Привычек пока нет"
+            description="Привычка — это дело, которое повторяется по расписанию и копит серию. Первая займёт минуту."
+            action={{ label: "Создать привычку", onClick: () => setShowCreateModal(true) }}
+          />
+        )}
+
+        {!isPending && !isError && (activeHabits.length > 0 || archivedHabits.length > 0) && (
           <AdminBlock
             habits={activeHabits}
             archivedHabits={archivedHabits}

@@ -18,6 +18,7 @@ import { Button } from "@/components/primitives/Button";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useToast } from "@/components/primitives/Toast";
+import { EmptyState } from "@/components/primitives/EmptyState";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1197,6 +1198,14 @@ export default function ListDetailPage() {
                 </div>
               ) : (
                 <>
+                  {list.items.length === 0 && (
+                    <EmptyState
+                      emoji="📝"
+                      title="Список пуст"
+                      description="Добавь первую позицию в поле снизу. Позже ей можно задать цену и дату покупки."
+                    />
+                  )}
+
                   {grouped.map(({ group, items }) => (
                     <div key={group?.id ?? "ungrouped"} className="mb-4">
                       {group && (
