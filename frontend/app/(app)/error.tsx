@@ -1,5 +1,15 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
+/**
+ * Экран на случай упавшего рендера.
+ *
+ * Адрес страницы показывается не для красоты: на проде стек
+ * минифицирован, и по одному `Cannot read properties of undefined`
+ * непонятно даже, какой экран сломался. С адресом скриншот сразу
+ * называет место.
+ */
 export default function AppError({
   error,
   reset,
@@ -7,6 +17,8 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
       <h2
@@ -15,6 +27,10 @@ export default function AppError({
       >
         Что-то пошло не так
       </h2>
+      <p className="text-xs font-mono" style={{ color: "var(--t-muted)" }}>
+        {pathname}
+        {error.digest ? ` · ${error.digest}` : ""}
+      </p>
       <pre
         className="text-xs max-w-xl w-full overflow-auto p-4 rounded-xl border"
         style={{

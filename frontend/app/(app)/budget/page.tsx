@@ -30,11 +30,16 @@ interface BudgetData {
   income_rows: BudgetRow[];
   expense_rows: BudgetRow[];
   /** Накопления: «Отложить» и «Взять из отложенного». В результат месяца
-   *  не входят — он остаётся доходами минус расходами. */
-  saving_total: { plan: number; fact: number };
-  saving_rows: GoalRow[];
-  withdrawal_total: { plan: number; fact: number };
-  withdrawal_rows: GoalRow[];
+   *  не входят — он остаётся доходами минус расходами.
+   *
+   *  Необязательные: раздел появился в API позже остальных, и бэкенд
+   *  постарее этих полей не отдаёт вовсе. Так было после деплоя, где
+   *  фронт обновился, а бэкенд остался прежним, — и чтение `.length`
+   *  у `undefined` роняло всю страницу бюджета. */
+  saving_total?: { plan: number; fact: number };
+  saving_rows?: GoalRow[];
+  withdrawal_total?: { plan: number; fact: number };
+  withdrawal_rows?: GoalRow[];
 }
 
 interface GoalRow {
@@ -43,7 +48,7 @@ interface GoalRow {
   plan: number;
   fact: number;
   /** План подставлен накопительным планом, а не вписан руками. */
-  is_computed: boolean;
+  is_computed?: boolean;
 }
 
 interface BudgetStatsData {
@@ -163,12 +168,15 @@ function GoalSection({
   onSelectGoal,
 }: {
   label: string;
-  rows: GoalRow[];
-  total: { plan: number; fact: number };
+  rows: GoalRow[] | undefined;
+  total: { plan: number; fact: number } | undefined;
   accent?: boolean;
   onSelectGoal?: (row: GoalRow) => void;
 }) {
-  if (rows.length === 0 && !total.fact && !total.plan) return null;
+  // Секции может не быть в ответе вовсе — это не повод ронять бюджет
+  const list = rows ?? [];
+  const sum = total ?? { plan: 0, fact: 0 };
+  if (list.length === 0 && !sum.fact && !sum.plan) return null;
   return (
     <div className="dash-card p-3.5 md:p-4">
       <div className="flex items-baseline justify-between gap-2 mb-2">
@@ -179,16 +187,16 @@ function GoalSection({
           className="text-[13px] font-semibold tabular-nums"
           style={{ color: accent ? "var(--c-warning-ink)" : "var(--t-secondary)" }}
         >
-          {fmt(total.fact)}
-          {total.plan ? (
+          {fmt(sum.fact)}
+          {sum.plan ? (
             <span className="text-[11px] font-normal" style={{ color: "var(--t-faint)" }}>
-              {" "}/ {fmt(total.plan)}
+              {" "}/ {fmt(sum.plan)}
             </span>
           ) : null}
         </span>
       </div>
       <div className="space-y-1">
-        {rows.map((r) => {
+        {list.map((r) => {
           const body = (
             <>
               <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-muted)" }}>
