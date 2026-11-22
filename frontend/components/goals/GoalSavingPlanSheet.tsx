@@ -22,16 +22,26 @@ import { errorMessage } from "@/lib/formErrors";
  * бы при первой же правке.
  */
 
+export interface SavingPlanMonth {
+  month: string;
+  current: string;
+  next: string;
+  /** Сумма вписана руками — расчёт на этот месяц не повлияет. */
+  manual: boolean;
+}
+
 export interface SavingPlanSchedule {
   first_month: string;
   last_month: string;
   months: number;
   monthly_amount: string;
+  rows: SavingPlanMonth[];
 }
 
 export interface SavingPlan {
   id: number;
   goal_id: number;
+  goal_title: string;
   target_amount: string;
   start_month: string;
   target_month: string;
@@ -169,6 +179,7 @@ function Toggle({
 
 interface FormState {
   id: number | null;
+  goal_id: number | null;
   target_amount: string;
   start_month: string;
   target_month: string;
@@ -181,6 +192,7 @@ function blankForm(): FormState {
   const now = thisMonthKey();
   return {
     id: null,
+    goal_id: null,
     target_amount: "",
     start_month: now,
     target_month: shiftMonths(now, 6),
@@ -191,16 +203,19 @@ function blankForm(): FormState {
 }
 
 export function GoalSavingPlanSheet({
+  open,
   goalId,
   goalTitle,
   onClose,
 }: {
-  goalId: number | null;
+  open: boolean;
+  /** Без цели — общий раздел: планы по всем целям сразу. */
+  goalId?: number | null;
   goalTitle?: string;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const open = goalId !== null;
+  const allGoals = goalId == null;
   // Список планов или форма. null — ещё не выбирали, и тогда решает
   // наличие планов: нет ни одного — открываем сразу форму.
   const [view, setView] = useState<"list" | "form" | null>(null);
@@ -214,9 +229,10 @@ export function GoalSavingPlanSheet({
   // Смена цели сбрасывает всё — правкой состояния прямо на рендере, а не
   // эффектом: эффект отработал бы вторым проходом и успел показать
   // форму от предыдущей цели.
-  const [lastGoalId, setLastGoalId] = useState(goalId);
-  if (goalId !== lastGoalId) {
-    setLastGoalId(goalId);
+  const sessionKey = open ? String(goalId ?? "all") : "closed";
+  const [lastKey, setLastKey] = useState(sessionKey);
+  if (sessionKey !== lastKey) {
+    setLastKey(sessionKey);
     setView(null);
     setForm(null);
     setError(null);
@@ -225,9 +241,20 @@ export function GoalSavingPlanSheet({
   }
 
   const { data: plans, isLoading } = useQuery<SavingPlan[]>({
-    queryKey: ["goal-saving-plans", goalId],
-    queryFn: () => api.get<SavingPlan[]>("/api/v2/goals/saving-plans?goal_id=" + goalId),
+    queryKey: ["goal-saving-plans", goalId ?? "all"],
+    queryFn: () =>
+      api.get<SavingPlan[]>(
+        allGoals ? "/api/v2/goals/saving-plans" : "/api/v2/goals/saving-plans?goal_id=" + goalId,
+      ),
     enabled: open,
+  });
+
+  // Выбор цели нужен только общему разделу: из строки бюджета цель уже известна
+  const { data: goalChoices } = useQuery<{ goal_id: number; title: string }[]>({
+    queryKey: ["goals", false],
+    queryFn: () => api.get<{ goal_id: number; title: string }[]>("/api/v2/goals?include_archived=false"),
+    enabled: open && allGoals,
+    staleTime: 60_000,
   });
 
   const hasPlans = Boolean(plans && plans.length > 0);
@@ -264,7 +291,7 @@ export function GoalSavingPlanSheet({
         repeat_yearly: f.repeat_yearly,
       };
       if (f.id === null) {
-        return api.post("/api/v2/goals/saving-plans", { goal_id: goalId, ...body });
+        return api.post("/api/v2/goals/saving-plans", { goal_id: f.goal_id ?? goalId, ...body });
       }
       return api.patch("/api/v2/goals/saving-plans/" + f.id, { ...body, is_active: f.is_active });
     },
@@ -297,6 +324,9 @@ export function GoalSavingPlanSheet({
   const { data: preview, isError: previewFailed } = useQuery<SavingPlanSchedule | null>({
     queryKey: [
       "saving-plan-preview",
+      goalId,
+      debounced.goal_id,
+      debounced.id,
       debounced.target_amount,
       debounced.start_month,
       debounced.target_month,
@@ -310,6 +340,9 @@ export function GoalSavingPlanSheet({
         target_month: debounced.target_month,
         save_in_target_month: debounced.save_in_target_month,
         repeat_yearly: debounced.repeat_yearly,
+        // С целью приезжает ещё и помесячное «сейчас → станет»
+        goal_id: debounced.goal_id ?? goalId ?? null,
+        plan_id: debounced.id,
       }),
     enabled: open && showForm && amountReady,
     retry: false,
@@ -318,6 +351,10 @@ export function GoalSavingPlanSheet({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
+    if ((draft.goal_id ?? goalId) == null) {
+      setError("Выберите цель");
+      return;
+    }
     if (!Number(draft.target_amount.replace(",", "."))) {
       setError("Укажите сумму");
       return;
@@ -368,7 +405,7 @@ export function GoalSavingPlanSheet({
         )
       }
     >
-      {goalTitle && (
+      {goalTitle && !allGoals && (
         <p className="text-[12px] mb-3" style={{ color: "var(--t-muted)" }}>
           Цель: {goalTitle}
         </p>
@@ -401,6 +438,11 @@ export function GoalSavingPlanSheet({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
+                  {allGoals && p.goal_title && (
+                    <p className="text-[11px] truncate" style={{ color: "var(--t-muted)" }}>
+                      {p.goal_title}
+                    </p>
+                  )}
                   <p className="text-[13.5px] font-semibold" style={{ color: "var(--t-primary)" }}>
                     {money(p.target_amount)} ₽ к {monthLabel(p.target_month)}
                   </p>
@@ -448,6 +490,7 @@ export function GoalSavingPlanSheet({
                     onClick={() =>
                       openForm({
                         id: p.id,
+                        goal_id: p.goal_id,
                         target_amount: String(Number(p.target_amount)),
                         start_month: p.start_month,
                         target_month: p.target_month,
@@ -509,6 +552,23 @@ export function GoalSavingPlanSheet({
       {/* ── Форма ── */}
       {showForm && (
         <div className="space-y-3.5">
+          {allGoals && (
+            <div>
+              <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>
+                Цель
+              </span>
+              <Select
+                value={draft.goal_id != null ? String(draft.goal_id) : ""}
+                onChange={(v) => setForm({ ...draft, goal_id: Number(v) })}
+                placeholder="Выберите цель"
+                options={(goalChoices ?? []).map((g) => ({
+                  value: String(g.goal_id),
+                  label: g.title,
+                }))}
+              />
+            </div>
+          )}
+
           <label className="block">
             <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>
               Сколько нужно накопить
@@ -581,6 +641,38 @@ export function GoalSavingPlanSheet({
                   {preview.months} мес.: {monthLabel(preview.first_month)} — {monthLabel(preview.last_month)}.
                   Эта сумма сама встанет в строку «Отложить».
                 </p>
+
+                {/* Помесячно, что в бюджете сейчас и что станет: иначе
+                    эффект плана виден только после сохранения. */}
+                {preview.rows.length > 0 && (
+                  <div
+                    className="mt-2 pt-2 space-y-0.5 overflow-y-auto"
+                    style={{ borderTop: "1px solid var(--app-border)", maxHeight: 168 }}
+                  >
+                    {preview.rows.map((r) => (
+                      <div
+                        key={r.month}
+                        className="flex items-baseline justify-between gap-2 text-[11.5px]"
+                      >
+                        <span className="truncate" style={{ color: "var(--t-muted)" }}>
+                          {monthLabel(r.month)}
+                        </span>
+                        {r.manual ? (
+                          <span className="tabular-nums shrink-0" style={{ color: "var(--t-faint)" }}>
+                            {money(r.current)} ₽ · вписано руками
+                          </span>
+                        ) : (
+                          <span className="tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>
+                            {money(r.current)} →{" "}
+                            <span className="font-semibold" style={{ color: "var(--app-accent)" }}>
+                              {money(r.next)} ₽
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-[12px]" style={{ color: "var(--t-muted)" }}>

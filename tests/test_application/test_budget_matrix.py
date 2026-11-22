@@ -364,3 +364,99 @@ class TestYearAggregation:
         # With base=YEAR, monthly plans are NOT loaded (has_manual=False)
         income_row = next(r for r in view["income_rows"] if r["category_id"] == 1)
         assert income_row["cells"][0]["plan"] == Decimal("0")
+
+
+# ======================================================================
+# Накопительные планы как подложка под ручной план «Отложить»
+# ======================================================================
+
+class TestGoalSavingPlans:
+    """Расчётный взнос попадает в строку цели сам.
+
+    Отдельно проверяется, что он виден только внутри окна накопления:
+    пользователь завёл план на 2027 год и не увидел его в бюджете за
+    ноябрь 2026 — это не пропажа, а месяц вне окна.
+    """
+
+    @staticmethod
+    def _goal(db_session, goal_id=1, title="Интернет"):
+        from app.infrastructure.db.models import GoalInfo
+
+        db_session.add(GoalInfo(
+            goal_id=goal_id, account_id=ACCOUNT, title=title, currency="RUB",
+            is_system=False, is_archived=False, created_at=_NOW,
+        ))
+        db_session.flush()
+
+    @staticmethod
+    def _plan(db_session, **over):
+        from app.infrastructure.db.models import GoalSavingPlan
+
+        kw = dict(
+            account_id=ACCOUNT, goal_id=1, target_amount=Decimal("15000"),
+            start_month="2027-01", target_month="2027-12",
+            save_in_target_month=True, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        )
+        kw.update(over)
+        db_session.add(GoalSavingPlan(**kw))
+        db_session.flush()
+
+    def _row(self, db_session, year, month, count=1):
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=count,
+            anchor_year=year, anchor_month=month,
+        )
+        rows = [r for r in view["goal_rows"] if r["goal_id"] == 1]
+        return rows[0] if rows else None
+
+    def test_shows_inside_the_window(self, db_session):
+        """15 000 на 12 месяцев 2027 года → по 1 250 в каждом."""
+        self._goal(db_session)
+        self._plan(db_session)
+        cell = self._row(db_session, 2027, 1)["cells"][0]
+        assert cell["plan"] == Decimal("1250.00")
+        assert cell["is_computed"] is True
+
+    def test_silent_before_the_window(self, db_session):
+        """Ноябрь 2026 — до начала накопления, и взноса там нет."""
+        self._goal(db_session)
+        self._plan(db_session)
+        cell = self._row(db_session, 2026, 11)["cells"][0]
+        assert cell["plan"] == Decimal("0")
+        assert cell["is_computed"] is False
+
+    def test_window_appears_as_months_pass(self, db_session):
+        """Окно целиком видно, если смотреть достаточно месяцев вперёд."""
+        self._goal(db_session)
+        self._plan(db_session)
+        cells = self._row(db_session, 2026, 11, count=4)["cells"]
+        # ноя 2026, дек 2026, янв 2027, фев 2027
+        assert [c["plan"] for c in cells] == [
+            Decimal("0"), Decimal("0"), Decimal("1250.00"), Decimal("1250.00"),
+        ]
+
+    def test_inactive_plan_adds_nothing(self, db_session):
+        self._goal(db_session)
+        self._plan(db_session, is_active=False)
+        assert self._row(db_session, 2027, 1)["cells"][0]["plan"] == Decimal("0")
+
+    def test_manual_plan_wins(self, db_session):
+        """Вписанное руками главнее расчётного и не помечается расчётным."""
+        from app.infrastructure.db.models import BudgetGoalPlan
+
+        self._goal(db_session)
+        self._plan(db_session)
+        bm = EnsureBudgetMonthUseCase(db_session).execute(
+            account_id=ACCOUNT, year=2027, month=1,
+        )
+        bm_id = bm if isinstance(bm, int) else bm.id
+        db_session.add(BudgetGoalPlan(
+            budget_month_id=bm_id, account_id=ACCOUNT, goal_id=1,
+            plan_amount=Decimal("9000"), created_at=_NOW,
+        ))
+        db_session.flush()
+
+        cell = self._row(db_session, 2027, 1)["cells"][0]
+        assert cell["plan"] == Decimal("9000")
+        assert cell["is_computed"] is False

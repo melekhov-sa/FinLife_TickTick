@@ -15,10 +15,13 @@ from app.application.goals import (
 )
 from app.application.goal_saving_plans import (
     SavingPlanError,
+    manual_plans_for_goal,
     month_key,
+    monthly_amount,
     parse_amount,
     plan_schedule,
     validate_window,
+    window_months,
 )
 from app.infrastructure.db.models import (
     GoalInfo,
@@ -306,16 +309,31 @@ def rebuild_goal_allocations(
 # только сами условия плана.
 
 
+class SavingPlanMonth(BaseModel):
+    """Один месяц окна: что в бюджете сейчас и что станет."""
+    month: str
+    current: str
+    next: str
+    # В этом месяце сумма вписана руками. Ручное всегда главнее
+    # расчётного, поэтому план на такой месяц не повлияет — и об этом
+    # честнее сказать до сохранения, а не удивлять потом.
+    manual: bool
+
+
 class SavingPlanSchedule(BaseModel):
     first_month: str
     last_month: str
     months: int
     monthly_amount: str
+    rows: list[SavingPlanMonth] = []
 
 
 class SavingPlanItem(BaseModel):
     id: int
     goal_id: int
+    # Нужен общему списку планов: он идёт по всем целям сразу, и без
+    # названия строки неразличимы.
+    goal_title: str
     target_amount: str
     start_month: str
     target_month: str
@@ -353,6 +371,11 @@ class PreviewSavingPlanBody(BaseModel):
     target_month: str
     save_in_target_month: bool = False
     repeat_yearly: bool = False
+    # С целью предпросмотр покажет ещё и помесячное «сейчас → станет».
+    goal_id: int | None = None
+    # Правим существующий план — его собственный вклад в «сейчас» надо
+    # вычесть, иначе он посчитается дважды.
+    plan_id: int | None = None
 
 
 def _this_month() -> str:
@@ -373,7 +396,7 @@ def _schedule_payload(sched: dict | None) -> SavingPlanSchedule | None:
     )
 
 
-def _plan_item(plan: GoalSavingPlan) -> SavingPlanItem:
+def _plan_item(plan: GoalSavingPlan, goal_title: str = "") -> SavingPlanItem:
     sched = plan_schedule(plan, _this_month())
     finished = (
         not plan.repeat_yearly
@@ -383,6 +406,7 @@ def _plan_item(plan: GoalSavingPlan) -> SavingPlanItem:
     return SavingPlanItem(
         id=plan.id,
         goal_id=plan.goal_id,
+        goal_title=goal_title,
         target_amount=str(plan.target_amount),
         start_month=plan.start_month,
         target_month=plan.target_month,
@@ -392,6 +416,75 @@ def _plan_item(plan: GoalSavingPlan) -> SavingPlanItem:
         schedule=_schedule_payload(sched),
         is_finished=finished,
     )
+
+
+def _compare_months(
+    db: Session,
+    account_id: int,
+    goal_id: int,
+    draft: GoalSavingPlan,
+    at_month: str,
+    exclude_plan_id: int | None = None,
+) -> list[SavingPlanMonth]:
+    """Помесячно: что в бюджете сейчас и что станет с этим планом.
+
+    «Сейчас» — ровно то, что показывает бюджет сегодня: вписанная руками
+    сумма, а если её нет — взносы всех действующих планов цели, включая
+    тот, который сейчас правят. Иначе при правке сравнивать было бы не с
+    чем: пользователь видит в таблице одно, а в форме — другое.
+
+    «Станет» считается без старой версии правимого плана: её заменяет
+    черновик, а не дополняет.
+    """
+    months = window_months(draft, at_month)
+    if not months:
+        return []
+
+    active = (
+        db.query(GoalSavingPlan)
+        .filter(
+            GoalSavingPlan.account_id == account_id,
+            GoalSavingPlan.goal_id == goal_id,
+            GoalSavingPlan.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    others = [p for p in active if exclude_plan_id is None or p.id != exclude_plan_id]
+    manual = manual_plans_for_goal(db, account_id, goal_id, months)
+
+    out: list[SavingPlanMonth] = []
+    for m in months:
+        hand = manual.get(m)
+        if hand is not None:
+            # Ручная сумма главнее расчётной — план этот месяц не тронет
+            out.append(SavingPlanMonth(
+                month=m, current=str(hand), next=str(hand), manual=True,
+            ))
+            continue
+        current = sum((monthly_amount(p, m) for p in active), Decimal("0"))
+        base = sum((monthly_amount(p, m) for p in others), Decimal("0"))
+        out.append(SavingPlanMonth(
+            month=m,
+            current=str(current),
+            next=str(base + monthly_amount(draft, m)),
+            manual=False,
+        ))
+    return out
+
+
+def _goal_titles(db: Session, account_id: int, goal_ids: list[int]) -> dict[int, str]:
+    if not goal_ids:
+        return {}
+    rows = (
+        db.query(GoalInfo.goal_id, GoalInfo.title)
+        .filter(GoalInfo.account_id == account_id, GoalInfo.goal_id.in_(set(goal_ids)))
+        .all()
+    )
+    return {gid: title for gid, title in rows}
+
+
+def _one_goal_title(db: Session, account_id: int, goal_id: int) -> str:
+    return _goal_titles(db, account_id, [goal_id]).get(goal_id, "")
 
 
 def _own_plan(db: Session, plan_id: int, account_id: int) -> GoalSavingPlan:
@@ -416,7 +509,8 @@ def list_saving_plans(
     if goal_id is not None:
         q = q.filter(GoalSavingPlan.goal_id == goal_id)
     plans = q.order_by(GoalSavingPlan.target_month, GoalSavingPlan.id).all()
-    return [_plan_item(p) for p in plans]
+    titles = _goal_titles(db, user_id, [p.goal_id for p in plans])
+    return [_plan_item(p, titles.get(p.goal_id, "")) for p in plans]
 
 
 @router.post("/goals/saving-plans/preview", response_model=SavingPlanSchedule | None)
@@ -426,7 +520,7 @@ def preview_saving_plan(
     db: Session = Depends(get_db),
 ):
     """Расчёт до сохранения: по сколько в месяц и сколько месяцев."""
-    get_user_id(request, db)
+    user_id = get_user_id(request, db)
     try:
         amount = parse_amount(body.target_amount)
         validate_window(body.start_month, body.target_month, body.save_in_target_month)
@@ -440,7 +534,15 @@ def preview_saving_plan(
         save_in_target_month=body.save_in_target_month,
         repeat_yearly=body.repeat_yearly,
     )
-    return _schedule_payload(plan_schedule(draft, _this_month()))
+    at = _this_month()
+    payload = _schedule_payload(plan_schedule(draft, at))
+    if payload is None or body.goal_id is None:
+        return payload
+
+    payload.rows = _compare_months(
+        db, user_id, body.goal_id, draft, at, exclude_plan_id=body.plan_id
+    )
+    return payload
 
 
 @router.post("/goals/saving-plans", response_model=SavingPlanItem)
@@ -479,7 +581,7 @@ def create_saving_plan(
     db.add(plan)
     db.commit()
     db.refresh(plan)
-    return _plan_item(plan)
+    return _plan_item(plan, goal.title)
 
 
 @router.patch("/goals/saving-plans/{plan_id}", response_model=SavingPlanItem)
@@ -521,7 +623,7 @@ def update_saving_plan(
 
     db.commit()
     db.refresh(plan)
-    return _plan_item(plan)
+    return _plan_item(plan, _one_goal_title(db, user_id, plan.goal_id))
 
 
 @router.delete("/goals/saving-plans/{plan_id}")

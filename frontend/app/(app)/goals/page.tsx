@@ -537,7 +537,8 @@ export default function GoalsPage() {
       )}
 
       <GoalSavingPlanSheet
-        goalId={planGoal?.goal_id ?? null}
+        open={planGoal !== null}
+        goalId={planGoal?.goal_id}
         goalTitle={planGoal?.title}
         onClose={() => setPlanGoal(null)}
       />

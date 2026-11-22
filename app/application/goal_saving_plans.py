@@ -111,6 +111,51 @@ def plan_schedule(plan: GoalSavingPlan, at_month: str) -> dict | None:
     }
 
 
+def window_months(plan: GoalSavingPlan, at_month: str) -> list[str]:
+    """Месяцы окна подряд. Для показа «сейчас → станет» по месяцам."""
+    bounds = window_bounds(plan, at_month)
+    if bounds is None:
+        return []
+    first, last = bounds
+    return [_from_index(i) for i in range(first, last + 1)]
+
+
+def manual_plans_for_goal(
+    db: Session, account_id: int, goal_id: int, months: list[str]
+) -> dict[str, Decimal]:
+    """Вписанные руками суммы по цели: месяц → сумма.
+
+    Нужны, чтобы честно показать, где расчёт не применится: ручная
+    сумма в клетке всегда главнее расчётной.
+    """
+    if not months:
+        return {}
+
+    from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+    keys = {(int(m[:4]), int(m[5:])) for m in months}
+    rows = (
+        db.query(BudgetMonth.year, BudgetMonth.month, BudgetGoalPlan.plan_amount)
+        .join(BudgetGoalPlan, BudgetGoalPlan.budget_month_id == BudgetMonth.id)
+        .filter(
+            BudgetMonth.account_id == account_id,
+            BudgetGoalPlan.account_id == account_id,
+            BudgetGoalPlan.goal_id == goal_id,
+        )
+        .all()
+    )
+
+    out: dict[str, Decimal] = {}
+    for year, month, amount in rows:
+        if (year, month) not in keys:
+            continue
+        # Вариантов бюджета на один месяц может быть несколько — в
+        # матрице они складываются, здесь так же.
+        key = month_key(year, month)
+        out[key] = out.get(key, _ZERO) + Decimal(str(amount))
+    return out
+
+
 def load_active_plans(db: Session, account_id: int) -> list[GoalSavingPlan]:
     return (
         db.query(GoalSavingPlan)

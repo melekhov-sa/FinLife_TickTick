@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil, PiggyBank } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -11,10 +11,10 @@ import { api } from "@/lib/api";
 import type { BudgetMatrix, BudgetCell, BudgetRow, BudgetGoalRow, BudgetPeriod, BudgetSectionTotals } from "@/types/api";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Skeleton } from "@/components/primitives/Skeleton";
-import { BudgetInsights } from "@/components/budget/BudgetInsights";
 import { Tooltip } from "@/components/primitives/Tooltip";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { PeriodPicker } from "@/components/budget/PeriodPicker";
+import { GoalSavingPlanSheet } from "@/components/goals/GoalSavingPlanSheet";
 import {
   fmt, fmtSigned, getPeriodKind, periodColCount, sectionTint, sectionEmoji,
   InlineCellInput, PlanDot, setSingleMonthAsCurrent,
@@ -691,11 +691,13 @@ function SectionHeaderRow({
   colSpan,
   expanded,
   onToggle,
+  action,
 }: {
   label: string;
   colSpan: number;
   expanded: boolean;
   onToggle: () => void;
+  action?: React.ReactNode;
 }) {
   return (
     <tr
@@ -713,6 +715,7 @@ function SectionHeaderRow({
           <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>
             {label}
           </span>
+          {action && <span className="ml-auto" onClick={(e) => e.stopPropagation()}>{action}</span>}
         </div>
       </td>
       <td colSpan={colSpan - 1} style={{ border: "1px solid var(--bgt-cell-border-strong)", background: sectionTint(label) }} />
@@ -966,6 +969,7 @@ function GoalDataRow({
   goalPlanType,
   isHidden,
   onToggleVisibility,
+  onOpenSavingPlan,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -982,6 +986,7 @@ function GoalDataRow({
   topByPeriod?: Set<number>[];
   isHidden?: boolean;
   onToggleVisibility?: () => void;
+  onOpenSavingPlan?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
@@ -1027,6 +1032,19 @@ function GoalDataRow({
                 className="opacity-0 group-hover/goal:opacity-100 ml-1 shrink-0 transition-opacity"
               >
                 {isHidden ? <EyeOff size={11} className="text-red-400" /> : <Eye size={11} className="text-slate-400 hover:text-slate-600" />}
+              </button>
+            </Tooltip>
+          )}
+          {/* Накопительный план прямо отсюда: по строке и так видно, что
+              откладывается по месяцам, — логично тут же это и задавать. */}
+          {onOpenSavingPlan && (
+            <Tooltip content="Накопительный план">
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenSavingPlan(); }}
+                className="opacity-0 group-hover/goal:opacity-100 ml-1 shrink-0 transition-opacity hover:text-[var(--app-accent)]"
+                style={{ color: "var(--t-faint)" }}
+              >
+                <PiggyBank size={12} />
               </button>
             </Tooltip>
           )}
@@ -1413,7 +1431,9 @@ function OtherRow({
 
 // ── Mobile view components ───────────────────────────────────────────────────
 
-function MobileSecHead({ label, expanded, onToggle }: { label: string; expanded: boolean; onToggle: () => void }) {
+function MobileSecHead({ label, expanded, onToggle, action }: {
+  label: string; expanded: boolean; onToggle: () => void; action?: React.ReactNode;
+}) {
   return (
     <div
       className="flex items-center gap-1.5 px-4 py-2.5 cursor-pointer select-none border-b"
@@ -1425,6 +1445,7 @@ function MobileSecHead({ label, expanded, onToggle }: { label: string; expanded:
         : <ChevronRightSm size={12} style={{ color: "var(--t-muted)" }} />}
       <span className="text-[12px] leading-none">{sectionEmoji(label)}</span>
       <span className="text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--t-muted)" }}>{label}</span>
+      {action && <span className="ml-auto" onClick={(e) => e.stopPropagation()}>{action}</span>}
     </div>
   );
 }
@@ -2288,6 +2309,8 @@ export default function BudgetMatrixPage() {
       return new Set(top.map((r) => r.goal_id));
     });
   const topGoalByPeriod: Set<number>[] = topGoalsByPeriod(data?.goal_rows, 3);
+  const [planGoal, setPlanGoal] = useState<{ id: number; title: string } | null>(null);
+  const [plansOpen, setPlansOpen] = useState(false);
   const topWithdrawByPeriod: Set<number>[] = topGoalsByPeriod(data?.withdrawal_rows, 3);
 
   const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
@@ -2324,6 +2347,12 @@ export default function BudgetMatrixPage() {
       {factDetailTarget && (
         <FactDetailModal target={factDetailTarget} onClose={() => setFactDetailTarget(null)} />
       )}
+      <GoalSavingPlanSheet
+        open={plansOpen || planGoal !== null}
+        goalId={planGoal?.id}
+        goalTitle={planGoal?.title}
+        onClose={() => { setPlanGoal(null); setPlansOpen(false); }}
+      />
       {planEditTarget && (
         <PlanEditModal
           target={planEditTarget}
@@ -2405,12 +2434,6 @@ export default function BudgetMatrixPage() {
 
         {/* ── MOBILE VIEW ── */}
         <div className="md:hidden flex-1 min-h-0 overflow-auto" style={{ background: "var(--app-bg)" }}>
-          {/* Выводы только в мобильном виде: на десктопе матрица — рабочая
-              таблица во весь экран, и карточка отъедала бы у неё место. */}
-          <div className="p-3 pb-0">
-            <BudgetInsights year={year} month={month} />
-          </div>
-
           {isPending && (
             <div className="p-4 space-y-2">
               {[...Array(8)].map((_, i) => (
@@ -2507,7 +2530,22 @@ export default function BudgetMatrixPage() {
 
               {/* ОТЛОЖИТЬ */}
               {data.goal_rows.length > 0 && <>
-                <MobileSecHead label="Отложить" expanded={goalsOpen} onToggle={() => setGoalsOpen(!goalsOpen)} />
+                <MobileSecHead
+                  label="Отложить"
+                  expanded={goalsOpen}
+                  onToggle={() => setGoalsOpen(!goalsOpen)}
+                  action={
+                  <button
+                    type="button"
+                    onClick={() => setPlansOpen(true)}
+                    className="tap-grow inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
+                    style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
+                  >
+                    <PiggyBank size={11} />
+                    Планы
+                  </button>
+                }
+                />
                 {goalsOpen && data.goal_rows.map((row, i) => (
                   <MobileGoalRow
                     key={row.goal_id ?? `m-goal-${i}`}
@@ -2761,6 +2799,17 @@ export default function BudgetMatrixPage() {
                         colSpan={totalCols}
                         expanded={goalsOpen}
                         onToggle={() => setGoalsOpen(!goalsOpen)}
+                        action={
+                  <button
+                    type="button"
+                    onClick={() => setPlansOpen(true)}
+                    className="tap-grow inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
+                    style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
+                  >
+                    <PiggyBank size={11} />
+                    Планы
+                  </button>
+                }
                       />
                       {goalsOpen && data.goal_rows.map((row, i) => (
                         <GoalDataRow
@@ -2774,6 +2823,7 @@ export default function BudgetMatrixPage() {
                           topByPeriod={topGoalByPeriod}
                           isHidden={showHidden && hiddenGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "goal") : undefined}
+                          onOpenSavingPlan={row.goal_id ? () => setPlanGoal({ id: row.goal_id, title: row.title }) : undefined}
                           onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
                           onDragOver={(e) => onGoalDragOver(e, row.goal_id)}
                           onDragLeave={onGoalDragLeave}

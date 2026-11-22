@@ -276,3 +276,82 @@ class TestPreview:
         body.pop("goal_id")
         r = client.post("/api/v2/goals/saving-plans/preview", json=body)
         assert r.json()["months"] == 12
+
+
+class TestPreviewComparison:
+    """Помесячное «сейчас → станет» — чтобы эффект плана был виден до сохранения."""
+
+    def test_no_rows_without_goal(self, client, goals):
+        body = _body()
+        body.pop("goal_id")
+        assert client.post("/api/v2/goals/saving-plans/preview", json=body).json()["rows"] == []
+
+    def test_rows_cover_the_window(self, client, goals):
+        r = client.post("/api/v2/goals/saving-plans/preview", json=_body()).json()
+        assert [x["month"] for x in r["rows"]] == [f"2026-{m:02d}" for m in range(1, 12)]
+        assert all(x["current"] == "0" for x in r["rows"])
+        assert all(x["next"] == r["monthly_amount"] for x in r["rows"])
+
+    def test_adds_to_another_plan_of_the_same_goal(self, client, db, goals):
+        """Два плана на одну цель складываются — это видно заранее."""
+        db.add(GoalSavingPlan(
+            account_id=ACCT, goal_id=GOAL, target_amount=1100,
+            start_month="2026-01", target_month="2026-12",
+            save_in_target_month=False, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        ))
+        db.flush()
+        r = client.post("/api/v2/goals/saving-plans/preview", json=_body()).json()
+        row = r["rows"][0]
+        assert row["current"] == "100.00"
+        assert row["next"] == "2827.27"
+
+    def test_editing_compares_with_the_saved_version(self, client, db, goals):
+        """При правке «сейчас» — это сохранённая версия плана, а не ноль:
+        иначе сравнивать не с чем, в таблице-то она уже стоит."""
+        created = client.post("/api/v2/goals/saving-plans", json=_body()).json()
+        body = _body(target_amount="60000")
+        body["plan_id"] = created["id"]
+        r = client.post("/api/v2/goals/saving-plans/preview", json=body).json()
+        row = r["rows"][0]
+        assert row["current"] == created["schedule"]["monthly_amount"]  # 30 000 / 11
+        assert row["next"] == r["monthly_amount"]                       # 60 000 / 11
+        # Старая версия заменяется черновиком, а не складывается с ним
+        assert float(row["next"]) == pytest.approx(float(row["current"]) * 2, abs=0.02)
+
+    def test_manual_month_is_marked_and_unchanged(self, client, db, goals):
+        """Вписанное руками главнее расчёта — месяц помечен и не меняется."""
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        bm = BudgetMonth(account_id=ACCT, year=2026, month=3, created_at=_NOW)
+        db.add(bm)
+        db.flush()
+        db.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=ACCT, goal_id=GOAL,
+            plan_amount=5000, created_at=_NOW,
+        ))
+        db.flush()
+
+        rows = client.post("/api/v2/goals/saving-plans/preview", json=_body()).json()["rows"]
+        march = next(x for x in rows if x["month"] == "2026-03")
+        assert march["manual"] is True
+        assert march["current"] == "5000.00"
+        assert march["next"] == "5000.00"
+
+        april = next(x for x in rows if x["month"] == "2026-04")
+        assert april["manual"] is False
+
+
+class TestGoalTitle:
+    def test_list_carries_goal_title(self, client, goals):
+        """Общий список идёт по всем целям — без названия строки неразличимы."""
+        client.post("/api/v2/goals/saving-plans", json=_body())
+        assert client.get("/api/v2/goals/saving-plans").json()[0]["goal_title"] == "Страховка"
+
+    def test_create_and_update_carry_it_too(self, client, goals):
+        created = client.post("/api/v2/goals/saving-plans", json=_body()).json()
+        assert created["goal_title"] == "Страховка"
+        updated = client.patch(
+            f"/api/v2/goals/saving-plans/{created['id']}", json={"is_active": False}
+        ).json()
+        assert updated["goal_title"] == "Страховка"
