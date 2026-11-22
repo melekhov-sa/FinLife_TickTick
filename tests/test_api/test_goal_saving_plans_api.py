@@ -455,7 +455,7 @@ class TestClearManual:
     """
 
     @staticmethod
-    def _manual(db, amount, year=2027, month=1):
+    def _manual(db, amount, note=None, year=2027, month=1):
         from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
 
         bm = BudgetMonth(account_id=ACCT, year=year, month=month, created_at=_NOW)
@@ -463,7 +463,7 @@ class TestClearManual:
         db.flush()
         db.add(BudgetGoalPlan(
             budget_month_id=bm.id, account_id=ACCT, goal_id=GOAL,
-            plan_amount=amount, created_at=_NOW,
+            plan_amount=amount, note=note, created_at=_NOW,
         ))
         db.flush()
 
@@ -479,7 +479,9 @@ class TestClearManual:
             save_in_target_month=False, repeat_yearly=False, is_active=True,
             created_at=_NOW, updated_at=_NOW,
         ))
-        self._manual(db, 0)          # ручной ноль глушил расчёт
+        # Ноль с комментарием — осознанное «в этом месяце не откладываю»,
+        # он расчёт перебивает (в отличие от пустого нуля).
+        self._manual(db, 0, note="январь тяжёлый")
         assert self._breakdown(client)["effective"] == "0.00"
 
         r = client.delete(
@@ -509,3 +511,54 @@ class TestClearManual:
         client.delete(f"/api/v2/budget/goal-plan?goal_id={GOAL_FOREIGN}&year=2027&month=1")
         db.expire_all()
         assert db.query(BudgetGoalPlan).filter(BudgetGoalPlan.account_id == OTHER).count() == 1
+
+
+class TestBlankZeroIsNotManual:
+    """Нулевая строка без комментария — пустая клетка, а не правка.
+
+    Из-за неё предпросмотр показывал «0 ₽ · вписано руками» в каждом
+    месяце, а в бюджете расчёт не появлялся вовсе.
+    """
+
+    @staticmethod
+    def _zero_row(db, year, month, note=None):
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        bm = BudgetMonth(account_id=ACCT, year=year, month=month, created_at=_NOW)
+        db.add(bm)
+        db.flush()
+        db.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=ACCT, goal_id=GOAL,
+            plan_amount=0, note=note, created_at=_NOW,
+        ))
+        db.flush()
+
+    def test_preview_ignores_blank_zeros(self, client, db, goals):
+        for m in range(1, 13):
+            self._zero_row(db, 2026, m)
+        body = _body(start_month="2026-01", target_month="2026-12", save_in_target_month=True)
+        rows = client.post("/api/v2/goals/saving-plans/preview", json=body).json()["rows"]
+        assert all(r["manual"] is False for r in rows)
+        assert all(r["next"] == "2500.00" for r in rows)
+
+    def test_preview_respects_zero_with_note(self, client, db, goals):
+        self._zero_row(db, 2026, 3, note="март пропускаю")
+        body = _body(start_month="2026-01", target_month="2026-12", save_in_target_month=True)
+        rows = client.post("/api/v2/goals/saving-plans/preview", json=body).json()["rows"]
+        march = next(r for r in rows if r["month"] == "2026-03")
+        assert march["manual"] is True
+        assert march["next"] == "0.00"
+
+    def test_breakdown_ignores_blank_zero(self, client, db, goals):
+        db.add(GoalSavingPlan(
+            account_id=ACCT, goal_id=GOAL, title="На др брата", target_amount=5000,
+            start_month="2026-12", target_month="2027-05",
+            save_in_target_month=False, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        ))
+        self._zero_row(db, 2027, 1)
+        data = client.get(
+            f"/api/v2/goals/saving-plans/breakdown?goal_id={GOAL}&year=2027&month=1"
+        ).json()
+        assert data["manual"] is None
+        assert data["effective"] == "1000.00"

@@ -415,8 +415,15 @@ class SaveGoalPlansUseCase:
             ).first()
 
             if existing:
-                existing.plan_amount = plan_amount
-                existing.note = note
+                if plan_amount == 0 and not note:
+                    # Не храним пустые нули: клетка и так выглядит пустой,
+                    # а оставшаяся строка перебивала бы накопительный план
+                    # цели — молча и навсегда. Вставка нулей тоже
+                    # пропускается (ветка ниже), так что правила совпадают.
+                    self.db.delete(existing)
+                else:
+                    existing.plan_amount = plan_amount
+                    existing.note = note
             else:
                 if plan_amount == 0 and not note:
                     continue

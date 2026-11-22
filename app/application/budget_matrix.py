@@ -909,11 +909,22 @@ class BudgetMatrixService:
             for i in range(n):
                 key = (goal.goal_id, i)
                 manual = goal_plan_map.get(key)
-                computed = computed_by_period.get(i, {}).get(goal.goal_id, _ZERO)
-                is_computed = manual is None and computed > _ZERO
-                plan = manual if manual is not None else computed
-                fact = goal_fact_map.get(key, _ZERO)
                 note = goal_note_map.get(key, "")
+                # Ноль без комментария — это не «решил не откладывать», а
+                # пустая клетка: в таблице она и так выглядит пустой.
+                # Считать её ручной правкой нельзя — одна такая строка
+                # (а они остаются от прежних правок) навсегда глушила бы
+                # накопительный план.
+                overridden = manual is not None and (manual != _ZERO or bool(note))
+                computed = computed_by_period.get(i, {}).get(goal.goal_id, _ZERO)
+                is_computed = not overridden and computed > _ZERO
+                if overridden:
+                    plan = manual
+                elif computed > _ZERO:
+                    plan = computed
+                else:
+                    plan = manual if manual is not None else _ZERO
+                fact = goal_fact_map.get(key, _ZERO)
                 cells.append({
                     "plan": plan, "fact": fact, "deviation": fact - plan, "note": note,
                     # Фронту нужно показать расчётное иначе, чем вписанное:

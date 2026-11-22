@@ -494,3 +494,62 @@ class TestGoalSavingPlans:
         )
         row = next(r for r in view["goal_rows"] if r["goal_id"] == 1)
         assert [c["plan"] for c in row["cells"]] == [Decimal("0"), Decimal("0")]
+
+    def test_blank_zero_does_not_suppress_the_plan(self, db_session):
+        """Нулевая ручная строка без комментария не должна глушить расчёт.
+
+        Такие строки остаются от прежних правок клеток. Одна такая — и
+        накопительный план молча переставал работать: в бюджете нули,
+        а причина не видна нигде.
+        """
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        self._goal(db_session)
+        self._plan(db_session)
+        for m in (1, 2, 3):
+            bm = BudgetMonth(account_id=ACCOUNT, year=2027, month=m, created_at=_NOW)
+            db_session.add(bm)
+            db_session.flush()
+            db_session.add(BudgetGoalPlan(
+                budget_month_id=bm.id, account_id=ACCOUNT, goal_id=1,
+                plan_amount=Decimal("0"), note=None, created_at=_NOW,
+            ))
+        db_session.flush()
+
+        cells = self._row(db_session, 2027, 1, count=3)["cells"]
+        assert [c["plan"] for c in cells] == [Decimal("1250.00")] * 3
+        assert all(c["is_computed"] for c in cells)
+
+    def test_zero_with_note_does_suppress(self, db_session):
+        """Ноль с комментарием — осознанное «в этом месяце не откладываю»."""
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        self._goal(db_session)
+        self._plan(db_session)
+        bm = BudgetMonth(account_id=ACCOUNT, year=2027, month=1, created_at=_NOW)
+        db_session.add(bm)
+        db_session.flush()
+        db_session.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=ACCOUNT, goal_id=1,
+            plan_amount=Decimal("0"), note="январь тяжёлый", created_at=_NOW,
+        ))
+        db_session.flush()
+
+        cell = self._row(db_session, 2027, 1)["cells"][0]
+        assert cell["plan"] == Decimal("0")
+        assert cell["is_computed"] is False
+
+    def test_saving_blank_zero_removes_the_row(self, db_session):
+        """Сохранение пустого нуля удаляет строку, а не хранит ноль."""
+        from app.application.budget import SaveGoalPlansUseCase
+        from app.infrastructure.db.models import BudgetGoalPlan
+
+        self._goal(db_session)
+        uc = SaveGoalPlansUseCase(db_session)
+        uc.execute(account_id=ACCOUNT, year=2027, month=1,
+                   goal_plans=[{"goal_id": 1, "plan_amount": "500", "note": None}])
+        assert db_session.query(BudgetGoalPlan).count() == 1
+
+        uc.execute(account_id=ACCOUNT, year=2027, month=1,
+                   goal_plans=[{"goal_id": 1, "plan_amount": "0", "note": None}])
+        assert db_session.query(BudgetGoalPlan).count() == 0

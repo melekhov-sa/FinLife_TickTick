@@ -127,6 +127,12 @@ def manual_plans_for_goal(
 
     Нужны, чтобы честно показать, где расчёт не применится: ручная
     сумма в клетке всегда главнее расчётной.
+
+    Ноль без комментария сюда не попадает. В таблице такая клетка
+    выглядит пустой, и считать её правкой нельзя: нулевые строки
+    остаются от прежних правок, и каждая такая строка навсегда глушила
+    бы накопительный план. Осознанное «в этом месяце не откладываю» —
+    это ноль с комментарием.
     """
     if not months:
         return {}
@@ -135,7 +141,10 @@ def manual_plans_for_goal(
 
     keys = {(int(m[:4]), int(m[5:])) for m in months}
     rows = (
-        db.query(BudgetMonth.year, BudgetMonth.month, BudgetGoalPlan.plan_amount)
+        db.query(
+            BudgetMonth.year, BudgetMonth.month,
+            BudgetGoalPlan.plan_amount, BudgetGoalPlan.note,
+        )
         .join(BudgetGoalPlan, BudgetGoalPlan.budget_month_id == BudgetMonth.id)
         .filter(
             BudgetMonth.account_id == account_id,
@@ -146,13 +155,16 @@ def manual_plans_for_goal(
     )
 
     out: dict[str, Decimal] = {}
-    for year, month, amount in rows:
+    for year, month, amount, note in rows:
         if (year, month) not in keys:
+            continue
+        value = Decimal(str(amount))
+        if value == _ZERO and not note:
             continue
         # Вариантов бюджета на один месяц может быть несколько — в
         # матрице они складываются, здесь так же.
         key = month_key(year, month)
-        out[key] = out.get(key, _ZERO) + Decimal(str(amount))
+        out[key] = out.get(key, _ZERO) + value
     return out
 
 

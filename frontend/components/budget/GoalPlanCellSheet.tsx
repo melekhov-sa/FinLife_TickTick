@@ -143,6 +143,9 @@ export function GoalPlanCellSheet({
 
   const hasManual = data?.manual != null;
   const typed = amount.trim().length > 0;
+  // Ноль без комментария бэкенд не хранит: такая клетка выглядит пустой,
+  // и оставшаяся строка молча глушила бы накопительный план.
+  const zeroWithoutNote = typed && Number(amount.replace(",", ".")) === 0 && !note.trim();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -275,16 +278,20 @@ export function GoalPlanCellSheet({
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="почему в этом месяце иначе"
+                placeholder={typed && Number(amount.replace(",", ".")) === 0
+                ? "обязателен для нуля — почему не откладываем"
+                : "почему в этом месяце иначе"}
                 className={inputCls}
                 style={inputStyle}
               />
             </label>
 
             <p className="text-[11px] leading-snug" style={{ color: "var(--t-faint)" }}>
-              {typed
+              {zeroWithoutNote
+                ? "Ноль без комментария — это пустая клетка: в бюджете останется расчёт по планам. Чтобы в этом месяце не откладывать вопреки плану, напишите комментарий."
+                : typed
                 ? "Ручная сумма перебивает весь расчёт по планам за этот месяц — целиком, а не отдельный план."
-                : "Пусто — в бюджете останется расчёт по планам. Ноль — осознанное «в этом месяце не откладываю», он тоже перебивает расчёт."}
+                : "Пусто — в бюджете останется расчёт по планам."}
             </p>
           </div>
 
