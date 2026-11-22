@@ -334,6 +334,7 @@ class SavingPlanItem(BaseModel):
     # Нужен общему списку планов: он идёт по всем целям сразу, и без
     # названия строки неразличимы.
     goal_title: str
+    title: str
     target_amount: str
     start_month: str
     target_month: str
@@ -349,6 +350,7 @@ class SavingPlanItem(BaseModel):
 
 class SavingPlanBody(BaseModel):
     goal_id: int
+    title: str = ""
     target_amount: str
     start_month: str
     target_month: str
@@ -357,6 +359,7 @@ class SavingPlanBody(BaseModel):
 
 
 class UpdateSavingPlanBody(BaseModel):
+    title: str | None = None
     target_amount: str | None = None
     start_month: str | None = None
     target_month: str | None = None
@@ -407,6 +410,7 @@ def _plan_item(plan: GoalSavingPlan, goal_title: str = "") -> SavingPlanItem:
         id=plan.id,
         goal_id=plan.goal_id,
         goal_title=goal_title,
+        title=plan.title or "",
         target_amount=str(plan.target_amount),
         start_month=plan.start_month,
         target_month=plan.target_month,
@@ -498,6 +502,109 @@ def _own_plan(db: Session, plan_id: int, account_id: int) -> GoalSavingPlan:
     return plan
 
 
+class PlanShare(BaseModel):
+    """Вклад одного накопительного плана в месяц."""
+    plan_id: int
+    title: str
+    amount: str
+    target_amount: str
+    target_month: str
+    repeat_yearly: bool
+
+
+class GoalMonthBreakdown(BaseModel):
+    """Из чего складывается клетка «Отложить» за месяц."""
+    goal_id: int
+    year: int
+    month: int
+    # Вписанное руками. None — руками не трогали.
+    manual: str | None
+    note: str
+    computed_total: str
+    plans: list[PlanShare]
+    # Что реально стоит в бюджете: ручное, если оно есть, иначе расчёт.
+    effective: str
+
+
+@router.get("/goals/saving-plans/breakdown", response_model=GoalMonthBreakdown)
+def goal_month_breakdown(
+    request: Request,
+    goal_id: int = Query(...),
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    db: Session = Depends(get_db),
+):
+    """Разбивка клетки «Отложить»: ручная сумма и вклад каждого плана.
+
+    В бюджете у цели одна строка, и несколько планов складываются в одно
+    число. По нему не видно, сколько тут «на др брата», а сколько на
+    чей-то ещё, — за этим и нужна разбивка.
+    """
+    user_id = get_user_id(request, db)
+    at = month_key(year, month)
+
+    plans = (
+        db.query(GoalSavingPlan)
+        .filter(
+            GoalSavingPlan.account_id == user_id,
+            GoalSavingPlan.goal_id == goal_id,
+            GoalSavingPlan.is_active == True,  # noqa: E712
+        )
+        .order_by(GoalSavingPlan.target_month, GoalSavingPlan.id)
+        .all()
+    )
+
+    shares: list[PlanShare] = []
+    computed = Decimal("0")
+    for p in plans:
+        amount = monthly_amount(p, at)
+        if amount <= 0:
+            continue
+        computed += amount
+        shares.append(PlanShare(
+            plan_id=p.id,
+            title=p.title or "",
+            amount=str(amount),
+            target_amount=str(p.target_amount),
+            target_month=p.target_month,
+            repeat_yearly=p.repeat_yearly,
+        ))
+
+    manual_map = manual_plans_for_goal(db, user_id, goal_id, [at])
+    manual = manual_map.get(at)
+    note = _manual_note(db, user_id, goal_id, year, month)
+
+    return GoalMonthBreakdown(
+        goal_id=goal_id,
+        year=year,
+        month=month,
+        manual=str(manual) if manual is not None else None,
+        note=note,
+        computed_total=str(computed),
+        plans=shares,
+        effective=str(manual if manual is not None else computed),
+    )
+
+
+def _manual_note(db: Session, account_id: int, goal_id: int, year: int, month: int) -> str:
+    from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+    row = (
+        db.query(BudgetGoalPlan.note)
+        .join(BudgetMonth, BudgetGoalPlan.budget_month_id == BudgetMonth.id)
+        .filter(
+            BudgetMonth.account_id == account_id,
+            BudgetMonth.year == year,
+            BudgetMonth.month == month,
+            BudgetGoalPlan.account_id == account_id,
+            BudgetGoalPlan.goal_id == goal_id,
+            BudgetGoalPlan.note.isnot(None),
+        )
+        .first()
+    )
+    return row[0] if row and row[0] else ""
+
+
 @router.get("/goals/saving-plans", response_model=list[SavingPlanItem])
 def list_saving_plans(
     request: Request,
@@ -571,6 +678,7 @@ def create_saving_plan(
     plan = GoalSavingPlan(
         account_id=user_id,
         goal_id=body.goal_id,
+        title=body.title.strip()[:120],
         target_amount=amount,
         start_month=body.start_month,
         target_month=body.target_month,
@@ -616,6 +724,8 @@ def update_saving_plan(
     plan.start_month = start
     plan.target_month = target
     plan.save_in_target_month = in_target
+    if body.title is not None:
+        plan.title = body.title.strip()[:120]
     if body.repeat_yearly is not None:
         plan.repeat_yearly = body.repeat_yearly
     if body.is_active is not None:

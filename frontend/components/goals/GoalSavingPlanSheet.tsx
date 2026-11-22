@@ -42,6 +42,8 @@ export interface SavingPlan {
   id: number;
   goal_id: number;
   goal_title: string;
+  /** «На др брата» — чтобы в разбивке месяца было видно, что есть что. */
+  title: string;
   target_amount: string;
   start_month: string;
   target_month: string;
@@ -180,6 +182,7 @@ function Toggle({
 interface FormState {
   id: number | null;
   goal_id: number | null;
+  title: string;
   target_amount: string;
   start_month: string;
   target_month: string;
@@ -193,6 +196,7 @@ function blankForm(): FormState {
   return {
     id: null,
     goal_id: null,
+    title: "",
     target_amount: "",
     start_month: now,
     target_month: shiftMonths(now, 6),
@@ -284,6 +288,7 @@ export function GoalSavingPlanSheet({
   const { mutate: save, isPending: saving } = useMutation({
     mutationFn: async (f: FormState) => {
       const body = {
+        title: f.title.trim(),
         target_amount: f.target_amount.replace(",", "."),
         start_month: f.start_month,
         target_month: f.target_month,
@@ -444,6 +449,7 @@ export function GoalSavingPlanSheet({
                     </p>
                   )}
                   <p className="text-[13.5px] font-semibold" style={{ color: "var(--t-primary)" }}>
+                    {p.title ? p.title + " · " : ""}
                     {money(p.target_amount)} ₽ к {monthLabel(p.target_month)}
                   </p>
                   <p className="text-[11.5px] mt-0.5 leading-snug" style={{ color: "var(--t-muted)" }}>
@@ -491,6 +497,7 @@ export function GoalSavingPlanSheet({
                       openForm({
                         id: p.id,
                         goal_id: p.goal_id,
+                        title: p.title ?? "",
                         target_amount: String(Number(p.target_amount)),
                         start_month: p.start_month,
                         target_month: p.target_month,
@@ -568,6 +575,24 @@ export function GoalSavingPlanSheet({
               />
             </div>
           )}
+
+          <label className="block">
+            <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>
+              На что копим
+            </span>
+            <input
+              value={draft.title}
+              onChange={(e) => setForm({ ...draft, title: e.target.value })}
+              placeholder="На др брата"
+              maxLength={120}
+              className="w-full rounded-lg px-3 py-2 text-[14px]"
+              style={{
+                background: "var(--app-card-bg)",
+                border: "1px solid var(--app-border)",
+                color: "var(--t-primary)",
+              }}
+            />
+          </label>
 
           <label className="block">
             <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>

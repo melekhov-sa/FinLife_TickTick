@@ -294,6 +294,53 @@ class SaveGoalPlanRequest(BaseModel):
     plan_type: str = "goal"  # "goal" or "withdrawal"
 
 
+@router.delete("/budget/goal-plan")
+def clear_goal_plan(
+    request: Request,
+    goal_id: int = Query(...),
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    variant_id: int | None = Query(None),
+    plan_type: str = Query("goal"),
+    db: Session = Depends(get_db),
+):
+    """Убрать вписанную руками сумму и вернуть клетку к расчётной.
+
+    Нужно именно удаление, а не запись нуля: ноль — это осознанное «в
+    этом месяце не откладываю», он так же перебивает накопительный план.
+    Без этой ручки ноль было бы невозможно отменить.
+    """
+    from app.application.budget import get_active_variant
+    from app.infrastructure.db.models import BudgetGoalPlan, BudgetGoalWithdrawalPlan, BudgetMonth
+
+    user_id = get_user_id(request, db)
+    variant = get_active_variant(db, user_id, variant_id)
+
+    q = db.query(BudgetMonth).filter(
+        BudgetMonth.account_id == user_id,
+        BudgetMonth.year == year,
+        BudgetMonth.month == month,
+    )
+    if variant is not None:
+        q = q.filter(BudgetMonth.budget_variant_id == variant.id)
+    month_ids = [bm.id for bm in q.all()]
+    if not month_ids:
+        return {"ok": True, "removed": 0}
+
+    Model = BudgetGoalWithdrawalPlan if plan_type == "withdrawal" else BudgetGoalPlan
+    removed = (
+        db.query(Model)
+        .filter(
+            Model.account_id == user_id,
+            Model.goal_id == goal_id,
+            Model.budget_month_id.in_(month_ids),
+        )
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return {"ok": True, "removed": removed}
+
+
 @router.post("/budget/goal-plan")
 def save_goal_plan(body: SaveGoalPlanRequest, request: Request, db: Session = Depends(get_db)):
     from app.application.budget import SaveGoalPlansUseCase, SaveGoalWithdrawalPlansUseCase, get_active_variant

@@ -1255,6 +1255,10 @@ class GoalSavingPlan(Base):
     account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     goal_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
+    # «На др брата». В бюджете планы одной цели складываются в одно
+    # число, и без названия разбивку не прочитать.
+    title: Mapped[str] = mapped_column(String(120), nullable=False, server_default="")
+
     target_amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
 
     # YYYY-MM. Строка, а не дата: день здесь ничего не значит, а

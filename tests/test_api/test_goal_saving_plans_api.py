@@ -65,7 +65,9 @@ def client(db):
         yield db
 
     app.dependency_overrides[get_db] = override_db
-    with patch("app.api.v2.goals.get_user_id", return_value=ACCT):
+    # Каждый роутер импортирует get_user_id к себе, поэтому патчить надо
+    # оба: разбивка живёт в goals, снятие ручной суммы — в budget.
+    with patch("app.api.v2.goals.get_user_id", return_value=ACCT),          patch("app.api.v2.budget.get_user_id", return_value=ACCT):
         yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -355,3 +357,155 @@ class TestGoalTitle:
             f"/api/v2/goals/saving-plans/{created['id']}", json={"is_active": False}
         ).json()
         assert updated["goal_title"] == "Страховка"
+
+
+class TestBreakdown:
+    """Из чего складывается клетка «Отложить» за месяц."""
+
+    @staticmethod
+    def _plan(db, title, amount, target, start="2026-12", in_target=False):
+        p = GoalSavingPlan(
+            account_id=ACCT, goal_id=GOAL, title=title, target_amount=amount,
+            start_month=start, target_month=target,
+            save_in_target_month=in_target, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        )
+        db.add(p)
+        db.flush()
+        return p
+
+    def _get(self, client, year=2027, month=1):
+        r = client.get(
+            f"/api/v2/goals/saving-plans/breakdown?goal_id={GOAL}&year={year}&month={month}"
+        )
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    def test_splits_two_plans_by_title(self, client, db, goals):
+        """5 000 к маю и 10 000 к июню, оба с декабря — видно, что есть что."""
+        self._plan(db, "На др брата", 5000, "2027-05")
+        self._plan(db, "На др Пете", 10000, "2027-06")
+
+        data = self._get(client)
+        assert [(p["title"], p["amount"]) for p in data["plans"]] == [
+            ("На др брата", "1000.00"),
+            ("На др Пете", "1666.67"),
+        ]
+        assert data["computed_total"] == "2666.67"
+        assert data["manual"] is None
+        assert data["effective"] == "2666.67"
+
+    def test_finished_plan_drops_out(self, client, db, goals):
+        """В мае план «к маю» уже не копится — его в разбивке нет."""
+        self._plan(db, "На др брата", 5000, "2027-05")
+        self._plan(db, "На др Пете", 10000, "2027-06")
+
+        data = self._get(client, month=5)
+        assert [p["title"] for p in data["plans"]] == ["На др Пете"]
+        assert data["effective"] == "1666.67"
+
+    def test_manual_overrides_but_split_still_visible(self, client, db, goals):
+        """Ручная сумма главнее, но из чего был бы расчёт — всё равно видно."""
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        self._plan(db, "На др брата", 5000, "2027-05")
+        bm = BudgetMonth(account_id=ACCT, year=2027, month=1, created_at=_NOW)
+        db.add(bm)
+        db.flush()
+        db.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=ACCT, goal_id=GOAL,
+            plan_amount=9000, note="подарок дороже", created_at=_NOW,
+        ))
+        db.flush()
+
+        data = self._get(client)
+        assert data["manual"] == "9000.00"
+        assert data["note"] == "подарок дороже"
+        assert data["computed_total"] == "1000.00"
+        assert data["effective"] == "9000.00"
+
+    def test_empty_month(self, client, goals):
+        data = self._get(client, year=2030, month=3)
+        assert data["plans"] == []
+        assert data["effective"] == "0"
+
+    def test_inactive_plan_excluded(self, client, db, goals):
+        p = self._plan(db, "Выключенный", 5000, "2027-05")
+        p.is_active = False
+        db.flush()
+        assert self._get(client)["plans"] == []
+
+    def test_title_round_trips(self, client, goals):
+        body = _body()
+        body["title"] = "  На др брата  "
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["title"] == "На др брата"
+        assert client.get("/api/v2/goals/saving-plans").json()[0]["title"] == "На др брата"
+        updated = client.patch(
+            f"/api/v2/goals/saving-plans/{created['id']}", json={"title": "На др маме"}
+        ).json()
+        assert updated["title"] == "На др маме"
+
+
+class TestClearManual:
+    """Возврат клетки к расчётной сумме.
+
+    Запись нуля не годится: ноль — это осознанное «в этом месяце не
+    откладываю», он так же перебивает план. Нужно именно удаление.
+    """
+
+    @staticmethod
+    def _manual(db, amount, year=2027, month=1):
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        bm = BudgetMonth(account_id=ACCT, year=year, month=month, created_at=_NOW)
+        db.add(bm)
+        db.flush()
+        db.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=ACCT, goal_id=GOAL,
+            plan_amount=amount, created_at=_NOW,
+        ))
+        db.flush()
+
+    def _breakdown(self, client):
+        return client.get(
+            f"/api/v2/goals/saving-plans/breakdown?goal_id={GOAL}&year=2027&month=1"
+        ).json()
+
+    def test_clears_manual_back_to_computed(self, client, db, goals):
+        db.add(GoalSavingPlan(
+            account_id=ACCT, goal_id=GOAL, title="На др брата", target_amount=5000,
+            start_month="2026-12", target_month="2027-05",
+            save_in_target_month=False, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        ))
+        self._manual(db, 0)          # ручной ноль глушил расчёт
+        assert self._breakdown(client)["effective"] == "0.00"
+
+        r = client.delete(
+            f"/api/v2/budget/goal-plan?goal_id={GOAL}&year=2027&month=1"
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["removed"] == 1
+        assert self._breakdown(client)["effective"] == "1000.00"
+
+    def test_is_quiet_when_nothing_to_clear(self, client, goals):
+        r = client.delete(f"/api/v2/budget/goal-plan?goal_id={GOAL}&year=2030&month=4")
+        assert r.status_code == 200
+        assert r.json()["removed"] == 0
+
+    def test_does_not_touch_other_accounts(self, client, db, goals):
+        from app.infrastructure.db.models import BudgetGoalPlan, BudgetMonth
+
+        bm = BudgetMonth(account_id=OTHER, year=2027, month=1, created_at=_NOW)
+        db.add(bm)
+        db.flush()
+        db.add(BudgetGoalPlan(
+            budget_month_id=bm.id, account_id=OTHER, goal_id=GOAL_FOREIGN,
+            plan_amount=777, created_at=_NOW,
+        ))
+        db.flush()
+
+        client.delete(f"/api/v2/budget/goal-plan?goal_id={GOAL_FOREIGN}&year=2027&month=1")
+        db.expire_all()
+        assert db.query(BudgetGoalPlan).filter(BudgetGoalPlan.account_id == OTHER).count() == 1

@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/primitives/Tooltip";
 import { useKeyboardInset } from "@/lib/useKeyboardInset";
 import { PeriodPicker } from "@/components/budget/PeriodPicker";
 import { GoalSavingPlanSheet } from "@/components/goals/GoalSavingPlanSheet";
+import { GoalPlanCellSheet, type GoalPlanCellTarget } from "@/components/budget/GoalPlanCellSheet";
 import {
   fmt, fmtSigned, getPeriodKind, periodColCount, sectionTint, sectionEmoji,
   InlineCellInput, PlanDot, setSingleMonthAsCurrent,
@@ -970,6 +971,7 @@ function GoalDataRow({
   isHidden,
   onToggleVisibility,
   onOpenSavingPlan,
+  onOpenCell,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -987,6 +989,8 @@ function GoalDataRow({
   isHidden?: boolean;
   onToggleVisibility?: () => void;
   onOpenSavingPlan?: () => void;
+  /** Клик по плановой сумме: разбивка месяца вместо правки на месте. */
+  onOpenCell?: (year: number, month: number, periodLabel: string) => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
@@ -1104,8 +1108,14 @@ function GoalDataRow({
               </button>
             )}
             <span
-              onClick={(e) => {
+              onClick={() => {
                 if (!canEdit || !editing || !target) return;
+                // У накоплений за числом стоит несколько планов —
+                // показываем разбивку, а не поле ввода.
+                if (onOpenCell && p) {
+                  onOpenCell(p.year, p.month, p.label);
+                  return;
+                }
                 editing.onInlineStart(key, cell.plan);
               }}
               className={canEdit ? "cursor-pointer hover:text-[var(--app-accent)] transition-colors" : ""}
@@ -1574,7 +1584,7 @@ function MobileCatRow({ row, focusPeriod, focusIdx, editing, kind }: {
   );
 }
 
-function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType, topSet }: {
+function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType, topSet, onOpenCell }: {
   row: BudgetGoalRow;
   focusPeriod: BudgetPeriod | undefined;
   focusIdx: number;
@@ -1582,6 +1592,7 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
   kind: "income" | "expense";
   goalPlanType: string;
   topSet?: Set<number>;
+  onOpenCell?: (year: number, month: number, periodLabel: string) => void;
 }) {
   const cell = row.cells[focusIdx] ?? { plan: 0, fact: 0, deviation: 0, note: null };
   const canEdit = !!focusPeriod?.has_manual_plan;
@@ -1654,7 +1665,17 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
             cursor: canEdit ? "pointer" : "default",
           }}
           title={cell.is_computed ? "Посчитано по накопительному плану цели" : undefined}
-          onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
+          onClick={
+            canEdit && !isEditing
+              ? () => {
+                  if (onOpenCell && focusPeriod) {
+                    onOpenCell(focusPeriod.year, focusPeriod.month, focusPeriod.label);
+                    return;
+                  }
+                  editing.onInlineStart(key, cell.plan);
+                }
+              : undefined
+          }
         >
           {isEditing ? (
             <InlineCellInput
@@ -2311,6 +2332,7 @@ export default function BudgetMatrixPage() {
   const topGoalByPeriod: Set<number>[] = topGoalsByPeriod(data?.goal_rows, 3);
   const [planGoal, setPlanGoal] = useState<{ id: number; title: string } | null>(null);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [cellTarget, setCellTarget] = useState<GoalPlanCellTarget | null>(null);
   const topWithdrawByPeriod: Set<number>[] = topGoalsByPeriod(data?.withdrawal_rows, 3);
 
   const { data: finCatsAll } = useQuery<{ category_id: number; title: string; emoji?: string | null }[]>({
@@ -2347,6 +2369,7 @@ export default function BudgetMatrixPage() {
       {factDetailTarget && (
         <FactDetailModal target={factDetailTarget} onClose={() => setFactDetailTarget(null)} />
       )}
+      <GoalPlanCellSheet target={cellTarget} onClose={() => setCellTarget(null)} />
       <GoalSavingPlanSheet
         open={plansOpen || planGoal !== null}
         goalId={planGoal?.id}
@@ -2556,6 +2579,10 @@ export default function BudgetMatrixPage() {
                     kind="expense"
                     goalPlanType="goal"
                     topSet={topGoalByPeriod[focusIdx]}
+                    onOpenCell={(y, m, label) => setCellTarget({
+                      goalId: row.goal_id, goalTitle: row.title,
+                      year: y, month: m, periodLabel: label,
+                    })}
                   />
                 ))}
                 <MobileTotRow label="Итого отложить" totals={data.goal_totals} kind="expense" />
@@ -2824,6 +2851,10 @@ export default function BudgetMatrixPage() {
                           isHidden={showHidden && hiddenGoalIds.has(row.goal_id)}
                           onToggleVisibility={showHidden && row.goal_id ? () => toggleGoalVisibility(row.goal_id, "goal") : undefined}
                           onOpenSavingPlan={row.goal_id ? () => setPlanGoal({ id: row.goal_id, title: row.title }) : undefined}
+                          onOpenCell={(y, m, label) => setCellTarget({
+                            goalId: row.goal_id, goalTitle: row.title,
+                            year: y, month: m, periodLabel: label,
+                          })}
                           onDragStart={(e) => onGoalDragStart(e, row.goal_id)}
                           onDragOver={(e) => onGoalDragOver(e, row.goal_id)}
                           onDragLeave={onGoalDragLeave}
