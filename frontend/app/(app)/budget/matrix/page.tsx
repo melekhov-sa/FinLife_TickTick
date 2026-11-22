@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil, PiggyBank } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSm, GripVertical, EyeOff, Eye, Pencil, PiggyBank, Clock3 } from "lucide-react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { PageHeader } from "@/components/primitives/PageHeader";
@@ -603,11 +603,19 @@ function FactCell({
     return <td className={clsx("tabular-nums text-right px-2 py-1.5 text-[12px]", totalCol && "bgt-tc-fact")} style={{ color: "var(--bgt-dash)", ...extraStyle }}>—</td>;
   }
 
+  // Часть суммы могла быть переведена заранее — в прошлом месяце на этот.
+  // Без пометки это выглядит как «уже потрачено», хотя месяц ещё не начался.
+  const prepaid = cell.fact_prepaid ?? 0;
+
   return (
     <td
       className={clsx("tabular-nums text-right px-2 py-1.5 text-[13px]", isBold && "font-semibold", totalCol && "bgt-tc-fact")}
       style={{ color: hasFact ? color : "var(--bgt-dash)", ...extraStyle }}
+      title={prepaid > 0 ? `Внесено заранее: ${fmt(prepaid)}` : undefined}
     >
+      {prepaid > 0 && (
+        <Clock3 size={9} className="inline-block mr-0.5 align-[-1px] opacity-60" />
+      )}
       {hasFact && onClick ? (
         <span onClick={onClick} className="cursor-pointer hover:underline hover:text-[var(--app-accent)]">
           {fmt(cell.fact)}
@@ -1692,7 +1700,11 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
       <div
         className="tabular-nums text-right text-[13px] font-medium shrink-0"
         style={{ width: 60, color: hasFact ? factColor : "var(--bgt-dash)" }}
+        title={(cell.fact_prepaid ?? 0) > 0 ? `Внесено заранее: ${fmt(cell.fact_prepaid!)}` : undefined}
       >
+        {(cell.fact_prepaid ?? 0) > 0 && (
+          <Clock3 size={9} className="inline-block mr-0.5 align-[-1px] opacity-60" />
+        )}
         {hasFact ? fmt(cell.fact) : "—"}
       </div>
     </div>

@@ -42,18 +42,40 @@ export function budgetMonthDiffers(
   return budgetMonth.slice(0, 7) !== occurredAt.slice(0, 7);
 }
 
-/** Опции селекта «Месяц бюджета» вокруг даты операции. */
+/** Насколько далеко вперёд и назад можно отнести операцию. */
+export const BUDGET_MONTH_BACK = 3;
+export const BUDGET_MONTH_FORWARD = 24;
+
+/** Опции селекта «Месяц бюджета» вокруг даты операции.
+ *
+ * Не только соседние месяцы: деньги откладывают и сильно заранее —
+ * перевёл в ноябре, а копится это на декабрь следующего года. Двух лет
+ * вперёд хватает любому накопительному плану, а поиск в селекте
+ * включается сам, когда вариантов много.
+ */
 export function budgetMonthOptions(
   occurredAt: string | null | undefined,
   current: string | null | undefined,
 ): { value: string; label: string }[] {
-  const prev = shiftMonth(occurredAt, -1);
+  const own = shiftMonth(occurredAt, 0);
   const next = shiftMonth(occurredAt, 1);
+  const prev = shiftMonth(occurredAt, -1);
+
+  // Соседние месяцы — сверху: это девять случаев из десяти. Остальное
+  // идёт следом по порядку.
   const opts = [
     { value: "", label: "По дате операции" },
     { value: next, label: `Следующий — ${budgetMonthLabel(next)}` },
     { value: prev, label: `Предыдущий — ${budgetMonthLabel(prev)}` },
   ];
+
+  for (let i = -BUDGET_MONTH_BACK; i <= BUDGET_MONTH_FORWARD; i++) {
+    const value = shiftMonth(occurredAt, i);
+    if (value === own || opts.some((o) => o.value === value)) continue;
+    opts.push({ value, label: budgetMonthLabel(value) });
+  }
+
+  // Сохранённый месяц может оказаться и за пределами окна
   if (current && !opts.some((o) => o.value === current)) {
     opts.push({ value: current, label: budgetMonthLabel(current) });
   }

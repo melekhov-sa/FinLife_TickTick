@@ -949,7 +949,7 @@ class BudgetMatrixService:
             return [], empty_totals
 
         # Aggregate fact: REGULAR→SAVINGS transfers by to_goal_id, bucketed by period
-        goal_fact_map = self._aggregate_goal_fact_bucketed(account_id, periods)
+        goal_fact_map, goal_prepaid_map = self._aggregate_goal_fact_bucketed(account_id, periods)
 
         # Load manual goal plans (available when base stores them)
         if has_manual:
@@ -992,6 +992,8 @@ class BudgetMatrixService:
                     # Фронту нужно показать расчётное иначе, чем вписанное:
                     # иначе непонятно, откуда взялось число.
                     "is_computed": is_computed,
+                    # Сколько из факта переведено до начала этого месяца
+                    "fact_prepaid": goal_prepaid_map.get(key, _ZERO),
                 })
                 total_plan += plan
                 total_fact += fact
@@ -1022,8 +1024,10 @@ class BudgetMatrixService:
 
     def _aggregate_goal_fact_bucketed(
         self, account_id: int, periods: List[Dict],
-    ) -> Dict[Tuple, Decimal]:
+    ) -> Tuple[Dict[Tuple, Decimal], Dict[Tuple, Decimal]]:
         """Aggregate REGULAR→SAVINGS transfers by (to_goal_id, period_idx).
+
+        Возвращает (факт, внесено заранее).
 
         Only counts transfers FROM REGULAR wallets TO SAVINGS wallets.
         SAVINGS→REGULAR does NOT reduce fact.
@@ -1053,11 +1057,26 @@ class BudgetMatrixService:
         # Alias for wallet type check
         from_wallet = self.db.query(WalletBalance.wallet_id, WalletBalance.wallet_type).subquery("from_wallet")
 
+        # Внесено заранее: перевод сделан раньше того месяца, в который
+        # его зачли. Нужно, чтобы в будущем месяце было видно, что часть
+        # суммы уже лежит, и остаток не пугал.
+        prepaid_col = func.sum(
+            case(
+                (
+                    cast(TransactionFeed.budget_month, TIMESTAMP(timezone=True))
+                    > TransactionFeed.occurred_at,
+                    TransactionFeed.amount,
+                ),
+                else_=literal(0),
+            )
+        ).label("prepaid")
+
         rows = (
             self.db.query(
                 TransactionFeed.to_goal_id,
                 period_col,
                 func.sum(TransactionFeed.amount).label("total"),
+                prepaid_col,
             )
             .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
             .filter(
@@ -1073,9 +1092,13 @@ class BudgetMatrixService:
         )
 
         result: Dict[Tuple, Decimal] = {}
+        prepaid: Dict[Tuple, Decimal] = {}
         for row in rows:
             if row.period_idx >= 0:
-                result[(row.to_goal_id, row.period_idx)] = row.total or _ZERO
+                key = (row.to_goal_id, row.period_idx)
+                result[key] = row.total or _ZERO
+                if row.prepaid:
+                    prepaid[key] = Decimal(str(row.prepaid))
 
         # ── Переносы цель→цель (SAVINGS→SAVINGS): ПОЛУЧАТЕЛЬ +N в «Отложить» ──
         # Источник учитывается в «Взять из отложенного» (см. _aggregate_withdrawal…).
@@ -1113,7 +1136,7 @@ class BudgetMatrixService:
             k_to = (row.to_goal_id, row.period_idx)
             result[k_to] = result.get(k_to, _ZERO) + (row.total or _ZERO)
 
-        return result
+        return result, prepaid
 
     def _load_goal_plans_ranged(
         self, account_id: int, periods: List[Dict],
