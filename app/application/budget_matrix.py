@@ -171,6 +171,10 @@ class BudgetMatrixService:
 
         n = len(periods)
 
+        # Плановые траты из накоплений: статья → период → сумма. Пусто,
+        # пока ни одному плану не указали статью.
+        saving_expense = self._computed_target_expenses(account_id, periods, has_manual)
+
         # --- Build rows ---
         consumed_fact: set = set()
         consumed_planned: set = set()
@@ -187,12 +191,23 @@ class BudgetMatrixService:
                 pm = manual_map.get(key_p, _ZERO)
                 pp = planned_map.get(key_p, _ZERO)
                 plan = (pm + pp) if has_manual else pp
+                # Трата из накоплений в целевом месяце — подложка, а не
+                # слагаемое: если на эту покупку уже есть плановая
+                # операция или сумма вписана руками, прибавлять ещё раз
+                # значит удвоить расход.
+                is_computed = False
+                if plan == _ZERO:
+                    from_saving = saving_expense.get((cat.category_id, i), _ZERO)
+                    if from_saving > _ZERO:
+                        plan = from_saving
+                        is_computed = True
                 fact = fact_map.get(key_f, _ZERO)
                 note = note_map.get(key_p, "")
                 cells.append({
                     "plan": plan, "plan_manual": pm, "plan_planned": pp,
                     "fact": fact, "deviation": fact - plan, "note": note,
                     "plan_unknown": key_p in planned_unknown,
+                    "is_computed": is_computed,
                 })
                 total_plan += plan
                 total_plan_manual += pm
@@ -853,6 +868,53 @@ class BudgetMatrixService:
             out[p["index"]] = acc
         return out
 
+    def _computed_target_expenses(
+        self, account_id: int, periods: List[Dict], has_manual: bool
+    ) -> Dict[Tuple[int, int], Decimal]:
+        """(category_id, index периода) → плановый расход из накоплений."""
+        if not has_manual:
+            return {}
+        from app.application.goal_saving_plans import (
+            load_active_plans, target_expenses_for_month,
+        )
+
+        plans = [p for p in load_active_plans(self.db, account_id)
+                 if p.expense_category_id is not None]
+        if not plans:
+            return {}
+
+        out: Dict[Tuple[int, int], Decimal] = {}
+        for p in periods:
+            for y, m in _whole_months_in(p["range_start"], p["range_end"]):
+                for cat_id, amount in target_expenses_for_month(plans, y, m).items():
+                    key = (cat_id, p["index"])
+                    out[key] = out.get(key, _ZERO) + amount
+        return out
+
+    def _computed_withdrawals(
+        self, account_id: int, periods: List[Dict], has_manual: bool
+    ) -> Dict[int, Dict[int, Decimal]]:
+        """index периода → {goal_id: сколько забрать из отложенного}.
+
+        Как и взносы, собирается из месяцев, целиком попадающих в период.
+        """
+        if not has_manual:
+            return {}
+        from app.application.goal_saving_plans import load_active_plans, withdrawals_for_month
+
+        plans = load_active_plans(self.db, account_id)
+        if not plans:
+            return {}
+
+        out: Dict[int, Dict[int, Decimal]] = {}
+        for p in periods:
+            acc: Dict[int, Decimal] = {}
+            for y, m in _whole_months_in(p["range_start"], p["range_end"]):
+                for goal_id, amount in withdrawals_for_month(plans, y, m).items():
+                    acc[goal_id] = acc.get(goal_id, _ZERO) + amount
+            out[p["index"]] = acc
+        return out
+
     def _build_goal_section(
         self,
         account_id: int,
@@ -1282,6 +1344,11 @@ class BudgetMatrixService:
         else:
             withdrawal_plan_map, withdrawal_note_map = {}, {}
 
+        # Подложка: в целевом месяце накопительный план сам предлагает
+        # забрать накопленное. Копить — половина дела, деньги ещё надо
+        # взять и потратить, и раньше это вписывалось руками.
+        computed_withdrawals = self._computed_withdrawals(account_id, periods, has_manual)
+
         rows = []
         for goal in goals:
             cells = []
@@ -1290,12 +1357,19 @@ class BudgetMatrixService:
             total_fact = _ZERO
             for i in range(n):
                 key = (goal.goal_id, i)
-                plan = withdrawal_plan_map.get(key, _ZERO)
-                fact = withdrawal_fact_map.get(key, _ZERO)
+                manual = withdrawal_plan_map.get(key, _ZERO)
                 note = withdrawal_note_map.get(key, "")
+                computed = computed_withdrawals.get(i, {}).get(goal.goal_id, _ZERO)
+                # Тот же порядок, что и в «Отложить»: пустая клетка без
+                # комментария — это не решение, а просто пусто.
+                overridden = manual != _ZERO or bool(note)
+                is_computed = not overridden and computed > _ZERO
+                plan = manual if overridden else (computed if computed > _ZERO else manual)
+                fact = withdrawal_fact_map.get(key, _ZERO)
                 cells.append({
-                    "plan": plan, "plan_manual": plan, "plan_planned": _ZERO,
+                    "plan": plan, "plan_manual": manual, "plan_planned": _ZERO,
                     "fact": fact, "deviation": fact - plan, "note": note,
+                    "is_computed": is_computed,
                 })
                 total_plan += plan
                 total_plan_manual += plan

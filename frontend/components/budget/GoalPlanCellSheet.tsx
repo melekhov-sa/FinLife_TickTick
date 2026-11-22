@@ -286,6 +286,22 @@ export function GoalPlanCellSheet({
               />
             </label>
 
+            {/* «Пропустить» — чтобы осознанный ноль не пришлось набирать
+                вместе с обязательным комментарием. */}
+            {data && data.plans.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAmount("0");
+                  setNote("пропускаю месяц");
+                }}
+                className="text-[11.5px] font-semibold"
+                style={{ color: "var(--app-accent)" }}
+              >
+                Пропустить этот месяц
+              </button>
+            )}
+
             <p className="text-[11px] leading-snug" style={{ color: "var(--t-faint)" }}>
               {zeroWithoutNote
                 ? "Ноль без комментария — это пустая клетка: в бюджете останется расчёт по планам. Чтобы в этом месяце не откладывать вопреки плану, напишите комментарий."

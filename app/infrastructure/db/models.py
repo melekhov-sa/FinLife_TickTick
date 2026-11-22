@@ -1272,6 +1272,12 @@ class GoalSavingPlan(Base):
     repeat_yearly: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
 
+    # Что план делает в целевом месяце. Копить — половина дела: деньги
+    # надо ещё забрать из отложенного и потратить.
+    withdraw_in_target: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Статья, в которую подставить плановый расход. None — не подставлять.
+    expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

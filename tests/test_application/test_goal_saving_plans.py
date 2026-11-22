@@ -14,6 +14,10 @@ from app.application.goal_saving_plans import (
     computed_plans_for_month,
     monthly_amount,
     month_key,
+    target_month_of,
+    withdrawals_for_month,
+    target_expenses_for_month,
+    window_months,
 )
 from app.infrastructure.db.models import GoalSavingPlan
 
@@ -36,7 +40,8 @@ class TestWindow:
         """30 000 к декабрю, с января, в декабре не копим → 11 месяцев."""
         p = _plan()
         assert monthly_amount(p, "2027-01") == Decimal("2727.27")
-        assert monthly_amount(p, "2027-11") == Decimal("2727.27")
+        # Последний месяц добирает остаток, иначе сумма не сходится
+        assert monthly_amount(p, "2027-11") == Decimal("2727.30")
         assert monthly_amount(p, "2027-12") == Decimal("0")
 
     def test_target_month_included(self):
@@ -67,7 +72,7 @@ class TestYearlyRepeat:
         p = _plan(repeat_yearly=True)
 
         assert monthly_amount(p, "2028-01") == Decimal("2727.27")
-        assert monthly_amount(p, "2028-11") == Decimal("2727.27")
+        assert monthly_amount(p, "2028-11") == Decimal("2727.30")
         assert monthly_amount(p, "2028-12") == Decimal("0")
 
     def test_still_works_many_years_later(self):
@@ -114,3 +119,83 @@ class TestAggregation:
 @pytest.mark.unit
 def test_month_key_pads():
     assert month_key(2027, 3) == "2027-03"
+
+
+class TestTargetMonth:
+    """Что план делает в целевом месяце: забрать и потратить."""
+
+    @staticmethod
+    def _plan(**over):
+        from app.infrastructure.db.models import GoalSavingPlan
+
+        kw = dict(
+            id=1, account_id=1, goal_id=7, target_amount=Decimal("15000"),
+            start_month="2027-01", target_month="2027-12",
+            save_in_target_month=False, repeat_yearly=False, is_active=True,
+            withdraw_in_target=True, expense_category_id=None,
+        )
+        kw.update(over)
+        return GoalSavingPlan(**kw)
+
+    def test_target_month_when_not_saving_in_it(self):
+        p = self._plan()
+        assert target_month_of(p, "2027-05") == "2027-12"
+
+    def test_target_month_when_saving_in_it(self):
+        p = self._plan(save_in_target_month=True)
+        assert target_month_of(p, "2027-05") == "2027-12"
+
+    def test_withdrawal_only_in_target_month(self):
+        p = self._plan()
+        assert withdrawals_for_month([p], 2027, 11) == {}
+        assert withdrawals_for_month([p], 2027, 12) == {7: Decimal("15000")}
+        assert withdrawals_for_month([p], 2028, 1) == {}
+
+    def test_withdrawal_can_be_switched_off(self):
+        p = self._plan(withdraw_in_target=False)
+        assert withdrawals_for_month([p], 2027, 12) == {}
+
+    def test_yearly_plan_withdraws_every_cycle(self):
+        p = self._plan(repeat_yearly=True, start_month="2026-01", target_month="2026-12")
+        assert withdrawals_for_month([p], 2026, 12) == {7: Decimal("15000")}
+        assert withdrawals_for_month([p], 2027, 12) == {7: Decimal("15000")}
+        assert withdrawals_for_month([p], 2027, 6) == {}
+
+    def test_withdrawals_of_one_goal_add_up(self):
+        a = self._plan(id=1, target_amount=Decimal("5000"), target_month="2027-12")
+        b = self._plan(id=2, target_amount=Decimal("3000"), target_month="2027-12")
+        assert withdrawals_for_month([a, b], 2027, 12) == {7: Decimal("8000")}
+
+    def test_expense_needs_a_category(self):
+        assert target_expenses_for_month([self._plan()], 2027, 12) == {}
+
+    def test_expense_lands_in_its_category(self):
+        p = self._plan(expense_category_id=42)
+        assert target_expenses_for_month([p], 2027, 12) == {42: Decimal("15000")}
+        assert target_expenses_for_month([p], 2027, 11) == {}
+
+
+class TestExactTotal:
+    """Взносы за окно должны складываться ровно в целевую сумму.
+
+    Каждый месяц округляется до копейки, поэтому ровное деление даёт
+    расхождение: 10 000 на шесть месяцев — 1 666,67 × 6 = 10 000,02.
+    Остаток добирает последний месяц.
+    """
+
+    def test_sum_equals_target_when_division_is_uneven(self):
+        p = _plan(target_amount=Decimal("10000"),
+                  start_month="2026-12", target_month="2027-06")
+        months = window_months(p, "2026-12")
+        assert sum(monthly_amount(p, m) for m in months) == Decimal("10000")
+
+    def test_last_month_carries_the_remainder(self):
+        p = _plan(target_amount=Decimal("10000"),
+                  start_month="2026-12", target_month="2027-06")
+        assert monthly_amount(p, "2026-12") == Decimal("1666.67")
+        assert monthly_amount(p, "2027-05") == Decimal("1666.65")
+
+    def test_even_division_stays_even(self):
+        p = _plan(target_amount=Decimal("12000"), save_in_target_month=True)
+        months = window_months(p, "2027-01")
+        assert {monthly_amount(p, m) for m in months} == {Decimal("1000.00")}

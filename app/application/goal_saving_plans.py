@@ -83,8 +83,13 @@ def monthly_amount(plan: GoalSavingPlan, at_month: str) -> Decimal:
         return _ZERO
 
     months = last - first + 1
-    amount = Decimal(str(plan.target_amount)) / months
-    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    target = Decimal(str(plan.target_amount))
+    per = (target / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if idx == last:
+        # Последний месяц добирает остаток: иначе 10 000 на шесть
+        # месяцев давали в сумме 10 000,02, и цель не сходилась с планом.
+        return target - per * (months - 1)
+    return per
 
 
 def plan_schedule(plan: GoalSavingPlan, at_month: str) -> dict | None:
@@ -193,6 +198,59 @@ def plans_for_month(
         amount = monthly_amount(plan, at)
         if amount > 0:
             out[plan.goal_id] = out.get(plan.goal_id, _ZERO) + amount
+    return out
+
+
+def target_month_of(plan: GoalSavingPlan, at_month: str) -> str | None:
+    """Целевой месяц текущего цикла. Для ежегодного он уезжает вперёд."""
+    bounds = window_bounds(plan, at_month)
+    if bounds is None:
+        return None
+    _, last = bounds
+    # last — последний месяц накопления; целевой на месяц позже, если в
+    # нём самом не копим.
+    return _from_index(last if plan.save_in_target_month else last + 1)
+
+
+def withdrawals_for_month(
+    plans: list[GoalSavingPlan], year: int, month: int
+) -> dict[int, Decimal]:
+    """goal_id → сколько забрать из отложенного в этом месяце.
+
+    Срабатывает ровно в целевой месяц плана: к нему деньги накоплены, и
+    именно тогда их тратят. Дальше это подложка под строку «Взять из
+    отложенного» — ручная сумма, как и везде, главнее.
+    """
+    at = month_key(year, month)
+    out: dict[int, Decimal] = {}
+    for plan in plans:
+        if not plan.withdraw_in_target:
+            continue
+        if target_month_of(plan, at) != at:
+            continue
+        amount = Decimal(str(plan.target_amount))
+        out[plan.goal_id] = out.get(plan.goal_id, _ZERO) + amount
+    return out
+
+
+def target_expenses_for_month(
+    plans: list[GoalSavingPlan], year: int, month: int
+) -> dict[int, Decimal]:
+    """category_id → плановый расход в целевом месяце.
+
+    Только для планов, которым указали статью: без неё непонятно, куда
+    записывать трату, а угадывать тут нечего.
+    """
+    at = month_key(year, month)
+    out: dict[int, Decimal] = {}
+    for plan in plans:
+        if plan.expense_category_id is None:
+            continue
+        if target_month_of(plan, at) != at:
+            continue
+        amount = Decimal(str(plan.target_amount))
+        cid = plan.expense_category_id
+        out[cid] = out.get(cid, _ZERO) + amount
     return out
 
 

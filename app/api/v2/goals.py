@@ -341,6 +341,8 @@ class SavingPlanItem(BaseModel):
     save_in_target_month: bool
     repeat_yearly: bool
     is_active: bool
+    withdraw_in_target: bool
+    expense_category_id: int | None
     schedule: SavingPlanSchedule | None
     # Разовый план с прошедшим сроком. В бюджет он уже ничего не
     # подставляет, но окно у него остаётся — без этого признака список
@@ -356,6 +358,8 @@ class SavingPlanBody(BaseModel):
     target_month: str
     save_in_target_month: bool = False
     repeat_yearly: bool = False
+    withdraw_in_target: bool = True
+    expense_category_id: int | None = None
 
 
 class UpdateSavingPlanBody(BaseModel):
@@ -366,6 +370,10 @@ class UpdateSavingPlanBody(BaseModel):
     save_in_target_month: bool | None = None
     repeat_yearly: bool | None = None
     is_active: bool | None = None
+    withdraw_in_target: bool | None = None
+    # Явный null сбрасывает статью, поэтому отличаем «не передали» от
+    # «передали пусто» через model_fields_set в самом обработчике.
+    expense_category_id: int | None = None
 
 
 class PreviewSavingPlanBody(BaseModel):
@@ -417,6 +425,8 @@ def _plan_item(plan: GoalSavingPlan, goal_title: str = "") -> SavingPlanItem:
         save_in_target_month=plan.save_in_target_month,
         repeat_yearly=plan.repeat_yearly,
         is_active=plan.is_active,
+        withdraw_in_target=plan.withdraw_in_target,
+        expense_category_id=plan.expense_category_id,
         schedule=_schedule_payload(sched),
         is_finished=finished,
     )
@@ -685,6 +695,8 @@ def create_saving_plan(
         save_in_target_month=body.save_in_target_month,
         repeat_yearly=body.repeat_yearly,
         is_active=True,
+        withdraw_in_target=body.withdraw_in_target,
+        expense_category_id=body.expense_category_id,
     )
     db.add(plan)
     db.commit()
@@ -730,10 +742,68 @@ def update_saving_plan(
         plan.repeat_yearly = body.repeat_yearly
     if body.is_active is not None:
         plan.is_active = body.is_active
+    if body.withdraw_in_target is not None:
+        plan.withdraw_in_target = body.withdraw_in_target
+    if "expense_category_id" in body.model_fields_set:
+        plan.expense_category_id = body.expense_category_id
 
     db.commit()
     db.refresh(plan)
     return _plan_item(plan, _one_goal_title(db, user_id, plan.goal_id))
+
+
+class ContinuePlanBody(BaseModel):
+    """Следующий цикл той же покупки с уточнённой суммой."""
+    target_amount: str
+    start_month: str
+    target_month: str
+    title: str | None = None
+
+
+@router.post("/goals/saving-plans/{plan_id}/continue", response_model=SavingPlanItem)
+def continue_saving_plan(
+    plan_id: int,
+    body: ContinuePlanBody,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Завести следующий цикл вместо завершённого плана.
+
+    Для покупок, которые повторяются, но дорожают: зимняя куртка в этом
+    году 10 000, в следующем 12 000 — и настоящая сумма известна только
+    после покупки. Поэтому «каждый год» тут не подходит: он повторяет
+    цикл с прежней суммой молча.
+
+    Старый план выключается, а не удаляется: он остаётся историей, по
+    которой видно, сколько эта покупка стоила раньше.
+    """
+    user_id = get_user_id(request, db)
+    old = _own_plan(db, plan_id, user_id)
+
+    try:
+        amount = parse_amount(body.target_amount)
+        validate_window(body.start_month, body.target_month, old.save_in_target_month)
+    except SavingPlanError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    fresh = GoalSavingPlan(
+        account_id=user_id,
+        goal_id=old.goal_id,
+        title=(body.title if body.title is not None else old.title or "").strip()[:120],
+        target_amount=amount,
+        start_month=body.start_month,
+        target_month=body.target_month,
+        save_in_target_month=old.save_in_target_month,
+        repeat_yearly=old.repeat_yearly,
+        is_active=True,
+        withdraw_in_target=old.withdraw_in_target,
+        expense_category_id=old.expense_category_id,
+    )
+    old.is_active = False
+    db.add(fresh)
+    db.commit()
+    db.refresh(fresh)
+    return _plan_item(fresh, _one_goal_title(db, user_id, fresh.goal_id))
 
 
 @router.delete("/goals/saving-plans/{plan_id}")

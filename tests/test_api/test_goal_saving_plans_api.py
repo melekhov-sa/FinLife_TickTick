@@ -5,6 +5,7 @@
 ничего не записывая.
 """
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -292,7 +293,10 @@ class TestPreviewComparison:
         r = client.post("/api/v2/goals/saving-plans/preview", json=_body()).json()
         assert [x["month"] for x in r["rows"]] == [f"2026-{m:02d}" for m in range(1, 12)]
         assert all(x["current"] == "0" for x in r["rows"])
-        assert all(x["next"] == r["monthly_amount"] for x in r["rows"])
+        # Все месяцы кроме последнего — ровный взнос, последний добирает
+        # остаток, и в сумме выходит ровно целевая сумма.
+        assert all(x["next"] == r["monthly_amount"] for x in r["rows"][:-1])
+        assert sum(Decimal(x["next"]) for x in r["rows"]) == Decimal("30000")
 
     def test_adds_to_another_plan_of_the_same_goal(self, client, db, goals):
         """Два плана на одну цель складываются — это видно заранее."""
@@ -402,7 +406,8 @@ class TestBreakdown:
 
         data = self._get(client, month=5)
         assert [p["title"] for p in data["plans"]] == ["На др Пете"]
-        assert data["effective"] == "1666.67"
+        # Май — последний месяц окна, он добирает остаток округления
+        assert data["effective"] == "1666.65"
 
     def test_manual_overrides_but_split_still_visible(self, client, db, goals):
         """Ручная сумма главнее, но из чего был бы расчёт — всё равно видно."""
@@ -562,3 +567,103 @@ class TestBlankZeroIsNotManual:
         ).json()
         assert data["manual"] is None
         assert data["effective"] == "1000.00"
+
+
+class TestTargetMonthFields:
+    def test_defaults_to_withdrawing(self, client, goals):
+        created = client.post("/api/v2/goals/saving-plans", json=_body()).json()
+        assert created["withdraw_in_target"] is True
+        assert created["expense_category_id"] is None
+
+    def test_can_set_category_and_clear_it(self, client, goals):
+        body = _body()
+        body["expense_category_id"] = 42
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["expense_category_id"] == 42
+
+        cleared = client.patch(
+            f"/api/v2/goals/saving-plans/{created['id']}",
+            json={"expense_category_id": None},
+        ).json()
+        assert cleared["expense_category_id"] is None
+
+    def test_untouched_category_survives_other_edits(self, client, goals):
+        """Правка суммы не должна молча сбрасывать статью."""
+        body = _body()
+        body["expense_category_id"] = 42
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        updated = client.patch(
+            f"/api/v2/goals/saving-plans/{created['id']}", json={"target_amount": "20000"}
+        ).json()
+        assert updated["expense_category_id"] == 42
+
+    def test_withdrawal_can_be_switched_off(self, client, goals):
+        body = _body()
+        body["withdraw_in_target"] = False
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["withdraw_in_target"] is False
+
+
+class TestContinue:
+    """Следующий цикл покупки, которая дорожает."""
+
+    def _finished(self, client, amount="10000"):
+        body = _body(target_amount=amount, start_month="2026-01", target_month="2026-12")
+        body["title"] = "Зимняя куртка"
+        body["expense_category_id"] = 42
+        return client.post("/api/v2/goals/saving-plans", json=body).json()
+
+    def test_creates_next_cycle_with_new_amount(self, client, goals):
+        old = self._finished(client)
+        r = client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "12000", "start_month": "2027-01", "target_month": "2027-12"},
+        )
+        assert r.status_code == 200, r.text
+        fresh = r.json()
+        assert fresh["target_amount"] == "12000.00"
+        assert fresh["target_month"] == "2027-12"
+        assert fresh["id"] != old["id"]
+
+    def test_inherits_settings(self, client, goals):
+        old = self._finished(client)
+        fresh = client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "12000", "start_month": "2027-01", "target_month": "2027-12"},
+        ).json()
+        assert fresh["title"] == "Зимняя куртка"
+        assert fresh["expense_category_id"] == 42
+        assert fresh["goal_id"] == GOAL
+
+    def test_old_plan_stays_as_history(self, client, goals):
+        old = self._finished(client)
+        client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "12000", "start_month": "2027-01", "target_month": "2027-12"},
+        )
+        rows = {p["id"]: p for p in client.get("/api/v2/goals/saving-plans").json()}
+        assert rows[old["id"]]["is_active"] is False
+        assert len(rows) == 2
+
+    def test_rejects_bad_window(self, client, goals):
+        old = self._finished(client)
+        r = client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "12000", "start_month": "2027-06", "target_month": "2027-01"},
+        )
+        assert r.status_code == 400
+
+    def test_rejects_foreign_plan(self, client, db, goals):
+        foreign = GoalSavingPlan(
+            account_id=OTHER, goal_id=GOAL_FOREIGN, target_amount=5000,
+            start_month="2026-01", target_month="2026-06",
+            save_in_target_month=False, repeat_yearly=False, is_active=True,
+            created_at=_NOW, updated_at=_NOW,
+        )
+        db.add(foreign)
+        db.flush()
+        r = client.post(
+            f"/api/v2/goals/saving-plans/{foreign.id}/continue",
+            json={"target_amount": "1", "start_month": "2027-01", "target_month": "2027-12"},
+        )
+        assert r.status_code == 404

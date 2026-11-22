@@ -553,3 +553,65 @@ class TestGoalSavingPlans:
         uc.execute(account_id=ACCOUNT, year=2027, month=1,
                    goal_plans=[{"goal_id": 1, "plan_amount": "0", "note": None}])
         assert db_session.query(BudgetGoalPlan).count() == 0
+
+    def test_target_month_fills_withdrawal(self, db_session):
+        """В целевом месяце план предлагает забрать накопленное."""
+        self._goal(db_session)
+        self._plan(db_session)
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=2,
+            anchor_year=2027, anchor_month=11,
+        )
+        row = next(r for r in view["withdrawal_rows"] if r["goal_id"] == 1)
+        assert [c["plan"] for c in row["cells"]] == [Decimal("0"), Decimal("15000")]
+        assert [c["is_computed"] for c in row["cells"]] == [False, True]
+
+    def test_manual_withdrawal_wins(self, db_session):
+        from app.infrastructure.db.models import BudgetGoalWithdrawalPlan, BudgetMonth
+
+        self._goal(db_session)
+        self._plan(db_session)
+        bm = BudgetMonth(account_id=ACCOUNT, year=2027, month=12, created_at=_NOW)
+        db_session.add(bm)
+        db_session.flush()
+        db_session.add(BudgetGoalWithdrawalPlan(
+            budget_month_id=bm.id, account_id=ACCOUNT, goal_id=1,
+            plan_amount=Decimal("12000"), created_at=_NOW,
+        ))
+        db_session.flush()
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=1,
+            anchor_year=2027, anchor_month=12,
+        )
+        cell = next(r for r in view["withdrawal_rows"] if r["goal_id"] == 1)["cells"][0]
+        assert cell["plan"] == Decimal("12000")
+        assert cell["is_computed"] is False
+
+    def test_target_month_fills_expense_category(self, db_session, setup_categories):
+        """Со статьёй план ставит и сам расход — круг замыкается."""
+        self._goal(db_session)
+        self._plan(db_session, expense_category_id=3)
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=1,
+            anchor_year=2027, anchor_month=12,
+        )
+        row = next(r for r in view["expense_rows"] if r.get("category_id") == 3)
+        assert row["cells"][0]["plan"] == Decimal("15000")
+        assert row["cells"][0]["is_computed"] is True
+
+    def test_expense_does_not_double_an_existing_plan(self, db_session, setup_categories):
+        """Если расход уже запланирован руками — не прибавляем сверху."""
+        from app.application.budget import EnsureBudgetMonthUseCase, SetBudgetLineUseCase
+
+        self._goal(db_session)
+        self._plan(db_session, expense_category_id=3)
+        mid = EnsureBudgetMonthUseCase(db_session).execute(ACCOUNT, 2027, 12)
+        SetBudgetLineUseCase(db_session).execute(ACCOUNT, mid, 3, "EXPENSE", "20000")
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=1,
+            anchor_year=2027, anchor_month=12,
+        )
+        row = next(r for r in view["expense_rows"] if r.get("category_id") == 3)
+        assert row["cells"][0]["plan"] == Decimal("20000")
+        assert row["cells"][0]["is_computed"] is False

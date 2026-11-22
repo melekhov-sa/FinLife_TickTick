@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Repeat, Trash2 } from "lucide-react";
+import { Pencil, Plus, Repeat, RotateCcw, Trash2 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Select } from "@/components/ui/Select";
 import { api } from "@/lib/api";
@@ -50,6 +50,10 @@ export interface SavingPlan {
   save_in_target_month: boolean;
   repeat_yearly: boolean;
   is_active: boolean;
+  /** В целевом месяце подставить «Взять из отложенного». */
+  withdraw_in_target: boolean;
+  /** Статья, куда подставить плановый расход в целевом месяце. */
+  expense_category_id: number | null;
   schedule: SavingPlanSchedule | null;
   /** Разовый план с прошедшим сроком: в бюджет уже ничего не подставляет. */
   is_finished: boolean;
@@ -181,6 +185,8 @@ function Toggle({
 
 interface FormState {
   id: number | null;
+  /** Заполнено — сохранение заведёт следующий цикл вместо этого плана. */
+  continues: number | null;
   goal_id: number | null;
   title: string;
   target_amount: string;
@@ -189,12 +195,15 @@ interface FormState {
   save_in_target_month: boolean;
   repeat_yearly: boolean;
   is_active: boolean;
+  withdraw_in_target: boolean;
+  expense_category_id: number | null;
 }
 
 function blankForm(): FormState {
   const now = thisMonthKey();
   return {
     id: null,
+    continues: null,
     goal_id: null,
     title: "",
     target_amount: "",
@@ -203,6 +212,8 @@ function blankForm(): FormState {
     save_in_target_month: false,
     repeat_yearly: false,
     is_active: true,
+    withdraw_in_target: true,
+    expense_category_id: null,
   };
 }
 
@@ -226,6 +237,8 @@ export function GoalSavingPlanSheet({
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  // Заводить цель ради плана — отдельный поход в другой раздел и обратно
+  const [newGoal, setNewGoal] = useState<string | null>(null);
   // Заготовка пустой формы. В состоянии, а не в useMemo: месяц в ней
   // берётся «сейчас», и при открытии после полуночи он должен обновиться.
   const [blank, setBlank] = useState(blankForm);
@@ -251,6 +264,14 @@ export function GoalSavingPlanSheet({
         allGoals ? "/api/v2/goals/saving-plans" : "/api/v2/goals/saving-plans?goal_id=" + goalId,
       ),
     enabled: open,
+  });
+
+  // Статьи нужны, только когда форма открыта: список немаленький
+  const { data: categories } = useQuery<{ category_id: number; title: string; category_type: string; is_archived?: boolean }[]>({
+    queryKey: ["fin-categories"],
+    queryFn: () => api.get("/api/v2/fin-categories"),
+    enabled: open,
+    staleTime: 5 * 60_000,
   });
 
   // Выбор цели нужен только общему разделу: из строки бюджета цель уже известна
@@ -294,7 +315,18 @@ export function GoalSavingPlanSheet({
         target_month: f.target_month,
         save_in_target_month: f.save_in_target_month,
         repeat_yearly: f.repeat_yearly,
+        withdraw_in_target: f.withdraw_in_target,
+        expense_category_id: f.expense_category_id,
       };
+      if (f.continues !== null) {
+        // Следующий цикл той же покупки: старый план уйдёт в историю
+        return api.post("/api/v2/goals/saving-plans/" + f.continues + "/continue", {
+          target_amount: body.target_amount,
+          start_month: body.start_month,
+          target_month: body.target_month,
+          title: body.title,
+        });
+      }
       if (f.id === null) {
         return api.post("/api/v2/goals/saving-plans", { goal_id: f.goal_id ?? goalId, ...body });
       }
@@ -305,6 +337,17 @@ export function GoalSavingPlanSheet({
       openList();
     },
     onError: (e) => setError(errorMessage(e, "Не удалось сохранить план")),
+  });
+
+  const { mutate: createGoal, isPending: creatingGoal } = useMutation({
+    mutationFn: (title: string) =>
+      api.post<{ goal_id: number }>("/api/v2/goals", { title, currency: "RUB" }),
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["goals"] });
+      setForm({ ...draft, goal_id: created.goal_id });
+      setNewGoal(null);
+    },
+    onError: (e) => setError(errorMessage(e, "Не удалось создать цель")),
   });
 
   const { mutate: remove } = useMutation({
@@ -372,7 +415,15 @@ export function GoalSavingPlanSheet({
     <BottomSheet
       open={open}
       onClose={onClose}
-      title={showForm ? (draft.id ? "План накоплений" : "Новый план") : "Планы накоплений"}
+      title={
+        showForm
+          ? draft.continues !== null
+            ? "Следующий раз"
+            : draft.id
+            ? "План накоплений"
+            : "Новый план"
+          : "Планы накоплений"
+      }
       detent="half"
       onSubmit={showForm ? submit : undefined}
       footer={
@@ -496,6 +547,7 @@ export function GoalSavingPlanSheet({
                     onClick={() =>
                       openForm({
                         id: p.id,
+                        continues: null,
                         goal_id: p.goal_id,
                         title: p.title ?? "",
                         target_amount: String(Number(p.target_amount)),
@@ -504,6 +556,8 @@ export function GoalSavingPlanSheet({
                         save_in_target_month: p.save_in_target_month,
                         repeat_yearly: p.repeat_yearly,
                         is_active: p.is_active,
+                        withdraw_in_target: p.withdraw_in_target,
+                        expense_category_id: p.expense_category_id,
                       })
                     }
                     className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -511,6 +565,32 @@ export function GoalSavingPlanSheet({
                   >
                     <Pencil size={13} />
                   </button>
+                  {(p.is_finished || !p.is_active) && (
+                    <button
+                      type="button"
+                      title="Продолжить — следующий цикл с новой суммой"
+                      onClick={() =>
+                        openForm({
+                          id: null,
+                          continues: p.id,
+                          goal_id: p.goal_id,
+                          title: p.title ?? "",
+                          target_amount: String(Number(p.target_amount)),
+                          start_month: shiftMonths(p.start_month, 12),
+                          target_month: shiftMonths(p.target_month, 12),
+                          save_in_target_month: p.save_in_target_month,
+                          repeat_yearly: p.repeat_yearly,
+                          is_active: true,
+                          withdraw_in_target: p.withdraw_in_target,
+                          expense_category_id: p.expense_category_id,
+                        })
+                      }
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ color: "var(--app-accent)" }}
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     title="Удалить"
@@ -561,18 +641,55 @@ export function GoalSavingPlanSheet({
         <div className="space-y-3.5">
           {allGoals && (
             <div>
-              <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>
-                Цель
-              </span>
-              <Select
-                value={draft.goal_id != null ? String(draft.goal_id) : ""}
-                onChange={(v) => setForm({ ...draft, goal_id: Number(v) })}
-                placeholder="Выберите цель"
-                options={(goalChoices ?? []).map((g) => ({
-                  value: String(g.goal_id),
-                  label: g.title,
-                }))}
-              />
+              <div className="flex items-baseline justify-between gap-2 mb-1">
+                <span className="text-[12px]" style={{ color: "var(--t-muted)" }}>
+                  Цель
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setNewGoal(newGoal === null ? "" : null)}
+                  className="text-[11px] font-semibold"
+                  style={{ color: "var(--app-accent)" }}
+                >
+                  {newGoal === null ? "+ Новая цель" : "Отмена"}
+                </button>
+              </div>
+
+              {newGoal === null ? (
+                <Select
+                  value={draft.goal_id != null ? String(draft.goal_id) : ""}
+                  onChange={(v) => setForm({ ...draft, goal_id: Number(v) })}
+                  placeholder="Выберите цель"
+                  options={(goalChoices ?? []).map((g) => ({
+                    value: String(g.goal_id),
+                    label: g.title,
+                  }))}
+                />
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    value={newGoal}
+                    onChange={(e) => setNewGoal(e.target.value)}
+                    placeholder="Подарки"
+                    autoFocus
+                    className="flex-1 min-w-0 rounded-lg px-3 py-2 text-[14px]"
+                    style={{
+                      background: "var(--app-card-bg)",
+                      border: "1px solid var(--app-border)",
+                      color: "var(--t-primary)",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!newGoal.trim() || creatingGoal}
+                    onClick={() => createGoal(newGoal.trim())}
+                    className="shrink-0 rounded-lg px-3 text-[13px] font-semibold text-white disabled:opacity-50"
+                    style={{ background: "var(--app-accent)" }}
+                  >
+                    {creatingGoal ? "…" : "Создать"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -634,8 +751,39 @@ export function GoalSavingPlanSheet({
             checked={draft.repeat_yearly}
             onChange={(v) => setForm({ ...draft, repeat_yearly: v })}
             title="Каждый год"
-            hint="Для страховки, налога, подписки — цикл сам сдвинется"
+            hint="Для страховки и налога — сумма та же, цикл сам сдвинется. Если сумма каждый раз разная, оставьте выключенным: после срока предложу продолжить."
           />
+
+          <Toggle
+            checked={draft.withdraw_in_target}
+            onChange={(v) => setForm({ ...draft, withdraw_in_target: v })}
+            title="В целевом месяце взять из отложенного"
+            hint="Накопленное само встанет в строку «Взять из отложенного»"
+          />
+
+          <div>
+            <span className="block text-[12px] mb-1" style={{ color: "var(--t-muted)" }}>
+              Записать расход в статью
+            </span>
+            <Select
+              value={draft.expense_category_id != null ? String(draft.expense_category_id) : ""}
+              onChange={(v) =>
+                setForm({ ...draft, expense_category_id: v ? Number(v) : null })
+              }
+              placeholder="Не записывать"
+              options={[
+                { value: "", label: "Не записывать" },
+                ...(categories ?? [])
+                  .filter((c) => c.category_type === "EXPENSE" && !c.is_archived)
+                  .map((c) => ({ value: String(c.category_id), label: c.title })),
+              ]}
+            />
+            <p className="text-[11px] mt-1 leading-snug" style={{ color: "var(--t-faint)" }}>
+              В целевом месяце в этой статье появится плановый расход. Если там
+              уже стоит сумма или есть плановая операция — не трогаем, чтобы не
+              задвоить.
+            </p>
+          </div>
 
           {draft.id !== null && (
             <Toggle
