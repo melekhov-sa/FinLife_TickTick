@@ -101,14 +101,34 @@ export const errTextCls = "text-[11px] text-red-400 mt-1";
  *
  * Клиент кладёт тело ответа в текст сообщения («API error 400: {…}»),
  * поэтому почти в каждой форме повторялся один и тот же разбор.
+ *
+ * Запасной текст показывается только когда сказать правда нечего. Раньше
+ * под него проваливались и 422 (parseBackendErrors отдаёт по ним
+ * fieldErrors без message), и ответы не в JSON — пользователь видел
+ * «не удалось», а чем именно не удалось, не узнавал никто.
  */
 export function errorMessage(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : "";
   const match = msg.match(/API error (\d+): ([\s\S]*)/);
-  if (!match) return fallback;
+  if (!match) return msg || fallback;
+
+  const status = parseInt(match[1]);
+  let parsed: { fieldErrors?: FieldErrors; message?: string } | null = null;
   try {
-    return parseBackendErrors(parseInt(match[1]), JSON.parse(match[2])).message ?? fallback;
+    parsed = parseBackendErrors(status, JSON.parse(match[2]));
   } catch {
-    return fallback;
+    parsed = null;
   }
+
+  if (parsed?.message) return parsed.message;
+  if (parsed?.fieldErrors) {
+    const lines = Object.entries(parsed.fieldErrors).map(([f, m]) => `${f}: ${m}`);
+    if (lines.length > 0) return lines.join("; ");
+  }
+
+  // Тело не разобралось — хотя бы код и первые строки ответа, иначе
+  // диагностировать нечем.
+  const body = match[2].trim().slice(0, 200);
+  if (status >= 500) return `Ошибка сервера (${status}). ${body}`.trim();
+  return `${fallback} (${status}). ${body}`.trim();
 }
