@@ -460,3 +460,37 @@ class TestGoalSavingPlans:
         cell = self._row(db_session, 2027, 1)["cells"][0]
         assert cell["plan"] == Decimal("9000")
         assert cell["is_computed"] is False
+
+    def test_year_column_sums_the_whole_year(self, db_session):
+        """Годовая колонка — сумма за год, а не взнос за один месяц."""
+        self._goal(db_session)
+        self._plan(db_session)
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="year", range_count=1,
+            anchor_year=2027, anchor_month=1,
+        )
+        row = next(r for r in view["goal_rows"] if r["goal_id"] == 1)
+        assert row["cells"][0]["plan"] == Decimal("15000.00")
+
+    def test_partial_year_counts_only_its_months(self, db_session):
+        """Окно в полгода внутри года даёт половину суммы."""
+        self._goal(db_session)
+        self._plan(db_session, start_month="2027-07", target_month="2027-12")
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="year", range_count=1,
+            anchor_year=2027, anchor_month=1,
+        )
+        row = next(r for r in view["goal_rows"] if r["goal_id"] == 1)
+        assert row["cells"][0]["plan"] == Decimal("15000.00")
+
+    def test_week_grain_gets_nothing(self, db_session):
+        """Помесячный взнос не раскладывается по неделям — это были бы
+        выдуманные цифры."""
+        self._goal(db_session)
+        self._plan(db_session)
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="week", range_count=2,
+            anchor_date=date(2027, 1, 4),
+        )
+        row = next(r for r in view["goal_rows"] if r["goal_id"] == 1)
+        assert [c["plan"] for c in row["cells"]] == [Decimal("0"), Decimal("0")]

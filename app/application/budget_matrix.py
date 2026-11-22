@@ -54,6 +54,25 @@ def _zero_cell() -> Dict[str, Decimal]:
     return {"plan": _ZERO, "plan_manual": _ZERO, "plan_planned": _ZERO, "fact": _ZERO, "deviation": _ZERO}
 
 
+def _whole_months_in(start: date_type, end: date_type) -> List[Tuple[int, int]]:
+    """Месяцы, целиком укладывающиеся в полуинтервал [start, end).
+
+    Неделя внутри месяца не даёт ни одного такого месяца — и правильно:
+    помесячную сумму нельзя честно разложить на недели.
+    """
+    y, m = start.year, start.month
+    if start.day != 1:
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+
+    out: List[Tuple[int, int]] = []
+    while True:
+        nxt = date_type(y + 1, 1, 1) if m == 12 else date_type(y, m + 1, 1)
+        if nxt > end:
+            return out
+        out.append((y, m))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+
+
 class BudgetMatrixService:
     """Build multi-period budget matrix view."""
 
@@ -801,10 +820,19 @@ class BudgetMatrixService:
     def _computed_goal_plans(
         self, account_id: int, periods: List[Dict], has_manual: bool
     ) -> Dict[int, Dict[int, Decimal]]:
-        """index периода → {goal_id: расчётный взнос}.
+        """index периода → {goal_id: расчётный взнос за весь период}.
 
-        Только для месячной нарезки: накопительные планы заданы в
-        месяцах, и размазывать их по неделям или дням нечестно.
+        Период шире месяца (квартал, год) набирается из всех своих
+        месяцев: иначе в годовой колонке стоял бы взнос за один месяц
+        вместо суммы за год.
+
+        Период уже месяца (неделя, день) не получает ничего: планы
+        заданы помесячно, и дробить их по неделям было бы выдумыванием
+        цифр. Поэтому месяц учитывается, только если целиком помещается
+        в период.
+
+        Вариант бюджета не на месячной основе планов по месяцам вообще
+        не хранит — там и расчётным взяться неоткуда.
         """
         if not has_manual:
             return {}
@@ -818,7 +846,11 @@ class BudgetMatrixService:
 
         out: Dict[int, Dict[int, Decimal]] = {}
         for p in periods:
-            out[p["index"]] = plans_for_month(plans, p["year"], p["month"])
+            acc: Dict[int, Decimal] = {}
+            for y, m in _whole_months_in(p["range_start"], p["range_end"]):
+                for goal_id, amount in plans_for_month(plans, y, m).items():
+                    acc[goal_id] = acc.get(goal_id, _ZERO) + amount
+            out[p["index"]] = acc
         return out
 
     def _build_goal_section(
