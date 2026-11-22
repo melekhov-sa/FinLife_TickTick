@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
-import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, RotateCcw } from "lucide-react";
+import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, RotateCcw, PiggyBank, Repeat } from "lucide-react";
 import { api } from "@/lib/api";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { Badge } from "@/components/primitives/Badge";
@@ -18,6 +18,7 @@ import { Button } from "@/components/primitives/Button";
 import { Checkbox } from "@/components/primitives/Checkbox";
 import { Popover } from "@/components/primitives/Popover";
 import { GoalFormModal } from "@/components/modals/GoalFormModal";
+import { GoalSavingPlanSheet, monthLabel, type SavingPlan } from "@/components/goals/GoalSavingPlanSheet";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -108,12 +109,16 @@ function useUnarchiveGoal() {
 
 function GoalCard({
   goal,
+  plans,
   onEdit,
+  onEditPlans,
   onArchive,
   onUnarchive,
 }: {
   goal: GoalItem;
+  plans: SavingPlan[];
   onEdit: (goal: GoalItem) => void;
+  onEditPlans: (goal: GoalItem) => void;
   onArchive: (goalId: number) => void;
   onUnarchive: (goalId: number) => void;
 }) {
@@ -123,9 +128,12 @@ function GoalCard({
   const [archivePopoverOpen, setArchivePopoverOpen] = useState(false);
 
   // Пустая цель без целевой суммы — тонкая строка вместо большой карточки
+  // Цель с накопительным планом не схлопываем: план — это её смысл,
+  // даже пока на ней нет ни копейки.
   const isEmpty = !goal.target_amount
     && (parseFloat(goal.current_balance) || 0) === 0
-    && goal.wallets.length === 0;
+    && goal.wallets.length === 0
+    && plans.length === 0;
   if (isEmpty) {
     return (
       <div className={goal.is_archived ? "opacity-60" : undefined}>
@@ -225,6 +233,14 @@ function GoalCard({
                     ) : (
                       <>
                         <button
+                          onClick={() => onEditPlans(goal)}
+                          title="Накопительный план"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.07]"
+                          style={{ color: plans.length > 0 ? "var(--app-accent)" : "var(--t-faint)" }}
+                        >
+                          <PiggyBank size={13} />
+                        </button>
+                        <button
                           onClick={() => onEdit(goal)}
                           title="Редактировать"
                           className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.07]"
@@ -308,6 +324,34 @@ function GoalCard({
                 нет средств в кошельках
               </p>
             )}
+
+            {/* Накопительные планы: сколько в месяц и до какого срока.
+                Раньше это жило только в клетках бюджета, и по карточке
+                цели было не видно, копим ли мы на неё вообще. */}
+            {plans.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onEditPlans(goal)}
+                className="tap-grow mt-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors"
+                style={{ background: "var(--app-accent-weak)" }}
+              >
+                {plans.map((p) => (
+                  <span
+                    key={p.id}
+                    className="flex items-center gap-1.5 text-[11px] leading-snug"
+                    style={{ color: p.is_active && !p.is_finished ? "var(--app-accent)" : "var(--t-faint)" }}
+                  >
+                    <PiggyBank size={11} className="shrink-0" />
+                    <span className="min-w-0 truncate">
+                      {p.is_finished || !p.schedule
+                        ? "срок прошёл: " + formatAmount(p.target_amount) + " " + sym + " к " + monthLabel(p.target_month)
+                        : formatAmount(p.schedule.monthly_amount) + " " + sym + "/мес до " + monthLabel(p.target_month)}
+                    </span>
+                    {p.repeat_yearly && <Repeat size={10} className="shrink-0 opacity-70" />}
+                  </span>
+                ))}
+              </button>
+            )}
           </div>
         </div>
       </Card>
@@ -341,8 +385,27 @@ export default function GoalsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<GoalItem | null>(null);
+  const [planGoal, setPlanGoal] = useState<GoalItem | null>(null);
 
   const { data: allGoals, isLoading, isError } = useGoals(showArchived);
+
+  // Планы всех целей одним запросом: иначе на экране с десятком карточек
+  // был бы десяток запросов за тремя строчками каждый.
+  const { data: savingPlans } = useQuery<SavingPlan[]>({
+    queryKey: ["goal-saving-plans", "all"],
+    queryFn: () => api.get<SavingPlan[]>("/api/v2/goals/saving-plans"),
+    staleTime: 60_000,
+  });
+
+  const plansByGoal = useMemo(() => {
+    const map = new Map<number, SavingPlan[]>();
+    for (const p of savingPlans ?? []) {
+      const list = map.get(p.goal_id);
+      if (list) list.push(p);
+      else map.set(p.goal_id, [p]);
+    }
+    return map;
+  }, [savingPlans]);
 
   const { mutateAsync: createGoal } = useCreateGoal();
   const { mutateAsync: updateGoal } = useUpdateGoal();
@@ -420,7 +483,9 @@ export default function GoalsPage() {
               <GoalCard
                 key={goal.goal_id}
                 goal={goal}
+                plans={plansByGoal.get(goal.goal_id) ?? []}
                 onEdit={setEditingGoal}
+                onEditPlans={setPlanGoal}
                 onArchive={(id) => archiveGoal(id)}
                 onUnarchive={(id) => unarchiveGoal(id)}
               />
@@ -470,6 +535,12 @@ export default function GoalsPage() {
           }}
         />
       )}
+
+      <GoalSavingPlanSheet
+        goalId={planGoal?.goal_id ?? null}
+        goalTitle={planGoal?.title}
+        onClose={() => setPlanGoal(null)}
+      />
     </>
   );
 }

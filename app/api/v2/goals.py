@@ -13,7 +13,19 @@ from app.application.goals import (
     UnarchiveGoalUseCase,
     GoalValidationError,
 )
-from app.infrastructure.db.models import GoalInfo, GoalWalletBalance, WalletBalance
+from app.application.goal_saving_plans import (
+    SavingPlanError,
+    month_key,
+    parse_amount,
+    plan_schedule,
+    validate_window,
+)
+from app.infrastructure.db.models import (
+    GoalInfo,
+    GoalSavingPlan,
+    GoalWalletBalance,
+    WalletBalance,
+)
 from app.infrastructure.db.session import get_db
 
 router = APIRouter()
@@ -284,3 +296,242 @@ def rebuild_goal_allocations(
             for t in totals
         ],
     }
+
+
+# ── Накопительные планы ───────────────────────────────────────────────
+#
+# «К декабрю надо 30 000, откладывать с января» — бюджет сам подставляет
+# помесячный взнос в строку «Отложить». Расчёт живёт в
+# app/application/goal_saving_plans.py и ничего не хранит, поэтому здесь
+# только сами условия плана.
+
+
+class SavingPlanSchedule(BaseModel):
+    first_month: str
+    last_month: str
+    months: int
+    monthly_amount: str
+
+
+class SavingPlanItem(BaseModel):
+    id: int
+    goal_id: int
+    target_amount: str
+    start_month: str
+    target_month: str
+    save_in_target_month: bool
+    repeat_yearly: bool
+    is_active: bool
+    schedule: SavingPlanSchedule | None
+    # Разовый план с прошедшим сроком. В бюджет он уже ничего не
+    # подставляет, но окно у него остаётся — без этого признака список
+    # показывал бы его как действующий.
+    is_finished: bool
+
+
+class SavingPlanBody(BaseModel):
+    goal_id: int
+    target_amount: str
+    start_month: str
+    target_month: str
+    save_in_target_month: bool = False
+    repeat_yearly: bool = False
+
+
+class UpdateSavingPlanBody(BaseModel):
+    target_amount: str | None = None
+    start_month: str | None = None
+    target_month: str | None = None
+    save_in_target_month: bool | None = None
+    repeat_yearly: bool | None = None
+    is_active: bool | None = None
+
+
+class PreviewSavingPlanBody(BaseModel):
+    target_amount: str
+    start_month: str
+    target_month: str
+    save_in_target_month: bool = False
+    repeat_yearly: bool = False
+
+
+def _this_month() -> str:
+    from datetime import date as date_type
+
+    today = date_type.today()
+    return month_key(today.year, today.month)
+
+
+def _schedule_payload(sched: dict | None) -> SavingPlanSchedule | None:
+    if sched is None:
+        return None
+    return SavingPlanSchedule(
+        first_month=sched["first_month"],
+        last_month=sched["last_month"],
+        months=sched["months"],
+        monthly_amount=str(sched["monthly_amount"]),
+    )
+
+
+def _plan_item(plan: GoalSavingPlan) -> SavingPlanItem:
+    sched = plan_schedule(plan, _this_month())
+    finished = (
+        not plan.repeat_yearly
+        and sched is not None
+        and sched["last_month"] < _this_month()
+    )
+    return SavingPlanItem(
+        id=plan.id,
+        goal_id=plan.goal_id,
+        target_amount=str(plan.target_amount),
+        start_month=plan.start_month,
+        target_month=plan.target_month,
+        save_in_target_month=plan.save_in_target_month,
+        repeat_yearly=plan.repeat_yearly,
+        is_active=plan.is_active,
+        schedule=_schedule_payload(sched),
+        is_finished=finished,
+    )
+
+
+def _own_plan(db: Session, plan_id: int, account_id: int) -> GoalSavingPlan:
+    plan = (
+        db.query(GoalSavingPlan)
+        .filter(GoalSavingPlan.id == plan_id, GoalSavingPlan.account_id == account_id)
+        .first()
+    )
+    if plan is None:
+        raise HTTPException(status_code=404, detail="План не найден")
+    return plan
+
+
+@router.get("/goals/saving-plans", response_model=list[SavingPlanItem])
+def list_saving_plans(
+    request: Request,
+    db: Session = Depends(get_db),
+    goal_id: int | None = Query(None),
+):
+    user_id = get_user_id(request, db)
+    q = db.query(GoalSavingPlan).filter(GoalSavingPlan.account_id == user_id)
+    if goal_id is not None:
+        q = q.filter(GoalSavingPlan.goal_id == goal_id)
+    plans = q.order_by(GoalSavingPlan.target_month, GoalSavingPlan.id).all()
+    return [_plan_item(p) for p in plans]
+
+
+@router.post("/goals/saving-plans/preview", response_model=SavingPlanSchedule | None)
+def preview_saving_plan(
+    body: PreviewSavingPlanBody,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Расчёт до сохранения: по сколько в месяц и сколько месяцев."""
+    get_user_id(request, db)
+    try:
+        amount = parse_amount(body.target_amount)
+        validate_window(body.start_month, body.target_month, body.save_in_target_month)
+    except SavingPlanError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    draft = GoalSavingPlan(
+        target_amount=amount,
+        start_month=body.start_month,
+        target_month=body.target_month,
+        save_in_target_month=body.save_in_target_month,
+        repeat_yearly=body.repeat_yearly,
+    )
+    return _schedule_payload(plan_schedule(draft, _this_month()))
+
+
+@router.post("/goals/saving-plans", response_model=SavingPlanItem)
+def create_saving_plan(
+    body: SavingPlanBody,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    goal = (
+        db.query(GoalInfo)
+        .filter(GoalInfo.goal_id == body.goal_id, GoalInfo.account_id == user_id)
+        .first()
+    )
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Цель не найдена")
+    if goal.is_archived:
+        raise HTTPException(status_code=400, detail="Цель в архиве")
+
+    try:
+        amount = parse_amount(body.target_amount)
+        validate_window(body.start_month, body.target_month, body.save_in_target_month)
+    except SavingPlanError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    plan = GoalSavingPlan(
+        account_id=user_id,
+        goal_id=body.goal_id,
+        target_amount=amount,
+        start_month=body.start_month,
+        target_month=body.target_month,
+        save_in_target_month=body.save_in_target_month,
+        repeat_yearly=body.repeat_yearly,
+        is_active=True,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return _plan_item(plan)
+
+
+@router.patch("/goals/saving-plans/{plan_id}", response_model=SavingPlanItem)
+def update_saving_plan(
+    plan_id: int,
+    body: UpdateSavingPlanBody,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    plan = _own_plan(db, plan_id, user_id)
+
+    # Окно проверяем целиком: менять можно одно поле, а осмысленность
+    # зависит от всех трёх сразу.
+    start = body.start_month if body.start_month is not None else plan.start_month
+    target = body.target_month if body.target_month is not None else plan.target_month
+    in_target = (
+        body.save_in_target_month
+        if body.save_in_target_month is not None
+        else plan.save_in_target_month
+    )
+    try:
+        amount = parse_amount(body.target_amount) if body.target_amount is not None else None
+        validate_window(start, target, in_target)
+    except SavingPlanError as e:
+        # Проверяем до записи: иначе отказ оставил бы в сессии
+        # недоправленный объект.
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if amount is not None:
+        plan.target_amount = amount
+    plan.start_month = start
+    plan.target_month = target
+    plan.save_in_target_month = in_target
+    if body.repeat_yearly is not None:
+        plan.repeat_yearly = body.repeat_yearly
+    if body.is_active is not None:
+        plan.is_active = body.is_active
+
+    db.commit()
+    db.refresh(plan)
+    return _plan_item(plan)
+
+
+@router.delete("/goals/saving-plans/{plan_id}")
+def delete_saving_plan(
+    plan_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user_id = get_user_id(request, db)
+    plan = _own_plan(db, plan_id, user_id)
+    db.delete(plan)
+    db.commit()
+    return {"ok": True}

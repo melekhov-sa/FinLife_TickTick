@@ -41,6 +41,9 @@ class Insight:
     category_id: int | None
     title: str
     detail: str
+    # Для подсказок про накопления: к какой цели относится. Интерфейс
+    # по нему открывает настройку плана.
+    goal_id: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -99,6 +102,7 @@ def compute_budget_insights(
 
     out.extend(_total_insights(matrix, elapsed, days_total, is_open))
     out.extend(_savings_insights(matrix))
+    out.extend(_savings_lag(matrix, is_open))
     out.extend(_withdrawn_but_not_spent(matrix, elapsed, days_total, is_open))
     out.extend(_income_below_usual(matrix, elapsed, days_total, is_open))
     out.extend(_biggest_change(matrix, is_open))
@@ -220,6 +224,67 @@ def _savings_insights(matrix: dict) -> list[Insight]:
             f"он считается как доходы минус расходы, накопления идут отдельно."
         ),
     )]
+
+
+def _savings_lag(matrix: dict, is_open: bool) -> list[Insight]:
+    """Отставание от плана накоплений.
+
+    Расчётный взнос намеренно не «догоняет» пропущенный месяц: сумма
+    делится на всё окно один раз, иначе цифра в бюджете скакала бы
+    каждый месяц и перестала быть планом. Цена такой предсказуемости —
+    к сроку не хватит ровно пропущенного. Поэтому про отставание надо
+    сказать вслух и дать решить: поднять взнос или сдвинуть срок.
+
+    Смотрим последний закрытый месяц: в открытом отставание ничего не
+    значит, взнос можно сделать и тридцатого числа.
+    """
+    periods = matrix.get("periods") or []
+    rows = matrix.get("goal_rows") or []
+    if not periods or not rows:
+        return []
+
+    idx = len(periods) - 1 - (1 if is_open else 0)
+    if idx < 0:
+        return []
+    label = str(periods[idx].get("label") or "").strip()
+
+    found: list[tuple[Decimal, Insight]] = []
+    for r in rows:
+        cells = _cells(r)
+        if len(cells) <= idx:
+            continue
+        cell = cells[idx]
+        plan = Decimal(str(cell.get("plan") or 0))
+        fact = Decimal(str(cell.get("fact") or 0))
+        if plan < MIN_AMOUNT:
+            continue
+        shortfall = plan - fact
+        if shortfall < MIN_AMOUNT:
+            continue
+
+        title = r.get("title") or "цель"
+        where = f" в {label}" if label else ""
+        tail = (
+            "Расчётный взнос сам не вырастет — к сроку не хватит этой суммы. "
+            "Можно поднять взнос или сдвинуть срок."
+            if cell.get("is_computed")
+            else "План на месяц вписан руками — стоит сверить его с реальностью."
+        )
+        found.append((shortfall, Insight(
+            code="saving_behind",
+            severity="warning",
+            category_id=None,
+            goal_id=r.get("goal_id"),
+            title=f"«{title}»: отложено меньше плана",
+            detail=(
+                f"{_money(fact)} из {_money(plan)}{where} — не хватает "
+                f"{_money(shortfall)}. {tail}"
+            ),
+        )))
+
+    # Отстающих целей может быть много, а подсказок на экране — мало.
+    found.sort(key=lambda t: t[0], reverse=True)
+    return [i for _, i in found[:3]]
 
 
 def _median(values: list[Decimal]) -> Decimal:

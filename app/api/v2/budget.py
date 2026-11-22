@@ -87,12 +87,17 @@ def budget_summary(
     # В «результат» они намеренно не входят: он остаётся операционным
     # балансом (доходы минус расходы), накопления показываются отдельно.
     def _goal_row(r):
-        c = _cell(r.get("cells", []))
+        cells = r.get("cells", [])
+        c = _cell(cells)
         return {
             "goal_id": r["goal_id"],
             "title": r["title"],
             "plan": c["plan"],
             "fact": c["fact"],
+            # План посчитан накопительным планом, а не вписан руками —
+            # в интерфейсе это показывается отдельно, чтобы было видно,
+            # откуда взялась сумма.
+            "is_computed": bool(cells and cells[0].get("is_computed")),
         }
 
     saving_rows = [_goal_row(r) for r in matrix.get("goal_rows", [])]

@@ -10,6 +10,7 @@ import { BudgetInsights } from "@/components/budget/BudgetInsights";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/primitives/Skeleton";
 import { BudgetCategoryPanel, type BudgetCategoryStats } from "@/components/budget/BudgetCategoryPanel";
+import { GoalSavingPlanSheet } from "@/components/goals/GoalSavingPlanSheet";
 
 interface BudgetRow {
   category_id: number | null;
@@ -41,6 +42,8 @@ interface GoalRow {
   title: string;
   plan: number;
   fact: number;
+  /** План подставлен накопительным планом, а не вписан руками. */
+  is_computed: boolean;
 }
 
 interface BudgetStatsData {
@@ -157,11 +160,13 @@ function GoalSection({
   rows,
   total,
   accent = false,
+  onSelectGoal,
 }: {
   label: string;
   rows: GoalRow[];
   total: { plan: number; fact: number };
   accent?: boolean;
+  onSelectGoal?: (row: GoalRow) => void;
 }) {
   if (rows.length === 0 && !total.fact && !total.plan) return null;
   return (
@@ -183,16 +188,43 @@ function GoalSection({
         </span>
       </div>
       <div className="space-y-1">
-        {rows.map((r) => (
-          <div key={r.goal_id} className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-muted)" }}>
-              {r.title}
-            </span>
-            <span className="text-[12px] tabular-nums shrink-0" style={{ color: "var(--t-secondary)" }}>
-              {fmt(r.fact)}
-            </span>
-          </div>
-        ))}
+        {rows.map((r) => {
+          const body = (
+            <>
+              <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-muted)" }}>
+                {r.title}
+              </span>
+              <span className="text-[12px] tabular-nums shrink-0 flex items-baseline gap-1">
+                <span style={{ color: "var(--t-secondary)" }}>{fmt(r.fact)}</span>
+                {/* Расчётный план отличается цветом: иначе непонятно,
+                    откуда в клетке взялась сумма, которую не вписывали. */}
+                {r.plan > 0 && (
+                  <span
+                    className="text-[11px]"
+                    style={{ color: r.is_computed ? "var(--app-accent)" : "var(--t-faint)" }}
+                    title={r.is_computed ? "Посчитано по накопительному плану" : "План на месяц"}
+                  >
+                    / {fmt(r.plan)}
+                  </span>
+                )}
+              </span>
+            </>
+          );
+          return onSelectGoal ? (
+            <button
+              key={r.goal_id}
+              type="button"
+              onClick={() => onSelectGoal(r)}
+              className="tap-grow w-full flex items-baseline justify-between gap-2 text-left rounded-md -mx-1 px-1 py-0.5 transition-colors hover:bg-[var(--app-accent-weak)]"
+            >
+              {body}
+            </button>
+          ) : (
+            <div key={r.goal_id} className="flex items-baseline justify-between gap-2">
+              {body}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -283,6 +315,7 @@ export default function BudgetPage() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedKind, setSelectedKind] = useState<"income" | "expense">("expense");
+  const [planGoal, setPlanGoal] = useState<{ id: number; title: string } | null>(null);
 
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1;
 
@@ -495,6 +528,7 @@ export default function BudgetPage() {
                   label="Отложить"
                   rows={data.saving_rows}
                   total={data.saving_total}
+                  onSelectGoal={(r) => setPlanGoal({ id: r.goal_id, title: r.title })}
                 />
                 <GoalSection
                   label="Взять из отложенного"
@@ -513,6 +547,12 @@ export default function BudgetPage() {
           onClose={() => setSelectedCategoryId(null)}
         />
       )}
+
+      <GoalSavingPlanSheet
+        goalId={planGoal?.id ?? null}
+        goalTitle={planGoal?.title}
+        onClose={() => setPlanGoal(null)}
+      />
     </>
   );
 }

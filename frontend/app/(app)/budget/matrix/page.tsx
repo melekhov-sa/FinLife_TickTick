@@ -1091,6 +1091,13 @@ function GoalDataRow({
                 editing.onInlineStart(key, cell.plan);
               }}
               className={canEdit ? "cursor-pointer hover:text-[var(--app-accent)] transition-colors" : ""}
+              /* Расчётное по накопительному плану — пунктиром и акцентом:
+                 клик по клетке превращает его в обычный ручной план. */
+              style={cell.is_computed ? {
+                color: "var(--app-accent)",
+                borderBottom: "1px dashed var(--app-accent)",
+              } : undefined}
+              title={cell.is_computed ? "Посчитано по накопительному плану цели" : undefined}
             >
               {cell.plan ? fmt(cell.plan) : (canEdit ? <span style={{ opacity: 0.3 }}>—</span> : "—")}
               {cell.note && (
@@ -1617,7 +1624,15 @@ function MobileGoalRow({ row, focusPeriod, focusIdx, editing, kind, goalPlanType
         )}
         <div
           className="tabular-nums text-right text-[12px]"
-          style={{ color: "var(--t-primary)", fontWeight: topSet?.has(row.goal_id) ? 700 : undefined, cursor: canEdit ? "pointer" : "default" }}
+          /* Расчётное по накопительному плану — акцентом и пунктиром,
+             как в табличном виде. */
+          style={{
+            color: cell.is_computed ? "var(--app-accent)" : "var(--t-primary)",
+            borderBottom: cell.is_computed ? "1px dashed var(--app-accent)" : undefined,
+            fontWeight: topSet?.has(row.goal_id) ? 700 : undefined,
+            cursor: canEdit ? "pointer" : "default",
+          }}
+          title={cell.is_computed ? "Посчитано по накопительному плану цели" : undefined}
           onClick={canEdit && !isEditing ? () => editing.onInlineStart(key, cell.plan) : undefined}
         >
           {isEditing ? (

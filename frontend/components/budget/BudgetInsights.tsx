@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Brain, Lightbulb, TriangleAlert } from "lucide-react";
+import { Brain, Lightbulb, PiggyBank, TriangleAlert } from "lucide-react";
 import { api } from "@/lib/api";
+import { GoalSavingPlanSheet } from "@/components/goals/GoalSavingPlanSheet";
 
 /**
  * Выводы по бюджету месяца и разбор от ИИ.
@@ -20,6 +21,8 @@ interface Insight {
   code: string;
   severity: "danger" | "warning" | "info";
   category_id: number | null;
+  /** Есть у подсказок про накопления — по нему открывается план цели. */
+  goal_id: number | null;
   title: string;
   detail: string;
 }
@@ -33,6 +36,7 @@ const TONE: Record<Insight["severity"], { color: string; bg: string }> = {
 export function BudgetInsights({ year, month }: { year: number; month: number }) {
   const [review, setReview] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [planGoalId, setPlanGoalId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{ insights: Insight[] }>({
     queryKey: ["budget-insights", year, month],
@@ -104,6 +108,19 @@ export function BudgetInsights({ year, month }: { year: number; month: number })
                 <p className="text-[12px] leading-snug mt-0.5" style={{ color: "var(--t-muted)" }}>
                   {i.detail}
                 </p>
+                {/* Подсказка про отставание без кнопки была бы наблюдением:
+                    поднять взнос или сдвинуть срок всё равно надо в плане. */}
+                {i.goal_id !== null && i.code === "saving_behind" && (
+                  <button
+                    type="button"
+                    onClick={() => setPlanGoalId(i.goal_id)}
+                    className="tap-grow mt-1.5 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold"
+                    style={{ background: "var(--app-card-bg)", color: "var(--app-accent)" }}
+                  >
+                    <PiggyBank size={11} />
+                    Настроить план
+                  </button>
+                )}
               </div>
             );
           })}
@@ -122,6 +139,8 @@ export function BudgetInsights({ year, month }: { year: number; month: number })
           {review}
         </div>
       )}
+
+      <GoalSavingPlanSheet goalId={planGoalId} onClose={() => setPlanGoalId(null)} />
     </div>
   );
 }

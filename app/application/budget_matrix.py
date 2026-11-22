@@ -798,6 +798,29 @@ class BudgetMatrixService:
     # Goals (savings) section
     # ------------------------------------------------------------------
 
+    def _computed_goal_plans(
+        self, account_id: int, periods: List[Dict], has_manual: bool
+    ) -> Dict[int, Dict[int, Decimal]]:
+        """index периода → {goal_id: расчётный взнос}.
+
+        Только для месячной нарезки: накопительные планы заданы в
+        месяцах, и размазывать их по неделям или дням нечестно.
+        """
+        if not has_manual:
+            return {}
+        from app.application.goal_saving_plans import load_active_plans, plans_for_month
+
+        # Планы грузим один раз: иначе на годовом обзоре выходило по
+        # запросу на каждый месяц, все с одинаковым результатом.
+        plans = load_active_plans(self.db, account_id)
+        if not plans:
+            return {}
+
+        out: Dict[int, Dict[int, Decimal]] = {}
+        for p in periods:
+            out[p["index"]] = plans_for_month(plans, p["year"], p["month"])
+        return out
+
     def _build_goal_section(
         self,
         account_id: int,
@@ -840,6 +863,11 @@ class BudgetMatrixService:
         else:
             goal_plan_map, goal_note_map = {}, {}
 
+        # Расчётные взносы по накопительным планам — подложка под ручной
+        # план: вписанная руками сумма всегда главнее. Считаются на лету,
+        # нигде не хранятся (см. app/application/goal_saving_plans.py).
+        computed_by_period = self._computed_goal_plans(account_id, periods, has_manual)
+
         # Build rows
         goal_rows = []
         for goal in goals:
@@ -848,10 +876,18 @@ class BudgetMatrixService:
             total_fact = _ZERO
             for i in range(n):
                 key = (goal.goal_id, i)
-                plan = goal_plan_map.get(key, _ZERO)
+                manual = goal_plan_map.get(key)
+                computed = computed_by_period.get(i, {}).get(goal.goal_id, _ZERO)
+                is_computed = manual is None and computed > _ZERO
+                plan = manual if manual is not None else computed
                 fact = goal_fact_map.get(key, _ZERO)
                 note = goal_note_map.get(key, "")
-                cells.append({"plan": plan, "fact": fact, "deviation": fact - plan, "note": note})
+                cells.append({
+                    "plan": plan, "fact": fact, "deviation": fact - plan, "note": note,
+                    # Фронту нужно показать расчётное иначе, чем вписанное:
+                    # иначе непонятно, откуда взялось число.
+                    "is_computed": is_computed,
+                })
                 total_plan += plan
                 total_fact += fact
             goal_rows.append({
@@ -1000,7 +1036,9 @@ class BudgetMatrixService:
             q = q.filter(BudgetMonth.budget_variant_id == budget_variant_id)
         budget_months = q.all()
         if not budget_months:
-            return {}
+            # Вернуть один {} нельзя: вызов распаковывается в две переменные,
+            # и аккаунт без сохранённых месяцев бюджета ронял всю матрицу.
+            return {}, {}
 
         bm_to_periods: Dict[int, List[int]] = {}
         for bm in budget_months:

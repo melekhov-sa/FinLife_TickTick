@@ -1241,6 +1241,41 @@ class BudgetGoalPlan(Base):
     )
 
 
+class GoalSavingPlan(Base):
+    """Накопительный план на цель: «к декабрю нужно 30 000, копить с января».
+
+    Бюджет выводит из него помесячный взнос и подставляет в строку
+    «Отложить». Сами расчётные суммы нигде не хранятся: иначе правка
+    срока оставляла бы устаревшие цифры, а ежегодный режим требовал бы
+    фонового задания, дописывающего следующий год.
+    """
+    __tablename__ = "goal_saving_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    goal_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+
+    target_amount: Mapped[Decimal] = mapped_column(Numeric(precision=20, scale=2), nullable=False)
+
+    # YYYY-MM. Строка, а не дата: день здесь ничего не значит, а
+    # лексикографическое сравнение совпадает с хронологическим.
+    start_month: Mapped[str] = mapped_column(String(7), nullable=False)
+    target_month: Mapped[str] = mapped_column(String(7), nullable=False)
+
+    # Копить ли в сам целевой месяц. Для страховки в декабре обычно нет:
+    # деньги должны лежать к его началу.
+    save_in_target_month: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    repeat_yearly: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+
+    created_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[DateTime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class BudgetGoalWithdrawalPlan(Base):
     """Read model: Budget withdrawal plan per goal per month ('Взять из отложенного')."""
     __tablename__ = "budget_goal_withdrawal_plans"

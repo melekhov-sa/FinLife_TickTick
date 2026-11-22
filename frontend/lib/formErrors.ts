@@ -95,3 +95,20 @@ export const inputErrorBorder = "!border-red-500/50";
 
 /** CSS class for inline error text below fields */
 export const errTextCls = "text-[11px] text-red-400 mt-1";
+
+/**
+ * Сообщение об ошибке из брошенного api-клиентом Error.
+ *
+ * Клиент кладёт тело ответа в текст сообщения («API error 400: {…}»),
+ * поэтому почти в каждой форме повторялся один и тот же разбор.
+ */
+export function errorMessage(err: unknown, fallback: string): string {
+  const msg = err instanceof Error ? err.message : "";
+  const match = msg.match(/API error (\d+): ([\s\S]*)/);
+  if (!match) return fallback;
+  try {
+    return parseBackendErrors(parseInt(match[1]), JSON.parse(match[2])).message ?? fallback;
+  } catch {
+    return fallback;
+  }
+}

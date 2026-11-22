@@ -262,3 +262,70 @@ class TestBiggestChange:
     def test_silent_when_nothing_moved_much(self):
         rows = [{"category_id": 1, "title": "Продукты", "cells": [_cell(0, 30000), _cell(0, 30200)]}]
         assert "biggest_change" not in _codes(_run(_matrix(rows), today=date(2026, 12, 5)))
+
+
+class TestSavingLag:
+    """Отставание от плана накоплений в закрытом месяце."""
+
+    @staticmethod
+    def _m(goal_cells, periods=None):
+        m = _matrix([])
+        m["goal_rows"] = [{"goal_id": 7, "title": "Страховка", "cells": goal_cells}]
+        m["periods"] = periods or [
+            {"index": i, "label": f"М{i}"} for i in range(len(goal_cells))
+        ]
+        return m
+
+    def test_warns_on_shortfall_in_closed_month(self):
+        cells = [_cell(), {"plan": 5000, "fact": 1000, "is_computed": True}]
+        res = _run(self._m(cells), date(YEAR, MONTH, 30))  # месяц закрыт
+        assert "saving_behind" in _codes(res)
+        hint = next(i for i in res if i["code"] == "saving_behind")
+        assert hint["goal_id"] == 7
+        assert "4 000" in hint["detail"]
+
+    def test_silent_when_month_still_open(self):
+        """В открытом месяце взнос можно сделать и тридцатого числа."""
+        cells = [_cell(), {"plan": 5000, "fact": 0, "is_computed": True}]
+        res = _run(self._m(cells), date(YEAR, MONTH, 10))
+        assert "saving_behind" not in _codes(res)
+
+    def test_open_month_looks_at_previous(self):
+        cells = [{"plan": 5000, "fact": 500, "is_computed": True}, _cell(5000, 0)]
+        res = _run(self._m(cells), date(YEAR, MONTH, 10))
+        assert "saving_behind" in _codes(res)
+
+    def test_silent_on_small_shortfall(self):
+        cells = [_cell(), {"plan": 5000, "fact": 4800, "is_computed": True}]
+        res = _run(self._m(cells), date(YEAR, MONTH, 30))
+        assert "saving_behind" not in _codes(res)
+
+    def test_silent_on_tiny_plan(self):
+        cells = [_cell(), {"plan": 400, "fact": 0, "is_computed": True}]
+        res = _run(self._m(cells), date(YEAR, MONTH, 30))
+        assert "saving_behind" not in _codes(res)
+
+    def test_manual_plan_gets_different_wording(self):
+        cells = [_cell(), {"plan": 5000, "fact": 0, "is_computed": False}]
+        res = _run(self._m(cells), date(YEAR, MONTH, 30))
+        hint = next(i for i in res if i["code"] == "saving_behind")
+        assert "руками" in hint["detail"]
+
+    def test_keeps_only_three_biggest(self):
+        m = _matrix([])
+        m["periods"] = [{"index": 0, "label": "М0"}]
+        m["goal_rows"] = [
+            {"goal_id": i, "title": f"Ц{i}",
+             "cells": [{"plan": 10000 * i, "fact": 0, "is_computed": True}]}
+            for i in range(1, 6)
+        ]
+        res = _run(m, date(YEAR, MONTH, 30))
+        lags = [i for i in res if i["code"] == "saving_behind"]
+        assert len(lags) == 3
+        assert {i["goal_id"] for i in lags} == {5, 4, 3}
+
+    def test_silent_without_periods(self):
+        m = _matrix([])
+        m["goal_rows"] = [{"goal_id": 7, "title": "Ц", "cells": [_cell(5000, 0)]}]
+        res = _run(m, date(YEAR, MONTH, 30))
+        assert "saving_behind" not in _codes(res)
