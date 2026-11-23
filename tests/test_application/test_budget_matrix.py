@@ -740,3 +740,51 @@ class TestGoalSavingPlans:
             anchor_year=2027, anchor_month=1,
         )
         assert all(p["has_fact"] is False for p in view["periods"])
+
+    def test_has_fact_covers_expenses_too(self, db_session, setup_categories):
+        """Флаг не про накопления: расход в будущем месяце тоже его включает.
+
+        От него зависит, сколько колонок у периода, — значит остаток по
+        бюджету виден и по статьям, а не только по целям.
+        """
+        _add_tx(db_session, 6001, "EXPENSE", 1500, 3, datetime(2027, 5, 12, 10, 0))
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=3,
+            anchor_year=2027, anchor_month=4,
+        )
+        assert [p["has_fact"] for p in view["periods"]] == [False, True, False]
+
+    def test_has_fact_covers_income(self, db_session, setup_categories):
+        _add_tx(db_session, 6002, "INCOME", 90000, 1, datetime(2027, 6, 5, 10, 0))
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=2,
+            anchor_year=2027, anchor_month=6,
+        )
+        assert [p["has_fact"] for p in view["periods"]] == [True, False]
+
+    def test_has_fact_covers_withdrawal(self, db_session):
+        """Снятие из отложенного — тоже факт периода."""
+        from app.infrastructure.db.models import TransactionFeed, WalletBalance
+
+        self._goal(db_session)
+        db_session.add_all([
+            WalletBalance(wallet_id=92, account_id=ACCOUNT, title="Копилка", currency="RUB",
+                          wallet_type="SAVINGS", balance=0, is_archived=False, created_at=_NOW),
+            WalletBalance(wallet_id=93, account_id=ACCOUNT, title="Счёт", currency="RUB",
+                          wallet_type="REGULAR", balance=0, is_archived=False, created_at=_NOW),
+        ])
+        db_session.flush()
+        db_session.add(TransactionFeed(
+            transaction_id=6003, account_id=ACCOUNT, operation_type="TRANSFER", currency="RUB",
+            amount=Decimal("4000"), occurred_at=datetime(2027, 7, 3, 10, 0),
+            from_wallet_id=92, to_wallet_id=93, from_goal_id=1, created_at=_NOW,
+        ))
+        db_session.flush()
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=2,
+            anchor_year=2027, anchor_month=7,
+        )
+        assert [p["has_fact"] for p in view["periods"]] == [True, False]
