@@ -1112,6 +1112,7 @@ class BudgetMatrixService:
                 TransactionFeed.to_goal_id,
                 period_col,
                 func.sum(TransactionFeed.amount).label("total"),
+                prepaid_col,
             )
             .join(from_wallet, TransactionFeed.from_wallet_id == from_wallet.c.wallet_id)
             .join(to_wallet, TransactionFeed.to_wallet_id == to_wallet.c.wallet_id)
@@ -1135,6 +1136,11 @@ class BudgetMatrixService:
                 continue
             k_to = (row.to_goal_id, row.period_idx)
             result[k_to] = result.get(k_to, _ZERO) + (row.total or _ZERO)
+            # Перенос между целями тоже можно отнести на будущий месяц —
+            # пометка должна работать и здесь, иначе одна и та же сумма
+            # помечалась бы по-разному в зависимости от источника.
+            if row.prepaid:
+                prepaid[k_to] = prepaid.get(k_to, _ZERO) + Decimal(str(row.prepaid))
 
         return result, prepaid
 
