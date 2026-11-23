@@ -35,6 +35,8 @@ export interface SavingPlanSchedule {
   last_month: string;
   months: number;
   monthly_amount: string;
+  /** Сколько накопится к сроку: с округлением это больше цели. */
+  total: string;
   rows: SavingPlanMonth[];
 }
 
@@ -54,6 +56,8 @@ export interface SavingPlan {
   withdraw_in_target: boolean;
   /** Статья, куда подставить плановый расход в целевом месяце. */
   expense_category_id: number | null;
+  /** Округлять взнос вверх до сотни. */
+  round_to_100: boolean;
   schedule: SavingPlanSchedule | null;
   /** Разовый план с прошедшим сроком: в бюджет уже ничего не подставляет. */
   is_finished: boolean;
@@ -197,6 +201,7 @@ interface FormState {
   is_active: boolean;
   withdraw_in_target: boolean;
   expense_category_id: number | null;
+  round_to_100: boolean;
 }
 
 /** Ключ цепочки: та же покупка той же цели. «Продолжить» копирует
@@ -242,6 +247,7 @@ function blankForm(): FormState {
     is_active: true,
     withdraw_in_target: true,
     expense_category_id: null,
+    round_to_100: true,
   };
 }
 
@@ -346,6 +352,7 @@ export function GoalSavingPlanSheet({
         repeat_yearly: f.repeat_yearly,
         withdraw_in_target: f.withdraw_in_target,
         expense_category_id: f.expense_category_id,
+        round_to_100: f.round_to_100,
       };
       if (f.continues !== null) {
         // Следующий цикл той же покупки: старый план уйдёт в историю
@@ -409,6 +416,7 @@ export function GoalSavingPlanSheet({
       debounced.target_month,
       debounced.save_in_target_month,
       debounced.repeat_yearly,
+      debounced.round_to_100,
     ],
     queryFn: () =>
       api.post<SavingPlanSchedule | null>("/api/v2/goals/saving-plans/preview", {
@@ -417,6 +425,7 @@ export function GoalSavingPlanSheet({
         target_month: debounced.target_month,
         save_in_target_month: debounced.save_in_target_month,
         repeat_yearly: debounced.repeat_yearly,
+        round_to_100: debounced.round_to_100,
         // С целью приезжает ещё и помесячное «сейчас → станет»
         goal_id: debounced.goal_id ?? goalId ?? null,
         plan_id: debounced.id,
@@ -608,6 +617,7 @@ export function GoalSavingPlanSheet({
                         is_active: p.is_active,
                         withdraw_in_target: p.withdraw_in_target,
                         expense_category_id: p.expense_category_id,
+                        round_to_100: p.round_to_100,
                       })
                     }
                     className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -633,6 +643,7 @@ export function GoalSavingPlanSheet({
                           is_active: true,
                           withdraw_in_target: p.withdraw_in_target,
                           expense_category_id: p.expense_category_id,
+                          round_to_100: p.round_to_100,
                         })
                       }
                       className="w-7 h-7 rounded-lg flex items-center justify-center"
@@ -799,6 +810,13 @@ export function GoalSavingPlanSheet({
             hint="Выключено — деньги должны лежать к его началу"
           />
           <Toggle
+            checked={draft.round_to_100}
+            onChange={(v) => setForm({ ...draft, round_to_100: v })}
+            title="Округлять взнос до 100 ₽"
+            hint="Делением выходит 1 454,55 — переводить такое неудобно. Округляем вверх, к сроку накопится чуть больше."
+          />
+
+          <Toggle
             checked={draft.repeat_yearly}
             onChange={(v) => setForm({ ...draft, repeat_yearly: v })}
             title="Каждый год"
@@ -865,6 +883,15 @@ export function GoalSavingPlanSheet({
                   {preview.months} мес.: {monthLabel(preview.first_month)} — {monthLabel(preview.last_month)}.
                   Эта сумма сама встанет в строку «Отложить».
                 </p>
+                {/* С округлением к сроку выйдет больше цели — лучше
+                    увидеть это сейчас, чем в декабре. */}
+                {Number(preview.total) > Number(draft.target_amount.replace(",", ".")) && (
+                  <p className="text-[11.5px] mt-0.5" style={{ color: "var(--t-muted)" }}>
+                    Накопится {money(preview.total)} ₽ — на{" "}
+                    {money(Number(preview.total) - Number(draft.target_amount.replace(",", ".")))} ₽
+                    больше цели.
+                  </p>
+                )}
 
                 {/* Помесячно, что в бюджете сейчас и что станет: иначе
                     эффект плана виден только после сохранения. */}

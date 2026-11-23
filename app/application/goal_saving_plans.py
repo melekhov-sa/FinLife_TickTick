@@ -11,7 +11,7 @@
 устаревших цифр.
 """
 import re
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP, InvalidOperation
 
 from sqlalchemy.orm import Session
 
@@ -71,6 +71,16 @@ def window_bounds(plan: GoalSavingPlan, at_month: str) -> tuple[int, int] | None
     return first, last
 
 
+def _round_up(value: Decimal) -> Decimal:
+    """Вверх до сотни, а для мелких взносов — до десятки.
+
+    Без второго правила план на 100 рублей за 11 месяцев дал бы по 100
+    в месяц, то есть в одиннадцать раз больше цели.
+    """
+    step = Decimal("100") if value >= Decimal("100") else Decimal("10")
+    return (value / step).quantize(Decimal("1"), rounding=ROUND_CEILING) * step
+
+
 def monthly_amount(plan: GoalSavingPlan, at_month: str) -> Decimal:
     """Взнос по этому плану в указанном месяце. Ноль — значит не копим."""
     bounds = window_bounds(plan, at_month)
@@ -84,6 +94,13 @@ def monthly_amount(plan: GoalSavingPlan, at_month: str) -> Decimal:
 
     months = last - first + 1
     target = Decimal(str(plan.target_amount))
+
+    if getattr(plan, "round_to_100", False):
+        # Взнос одинаковый во все месяцы и округлён вверх: к сроку
+        # накопится чуть больше цели, и это осознанно — переводить
+        # круглую сумму важнее, чем попасть в цель до копейки.
+        return _round_up(target / months)
+
     per = (target / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     if idx == last:
         # Последний месяц добирает остаток: иначе 10 000 на шесть
@@ -105,14 +122,21 @@ def plan_schedule(plan: GoalSavingPlan, at_month: str) -> dict | None:
 
     first, last = bounds
     months = last - first + 1
-    per = (Decimal(str(plan.target_amount)) / months).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
+    # Берём взнос из самого расчёта, а не повторяем формулу: при
+    # округлении он считается иначе, и две копии правила разошлись бы.
+    per = monthly_amount(plan, _from_index(first))
+    total = sum(
+        (monthly_amount(plan, _from_index(i)) for i in range(first, last + 1)),
+        _ZERO,
     )
     return {
         "first_month": _from_index(first),
         "last_month": _from_index(last),
         "months": months,
         "monthly_amount": per,
+        # С округлением к сроку накопится больше цели — это надо видеть
+        # до сохранения, а не обнаруживать потом.
+        "total": total,
     }
 
 

@@ -96,6 +96,8 @@ def _body(**over):
         "target_month": "2026-12",
         "save_in_target_month": False,
         "repeat_yearly": False,
+        # Точное деление: округление проверяется отдельно, в TestRounding.
+        "round_to_100": False,
     }
     body.update(over)
     return body
@@ -712,3 +714,69 @@ class TestPriceHistory:
             },
         ).json()
         assert fresh["title"] == "Пуховик"
+
+
+class TestRounding:
+    """Округление взноса вверх до сотни.
+
+    Делением почти всегда выходит сумма с копейками: 16 000 на 11
+    месяцев — 1 454,55, и переводить столько каждый месяц неудобно.
+    """
+
+    def test_new_plans_round_by_default(self, client, goals):
+        """Умолчание — округлять: об этом и просили."""
+        body = _body(target_amount="16000")
+        body.pop("round_to_100")
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["round_to_100"] is True
+        assert created["schedule"]["monthly_amount"] == "1500"
+
+    def test_rounding_can_be_switched_off(self, client, goals):
+        created = client.post(
+            "/api/v2/goals/saving-plans", json=_body(target_amount="16000")
+        ).json()
+        assert created["round_to_100"] is False
+        assert created["schedule"]["monthly_amount"] == "1454.55"
+
+    def test_total_shows_the_overshoot(self, client, goals):
+        """К сроку накопится больше цели — это видно заранее."""
+        body = _body(target_amount="16000", round_to_100=True)
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["schedule"]["total"] == "16500"
+
+    def test_preview_rounds_too(self, client, goals):
+        body = _body(target_amount="16000", round_to_100=True)
+        body.pop("goal_id")
+        r = client.post("/api/v2/goals/saving-plans/preview", json=body).json()
+        assert r["monthly_amount"] == "1500"
+        assert r["total"] == "16500"
+
+    def test_every_month_is_the_same(self, client, goals):
+        """Без округления последний месяц добирает остаток, с ним — нет."""
+        body = _body(target_amount="16000", round_to_100=True)
+        r = client.post("/api/v2/goals/saving-plans/preview", json=body).json()
+        assert {row["next"] for row in r["rows"]} == {"1500"}
+
+    def test_tiny_plan_rounds_to_ten(self, client, goals):
+        """Сотня за 11 месяцев не должна превратиться в сотню в месяц."""
+        body = _body(target_amount="100", round_to_100=True)
+        created = client.post("/api/v2/goals/saving-plans", json=body).json()
+        assert created["schedule"]["monthly_amount"] == "10"
+
+    def test_continue_keeps_the_setting(self, client, goals):
+        body = _body(target_amount="16000", round_to_100=True)
+        old = client.post("/api/v2/goals/saving-plans", json=body).json()
+        fresh = client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "17000", "start_month": "2027-01", "target_month": "2027-12"},
+        ).json()
+        assert fresh["round_to_100"] is True
+
+    def test_can_be_toggled_on_an_existing_plan(self, client, goals):
+        created = client.post(
+            "/api/v2/goals/saving-plans", json=_body(target_amount="16000")
+        ).json()
+        updated = client.patch(
+            f"/api/v2/goals/saving-plans/{created['id']}", json={"round_to_100": True}
+        ).json()
+        assert updated["schedule"]["monthly_amount"] == "1500"

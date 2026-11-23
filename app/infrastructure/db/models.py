@@ -1278,6 +1278,16 @@ class GoalSavingPlan(Base):
     # Статья, в которую подставить плановый расход. None — не подставлять.
     expense_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Округлять взнос вверх до сотни: делением почти всегда выходит сумма
+    # с копейками, а переводить 1 454,55 каждый месяц неудобно.
+    #
+    # default= обязателен вдобавок к server_default: на SQLite строковый
+    # серверный дефолт "false" читается обратно как True, и тесты
+    # получали округление там, где его не просили.
+    round_to_100: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     created_at: Mapped[DateTime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

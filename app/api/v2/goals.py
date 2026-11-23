@@ -325,6 +325,9 @@ class SavingPlanSchedule(BaseModel):
     last_month: str
     months: int
     monthly_amount: str
+    # С округлением взноса к сроку накопится больше цели — это видно
+    # до сохранения, а не обнаруживается потом.
+    total: str = "0"
     rows: list[SavingPlanMonth] = []
 
 
@@ -343,6 +346,7 @@ class SavingPlanItem(BaseModel):
     is_active: bool
     withdraw_in_target: bool
     expense_category_id: int | None
+    round_to_100: bool
     schedule: SavingPlanSchedule | None
     # Разовый план с прошедшим сроком. В бюджет он уже ничего не
     # подставляет, но окно у него остаётся — без этого признака список
@@ -360,6 +364,10 @@ class SavingPlanBody(BaseModel):
     repeat_yearly: bool = False
     withdraw_in_target: bool = True
     expense_category_id: int | None = None
+    # Новые планы округляют взнос: делением почти всегда выходит сумма с
+    # копейками. Старые планы остаются как есть — их суммы уже сведены
+    # с бюджетом, и менять их задним числом нельзя.
+    round_to_100: bool = True
 
 
 class UpdateSavingPlanBody(BaseModel):
@@ -371,6 +379,7 @@ class UpdateSavingPlanBody(BaseModel):
     repeat_yearly: bool | None = None
     is_active: bool | None = None
     withdraw_in_target: bool | None = None
+    round_to_100: bool | None = None
     # Явный null сбрасывает статью, поэтому отличаем «не передали» от
     # «передали пусто» через model_fields_set в самом обработчике.
     expense_category_id: int | None = None
@@ -382,6 +391,7 @@ class PreviewSavingPlanBody(BaseModel):
     target_month: str
     save_in_target_month: bool = False
     repeat_yearly: bool = False
+    round_to_100: bool = True
     # С целью предпросмотр покажет ещё и помесячное «сейчас → станет».
     goal_id: int | None = None
     # Правим существующий план — его собственный вклад в «сейчас» надо
@@ -404,6 +414,7 @@ def _schedule_payload(sched: dict | None) -> SavingPlanSchedule | None:
         last_month=sched["last_month"],
         months=sched["months"],
         monthly_amount=str(sched["monthly_amount"]),
+        total=str(sched.get("total", sched["monthly_amount"])),
     )
 
 
@@ -427,6 +438,7 @@ def _plan_item(plan: GoalSavingPlan, goal_title: str = "") -> SavingPlanItem:
         is_active=plan.is_active,
         withdraw_in_target=plan.withdraw_in_target,
         expense_category_id=plan.expense_category_id,
+        round_to_100=plan.round_to_100,
         schedule=_schedule_payload(sched),
         is_finished=finished,
     )
@@ -650,6 +662,7 @@ def preview_saving_plan(
         target_month=body.target_month,
         save_in_target_month=body.save_in_target_month,
         repeat_yearly=body.repeat_yearly,
+        round_to_100=body.round_to_100,
     )
     at = _this_month()
     payload = _schedule_payload(plan_schedule(draft, at))
@@ -697,6 +710,7 @@ def create_saving_plan(
         is_active=True,
         withdraw_in_target=body.withdraw_in_target,
         expense_category_id=body.expense_category_id,
+        round_to_100=body.round_to_100,
     )
     db.add(plan)
     db.commit()
@@ -744,6 +758,8 @@ def update_saving_plan(
         plan.is_active = body.is_active
     if body.withdraw_in_target is not None:
         plan.withdraw_in_target = body.withdraw_in_target
+    if body.round_to_100 is not None:
+        plan.round_to_100 = body.round_to_100
     if "expense_category_id" in body.model_fields_set:
         plan.expense_category_id = body.expense_category_id
 
@@ -798,6 +814,7 @@ def continue_saving_plan(
         is_active=True,
         withdraw_in_target=old.withdraw_in_target,
         expense_category_id=old.expense_category_id,
+        round_to_100=old.round_to_100,
     )
     old.is_active = False
     db.add(fresh)
