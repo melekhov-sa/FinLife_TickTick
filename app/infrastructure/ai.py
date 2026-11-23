@@ -124,34 +124,6 @@ _BUDGET_PROMPT = """Ты — финансовый помощник. Ниже б�
 """
 
 
-def generate_budget_review(payload: dict, api_key: str | None = None) -> str | None:
-    """Разбор бюджета месяца текстом. None, если ключа нет или вызов не удался.
-
-    Не бросает исключений: разбор — приятное дополнение, из-за его
-    отсутствия страница бюджета падать не должна.
-    """
-    key = _resolve_key(api_key)
-    if not key:
-        return None
-
-    try:
-        from app.config import get_settings
-        model = get_settings().OPENAI_MODEL
-        client = get_openai_client(key)
-        prompt = _BUDGET_PROMPT.format(
-            payload_json=json.dumps(payload, ensure_ascii=False, indent=2)
-        )
-        response = _chat_completion_with_retry(
-            client,
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=700,
-        )
-        text = response.choices[0].message.content
-        return text.strip() if text else None
-    except Exception:
-        logger.exception("AI budget review failed")
-        return None
 
 
 def ping(api_key: str | None = None) -> dict:
