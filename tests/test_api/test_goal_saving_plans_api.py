@@ -667,3 +667,48 @@ class TestContinue:
             json={"target_amount": "1", "start_month": "2027-01", "target_month": "2027-12"},
         )
         assert r.status_code == 404
+
+
+class TestPriceHistory:
+    """Цепочка циклов одной покупки видна в списке планов.
+
+    Фронт строит её по (goal_id, title) и target_month, поэтому «Продолжить»
+    обязан сохранять название и отдавать оба плана в общем списке.
+    """
+
+    def test_continue_keeps_both_cycles_with_same_title(self, client, goals):
+        body = _body(target_amount="10000", start_month="2026-01", target_month="2026-12")
+        body["title"] = "Зимняя куртка"
+        old = client.post("/api/v2/goals/saving-plans", json=body).json()
+
+        client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={"target_amount": "12000", "start_month": "2027-01", "target_month": "2027-12"},
+        )
+
+        rows = client.get("/api/v2/goals/saving-plans").json()
+        chain = sorted(
+            [r for r in rows if r["title"] == "Зимняя куртка"],
+            key=lambda r: r["target_month"],
+        )
+        assert [(r["target_month"], r["target_amount"]) for r in chain] == [
+            ("2026-12", "10000.00"),
+            ("2027-12", "12000.00"),
+        ]
+        # Старый остаётся историей, новый — действующим
+        assert [r["is_active"] for r in chain] == [False, True]
+
+    def test_renaming_on_continue_starts_a_new_chain(self, client, goals):
+        """Переименование — осознанный разрыв цепочки, а не ошибка."""
+        body = _body(target_amount="10000", start_month="2026-01", target_month="2026-12")
+        body["title"] = "Зимняя куртка"
+        old = client.post("/api/v2/goals/saving-plans", json=body).json()
+
+        fresh = client.post(
+            f"/api/v2/goals/saving-plans/{old['id']}/continue",
+            json={
+                "target_amount": "12000", "start_month": "2027-01",
+                "target_month": "2027-12", "title": "Пуховик",
+            },
+        ).json()
+        assert fresh["title"] == "Пуховик"

@@ -8,6 +8,7 @@
  * по каждому вкладу — баланс, разбивку «взносы/проценты», доходность.
  */
 
+import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTabSwipe } from "@/lib/useTabSwipe";
 import { useQuery } from "@tanstack/react-query";
@@ -16,10 +17,18 @@ import { api } from "@/lib/api";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
 import { Skeleton } from "@/components/primitives/Skeleton";
+import { AssignGoalSheet, type AssignGoalTarget } from "@/components/goals/AssignGoalSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface MonthPoint { month: string; income: number; contrib?: number }
+
+interface GoalWithWallets {
+  goal_id: number;
+  title: string;
+  is_system: boolean;
+  wallets: { wallet_id: number; title: string; amount: string }[];
+}
 
 interface SavingsWallet {
   wallet_id: number;
@@ -78,6 +87,30 @@ export default function SavingsPage() {
     staleTime: 60_000,
   });
 
+  // Сколько на каждом кошельке лежит в системной цели «Без цели».
+  // Разбивка по кошелькам есть только в целях, поэтому берём оттуда.
+  const { data: goals } = useQuery<GoalWithWallets[]>({
+    queryKey: ["goals", false],
+    queryFn: () => api.get<GoalWithWallets[]>("/api/v2/goals?include_archived=false"),
+    staleTime: 60_000,
+  });
+
+  const unassignedByWallet = useMemo(() => {
+    const map = new Map<number, { goalId: number; goalTitle: string; amount: number }>();
+    for (const g of goals ?? []) {
+      if (!g.is_system) continue;
+      for (const w of g.wallets ?? []) {
+        const amount = parseFloat(w.amount) || 0;
+        if (amount > 0) {
+          map.set(w.wallet_id, { goalId: g.goal_id, goalTitle: g.title, amount });
+        }
+      }
+    }
+    return map;
+  }, [goals]);
+
+  const [assignTarget, setAssignTarget] = useState<AssignGoalTarget | null>(null);
+
   return (
     <>
       <PageHeader
@@ -134,9 +167,24 @@ export default function SavingsPage() {
 
             {/* Вклады */}
             <div className="space-y-3 stagger-rise">
-              {data.wallets.map((w) => (
-                <WalletCard key={w.wallet_id} w={w} />
-              ))}
+              {data.wallets.map((w) => {
+                const un = unassignedByWallet.get(w.wallet_id);
+                return (
+                  <WalletCard
+                    key={w.wallet_id}
+                    w={w}
+                    unassigned={un}
+                    onAssign={un ? () => setAssignTarget({
+                      walletId: w.wallet_id,
+                      walletTitle: w.title,
+                      currency: w.currency,
+                      fromGoalId: un.goalId,
+                      fromGoalTitle: un.goalTitle,
+                      amount: un.amount,
+                    }) : undefined}
+                  />
+                );
+              })}
             </div>
 
             <p className="text-[11px]" style={{ color: "var(--t-faint)" }}>
@@ -146,6 +194,9 @@ export default function SavingsPage() {
           </>
         )}
       </main>
+
+      <AssignGoalSheet target={assignTarget} onClose={() => setAssignTarget(null)} />
+
     </>
   );
 }
@@ -209,7 +260,16 @@ function MonthBars({ points, color }: { points: MonthPoint[]; color: string }) {
   );
 }
 
-function WalletCard({ w }: { w: SavingsWallet }) {
+function WalletCard({
+  w,
+  unassigned,
+  onAssign,
+}: {
+  w: SavingsWallet;
+  /** Сколько на этом кошельке лежит в системной цели «Без цели». */
+  unassigned?: { goalId: number; goalTitle: string; amount: number };
+  onAssign?: () => void;
+}) {
   const ownPct = w.balance > 0 ? Math.max(0, Math.min(100, (w.own_money / w.balance) * 100)) : 100;
   return (
     <div
@@ -251,6 +311,28 @@ function WalletCard({ w }: { w: SavingsWallet }) {
           <span style={{ color: "var(--c-success-ink)" }}>проценты {fmt(w.income_total)}</span>
         </div>
       </div>
+
+      {/* Деньги без цели: переводы без указанной цели падают в системную
+          «Без цели» и там незаметно копятся. Раскладывать их приходилось
+          обычным переводом с одним и тем же кошельком с двух сторон. */}
+      {unassigned && unassigned.amount > 0 && onAssign && (
+        <button
+          type="button"
+          onClick={onAssign}
+          className="tap-grow w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left"
+          style={{ background: "var(--app-accent-weak)" }}
+        >
+          <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-secondary)" }}>
+            Без цели
+          </span>
+          <span
+            className="text-[12.5px] font-semibold tabular-nums shrink-0"
+            style={{ color: "var(--app-accent)" }}
+          >
+            {fmt(unassigned.amount)} → привязать
+          </span>
+        </button>
+      )}
 
       {/* Мини-график дохода по месяцам */}
       <MiniBars points={w.monthly} />

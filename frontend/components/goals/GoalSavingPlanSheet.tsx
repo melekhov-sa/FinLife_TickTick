@@ -199,6 +199,34 @@ interface FormState {
   expense_category_id: number | null;
 }
 
+/** Ключ цепочки: та же покупка той же цели. «Продолжить» копирует
+ *  название, поэтому циклы одной покупки держатся вместе. */
+function chainKey(p: SavingPlan): string {
+  return p.goal_id + "|" + (p.title ?? "").trim().toLowerCase();
+}
+
+/** id плана → предыдущий цикл той же покупки.
+ *
+ * По одному плану не видно, дорожает покупка или нет: куртка в этом
+ * году 10 000, в следующем 12 000, и это самое интересное.
+ */
+function previousCycles(plans: SavingPlan[]): Map<number, SavingPlan> {
+  const byChain = new Map<string, SavingPlan[]>();
+  for (const p of plans) {
+    const key = chainKey(p);
+    const list = byChain.get(key);
+    if (list) list.push(p);
+    else byChain.set(key, [p]);
+  }
+
+  const prev = new Map<number, SavingPlan>();
+  for (const list of byChain.values()) {
+    const sorted = [...list].sort((a, b) => a.target_month.localeCompare(b.target_month));
+    for (let i = 1; i < sorted.length; i++) prev.set(sorted[i].id, sorted[i - 1]);
+  }
+  return prev;
+}
+
 function blankForm(): FormState {
   const now = thisMonthKey();
   return {
@@ -283,6 +311,7 @@ export function GoalSavingPlanSheet({
   });
 
   const hasPlans = Boolean(plans && plans.length > 0);
+  const previous = useMemo(() => previousCycles(plans ?? []), [plans]);
   const draft = form ?? blank;
   const showForm = form !== null || view === "form" || (view === null && plans?.length === 0);
 
@@ -482,7 +511,13 @@ export function GoalSavingPlanSheet({
       {/* ── Список планов ── */}
       {!showForm && hasPlans && (
         <div className="space-y-2">
-          {plans!.map((p) => (
+          {plans!.map((p) => {
+            const prev = previous.get(p.id);
+            const prevAmount = prev ? Number(prev.target_amount) : 0;
+            const change = prevAmount > 0
+              ? Math.round(((Number(p.target_amount) - prevAmount) / prevAmount) * 100)
+              : null;
+            return (
             <div
               key={p.id}
               className="rounded-xl px-3 py-2.5"
@@ -512,6 +547,21 @@ export function GoalSavingPlanSheet({
                         monthLabel(p.schedule.first_month)
                       : "копить нечего: проверьте месяцы"}
                   </p>
+                  {/* Сколько та же покупка стоила в прошлый раз — по
+                      одному плану этого не видно, а дорожает почти всё. */}
+                  {prev && (
+                    <p className="text-[11px] mt-0.5" style={{ color: "var(--t-faint)" }}>
+                      в прошлый раз {money(prev.target_amount)} ₽ ({monthLabel(prev.target_month)})
+                      {change !== null && change !== 0 && (
+                        <span
+                          className="ml-1 font-semibold"
+                          style={{ color: change > 0 ? "var(--c-danger-ink)" : "var(--c-success-ink)" }}
+                        >
+                          {change > 0 ? "+" : ""}{change}%
+                        </span>
+                      )}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {p.repeat_yearly && (
                       <span
@@ -632,7 +682,8 @@ export function GoalSavingPlanSheet({
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
