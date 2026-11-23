@@ -340,6 +340,19 @@ class BudgetMatrixService:
             .scalar() or 0
         )
 
+        # Есть ли в периоде хоть какой-то факт. Нужно интерфейсу: будущая
+        # колонка по умолчанию показывает только план, и внесённые заранее
+        # деньги в ней негде было увидеть.
+        sections_with_fact = (income_totals, expense_totals, goal_totals, withdrawal_totals)
+        for i, period in enumerate(periods):
+            has_fact = False
+            for section in sections_with_fact:
+                cells = (section or {}).get("cells") or []
+                if i < len(cells) and (cells[i].get("fact") or _ZERO) != _ZERO:
+                    has_fact = True
+                    break
+            period["has_fact"] = has_fact
+
         return {
             "grain": grain,
             "range_count": range_count,

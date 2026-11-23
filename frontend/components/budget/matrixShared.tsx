@@ -44,6 +44,10 @@ export function getPeriodKind(p: BudgetPeriod): PeriodKind {
   const cm = now.getMonth() + 1;
   if (p.year < cy || (p.year === cy && p.month < cm)) return "past";
   if (p.year === cy && p.month === cm) return "current";
+  // Будущий период с уже внесённым фактом показываем как текущий. Иначе
+  // у него одна колонка — план, — и деньги, отложенные заранее, не видны
+  // нигде, кроме просмотра этого месяца по отдельности.
+  if (p.has_fact) return "current";
   return "future";
 }
 

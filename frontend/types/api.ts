@@ -559,6 +559,10 @@ export interface BudgetPeriod {
   year: number;
   month: number;
   has_manual_plan: boolean;
+  /** В периоде есть хоть какой-то факт. У будущих месяцев это значит,
+   *  что деньги внесены заранее — такую колонку надо показывать целиком,
+   *  а не одним планом. */
+  has_fact?: boolean;
 }
 
 export interface BudgetSectionTotals {

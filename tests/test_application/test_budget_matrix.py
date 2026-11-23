@@ -703,3 +703,40 @@ class TestGoalSavingPlans:
         mar = self._row(db_session, 2027, 3)["cells"][0]
         assert mar["fact"] == Decimal("2000")
         assert mar["fact_prepaid"] == Decimal("0")
+
+    def test_period_reports_whether_it_has_any_fact(self, db_session):
+        """Интерфейсу нужно знать, что в будущем месяце уже есть факт.
+
+        Будущая колонка матрицы по умолчанию показывает только план —
+        внесённые заранее деньги в ней негде было увидеть.
+        """
+        from app.infrastructure.db.models import TransactionFeed, WalletBalance
+
+        self._goal(db_session)
+        db_session.add_all([
+            WalletBalance(wallet_id=90, account_id=ACCOUNT, title="Счёт", currency="RUB",
+                          wallet_type="REGULAR", balance=0, is_archived=False, created_at=_NOW),
+            WalletBalance(wallet_id=91, account_id=ACCOUNT, title="Копилка", currency="RUB",
+                          wallet_type="SAVINGS", balance=0, is_archived=False, created_at=_NOW),
+        ])
+        db_session.flush()
+        db_session.add(TransactionFeed(
+            transaction_id=5100, account_id=ACCOUNT, operation_type="TRANSFER", currency="RUB",
+            amount=Decimal("5000"), occurred_at=datetime(2027, 2, 10, 12, 0),
+            from_wallet_id=90, to_wallet_id=91, to_goal_id=1, created_at=_NOW,
+        ))
+        db_session.flush()
+
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=4,
+            anchor_year=2027, anchor_month=1,
+        )
+        assert [p["has_fact"] for p in view["periods"]] == [False, True, False, False]
+
+    def test_period_without_anything_has_no_fact(self, db_session):
+        self._goal(db_session)
+        view = BudgetMatrixService(db_session).build(
+            account_id=ACCOUNT, grain="month", range_count=2,
+            anchor_year=2027, anchor_month=1,
+        )
+        assert all(p["has_fact"] is False for p in view["periods"])
