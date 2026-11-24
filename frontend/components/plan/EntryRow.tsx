@@ -151,7 +151,10 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
     <button
       {...attributes}
       {...listeners}
-      className="shrink-0 w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover/row:opacity-50 md:opacity-0 md:group-hover/row:opacity-50 opacity-30 md:touch-none cursor-grab active:cursor-grabbing transition-opacity"
+      // На телефоне ручка видна всегда (наводить нечем), на ПК —
+      // только при наведении. Раньше здесь стояли и opacity-0, и
+      // opacity-30 одновременно, и побеждал тот, что ниже в CSS.
+      className="shrink-0 w-5 h-5 flex items-center justify-center rounded opacity-30 md:opacity-0 md:group-hover/row:opacity-50 md:touch-none cursor-grab active:cursor-grabbing transition-opacity"
       style={{ color: "var(--t-faint)", touchAction: "none" }}
       tabIndex={-1}
       aria-label="Перетащить"
@@ -163,6 +166,7 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
 
 export function EntryRow({
   entry,
+  hideOverdueBadge,
   onComplete,
   onCompleteEvent,
   onReschedule,
@@ -175,6 +179,9 @@ export function EntryRow({
   isCompleting,
 }: {
   entry: PlanEntry;
+  /** Внутри блока «Просрочено» бейдж на каждой строке дублирует
+   *  заголовок блока и съедает ширину названия. */
+  hideOverdueBadge?: boolean;
   onComplete: (entry: PlanEntry) => void;
   onCompleteEvent: (entry: PlanEntry) => void;
   onReschedule: (entry: PlanEntry) => void;
@@ -302,7 +309,7 @@ export function EntryRow({
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => isOp ? onExecuteOp(entry) : onEntryClick?.(entry)}>
         <div className="flex items-center gap-1.5">
           <span className={clsx(
-            "task-title-text text-[14px] font-medium leading-snug truncate",
+            "task-title-text text-[14px] font-medium leading-snug line-clamp-2",
             entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
@@ -357,7 +364,7 @@ export function EntryRow({
             </span>
           )}
 
-          {entry.is_overdue && !entry.is_done && (
+          {entry.is_overdue && !entry.is_done && !hideOverdueBadge && (
             <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-500/[0.12] px-1 py-px rounded shrink-0">
               просроч.
             </span>

@@ -57,7 +57,7 @@ import { isCompletable, completeTaskLike, uncompleteTaskLike, type CompletableKi
 import { useToast } from "@/components/primitives/Toast";
 import { useUndoFab } from "@/components/primitives/UndoFab";
 import { clsx } from "clsx";
-import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle } from "lucide-react";
+import { CalendarDays, List, Play, SkipForward, Plus, Minus, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, GripVertical, CheckCircle2, Circle, Repeat } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCompleteEvent, useUncompleteEvent } from "@/hooks/useEvents";
 import { TimeInput } from "@/components/primitives/TimeInput";
@@ -430,7 +430,7 @@ function DayGroupCard({
       {grouped.map((g) => (
         <div key={g.type} className="[&:not(:first-of-type)]:mt-1.5">
           {g.entries.map((e) => (
-            <EntryRow key={`${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+            <EntryRow key={`${e.kind}-${e.id}`} entry={e} hideOverdueBadge={group.is_overdue_group} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
           ))}
         </div>
       ))}
@@ -463,32 +463,16 @@ function DoneTodayBlock({
   onEntryClick: (entry: PlanEntry) => void;
   completingKey: string | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
+  // Переключатель живёт в строке контролов рядом с фильтром и плюсом:
+  // три отдельных ряда занимали верх экрана, и сегодняшний день уезжал
+  // под сгиб. Здесь остался только сам список.
   return (
     <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] mb-2 overflow-hidden bg-white dark:bg-transparent">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.03]"
-      >
-        <span className="text-emerald-500 text-[12px]">✓</span>
-        <span className="text-[12px] font-medium" style={{ color: "var(--t-faint)" }}>
-          Выполнено сегодня
-        </span>
-        <span className="text-[12px] font-bold tabular-nums text-emerald-500">{entries.length}</span>
-        <ChevronDown
-          size={12}
-          className={clsx("ml-auto transition-transform", expanded && "rotate-180")}
-          style={{ color: "var(--t-faint)" }}
-        />
-      </button>
-      {expanded && (
-        <div className="px-3 pb-2 border-t border-slate-100 dark:border-white/[0.05]">
-          {entries.map((e) => (
-            <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
-          ))}
-        </div>
-      )}
+      <div className="px-3 py-1">
+        {entries.map((e) => (
+          <EntryRow key={`done-${e.kind}-${e.id}`} entry={e} onComplete={onComplete} onCompleteEvent={onCompleteEvent} onReschedule={onReschedule} onExecuteOp={onExecuteOp} onSkipOp={onSkipOp} onDeleteTask={onDeleteTask} onSkipTaskOcc={onSkipTaskOcc} onSkipEvent={onSkipEvent} onEntryClick={onEntryClick} isCompleting={completingKey === (e.kind + "-" + e.id)} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -496,6 +480,8 @@ function DoneTodayBlock({
 
 export default function PlanPage() {
   const [tab, setTab] = useState<"active" | "done">("active");
+  // «Выполнено сегодня» — чип в строке контролов, список под ней
+  const [doneExpanded, setDoneExpanded] = useState(false);
   // По умолчанию две недели: недели мало, чтобы планировать наперёд.
   const [range, setRange] = useState(14);
   const [createTaskDate, setCreateTaskDate] = useState<string | null>(null);
@@ -953,10 +939,13 @@ export default function PlanPage() {
         actions={
           <a
             href="/recurring-tasks"
-            className="text-[12px] font-medium px-2.5 py-1 rounded-lg border transition-colors"
+            title="Повторяющиеся задачи"
+            aria-label="Повторяющиеся задачи"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-1.5 rounded-lg border transition-colors"
             style={{ color: "var(--t-secondary)", borderColor: "var(--app-border)" }}
           >
-            Повторяющиеся
+            <Repeat size={14} />
+            <span className="hidden sm:inline">Повторяющиеся</span>
           </a>
         }
       />
@@ -1051,6 +1040,28 @@ export default function PlanPage() {
                 </>
               );
             })()}
+
+            {/* Выполнено сегодня: в той же строке, чтобы верх экрана
+                не съедали три отдельных ряда контролов. */}
+            {filteredData && tab === "active" && filteredData.done_today.length > 0 && (
+              <button
+                onClick={() => setDoneExpanded((v) => !v)}
+                className={clsx(
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold border transition-colors",
+                  "bg-slate-100 dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.07]",
+                )}
+                style={{ color: "var(--t-secondary)" }}
+              >
+                <span className="text-emerald-500">✓</span>
+                <span style={{ color: "var(--t-faint)" }}>Выполнено</span>
+                <span className="tabular-nums text-emerald-500">{filteredData.done_today.length}</span>
+                <ChevronDown
+                  size={12}
+                  className={clsx("transition-transform", doneExpanded && "rotate-180")}
+                  style={{ color: "var(--t-faint)" }}
+                />
+              </button>
+            )}
 
             {/* Add button */}
             <div className="ml-auto">
@@ -1152,7 +1163,7 @@ export default function PlanPage() {
           )}
 
           {/* ── Done today (collapsible) ──────────────────────────────── */}
-          {filteredData && tab === "active" && filteredData.done_today.length > 0 && (
+          {doneExpanded && filteredData && tab === "active" && filteredData.done_today.length > 0 && (
             <DoneTodayBlock
               entries={filteredData.done_today}
               onComplete={handleOpenComplete}
