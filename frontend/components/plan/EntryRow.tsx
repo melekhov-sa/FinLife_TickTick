@@ -27,6 +27,7 @@ import { Popover } from "@/components/primitives/Popover";
 import { SwipeRow } from "@/components/primitives/SwipeRow";
 import { useIncrementHabitToday, useDecrementHabitToday } from "@/hooks/useHabits";
 import { isCompletable } from "@/lib/completion";
+import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { pluralizeYears } from "@/lib/utils";
 import {
   ENTRY_GROUP_STRIPE,
@@ -164,6 +165,19 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
   );
 }
 
+/** Запасное эмодзи по типу записи.
+ *
+ * Своё есть не у всех, а подбор по названию срабатывает не всегда.
+ * Без запасного строки без эмодзи начинались левее соседних, и левый
+ * край списка выходил рваным.
+ */
+const KIND_EMOJI: Record<string, string> = {
+  tasks: "📌",
+  habits: "🔁",
+  events: "📅",
+  ops: "💳",
+};
+
 export function EntryRow({
   entry,
   hideOverdueBadge,
@@ -208,6 +222,12 @@ export function EntryRow({
   const { mutate: decrementHabit } = useDecrementHabitToday();
 
   const canDrag = (entry.kind === "task" || entry.kind === "event" || entry.kind === "planned_op") && !entry.is_done;
+  // Своё эмодзи → подбор по названию → запасное по типу. Пустым место
+  // не остаётся никогда.
+  const rowEmoji =
+    getCategoryEmoji(entry.title, entry.category_emoji) ??
+    KIND_EMOJI[entryGroupType(entry.kind)] ??
+    "📌";
   const draggableId = `${entry.kind}-${entry.id}`;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: draggableId,
@@ -313,18 +333,7 @@ export function EntryRow({
             entry.is_done ? "line-through decoration-slate-300 dark:decoration-white/20" : "",
             entry.is_overdue && !entry.is_done ? "text-red-500 dark:text-red-400/90" : ""
           )} style={{ color: entry.is_done ? "var(--t-muted)" : (entry.is_overdue ? undefined : "var(--t-primary)") }}>
-            {entry.time && (
-              <span
-                className="text-[11px] font-semibold tabular-nums px-1.5 py-px rounded-md mr-1.5 align-middle inline-block"
-                style={{
-                  background: entry.is_done ? "var(--app-border-subtle, var(--app-border))" : "var(--app-accent-weak)",
-                  color: entry.is_done ? "var(--t-faint)" : "var(--app-accent)",
-                }}
-              >
-                {String(entry.time).slice(0, 5)}
-              </span>
-            )}
-            {entry.category_emoji && <span className="mr-0.5">{entry.category_emoji}</span>}
+            <span className="mr-1">{rowEmoji}</span>
             {entry.title}
           </span>
 
@@ -383,6 +392,21 @@ export function EntryRow({
         >
           <Minus size={12} />
         </button>
+      )}
+
+      {/* Время справа: внутри заголовка бейдж вклинивался перед текстом
+          и каждая строка начиналась в своём месте. Справа он ещё и
+          читается столбиком. */}
+      {entry.time && (
+        <span
+          className="shrink-0 text-[11px] font-semibold tabular-nums px-1.5 py-px rounded-md"
+          style={{
+            background: entry.is_done ? "var(--app-border-subtle, var(--app-border))" : "var(--app-accent-weak)",
+            color: entry.is_done ? "var(--t-faint)" : "var(--app-accent)",
+          }}
+        >
+          {String(entry.time).slice(0, 5)}
+        </span>
       )}
 
       <div className="shrink-0">
