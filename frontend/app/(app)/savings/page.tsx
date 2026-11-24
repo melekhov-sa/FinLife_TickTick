@@ -319,7 +319,7 @@ function WalletCard({
         <button
           type="button"
           onClick={onAssign}
-          className="tap-grow w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left"
+          className="w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left"
           style={{ background: "var(--app-accent-weak)" }}
         >
           <span className="text-[12px] min-w-0 truncate" style={{ color: "var(--t-secondary)" }}>

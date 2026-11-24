@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/primitives/PageHeader";
 import { Tabs } from "@/components/primitives/Tabs";
-import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, RotateCcw, PiggyBank, Repeat } from "lucide-react";
+import { Target, AlertCircle, Pencil, Archive, ArchiveRestore, Plus, PiggyBank, Repeat } from "lucide-react";
 import { api } from "@/lib/api";
 import { getCategoryEmoji } from "@/lib/categoryEmoji";
 import { Badge } from "@/components/primitives/Badge";
@@ -106,6 +106,9 @@ function useUnarchiveGoal() {
 }
 
 // ── GoalCard ──────────────────────────────────────────────────────────────────
+
+/** Сколько планов показывать в карточке цели до счётчика «и ещё N». */
+const PLANS_PREVIEW = 3;
 
 function GoalCard({
   goal,
@@ -332,10 +335,13 @@ function GoalCard({
               <button
                 type="button"
                 onClick={() => onEditPlans(goal)}
-                className="tap-grow mt-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors"
+                className="mt-2 w-full flex flex-col items-stretch gap-0.5 text-left rounded-lg px-2 py-1.5 transition-colors"
                 style={{ background: "var(--app-accent-weak)" }}
               >
-                {plans.map((p) => (
+                {/* Планов на одну цель бывает много — на подарки их по
+                    числу именинников. Показываем первые, остальные за
+                    счётчиком: карточка на телефоне и так длинная. */}
+                {plans.slice(0, PLANS_PREVIEW).map((p) => (
                   <span
                     key={p.id}
                     className="flex items-center gap-1.5 text-[11px] leading-snug"
@@ -350,6 +356,11 @@ function GoalCard({
                     {p.repeat_yearly && <Repeat size={10} className="shrink-0 opacity-70" />}
                   </span>
                 ))}
+                {plans.length > PLANS_PREVIEW && (
+                  <span className="text-[11px] leading-snug" style={{ color: "var(--t-muted)" }}>
+                    и ещё {plans.length - PLANS_PREVIEW}
+                  </span>
+                )}
               </button>
             )}
           </div>

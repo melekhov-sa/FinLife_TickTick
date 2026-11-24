@@ -2573,7 +2573,7 @@ export default function BudgetMatrixPage() {
                   <button
                     type="button"
                     onClick={() => setPlansOpen(true)}
-                    className="tap-grow inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
                     style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
                   >
                     <PiggyBank size={11} />
@@ -2842,7 +2842,7 @@ export default function BudgetMatrixPage() {
                   <button
                     type="button"
                     onClick={() => setPlansOpen(true)}
-                    className="tap-grow inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold"
                     style={{ background: "var(--app-accent-weak)", color: "var(--app-accent)" }}
                   >
                     <PiggyBank size={11} />
