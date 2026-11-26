@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.db.session import get_db
 from app.api.v2.deps import get_user_id
+from app.application.id_sequence import next_entity_id
 from app.infrastructure.db.models import OperationTemplateModel, OperationOccurrence, RecurrenceRuleModel, WalletBalance
 
 router = APIRouter()
@@ -260,7 +261,17 @@ def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Dep
     active_until = date.fromisoformat(body.active_until) if body.active_until else None
 
     _WEEKDAY_NAMES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+    # Номер берём тем же генератором, что и событийный путь. Если оставить
+    # его последовательности Postgres, она не узнает об id, вставленных
+    # явно проектором, отстанет от максимума и выдаст занятый номер —
+    # ровно так и падало «duplicate key rule_id».
     rule = RecurrenceRuleModel(
+        rule_id=next_entity_id(
+            db,
+            event_type="recurrence_rule_created",
+            payload_key="rule_id",
+            column=RecurrenceRuleModel.rule_id,
+        ),
         account_id=user_id,
         freq=body.freq,
         interval=max(1, body.interval),
@@ -273,6 +284,12 @@ def create_planned_op(body: PlannedOpCreate, request: Request, db: Session = Dep
     db.flush()
 
     template = OperationTemplateModel(
+        template_id=next_entity_id(
+            db,
+            event_type="operation_template_created",
+            payload_key="template_id",
+            column=OperationTemplateModel.template_id,
+        ),
         account_id=user_id,
         title=body.title,
         kind=body.kind,
